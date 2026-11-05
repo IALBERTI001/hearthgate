@@ -6,14 +6,14 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = 1280, DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1400, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-05';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
-  const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = 1112 - CITY_H, K = CITY.band[0] / CITY.crop[2];
+  const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
   const sx = x => (x - CITY.crop[0]) * K, sy = y => CITY_Y + (y - CITY.crop[1]) * K;
   const GATE_X = sx(CITY.gate[0]), WALL_FRONT = sy(CITY.wallTop);          // enemies press against the wall here
   const PLATFORMS = CITY.platforms.map(([x, y]) => ({ x: sx(x), y: sy(y) })); // the four round platforms in the wall
-  const RANGE_Y = 300;                                                        // towers reach enemies below this line
+  const RANGE_Y = 196;   // towers reach the whole field below the treeline, on every screen height
   const ELEMENT = { forge: 'fire', frostSpire: 'frost', stormBell: 'storm' };
   const COLOR = { fire: '#ff8a3a', frost: '#9fe8ff', storm: '#c98bff', none: '#efe2c0' };
   const GLOW = { fire: 'rgba(255,140,50,', frost: 'rgba(140,220,255,', storm: 'rgba(200,140,255,', none: 'rgba(255,240,200,' };
@@ -21,7 +21,7 @@
   // ---------- state ----------
   let P = load(), B = C.bonuses(P);
   const S = { t: 0, enemies: [], shots: [], pops: [], parts: [], spawnQ: [], spawnT: 0, gateHp: 0, gateHit: 0, paused: false,
-    sessionT: 0, saveT: 0, reveal: null, card: null, wavePop: null, cheerNext: null, savedByAd: false };
+    sessionT: 0, saveT: 0, reveal: null, card: null, rings: [], shake: 0, wavePop: null, cheerNext: null, savedByAd: false };
   function load() { try { return C.sanitize(localStorage.getItem(SAVE_KEY)); } catch (e) { return C.defaults(); } }
   function save() { P.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(P)); } catch (e) {} }
   const refresh = () => { B = C.bonuses(P); };
@@ -56,7 +56,7 @@
   function spawn(role) {
     const R = C.ROLES[role], hp = C.enemyHp(P.wave, role);
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
-    const x0 = 80 + Math.random() * 560, y0 = 172 + Math.random() * 40;
+    const x0 = 80 + Math.random() * 560, y0 = 168 + Math.random() * 40;
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.parts.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
     S.enemies.push({ role, sheet: R.sheet, x: x0, y: y0, off: (Math.random() - 0.5) * 330, hp, max: hp,
       sp: R.speed, size: R.size, armour: R.armour || 0, weak: R.weak, boss: role === 'boss', frame: Math.random() * 6,
@@ -67,7 +67,8 @@
   const TOWERS = PLATFORMS.map((p, i) => ({ x: p.x, y: p.y, cd: 0.2 + i * 0.13, recoil: 0, flash: 0, n: i }));
   function step() {
     S.t += DT; S.sessionT += DT; if (S.wavePop) S.wavePop.t += DT;
-    S.gateHit = Math.max(0, S.gateHit - DT * 4);
+    S.gateHit = Math.max(0, S.gateHit - DT * 4); S.shake = Math.max(0, S.shake - DT);
+    for (const r of S.rings) r.t += DT; S.rings = S.rings.filter(r => r.t < 0.5);
     if (S.spawnQ.length && (S.spawnT -= DT) <= 0) { const r = S.spawnQ.shift(); spawn(r); S.spawnT = r === 'swarm' ? 0.28 : Math.max(0.45, 1.35 - P.wave * 0.02); }
     if (B.regen) S.gateHp = Math.min(gateMax(), S.gateHp + gateMax() * B.regen * DT);
     const els = elements(), interval = C.fireInterval(B);
@@ -99,7 +100,7 @@
       if (e.y < WALL_FRONT) {
         e.y = Math.min(WALL_FRONT, e.y + e.sp * slow * DT);
         if (e.y > 230) e.x += (GATE_X + e.off - e.x) * Math.min(1, 0.8 * DT);
-      } else { S.gateHp -= (e.boss ? 16 : e.role === 'armoured' ? 7 : 4) * DT; S.gateHit = 1; }
+      } else { S.gateHp -= C.enemyBite(P.wave, e.role) * DT; S.gateHit = 1; }
       if (e.hp <= 0) kill(e);
     }
     S.enemies = S.enemies.filter(e => !e.dying || e.dying < 0.45);
@@ -115,7 +116,7 @@
     let d = C.towerDamage(P, B); const comboMul = 1 + B.combo;
     if (e.armour && el !== 'fire') d *= 1 - e.armour;                 // armour: only Fire bites fully
     if (el === 'fire') {
-      if (e.chill > 0) { d *= 3 * comboMul; combo('shatter', e, 'SHATTER!', COLOR.frost); burst(e, COLOR.frost, 14, 220); A.play('shatter_combo', 0.5); }
+      if (e.chill > 0) { d *= 3 * comboMul; combo('shatter', e, 'SHATTER!', COLOR.frost); burst(e, COLOR.frost, 22, 260); A.play('shatter_combo', 0.5); e.bigHit = true; }
       e.burn = 2.2;
     }
     if (el === 'frost') { e.chill = 2.2; if (e.weak === 'frost') d *= 1.3; }
@@ -130,12 +131,13 @@
     e.hp -= d; e.flash = 1;
     burst(e, COLOR[el], el === 'none' ? 4 : 6, 120);
     A.play(el === 'frost' ? 'ice_contact_0' : el === 'storm' ? 'lightning_contact_0' : el === 'fire' ? 'fire_contact_0' : 'ice_contact_0', 0.12);
-    pop(e.x + (Math.random() - 0.5) * 30, e.y - e.size - 6, C.fmt(d), COLOR[el], 0.7, 30);
+    pop(e.x + (Math.random() - 0.5) * 30, e.y - e.size * 0.55, C.fmt(d), e.bigHit ? '#ffffff' : COLOR[el], e.bigHit ? 0.9 : 0.7, e.bigHit ? 56 : 30); e.bigHit = false;
   }
   function combo(id, e, word, col) {
     // one combo word on screen at a time, so words never pile into each other
     S.pops = S.pops.filter(p => !p.combo);
-    S.pops.push({ x: Math.max(130, Math.min(590, e.x)), y: e.y - e.size - 46, text: word, col, t: 0, life: 1.1, size: 46, combo: true });
+    S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: e.y - e.size - 40, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
+    S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
     if (!P.combos.includes(id)) { P.combos.push(id); toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/3`); save(); }
   }
   function kill(e) {
@@ -175,9 +177,9 @@
     const c = C.upgradeCost(P.gateLevel, B);
     if (P.parts < c) return refuse('up', c);
     const before = C.towerDamage(P, B), stage = C.stageOf(P.gateLevel);
-    P.parts -= c; P.gateLevel++; refresh(); S.gateHp = gateMax();
+    P.parts -= c; P.gateLevel++; refresh(); S.gateHp = gateMax(); S.upsSinceRestore = (S.upsSinceRestore || 0) + 1;
     if (C.stageOf(P.gateLevel) > stage) { toast(`Gate stage ${C.stageOf(P.gateLevel)}! The towers grow.`); A.play('tier_up', 0.6); TOWERS.forEach(t => (t.flash = 1.5)); }
-    else toast(`Damage ${C.fmt(before)} -> ${C.fmt(C.towerDamage(P, B))}`);
+    else { pop(GATE_X, WALL_FRONT - 150, `Damage ${C.fmt(before)} -> ${C.fmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach(t => (t.flash = 1.2)); A.play('tier_up', 0.25); }
     save(); ui();
   }
   function restore() {
@@ -192,7 +194,7 @@
   }
   function doRestore(id) {
     const c = C.restoreCost(P.restored.length); if (P.parts < c) return;
-    P.parts -= c; P.restored.push(id); refresh();
+    P.parts -= c; P.restored.push(id); refresh(); S.upsSinceRestore = 0;
     const b = C.byId(id); toast(`${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 };
     A.play('tier_up', 0.55); SDK.happytime();
     if (P.restored.length === 5) setTimeout(() => { toast('The fountain flows again!'); S.reveal = { b: 'plaza', t: 0 }; }, 2900);
@@ -211,17 +213,19 @@
   const hours = s => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.max(1, Math.floor(s / 60))} min`;
   function showCard(kind, data) {
     const card = el('card'), body = card.querySelector('.body'); S.card = kind; card.className = 'on ' + kind;
+    SDK.gameplay(false);   // cards are menus: the fight holds still and CrazyGames hears gameplayStop
+    el('toast').classList.remove('show'); toastT = 0;
     const btn = (id, label, cls = '') => `<button id="${id}" class="cbtn ${cls}">${label}</button>`;
     let html = '';
     if (kind === 'daily') html = `<span class="eyebrow">Day ${data.day} reward</span><h2>+${C.fmt(data.amount)} Parts</h2><p>${data.big ? 'Day 7 bonus: five times the reward!' : 'Day 7 pays five times as much.'}</p>${btn('c-ok', 'Claim')}`;
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.parts)} Parts</h2><p>The gate held for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
-    if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Parts</span><h2>Choose what rises next</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Parts</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
     if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Parts and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. Best wave and combos stay.</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'save') html = `<span class="eyebrow">Wave ${C.fmt(P.wave)} · boss</span><h2>The gate is breaking!</h2><p>Watch an ad to rebuild the gate and keep fighting this boss.</p>${btn('c-ad', 'Watch an ad: save the gate', 'gold')}${btn('c-no', 'Fall back', 'quiet')}`;
-    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions} · Combos ${P.combos.length}/3</p>${btn('c-ok', 'Resume')}`;
+    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · ★ ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}`;
     body.innerHTML = html;
-    const close = () => { card.className = ''; S.card = null; ui(); nextCard(); };
+    const close = () => { card.className = ''; S.card = null; if (!S.paused) SDK.gameplay(true); ui(); nextCard(); };
     const on = (id, f) => { const b = body.querySelector('#' + id); if (b) b.onclick = () => { A.unlock(); f(); }; };
     const adHooks = { mute: () => A.set('muted', true), unmute: () => A.set('muted', false) };
     if (kind === 'daily') on('c-ok', () => { P.parts += data.amount; P.daily = { day: data.today, streak: data.day, claimedTotal: P.daily.claimedTotal + data.amount }; A.play('tier_up', 0.5); save(); close(); });
@@ -279,6 +283,12 @@
     }
   }
 
+  // Enemies get a dark outline once at load, so a green slime always reads against green grass.
+  function outline() {
+    for (const n of ['slime', 'beetle', 'golem']) { const im = img[n]; if (!im) continue;
+      const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d');
+      g.filter = 'drop-shadow(0 0 1.5px rgba(34,14,24,1)) drop-shadow(0 0 1px rgba(34,14,24,1))'; g.drawImage(im, 0, 0); img[n] = c; }
+  }
   // Draw a sprite from its own sheet, anchored bottom-centre on (x, baseY); pad = the sheet's clear margin.
   function sprite(im, x, baseY, h, frame = 0, frames = 1) {
     const pad = 8, fw = im.width / frames, ch = im.height - 2 * pad, s = h / ch;
@@ -300,11 +310,13 @@
     const els = elements(), stage = C.stageOf(P.gateLevel), idle = ['fire', 'frost', 'frost', 'storm'], calm = reduced();
     TOWERS.forEach((t, i) => {
       const e = els.length ? els[i % els.length] : null, im = img[(e || idle[i]) + stage]; if (!im) return;
-      const breathe = calm ? 0 : Math.sin(S.t * 2 + i) * 0.012, h = CITY.towerH * (1 + (stage - 1) * 0.08) * (1 + breathe - t.recoil * 0.05);
+      const grow = Math.min(0.16, (P.gateLevel - C.STAGES[stage - 1]) * 0.012);   // a little taller with every level of the stage
+      const breathe = calm ? 0 : Math.sin(S.t * 2 + i) * 0.012, h = CITY.towerH * (1 + (stage - 1) * 0.1 + grow) * (1 + breathe - t.recoil * 0.05);
       shadow(t.x + 5, t.y + 2, CITY.platformR * 0.95, CITY.platformR * 0.36, 0.42);
       if (!e) cx.filter = 'grayscale(0.85) brightness(0.8)';
       sprite(im, t.x, t.y + CITY.towerSink, h);
       cx.filter = 'none';
+      if (t.flash > 1) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - h * 0.5, 60, 'rgba(255,230,150,', 0.5 * (t.flash - 1) * 5); cx.restore(); }
       if (e) {
         cx.save(); cx.globalCompositeOperation = 'lighter';
         glow(t.x, t.y - h * 0.78, 24 + t.flash * 16, GLOW[e], 0.16 + (calm ? 0 : 0.05 * Math.sin(S.t * 3 + i)) + t.flash * 0.4);
@@ -377,10 +389,12 @@
   }
 
   function render() {
-    cx.setTransform(k, 0, 0, k, 0, 0);
+    const sh = S.shake > 0 && !reduced() ? (Math.random() - 0.5) * 10 * (S.shake / 0.14) : 0;
+    cx.setTransform(k, 0, 0, k, sh * k, sh * 0.6 * k);
     // ground: the Outer Seal meadow, with the treeline at the very top behind everything that walks
     if (img.meadow) cx.drawImage(img.meadow, 0, 0, W, CITY_Y + 30); else { cx.fillStyle = '#6f9a3c'; cx.fillRect(0, 0, W, CITY_Y + 30); }
-    if (img.forest) cx.drawImage(img.forest, (W - img.forest.width) / 2, -8);
+    // the wilderness: a deep treeline across the top that the waves walk out of
+    if (img.forest) { const f = img.forest, fw = f.width * 1.5, fh = f.height * 1.5; cx.drawImage(f, (W - fw) / 2, -14, fw, fh); cx.drawImage(f, (W - fw) / 2 + 60, 40, fw, fh * 0.9); }
     // the city: the ruined painting, restored buildings over it as they come back
     if (cityRuined) cx.drawImage(cityRuined, 0, CITY_Y);
     // the plaza and its fountain come back to life once half the city stands again
@@ -391,6 +405,7 @@
     if (S.reveal && !reduced()) { const s = CITY.spots[S.reveal.b]; if (s && S.reveal.t < 1.2) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(sx(s[0]), sy(s[1]), 95, 'rgba(255,220,140,', 0.5 * (1 - S.reveal.t / 1.2)); cx.restore(); } }
     // the field, back to front
     for (const e of S.enemies.slice().sort((a, b) => a.y - b.y)) drawEnemy(e);
+    if (img.wall) cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H);   // the wall is nearer the camera than anyone outside it
     drawGateBar();
     drawTowers();
     for (const s of S.shots) drawShot(s);
@@ -406,11 +421,14 @@
         cx.save(); cx.strokeStyle = COLOR.storm; cx.lineWidth = 3; cx.shadowColor = COLOR.storm; cx.shadowBlur = 10;
         cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(mx, my); cx.lineTo(x1, y1); cx.stroke(); cx.restore(); continue;
       }
-      cx.globalAlpha = 1 - p.t / p.life; cx.font = `${p.size}px "HG Display", sans-serif`;
-      cx.lineWidth = 6; cx.strokeStyle = '#2a1a22'; cx.strokeText(p.text, p.x, p.y - p.t * 40); cx.fillStyle = p.col; cx.fillText(p.text, p.x, p.y - p.t * 40);
+      cx.globalAlpha = p.hold ? (p.t < p.life * p.hold ? 1 : 1 - (p.t - p.life * p.hold) / (p.life * (1 - p.hold))) : 1 - p.t / p.life;
+      const grow = p.combo ? Math.min(1, 0.6 + p.t * 4) : 1; cx.font = `${Math.round(p.size * grow)}px "HG Display", sans-serif`;
+      const py = p.y - (p.combo ? p.t * 18 : p.t * 40);
+      cx.lineWidth = p.combo ? 10 : 6; cx.strokeStyle = '#2a1a22'; cx.strokeText(p.text, p.x, py); cx.fillStyle = p.col; cx.fillText(p.text, p.x, py);
       cx.globalAlpha = 1;
     }
-    drawWavePop();
+    for (const r of S.rings) { cx.save(); cx.globalAlpha = 1 - r.t / 0.5; cx.strokeStyle = r.col; cx.lineWidth = 8 * (1 - r.t / 0.5) + 2; cx.beginPath(); cx.arc(r.x, r.y, 20 + r.t * 260, 0, 7); cx.stroke(); cx.restore(); }
+    if (!S.card) drawWavePop();   // one voice at a time: nothing banners behind a card
     if (S.reveal && (S.reveal.t += 1 / 60) > 1.4) S.reveal = null;
   }
 
@@ -426,7 +444,7 @@
     el('stars').textContent = P.ascensions ? `★ ${P.ascensions}` : '';
     el('stars').hidden = !P.ascensions;
     const fork = C.pendingFork(P), uc = C.upgradeCost(P.gateLevel, B), up = el('up');
-    up.querySelector('.label').textContent = fork ? 'Choose path' : 'Upgrade';
+    up.querySelector('.label').textContent = fork ? 'New path!' : 'Upgrade';
     up.querySelector('.cost').textContent = fork ? `Stage ${fork}` : C.fmt(uc);
     up.querySelector('.fill').style.width = fork ? '100%' : Math.min(100, P.parts / uc * 100) + '%';
     up.classList.toggle('ready', !!fork || P.parts >= uc);
@@ -440,8 +458,9 @@
     // pointing hand: first session only, one button at a time, never while a card is open
     let target = null;
     if (P.firstSession && !S.card) {
-      if (P.gateLevel === 1 && S.sessionT > 6 && P.parts >= uc) target = 'up';
-      else if (n < C.FIXED_ORDER && P.parts >= rc && (P.gateLevel > 1 || n > 0)) target = 're';
+      // restore first when it is affordable (it changes the fight); otherwise keep pointing at an affordable Upgrade
+      if (n < C.FIXED_ORDER && P.parts >= rc && (P.gateLevel > 1 || n > 0)) target = 're';
+      else if (S.sessionT > 5 && P.parts >= uc && !fork && (n >= C.FIXED_ORDER || (S.upsSinceRestore || 0) < 2)) target = 'up';
       if (n >= C.FIXED_ORDER) { P.firstSession = false; P.daily.day = P.daily.day || C.dayKey(new Date()); save(); }
     }
     el('hand').className = target ? 'on ' + target : '';
@@ -451,7 +470,7 @@
   let acc = 0, last = performance.now();
   function advance(now) {
     acc += Math.min(10, (now - last) / 1000); last = now;
-    let n = 0; while (acc >= DT && n < 600) { if (!S.paused) step(); acc -= DT; n++; }
+    let n = 0; while (acc >= DT && n < 600) { if (!S.paused && !S.card) step(); acc -= DT; n++; }
     if ((toastT -= n * DT) <= 0) el('toast').classList.remove('show');
   }
   function frame(now) { advance(now); render(); ui(); requestAnimationFrame(frame); }
@@ -460,6 +479,7 @@
   root.addEventListener('pagehide', save);
 
   // ---------- stage fit ----------
+  el('stage').style.height = H + 'px'; cv.style.height = H + 'px';
   function fit() {
     const vw = root.innerWidth, vh = root.innerHeight, f = Math.min(vw / W, vh / H);
     el('stage').style.transform = `translate(${(vw - W * f) / 2}px,${(vh - H * f) / 2}px) scale(${f})`;
@@ -483,6 +503,12 @@
       if (key === 'u') upgrade(); else if (key === 'r') restore(); else if (key === 'p') el('pause').click();
     });
     root.addEventListener('pointerdown', () => A.unlock(), { once: true });
+    // tap a building in the city to see what it does (or what it will do once restored)
+    cv.addEventListener('click', ev => {
+      if (S.card) return; const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H;
+      for (const id of C.BUILDING_IDS) { const s = CITY.spots[id]; const dx = (x - sx(s[0])) / (s[2] * K * 0.8), dy = (y - sy(s[1])) / (s[3] * K * 0.8);
+        if (dx * dx + dy * dy < 1) { const b = C.byId(id); toast(P.restored.includes(id) ? `${b.name}: ${b.line}` : `${b.name} (ruined). Restore it: ${b.line}`); return; } }
+    });
     if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.documentElement.classList.add('keys');
   }
   function returnCards() {
@@ -495,8 +521,8 @@
   fit(); bind(); A.set('music', P.settings.music); A.set('sfx', P.settings.sfx); startWave();
   const T = s => `assets/towers/${s}.webp`;
   Promise.all([loadImg('ruined', 'assets/city/city-ruined.webp'), loadImg('restored', 'assets/city/city-restored.webp'),
-    loadImg('meadow', 'assets/ground/meadow.webp'), loadImg('forest', 'assets/kit/forest-edge-top.webp'),
+    loadImg('meadow', 'assets/ground/meadow.webp'), loadImg('wall', 'assets/city/city-wall.webp'), loadImg('forest', 'assets/kit/forest-edge-top.webp'),
     loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
     ...['fire', 'frost', 'storm'].flatMap(e => [1, 2, 3].map(t => loadImg(e + t, T(`${e}-${t}`))))])
-    .then(() => { prepareCity(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); returnCards(); requestAnimationFrame(frame); });
+    .then(() => { outline(); prepareCity(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); returnCards(); requestAnimationFrame(frame); });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

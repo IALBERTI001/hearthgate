@@ -26,13 +26,13 @@ p.restored = ['forge', 'frostSpire', 'stormBell'];
 const offer = C.restoreOffer(p); assert.strictEqual(offer.length, 2); assert.deepStrictEqual(C.restoreOffer(p), offer);
 assert.ok(offer.every(id => !p.restored.includes(id)));
 p.restored = C.BUILDING_IDS.slice(); assert.deepStrictEqual(C.restoreOffer(p), []); assert.ok(C.canAscend(p));
-assert.ok(C.restoreCost(0) + C.restoreCost(1) <= 60, 'first two restores cheap enough for SHATTER inside 60 s');
+assert.ok(C.restoreCost(0) + C.restoreCost(1) <= 45 * C.killParts(1, false, C.bonuses(C.defaults())), 'first two restores within about 45 early kills, so SHATTER lands inside 60 s');
 for (let i = 1; i < 10; i++) assert.ok(C.restoreCost(i) > C.restoreCost(i - 1));
 
 // Approved fix 2: forks at gate stages 2 and 3, chosen once each.
-const g = C.defaults(); g.gateLevel = 9; assert.strictEqual(C.pendingFork(g), null);
-g.gateLevel = 10; assert.strictEqual(C.pendingFork(g), 2); g.forks[2] = 'crews'; assert.strictEqual(C.pendingFork(g), null);
-g.gateLevel = 25; assert.strictEqual(C.pendingFork(g), 3);
+const g = C.defaults(); g.gateLevel = C.STAGES[1] - 1; assert.strictEqual(C.pendingFork(g), null);
+g.gateLevel = C.STAGES[1]; assert.strictEqual(C.pendingFork(g), 2); g.forks[2] = 'crews'; assert.strictEqual(C.pendingFork(g), null);
+g.gateLevel = C.STAGES[2]; assert.strictEqual(C.pendingFork(g), 3);
 assert.ok(C.fireInterval(C.bonuses(g)) < C.fireInterval(C.bonuses(C.defaults())));
 
 // Approved fix 3: roles arrive one at a time, each with an element that counters it.

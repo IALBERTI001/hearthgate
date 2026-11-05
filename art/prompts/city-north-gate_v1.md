@@ -30,3 +30,6 @@ Repaint this exact image as the same city in ruins. Keep the layout, camera, eve
 The gatehouse and the north wall stay intact and repaired (they are what the player defends). Everything else is ruined: collapsed roofs, cracked walls, dark windows, rubble, weeds and vines, a dry fountain, a cold forge, a dull broken frost spire, a cracked silent bell tower. Muted colours on the ruins; same warm light from the upper left.
 Do not include: text, letters, numbers, logos, watermarks, frames or borders, people.
 ```
+
+## What was actually sent (Nov 5 2026)
+The user was away and the reference files could not be uploaded from the browser, so the style reference came from the ChatGPT library ("Restored Dormant Fantasy Fortress", Warden's restored hub, Nov 4) and the layout guide was redrawn on a canvas in the page and pasted. Prompt 1 was sent with "the FIRST attached image is the style reference ... the SECOND is the layout guide", and the gatehouse described as "the gold-domed arched gatehouse that stands at the bottom centre of the first image, turned so its open arch faces UP". Prompt 2 asked for "the same city in ruins, same size ... line up pixel for pixel", gatehouse and wall intact. Chat: "Create Fantasy City Map" in the user's ChatGPT.

@@ -9,7 +9,7 @@
     focus: [767, 493],                 // the plaza fountain, under the gate
     gate: [767, 100],                  // the gatehouse arch
     wallTop: 64,                       // where enemies press against the wall
-    gateBar: 236,                      // the gate's health bar, on the road just inside the arch
+    gateBar: -34,                      // the gate's health bar, just above the gatehouse domes
     platforms: [[220, 133], [460, 133], [1073, 133], [1313, 133]],
     platformR: 30,                     // stage px
     towerH: 82,                        // stage px, tier 1

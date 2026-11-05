@@ -25,9 +25,9 @@
   // The first three are restored in this order so SHATTER lands in the first minute (approved fix 1, Nov 5 2026);
   // after them, Restore offers a pick of two. Each building visibly changes the fight or the economy.
   const BUILDINGS = [
-    { id: 'forge', name: 'Forge', element: 'fire', line: 'Towers gain Fire: hits burn.' },
-    { id: 'frostSpire', name: 'Frost Spire', element: 'frost', line: 'Towers gain Frost: hits slow.' },
-    { id: 'stormBell', name: 'Storm Bell', element: 'storm', line: 'Towers gain Storm: hits chain.' },
+    { id: 'forge', name: 'Forge', element: 'fire', line: 'Towers gain Fire. Hits burn.' },
+    { id: 'frostSpire', name: 'Frost Spire', element: 'frost', line: 'Towers gain Frost. Hits slow.' },
+    { id: 'stormBell', name: 'Storm Bell', element: 'storm', line: 'Towers gain Storm. Hits chain.' },
     { id: 'bakery', name: 'Bakery', bonus: { parts: 0.15 }, line: '+15% Parts from every enemy.' },
     { id: 'market', name: 'Market', bonus: { upgradeDiscount: 0.10 }, line: 'Upgrades cost 10% less.' },
     { id: 'tavern', name: 'Tavern', bonus: { fireRate: 0.10 }, line: 'Towers fire 10% faster.' },
@@ -54,7 +54,7 @@
 
   // ---------- gate upgrades and forks ----------
   // The gate climbs levels; stages at levels 10 and 25 grow the towers a tier and each offers a fork (approved fix 2).
-  const STAGES = [1, 10, 25];
+  const STAGES = [1, 15, 40];
   const FORKS = {
     2: [{ id: 'ballistae', name: 'Heavy Bolts', line: '+40% tower damage', bonus: { damage: 0.40 } },
         { id: 'crews', name: 'Swift Crews', line: '+35% fire rate', bonus: { fireRate: 0.35 } }],
@@ -75,22 +75,22 @@
     return b;
   }
 
-  const upgradeCost = (lvl, b) => Math.floor(10 * Math.pow(1.3, lvl - 1) * (1 - (b ? b.upgradeDiscount : 0)));
-  const restoreCost = n => n < FIXED_ORDER ? [12, 30, 70][n] : Math.floor(150 * Math.pow(2.1, n - 3));
-  const towerDamage = (p, b) => 3 * Math.pow(1.36, p.gateLevel - 1) * (1 + b.damage) * b.ascend;
+  const upgradeCost = (lvl, b) => Math.floor(5 * Math.pow(1.27, lvl - 1) * (1 - (b ? b.upgradeDiscount : 0)));
+  const restoreCost = n => n < FIXED_ORDER ? [30, 80, 220][n] : Math.floor(600 * Math.pow(2.7, n - 3));
+  const towerDamage = (p, b) => 3 * Math.pow(1.235, p.gateLevel - 1) * (1 + b.damage) * b.ascend;
   const fireInterval = b => 0.55 / (1 + b.fireRate);
-  const gateMax = (p, b) => Math.floor(100 * Math.pow(1.17, p.gateLevel - 1) * (1 + b.gateHp));
-  const killParts = (wave, boss, b) => Math.ceil((1 + wave / 3) * (boss ? 25 : 1) * (1 + b.parts) * b.ascend);
+  const gateMax = (p, b) => Math.floor(100 * Math.pow(1.11, p.gateLevel - 1) * (1 + b.gateHp));
+  const killParts = (wave, boss, b) => Math.ceil(4 * Math.pow(1.12, wave - 1) * (boss ? 25 : 1) * (1 + b.parts) * b.ascend);
 
   // ---------- waves and enemy roles (approved fix 3) ----------
   // slime: basic. runner (beetle): fast, Frost slows it. armoured (golem): Fire burns through the armour.
   // swarm (small slimes): many and weak, Storm chains through them. A boss every 10 waves.
   const ROLES = {
-    slime: { sheet: 'slime', hp: 1, speed: 52, size: 80, label: 'Slimes' },
-    runner: { sheet: 'beetle', hp: 0.7, speed: 92, size: 70, label: 'Runners', weak: 'frost' },
-    armoured: { sheet: 'golem', hp: 2.6, speed: 40, size: 96, label: 'Armoured', weak: 'fire', armour: 0.5 },
-    swarm: { sheet: 'slime', hp: 0.35, speed: 60, size: 52, label: 'Swarm', weak: 'storm' },
-    boss: { sheet: 'golem', hp: 60, speed: 30, size: 160, label: 'Boss', armour: 0.3 }
+    slime: { sheet: 'slime', hp: 1, speed: 46, size: 108, label: 'Slimes' },
+    runner: { sheet: 'beetle', hp: 0.7, speed: 84, size: 96, label: 'Runners', weak: 'frost' },
+    armoured: { sheet: 'golem', hp: 2.6, speed: 36, size: 128, label: 'Armoured', weak: 'fire', armour: 0.5 },
+    swarm: { sheet: 'slime', hp: 0.35, speed: 54, size: 70, label: 'Swarm', weak: 'storm' },
+    boss: { sheet: 'golem', hp: 90, speed: 28, size: 200, label: 'Boss', armour: 0.3 }
   };
   const isBoss = w => w % 10 === 0;
   // The wave's make-up as [role, count] pairs. New roles arrive one at a time: runners at wave 3, armoured at 6, swarm at 12.
@@ -108,12 +108,14 @@
     if (swarm) mix.push(['swarm', swarm]);
     return mix;
   }
-  const enemyHp = (w, role) => 10 * Math.pow(1.2, w - 1) * ROLES[role].hp;
+  // How hard an enemy at the gate hits it, per second; grows with the wave like the gate's health grows with its level.
+  const enemyBite = (w, role) => (role === 'boss' ? 16 : role === 'armoured' ? 7 : role === 'swarm' ? 2 : 4) * Math.pow(1.12, w - 1);
+  const enemyHp = (w, role) => 10 * Math.pow(1.235, w - 1) * ROLES[role].hp;
 
   // ---------- idle: offline earnings, daily reward ----------
   const OFFLINE_CAP_H = 8;
   // Parts per second the gate earns while the player is away: about what the current wave pays when fought live.
-  const offlineRate = (p, b) => (1 + p.wave / 3) * 0.6 * (1 + b.parts) * b.ascend * (1 + b.offline);
+  const offlineRate = (p, b) => 4 * Math.pow(1.12, p.wave - 1) * 1.2 * (1 + b.parts) * b.ascend * (1 + b.offline);
   function offlineEarnings(p, b, now) {
     if (!p.lastSeen || now <= p.lastSeen) return { secs: 0, parts: 0 };
     const secs = Math.min(OFFLINE_CAP_H * 3600, (now - p.lastSeen) / 1000);
@@ -127,7 +129,8 @@
     if (p.firstSession || !p.daily.day) return null;           // the first session never shows it
     if (today <= p.daily.day) return null;                    // already claimed today, or the clock went back
     const day = p.daily.streak + 1, big = day % 7 === 0;
-    const amount = Math.floor((30 + p.bestWave * 8) * (big ? 5 : 1) * Math.pow(ASCEND_MULT, p.ascensions));
+    // worth about 20 minutes of the gate's income at the best wave reached, so it is felt at once
+    const amount = Math.floor(4 * Math.pow(1.12, p.bestWave - 1) * 1.2 * 1200 * (big ? 5 : 1) * Math.pow(ASCEND_MULT, p.ascensions));
     return { today, day, big, amount };
   }
 
@@ -190,7 +193,7 @@
   const cityToBand = (sx, sy) => [(sx - CITY.crop[0]) * CITY.band[0] / CITY.crop[2], (sy - CITY.crop[1]) * CITY.band[1] / CITY.crop[3]];
 
   root.HGCore = { fmt, BUILDINGS, BUILDING_IDS, byId, FIXED_ORDER, COMBOS, restoreOffer, STAGES, FORKS, stageOf, pendingFork,
-    bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killParts, ROLES, isBoss, waveMix, enemyHp,
+    bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killParts, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, ascend, defaults, sanitize,
     CITY, cityToBand };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
