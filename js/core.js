@@ -1,8 +1,9 @@
-// Hearthgate core: compact numbers, the save profile and its sanitizer. Pure logic, no DOM, so Node tests can load it.
+// Hearthgate core: numbers, the save profile, buildings, upgrades, waves, idle rewards and Ascension.
+// Pure logic, no DOM, so Node tests can load it. Every balance number lives here.
 (function (root) {
   'use strict';
 
-  // 999, 1K, 1.04K, 12.5K, 3.2M ... no commas, never capped.
+  // ---------- numbers: 999, 1K, 1.04K, 12.5K, 3.2M ... no commas, never capped ----------
   const UNITS = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
   function fmt(n) {
     if (!isFinite(n)) return '0';
@@ -20,23 +21,144 @@
     return a[Math.floor(j / 26) % 26] + a[j % 26];
   }
 
-  // The ten buildings of city layer 1. The first three are restored in this order (approved fix 1, Nov 5 2026).
-  const BUILDINGS = ['forge', 'frostSpire', 'stormBell', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9', 'b10'];
+  // ---------- buildings: city layer 1 ----------
+  // The first three are restored in this order so SHATTER lands in the first minute (approved fix 1, Nov 5 2026);
+  // after them, Restore offers a pick of two. Each building visibly changes the fight or the economy.
+  const BUILDINGS = [
+    { id: 'forge', name: 'Forge', element: 'fire', line: 'Towers gain Fire: hits burn.' },
+    { id: 'frostSpire', name: 'Frost Spire', element: 'frost', line: 'Towers gain Frost: hits slow.' },
+    { id: 'stormBell', name: 'Storm Bell', element: 'storm', line: 'Towers gain Storm: hits chain.' },
+    { id: 'bakery', name: 'Bakery', bonus: { parts: 0.15 }, line: '+15% Parts from every enemy.' },
+    { id: 'market', name: 'Market', bonus: { upgradeDiscount: 0.10 }, line: 'Upgrades cost 10% less.' },
+    { id: 'tavern', name: 'Tavern', bonus: { fireRate: 0.10 }, line: 'Towers fire 10% faster.' },
+    { id: 'granary', name: 'Granary', bonus: { offline: 0.5 }, line: '+50% Parts while you are away.' },
+    { id: 'library', name: 'Library', bonus: { combo: 0.25 }, line: 'Combos hit 25% harder.' },
+    { id: 'cottages', name: 'Cottages', bonus: { gateHp: 0.25 }, line: 'The gate has 25% more health.' },
+    { id: 'watchtower', name: 'Watchtower', bonus: { damage: 0.15 }, line: 'Towers hit 15% harder.' }
+  ];
+  const BUILDING_IDS = BUILDINGS.map(b => b.id);
+  const byId = id => BUILDINGS.find(b => b.id === id);
   const FIXED_ORDER = 3;
+  const COMBOS = ['shatter', 'frostStorm', 'fireStorm'];
 
-  function defaults() {
-    return { v: 1, parts: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], combos: [], ascensions: 0,
-      lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true };
+  // Restore choice: the first three in fixed order; after that two unrestored buildings, the same two until one is
+  // picked (seeded by how many are restored and the Ascension count, so reloading never rerolls the offer).
+  function restoreOffer(p) {
+    const left = BUILDING_IDS.filter(id => !p.restored.includes(id));
+    if (!left.length) return [];
+    if (p.restored.length < FIXED_ORDER) return [BUILDING_IDS[p.restored.length]];
+    if (left.length === 1) return left;
+    const seed = (p.restored.length * 7 + p.ascensions * 13 + 3) % left.length;
+    return [left[seed], left[(seed + 1 + (p.ascensions % (left.length - 1))) % left.length]].filter((v, i, a) => a.indexOf(v) === i);
   }
 
-  const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(hi, Math.max(lo, v)) : d;
+  // ---------- gate upgrades and forks ----------
+  // The gate climbs levels; stages at levels 10 and 25 grow the towers a tier and each offers a fork (approved fix 2).
+  const STAGES = [1, 10, 25];
+  const FORKS = {
+    2: [{ id: 'ballistae', name: 'Heavy Bolts', line: '+40% tower damage', bonus: { damage: 0.40 } },
+        { id: 'crews', name: 'Swift Crews', line: '+35% fire rate', bonus: { fireRate: 0.35 } }],
+    3: [{ id: 'focus', name: 'Elemental Focus', line: 'Combos hit 50% harder', bonus: { combo: 0.50 } },
+        { id: 'ironGate', name: 'Iron Gate', line: 'Double gate health, slow repair', bonus: { gateHp: 1.0, regen: 0.02 } }]
+  };
+  const stageOf = lvl => lvl >= STAGES[2] ? 3 : lvl >= STAGES[1] ? 2 : 1;
+  // A fork is waiting when the gate has reached a stage whose fork has not been chosen yet.
+  const pendingFork = p => [2, 3].find(s => stageOf(p.gateLevel) >= s && !p.forks[s]) || null;
 
-  // Fill missing fields, clamp numbers, drop unknown keys and unknown buildings. Runs on every load.
+  // Every bonus from buildings, forks and Ascension, summed.
+  function bonuses(p) {
+    const b = { parts: 0, upgradeDiscount: 0, fireRate: 0, offline: 0, combo: 0, gateHp: 0, damage: 0, regen: 0 };
+    const add = o => { for (const k in o) b[k] += o[k]; };
+    for (const id of p.restored) { const d = byId(id); if (d && d.bonus) add(d.bonus); }
+    for (const s of [2, 3]) { const f = p.forks[s] && FORKS[s].find(x => x.id === p.forks[s]); if (f) add(f.bonus); }
+    b.ascend = Math.pow(ASCEND_MULT, p.ascensions);
+    return b;
+  }
+
+  const upgradeCost = (lvl, b) => Math.floor(10 * Math.pow(1.3, lvl - 1) * (1 - (b ? b.upgradeDiscount : 0)));
+  const restoreCost = n => n < FIXED_ORDER ? [12, 30, 70][n] : Math.floor(150 * Math.pow(2.1, n - 3));
+  const towerDamage = (p, b) => 3 * Math.pow(1.36, p.gateLevel - 1) * (1 + b.damage) * b.ascend;
+  const fireInterval = b => 0.55 / (1 + b.fireRate);
+  const gateMax = (p, b) => Math.floor(100 * Math.pow(1.17, p.gateLevel - 1) * (1 + b.gateHp));
+  const killParts = (wave, boss, b) => Math.ceil((1 + wave / 3) * (boss ? 25 : 1) * (1 + b.parts) * b.ascend);
+
+  // ---------- waves and enemy roles (approved fix 3) ----------
+  // slime: basic. runner (beetle): fast, Frost slows it. armoured (golem): Fire burns through the armour.
+  // swarm (small slimes): many and weak, Storm chains through them. A boss every 10 waves.
+  const ROLES = {
+    slime: { sheet: 'slime', hp: 1, speed: 52, size: 80, label: 'Slimes' },
+    runner: { sheet: 'beetle', hp: 0.7, speed: 92, size: 70, label: 'Runners', weak: 'frost' },
+    armoured: { sheet: 'golem', hp: 2.6, speed: 40, size: 96, label: 'Armoured', weak: 'fire', armour: 0.5 },
+    swarm: { sheet: 'slime', hp: 0.35, speed: 60, size: 52, label: 'Swarm', weak: 'storm' },
+    boss: { sheet: 'golem', hp: 60, speed: 30, size: 160, label: 'Boss', armour: 0.3 }
+  };
+  const isBoss = w => w % 10 === 0;
+  // The wave's make-up as [role, count] pairs. New roles arrive one at a time: runners at wave 3, armoured at 6, swarm at 12.
+  function waveMix(w) {
+    if (isBoss(w)) return [['boss', 1], ['slime', Math.min(8, 2 + Math.floor(w / 10))]];
+    const n = 6 + Math.min(14, w * 2);
+    const mix = [];
+    const runners = w >= 3 ? Math.floor(n * (w % 3 === 0 ? 0.5 : 0.25)) : 0;
+    const armoured = w >= 6 ? Math.max(1, Math.floor(n * (w % 4 === 2 ? 0.3 : 0.12))) : 0;
+    const swarm = w >= 12 && w % 5 === 2 ? n : 0;
+    const slimes = Math.max(0, n - runners - armoured);
+    if (slimes) mix.push(['slime', slimes]);
+    if (runners) mix.push(['runner', runners]);
+    if (armoured) mix.push(['armoured', armoured]);
+    if (swarm) mix.push(['swarm', swarm]);
+    return mix;
+  }
+  const enemyHp = (w, role) => 10 * Math.pow(1.2, w - 1) * ROLES[role].hp;
+
+  // ---------- idle: offline earnings, daily reward ----------
+  const OFFLINE_CAP_H = 8;
+  // Parts per second the gate earns while the player is away: about what the current wave pays when fought live.
+  const offlineRate = (p, b) => (1 + p.wave / 3) * 0.6 * (1 + b.parts) * b.ascend * (1 + b.offline);
+  function offlineEarnings(p, b, now) {
+    if (!p.lastSeen || now <= p.lastSeen) return { secs: 0, parts: 0 };
+    const secs = Math.min(OFFLINE_CAP_H * 3600, (now - p.lastSeen) / 1000);
+    return secs < 60 ? { secs, parts: 0 } : { secs, parts: Math.floor(secs * offlineRate(p, b)) };
+  }
+  // Daily reward: one tap on the first screen of the day; a missed day pauses the streak (never resets it);
+  // day 7 of each week pays 5x. Days use the player's local midnight; a clock moved back never pays twice.
+  const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  function dailyDue(p, now) {
+    const today = dayKey(new Date(now));
+    if (p.firstSession || !p.daily.day) return null;           // the first session never shows it
+    if (today <= p.daily.day) return null;                    // already claimed today, or the clock went back
+    const day = p.daily.streak + 1, big = day % 7 === 0;
+    const amount = Math.floor((30 + p.bestWave * 8) * (big ? 5 : 1) * Math.pow(ASCEND_MULT, p.ascensions));
+    return { today, day, big, amount };
+  }
+
+  // ---------- Ascension ----------
+  // At 10/10 the player can Ascend: the city returns to ruins, the gate and waves restart, and Parts and damage are
+  // multiplied by 1.5 for good, stacking with each Ascension. Combos found and the best wave stay.
+  const ASCEND_MULT = 1.5;
+  const canAscend = p => p.restored.length >= BUILDINGS.length;
+  function ascend(p) {
+    const q = defaults();
+    q.ascensions = p.ascensions + 1; q.bestWave = p.bestWave; q.combos = p.combos.slice();
+    q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
+    q.settings = Object.assign({}, p.settings);
+    return q;
+  }
+
+  // ---------- save profile ----------
+  function defaults() {
+    return { v: 2, parts: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], combos: [], forks: {}, ascensions: 0,
+      lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
+      settings: { music: true, sfx: true, reduced: false } };
+  }
+  const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(hi, Math.max(lo, v)) : d;
+  const LEGACY = { b4: 'bakery', b5: 'market', b6: 'tavern', b7: 'granary', b8: 'library', b9: 'cottages', b10: 'watchtower' };
+
+  // Fill missing fields, clamp numbers, drop unknown keys and buildings, migrate v1 saves. Runs on every load.
   function sanitize(raw) {
-    const d = defaults(); let p = raw;
+    let p = raw;
     if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } }
-    if (!p || typeof p !== 'object') return d;
     const out = defaults();
+    if (!p || typeof p !== 'object') return out;
     out.parts = num(p.parts, 0, 1e300, 0);
     out.wave = Math.floor(num(p.wave, 1, 1e9, 1));
     out.bestWave = Math.max(out.wave, Math.floor(num(p.bestWave, 1, 1e9, 1)));
@@ -44,27 +166,32 @@
     out.ascensions = Math.floor(num(p.ascensions, 0, 1e6, 0));
     out.lastSeen = num(p.lastSeen, 0, 1e15, 0);
     out.firstSession = p.firstSession !== false;
-    out.restored = Array.isArray(p.restored) ? [...new Set(p.restored.filter(b => BUILDINGS.includes(b)))] : [];
-    out.combos = Array.isArray(p.combos) ? [...new Set(p.combos.filter(c => ['shatter', 'frostStorm', 'fireStorm'].includes(c)))] : [];
-    if (p.daily && typeof p.daily === 'object') {
-      out.daily.day = typeof p.daily.day === 'string' ? p.daily.day.slice(0, 10) : '';
-      out.daily.streak = Math.floor(num(p.daily.streak, 0, 1e6, 0));
-      out.daily.claimedTotal = Math.floor(num(p.daily.claimedTotal, 0, 1e9, 0));
+    const rest = Array.isArray(p.restored) ? p.restored.map(b => LEGACY[b] || b) : [];
+    out.restored = [...new Set(rest.filter(b => BUILDING_IDS.includes(b)))];
+    out.combos = Array.isArray(p.combos) ? [...new Set(p.combos.filter(c => COMBOS.includes(c)))] : [];
+    if (p.forks && typeof p.forks === 'object') for (const s of [2, 3]) {
+      const f = p.forks[s]; if (typeof f === 'string' && FORKS[s].some(x => x.id === f) && stageOf(out.gateLevel) >= s) out.forks[s] = f;
     }
-    void d; return out;
+    if (p.daily && typeof p.daily === 'object') {
+      out.daily.day = typeof p.daily.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.daily.day) ? p.daily.day : '';
+      out.daily.streak = Math.floor(num(p.daily.streak, 0, 1e6, 0));
+      out.daily.claimedTotal = Math.floor(num(p.daily.claimedTotal, 0, 1e15, 0));
+    }
+    if (p.settings && typeof p.settings === 'object') for (const k of ['music', 'sfx', 'reduced']) {
+      if (typeof p.settings[k] === 'boolean') out.settings[k] = p.settings[k];
+    }
+    return out;
   }
 
-  // Upgrade and restore costs. Placeholder curves; set in balancing.
-  const upgradeCost = lvl => Math.floor(10 * Math.pow(1.35, lvl - 1));
-  const restoreCost = n => n < FIXED_ORDER ? [12, 30, 70][n] : Math.floor(70 * Math.pow(1.8, n - 2));
-
-  // The city painting (Warden's hub art, 1536x1024) is composed off to the left for Warden's hub screen. Hearthgate crops it
-  // around its focal point, the central plaza and the city gate below it, so the city sits on the screen's centre line
-  // under the gate (user, Nov 5 2026: "why is the city always off center?"). Spots are in source pixels.
-  const CITY = { band: [720, 440], crop: [0, 30, 1280, 782], focus: [620, 430],
-    spots: { forge: [940, 180, 196], frostSpire: [205, 560, 209], stormBell: [1090, 405, 183], b4: [230, 180, 205], b5: [640, 420, 196], b6: [930, 705, 213] } };
+  // ---------- the city painting ----------
+  // Crop of the city painting into the 720x440 band, its focal point (the gatehouse and plaza on the centre line),
+  // and each building's spot for its restore reveal, in source pixels. Filled in from the painting by tools/city_layout.py.
+  const CITY = root.HG_CITY || { band: [720, 440], crop: [0, 30, 1280, 782], focus: [620, 430], platforms: [], spots: {} };
   const cityToBand = (sx, sy) => [(sx - CITY.crop[0]) * CITY.band[0] / CITY.crop[2], (sy - CITY.crop[1]) * CITY.band[1] / CITY.crop[3]];
 
-  root.HGCore = { CITY, cityToBand, fmt, BUILDINGS, FIXED_ORDER, defaults, sanitize, upgradeCost, restoreCost };
+  root.HGCore = { fmt, BUILDINGS, BUILDING_IDS, byId, FIXED_ORDER, COMBOS, restoreOffer, STAGES, FORKS, stageOf, pendingFork,
+    bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killParts, ROLES, isBoss, waveMix, enemyHp,
+    OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, ascend, defaults, sanitize,
+    CITY, cityToBand };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

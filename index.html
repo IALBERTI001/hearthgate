@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https:; style-src 'self' 'unsafe-inline'; font-src 'self'">
 <title>Hearthgate</title>
-<link rel="stylesheet" href="style.css?v=20261105g">
+<link rel="stylesheet" href="style.css?v=20261105i">
 </head>
 <body>
 <div id="stage">
@@ -13,6 +13,7 @@
   <header id="hud">
     <span id="wave" class="chip">Wave 1</span>
     <span class="chip parts"><i class="cog"></i><b id="parts">0</b></span>
+    <span id="stars" class="chip" hidden></span>
     <button id="pause" class="icon" aria-label="Pause">II</button>
   </header>
   <div id="counters"><span id="city" class="chip">City 0/10</span><span id="combos" class="chip">Combos 0/3</span></div>
@@ -22,10 +23,13 @@
     <button id="re" class="big"><span class="fill"></span><span class="label">Restore</span><span class="cost">15</span><span class="wait"></span><kbd>R</kbd></button>
   </footer>
   <div id="hand" aria-hidden="true"></div>
+  <div id="card"><div class="body" role="dialog" aria-modal="true"></div></div>
   <div id="boot">Hearthgate</div>
 </div>
-<script src="js/sdk.js?v=20261105g"></script>
-<script src="js/core.js?v=20261105g"></script>
-<script src="js/game.js?v=20261105g"></script>
+<script src="js/sdk.js?v=20261105i"></script>
+<script src="js/city.js?v=20261105i"></script>
+<script src="js/core.js?v=20261105i"></script>
+<script src="js/audio.js?v=20261105i"></script>
+<script src="js/game.js?v=20261105i"></script>
 </body>
 </html>
