@@ -20,12 +20,16 @@ def files():
                     continue
                 yield rel
 
+CG_SKIP = {'js/fp-bridge.js'}
+
 def main():
     os.makedirs(os.path.join(ROOT, 'dist'), exist_ok=True)
     out = os.path.join(ROOT, 'dist', 'hearthgate-crazygames.zip')
     total, n = 0, 0
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
         for rel in files():
+            if rel.replace(os.sep, '/') in CG_SKIP:
+                continue
             z.write(os.path.join(ROOT, rel), rel.replace(os.sep, '/'))
             total += os.path.getsize(os.path.join(ROOT, rel)); n += 1
     print(f'{out}: {n} files, {total / 1e6:.2f} MB unpacked, {os.path.getsize(out) / 1e6:.2f} MB zipped')
