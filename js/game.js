@@ -6,13 +6,14 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1400, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-05';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-05';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
   const sx = x => (x - CITY.crop[0]) * K, sy = y => CITY_Y + (y - CITY.crop[1]) * K;
   const GATE_X = sx(CITY.gate[0]), WALL_FRONT = sy(CITY.wallTop);          // enemies press against the wall here
   const PLATFORMS = CITY.platforms.map(([x, y]) => ({ x: sx(x), y: sy(y) })); // the four round platforms in the wall
+  const FIELD_TOP = 250;   // nothing that moves or floats goes above this line: the HUD lives there
   const RANGE_Y = 196;   // towers reach the whole field below the treeline, on every screen height
   const ELEMENT = { forge: 'fire', frostSpire: 'frost', stormBell: 'storm' };
   const COLOR = { fire: '#ff8a3a', frost: '#9fe8ff', storm: '#c98bff', none: '#efe2c0' };
@@ -56,10 +57,10 @@
   function spawn(role) {
     const R = C.ROLES[role], hp = C.enemyHp(P.wave, role);
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
-    const x0 = 80 + Math.random() * 560, y0 = 168 + Math.random() * 40;
+    const x0 = 80 + Math.random() * 560, y0 = FIELD_TOP + (R.size > 150 ? 70 : 0) + Math.random() * 40;
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.parts.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
     S.enemies.push({ role, sheet: R.sheet, x: x0, y: y0, off: (Math.random() - 0.5) * 330, hp, max: hp,
-      sp: R.speed, size: R.size, armour: R.armour || 0, weak: R.weak, boss: role === 'boss', frame: Math.random() * 6,
+      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414, size: R.size, armour: R.armour || 0, weak: R.weak, boss: role === 'boss', frame: Math.random() * 6,
       chill: 0, burn: 0, flash: 0, born: S.t, dying: 0 });
   }
 
@@ -131,12 +132,14 @@
     e.hp -= d; e.flash = 1;
     burst(e, COLOR[el], el === 'none' ? 4 : 6, 120);
     A.play(el === 'frost' ? 'ice_contact_0' : el === 'storm' ? 'lightning_contact_0' : el === 'fire' ? 'fire_contact_0' : 'ice_contact_0', 0.12);
-    pop(e.x + (Math.random() - 0.5) * 30, e.y - e.size * 0.55, C.fmt(d), e.bigHit ? '#ffffff' : COLOR[el], e.bigHit ? 0.9 : 0.7, e.bigHit ? 56 : 30); e.bigHit = false;
+    if (e.dp && e.dp.t < 0.25 && S.pops.includes(e.dp) && !e.bigHit) { e.dp.val += d; e.dp.text = C.fmt(e.dp.val); }
+    else { e.dp = pop(e.x, e.y - e.size * 0.55, C.fmt(d), e.bigHit ? '#ffffff' : COLOR[el], e.bigHit ? 0.9 : 0.7, e.bigHit ? 56 : 30); e.dp.val = d; }
+    e.bigHit = false;
   }
   function combo(id, e, word, col) {
     // one combo word on screen at a time, so words never pile into each other
     S.pops = S.pops.filter(p => !p.combo);
-    S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: e.y - e.size - 40, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
+    S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: Math.max(S.wavePop ? 500 : FIELD_TOP + 50, e.y - e.size - 40), text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
     if (!P.combos.includes(id)) { P.combos.push(id); toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/3`); save(); }
   }
@@ -160,7 +163,7 @@
     toast(`The gate fell back to wave ${to}. Nothing lost.`); S.cheerNext = 'Regroup. You\'ve got this!';
     P.wave = to; S.enemies = []; S.shots = []; S.spawnQ = []; S.gateHp = gateMax(); S.savedByAd = false; startWave(); save();
   }
-  function pop(x, y, text, col, life, size) { S.pops.push({ x, y, text, col, t: 0, life, size }); }
+  function pop(x, y, text, col, life, size) { const p = { x, y: Math.max(FIELD_TOP - 20 + size, y), text, col, t: 0, life, size }; S.pops.push(p); return p; }
   function burst(e, col, n, sp) {
     if (reduced()) n = Math.ceil(n / 3);
     for (let i = 0; i < n; i++) {
@@ -451,7 +454,8 @@
     const re = el('re'), asc = C.canAscend(P), n = P.restored.length, rc = asc ? 0 : C.restoreCost(n);
     re.classList.toggle('ascend', asc);
     re.querySelector('.label').textContent = asc ? 'Ascend' : 'Restore';
-    re.querySelector('.cost').textContent = asc ? `x${C.ASCEND_MULT} forever` : C.fmt(rc);
+    const offer = asc ? [] : C.restoreOffer(P);
+    re.querySelector('.cost').textContent = asc ? `x${C.ASCEND_MULT} forever` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${C.fmt(rc)}`;
     re.querySelector('.fill').style.width = asc ? '100%' : Math.min(100, P.parts / rc * 100) + '%';
     re.classList.toggle('ready', asc || P.parts >= rc);
     for (const b of [up, re]) if (b.classList.contains('ready')) b.querySelector('.wait').textContent = '';

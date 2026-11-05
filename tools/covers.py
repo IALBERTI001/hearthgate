@@ -40,8 +40,11 @@ def scene(W, H, city_scale, meadow_h, split_x):
     # enemies crossing the meadow toward the gate
     u = W / 1920
     wall = meadow_h + 70 * s          # just in front of the wall, where the crowd presses
-    for kind, x, dy, h, frame in [('golem', 0.50, -10, 230, 1), ('slime', 0.33, -40, 120, 0), ('beetle', 0.66, -30, 112, 2),
-                                  ('slime', 0.20, -95, 100, 3), ('beetle', 0.82, -100, 100, 4), ('slime', 0.58, -150, 90, 5)]:
+    # every enemy stands in open grass between the towers, clear of the gatehouse and of each other
+    # every enemy stands in open grass between the subtitle and the wall, between the towers, clear of each other
+    FOES = [('golem', 0.50, -22, 176, 1), ('slime', 0.385, -18, 108, 0), ('beetle', 0.615, -24, 102, 2),
+            ('slime', 0.25, -92, 94, 3), ('beetle', 0.75, -92, 94, 4), ('slime', 0.66, -150, 82, 5)]
+    for kind, x, dy, h, frame in FOES:
         sheet = Image.open(A('assets', 'enemies', f'{kind}-walk.webp')).convert('RGBA'); fw = sheet.width // 6
         fr = sheet.crop((frame * fw, 0, (frame + 1) * fw, sheet.height)); k = h * u / (fr.height - 16)
         fr = fr.resize((round(fr.width * k), round(fr.height * k)), Image.LANCZOS)
@@ -63,7 +66,7 @@ def scene(W, H, city_scale, meadow_h, split_x):
     # glowing bolts from the towers toward the enemies, and the SHATTER burst on the golem
     glow = Image.new('RGBA', (W, H), (0, 0, 0, 0)); g = ImageDraw.Draw(glow)
     col = {'fire': (255, 140, 60), 'frost': (150, 230, 255), 'storm': (210, 150, 255)}
-    for (px, py), el, (tx, dty) in zip(PLAT, ['fire', 'frost', 'storm', 'fire'], [(0.50, -110), (0.33, -90), (0.66, -80), (0.82, -150)]):
+    for (px, py), el, (tx, dty) in zip(PLAT, ['fire', 'frost', 'storm', 'fire'], [(0.25, -140), (0.385, -72), (0.615, -76), (0.75, -140)]):
         x0, y0 = ox + px * s, meadow_h + py * s - 150 * s
         x1, y1 = W * tx, wall + dty * u
         for i in range(9):
@@ -101,17 +104,16 @@ def main(out):
     os.makedirs(out, exist_ok=True)
     land = scene(1920, 1080, 1.25, 380, 960)
     title(land, 150, 26, 'Hold the gate. Rebuild the city.', 54)
-    labels(land, 'RUINS', 'RESTORED', 1000, 46)
     land.save(os.path.join(out, 'cover-A-1920x1080.jpg'), quality=92)
-    fp = scene(1600, 1000, 1.04, 330, 800); title(fp, 128, 22, 'Hold the gate. Rebuild the city.', 46); labels(fp, 'RUINS', 'RESTORED', 925, 40)
+    fp = scene(1600, 1000, 1.04, 330, 800); title(fp, 128, 22, 'Hold the gate. Rebuild the city.', 46)
     fp.save(os.path.join(out, 'cover-A-1600x1000.jpg'), quality=92)
     big = scene(1920, 1440, 1.25, 560, 960)
     sq = big.crop((420, 120, 1500, 1200)).resize((800, 800), Image.LANCZOS)
-    title(sq, 96, 18, 'Hold the gate. Rebuild the city.', 34); labels(sq, 'RUINS', 'RESTORED', 735, 30)
+    title(sq, 96, 18, 'Hold the gate. Rebuild the city.', 34)
     sq.save(os.path.join(out, 'cover-A-800x800.jpg'), quality=92)
     tall = scene(1920, 1560, 1.25, 600, 960)   # the inner towers sit 383 px either side of the gate: keep both whole
     pt = tall.crop((445, 0, 1473, 1542)).resize((800, 1200), Image.LANCZOS)
-    title(pt, 104, 30, 'Hold the gate. Rebuild the city.', 34); labels(pt, 'RUINS', 'RESTORED', 1125, 32)
+    title(pt, 104, 30, 'Hold the gate. Rebuild the city.', 34)
     pt.save(os.path.join(out, 'cover-A-800x1200.jpg'), quality=92)
     print('covers written to', out)
 
