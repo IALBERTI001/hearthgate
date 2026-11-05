@@ -58,6 +58,13 @@
   const upgradeCost = lvl => Math.floor(10 * Math.pow(1.35, lvl - 1));
   const restoreCost = n => n < FIXED_ORDER ? [12, 30, 70][n] : Math.floor(70 * Math.pow(1.8, n - 2));
 
-  root.HGCore = { fmt, BUILDINGS, FIXED_ORDER, defaults, sanitize, upgradeCost, restoreCost };
+  // The city painting (Warden's hub art, 1536x1024) is composed off to the left for Warden's hub screen. Hearthgate crops it
+  // around its focal point, the central plaza and the city gate below it, so the city sits on the screen's centre line
+  // under the gate (user, Nov 5 2026: "why is the city always off center?"). Spots are in source pixels.
+  const CITY = { band: [720, 440], crop: [0, 30, 1280, 782], focus: [620, 430],
+    spots: { forge: [940, 180, 196], frostSpire: [205, 560, 209], stormBell: [1090, 405, 183], b4: [230, 180, 205], b5: [640, 420, 196], b6: [930, 705, 213] } };
+  const cityToBand = (sx, sy) => [(sx - CITY.crop[0]) * CITY.band[0] / CITY.crop[2], (sy - CITY.crop[1]) * CITY.band[1] / CITY.crop[3]];
+
+  root.HGCore = { CITY, cityToBand, fmt, BUILDINGS, FIXED_ORDER, defaults, sanitize, upgradeCost, restoreCost };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

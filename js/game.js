@@ -4,13 +4,12 @@
 (function (root) {
   'use strict';
   const C = root.HGCore, SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {} };
-  const W = 720, H = 1280, FIELD_TOP = 96, GATE_Y = 640, CITY_Y = 712, CITY_H = 400, DT = 1 / 60;
+  const W = 720, H = 1280, FIELD_TOP = 96, GATE_Y = 600, CITY_Y = 672, CITY_H = 440, DT = 1 / 60;
   const SAVE_KEY = 'hearthgate.profile.v1';
-  const RANGE_Y = 260; // defenders reach enemies below this line, so every enemy is seen walking in from the top edge
+  const RANGE_Y = 236; // defenders reach enemies below this line, so every enemy is seen walking in from the top edge
   const ELEMENT = { forge: 'fire', frostSpire: 'frost', stormBell: 'storm' };
   const COLOR = { fire: '#ff7a2e', frost: '#8fe3ff', storm: '#c77dff', none: '#f3e2b3' };
   // Where each restorable building sits in the city image (720x480 space), so a restore reveals the restored art there.
-  const SPOT = { forge: [441, 84, 92], frostSpire: [96, 262, 98], stormBell: [511, 190, 86], b4: [108, 84, 96], b5: [300, 197, 92], b6: [436, 330, 100] };
 
   // ---------- state ----------
   let P = load();
@@ -165,12 +164,13 @@
     g.addColorStop(0, '#2f5a2a'); g.addColorStop(1, '#6f9a3c'); cx.fillStyle = g; cx.fillRect(0, 0, W, GATE_Y);
     // city behind the gate
     if (img.ruined) {
-      cx.drawImage(img.ruined, 0, 40, 720, 400, 0, CITY_Y, W, CITY_H);
+      cx.drawImage(img.ruined, 0, CITY_Y, W, CITY_H);
       for (const b of P.restored) {
-        const s = SPOT[b]; if (!s || !img.restored) continue;
+        const s = C.CITY.spots[b]; if (!s || !img.restored) continue;
+        const [bx, by] = C.cityToBand(s[0], s[1]), br = s[2] * CITY_H / C.CITY.crop[3];
         const a = S.reveal && S.reveal.b === b ? Math.min(1, S.reveal.t / 0.8) : 1;
-        cx.save(); cx.globalAlpha = a; cx.beginPath(); cx.ellipse(s[0], CITY_Y + s[1] - 40, s[2], s[2] * 0.72, 0, 0, 7); cx.clip();
-        cx.drawImage(img.restored, 0, 40, 720, 400, 0, CITY_Y, W, CITY_H); cx.restore();
+        cx.save(); cx.globalAlpha = a; cx.beginPath(); cx.ellipse(bx, CITY_Y + by, br, br * 0.72, 0, 0, 7); cx.clip();
+        cx.drawImage(img.restored, 0, CITY_Y, W, CITY_H); cx.restore();
       }
     } else { cx.fillStyle = '#6b6158'; cx.fillRect(0, CITY_Y, W, CITY_H); }
     // gate wall
@@ -265,7 +265,7 @@
     if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.documentElement.classList.add('keys');
   }
   fit(); bind(); startWave();
-  Promise.all([loadImg('ruined', 'assets/city/hub-ruined.webp'), loadImg('restored', 'assets/city/hub-restored.webp'), loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
+  Promise.all([loadImg('ruined', 'assets/city/city-ruined.webp'), loadImg('restored', 'assets/city/city-restored.webp'), loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
     loadImg('fire1', 'assets/towers/fire-1.webp'), loadImg('frost1', 'assets/towers/frost-1.webp'), loadImg('storm1', 'assets/towers/storm-1.webp')])
     .then(() => { el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); requestAnimationFrame(frame); });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

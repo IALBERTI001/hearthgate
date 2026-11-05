@@ -16,7 +16,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1016; fon
 .icon { margin-left: auto; width: 68px; height: 68px; border-radius: 50%; border: 3px solid var(--brass); background: var(--plum);
   color: var(--ink); font: 30px/1 'HG Display', sans-serif; cursor: pointer; }
 .icon.on { background: var(--brass); color: var(--plum-dark); }
-#counters { position: absolute; left: 16px; top: 664px; right: 16px; display: flex; justify-content: space-between; pointer-events: none; }
+#counters { position: absolute; left: 16px; top: 624px; right: 16px; display: flex; justify-content: space-between; pointer-events: none; }
 #counters .chip { font-size: 30px; }
 #toast { position: absolute; left: 50%; top: 990px; transform: translate(-50%, 20px); max-width: 660px; padding: 14px 26px; border-radius: 16px;
   background: var(--plum); border: 3px solid var(--brass); font: 30px/1.15 'HG Display', sans-serif; text-align: center;

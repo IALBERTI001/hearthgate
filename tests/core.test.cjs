@@ -27,4 +27,10 @@ assert.deepStrictEqual(C.BUILDINGS.slice(0, 3), ['forge', 'frostSpire', 'stormBe
 assert.ok(C.restoreCost(0) + C.restoreCost(1) <= 60, 'first two restores cheap enough for a SHATTER inside 60 s');
 for (let i = 1; i < 10; i++) assert.ok(C.restoreCost(i) > C.restoreCost(i - 1));
 for (let i = 2; i < 50; i++) assert.ok(C.upgradeCost(i) > C.upgradeCost(i - 1));
+// The city's focal point (plaza and city gate) sits on the screen's centre line, under the gate (user, Nov 5 2026).
+const [fx] = C.cityToBand(...C.CITY.focus);
+assert.ok(Math.abs(fx - 360) <= 12, `city focus at x=${fx.toFixed(0)}, must be within 12 px of the centre line 360`);
+const [cx0, cy0, cw, ch] = C.CITY.crop;
+assert.ok(cx0 >= 0 && cy0 >= 0 && cx0 + cw <= 1536 && cy0 + ch <= 1024, 'city crop inside the painting');
+assert.ok(Math.abs(cw / ch - C.CITY.band[0] / C.CITY.band[1]) < 0.02, 'city crop has the band shape, no stretching');
 console.log('core tests passed');
