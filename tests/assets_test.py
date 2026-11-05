@@ -42,7 +42,7 @@ manifest = json.load(open(man_path)) if os.path.exists(man_path) else {}
 if not manifest:
     fail('assets/manifest.json is missing or empty')
 
-for folder in ('towers', 'enemies'):
+for folder in ('towers', 'enemies', 'kit'):
     d = os.path.join(ROOT, 'assets', folder)
     for f in sorted(os.listdir(d)):
         rel = f'{folder}/{f}'

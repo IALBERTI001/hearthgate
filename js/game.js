@@ -4,12 +4,16 @@
 (function (root) {
   'use strict';
   const C = root.HGCore, SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {} };
-  const W = 720, H = 1280, FIELD_TOP = 96, GATE_Y = 600, CITY_Y = 672, CITY_H = 440, DT = 1 / 60;
+  const W = 720, H = 1280, FIELD_TOP = 96, CITY_Y = 672, CITY_H = 440, DT = 1 / 60;
+  // The gate (Nov 5 2026, user: face the city to the waves with a real gate, blend the towers into the kit fence):
+  // Outer Seal kit walls run along the city's north edge, overlapping the painting's top so there is no seam, two orb
+  // gateposts frame the gate at the end of the plaza's north road, and four towers stand in the wall line.
+  const WALL_BASE = 702, GATE_X = 360, GATE_HALF = 22, POSTS = [GATE_X - 60, GATE_X + 60], GATE_Y = WALL_BASE - 62;
+  const TOWER_X = [86, 206, 514, 634];
   const SAVE_KEY = 'hearthgate.profile.v1';
   const RANGE_Y = 236; // defenders reach enemies below this line, so every enemy is seen walking in from the top edge
   const ELEMENT = { forge: 'fire', frostSpire: 'frost', stormBell: 'storm' };
   const COLOR = { fire: '#ff7a2e', frost: '#8fe3ff', storm: '#c77dff', none: '#f3e2b3' };
-  // Where each restorable building sits in the city image (720x480 space), so a restore reveals the restored art there.
 
   // ---------- state ----------
   let P = load();
@@ -19,7 +23,7 @@
   root.Hearthgate = { reloadSave() { P = load(); startWave(); render(); }, state: () => ({ P, S }) };
 
   const gateMax = () => Math.floor(100 * Math.pow(1.18, P.gateLevel - 1));
-  const dmg = () => 4 * Math.pow(1.5, P.gateLevel - 1);
+  const dmg = () => 3 * Math.pow(1.5, P.gateLevel - 1); // four towers x 3 = the old three x 4
   const elements = () => P.restored.map(b => ELEMENT[b]).filter(Boolean);
   const isBoss = w => w % 10 === 0;
 
@@ -60,12 +64,12 @@
   function spawn() {
     const boss = isBoss(P.wave), row = boss ? 2 : (P.wave > 3 && Math.random() < 0.35 ? 1 : 0);
     const hp = 10 * Math.pow(1.16, P.wave - 1) * (boss ? 40 : row === 1 ? 0.7 : 1);
-    S.enemies.push({ x: 90 + Math.random() * 540, y: 20, hp, max: hp, sp: (row === 1 ? 78 : 52) * (boss ? 0.6 : 1), kind: ['slime', 'beetle', 'golem'][row], boss,
+    S.enemies.push({ x: 90 + Math.random() * 540, y: 30, off: (Math.random() - 0.5) * 300, hp, max: hp, sp: (row === 1 ? 78 : 52) * (boss ? 0.6 : 1), kind: ['slime', 'beetle', 'golem'][row], boss,
       frame: Math.random() * 6, chill: 0, burn: 0, size: boss ? 150 : row === 1 ? 70 : 80 });
   }
 
   // ---------- simulation ----------
-  const DEF = [[180, GATE_Y - 14], [360, GATE_Y - 24], [540, GATE_Y - 14]].map(([x, y], i) => ({ x, y, cd: i * 0.2 }));
+  const DEF = TOWER_X.map((x, i) => ({ x, y: WALL_BASE, cd: i * 0.15 }));
   function step() {
     S.t += DT; S.sessionT += DT; if (wavePop) wavePop.t += DT;
     if (S.spawnLeft > 0 && (S.spawnT -= DT) <= 0) { spawn(); S.spawnLeft--; S.spawnT = Math.max(0.35, 1.1 - P.wave * 0.03); }
@@ -76,7 +80,7 @@
       if (!best) continue;
       d.cd = 0.55; d.n = (d.n || 0) + 1;
       const el = els.length ? els[(d.n + DEF.indexOf(d)) % els.length] : 'none';
-      S.shots.push({ x: d.x, y: d.y - 40, tx: best, el, sp: 900 });
+      S.shots.push({ x: d.x, y: d.y - 96, tx: best, el, sp: 900 });
     }
     for (const s of S.shots) {
       const dx = s.tx.x - s.x, dy = s.tx.y - s.y, L = Math.hypot(dx, dy);
@@ -88,7 +92,8 @@
       if (e.burn > 0) { e.burn -= DT; e.hp -= dmg() * 0.6 * DT; }
       e.chill = Math.max(0, e.chill - DT);
       e.frame += DT * 8;
-      if (e.y < GATE_Y - 30) e.y += e.sp * (e.chill > 0 ? 0.45 : 1) * DT;
+      // walk out of the forest, then close in on the gate: the crowd presses against the wall around the gateposts
+      if (e.y < GATE_Y) { e.y += e.sp * (e.chill > 0 ? 0.45 : 1) * DT; if (e.y > 240) e.x += (GATE_X + e.off - e.x) * Math.min(1, 0.9 * DT); }
       else { S.gateHp -= (e.boss ? 14 : 4) * DT; }
       if (e.hp <= 0 && !e.dead) kill(e);
     }
@@ -157,12 +162,36 @@
   const img = {}; let k = 1;
   function loadImg(name, src) { return new Promise(ok => { const i = new Image(); i.onload = () => { img[name] = i; ok(); }; i.onerror = ok; i.src = src; }); }
 
+  // Draw a kit piece or tower from its own sheet, anchored bottom-centre on (x, baseY); pad = the sheet's clear margin.
+  function piece(name, x, baseY, h) {
+    const im = img[name]; if (!im) return;
+    const pad = 8, cw = im.width - 2 * pad, ch = im.height - 2 * pad, s = h ? h / ch : 1;
+    cx.drawImage(im, x - (cw / 2 + pad) * s, baseY - (ch + pad) * s, im.width * s, im.height * s);
+  }
+  function drawWall() {
+    // wall sections tiled along the city's north edge, with the gate opening left clear between the gateposts
+    cx.save(); cx.beginPath(); cx.rect(0, 0, GATE_X - GATE_HALF, H); cx.rect(GATE_X + GATE_HALF, 0, W, H); cx.clip();
+    for (let i = 0, x = -40; x < W + 80; x += 148, i++) piece(i % 2 ? 'wallB' : 'wallA', x, WALL_BASE);
+    cx.restore();
+    POSTS.forEach(x => piece('gatepost', x, WALL_BASE + 6));
+    // gate health, on the lintel between the gateposts
+    const hp = Math.max(0, S.gateHp / gateMax()), bw = 96, by = WALL_BASE - 150;
+    cx.fillStyle = '#2a1a22'; cx.fillRect(GATE_X - bw / 2 - 3, by - 3, bw + 6, 16);
+    cx.fillStyle = hp > 0.35 ? '#7bd15a' : '#e5533d'; cx.fillRect(GATE_X - bw / 2, by, bw * hp, 10);
+    // the towers stand in the wall line; unbuilt elements wait in grey until their building is restored
+    const els = elements(), idle = ['fire', 'frost', 'frost', 'storm'];
+    DEF.forEach((d, i) => {
+      const e = els.length ? els[i % els.length] : null;
+      if (!e) cx.filter = 'grayscale(1) brightness(.85)';
+      piece((e || idle[i]) + '1', d.x, d.y + 6, 112); cx.filter = 'none';
+    });
+  }
+
   function render() {
     cx.setTransform(k, 0, 0, k, 0, 0);
-    // battlefield: wilderness above the gate
-    const g = cx.createLinearGradient(0, 0, 0, GATE_Y);
-    g.addColorStop(0, '#2f5a2a'); g.addColorStop(1, '#6f9a3c'); cx.fillStyle = g; cx.fillRect(0, 0, W, GATE_Y);
-    // city behind the gate
+    // ground layer: the Outer Seal meadow under the whole field
+    if (img.meadow) cx.drawImage(img.meadow, 0, 0, W, CITY_Y + 8); else { cx.fillStyle = '#6f9a3c'; cx.fillRect(0, 0, W, CITY_Y); }
+    // city behind the gate (drawn first so the wall overlaps its top edge)
     if (img.ruined) {
       cx.drawImage(img.ruined, 0, CITY_Y, W, CITY_H);
       for (const b of P.restored) {
@@ -173,19 +202,6 @@
         cx.drawImage(img.restored, 0, CITY_Y, W, CITY_H); cx.restore();
       }
     } else { cx.fillStyle = '#6b6158'; cx.fillRect(0, CITY_Y, W, CITY_H); }
-    // gate wall
-    cx.fillStyle = '#7d7368'; cx.fillRect(0, GATE_Y, W, 72); cx.fillStyle = '#5a5048'; for (let x = 0; x < W; x += 48) cx.fillRect(x, GATE_Y - 18, 30, 20);
-    cx.fillStyle = '#3a2f2a'; cx.fillRect(310, GATE_Y + 8, 100, 64);
-    const hp = Math.max(0, S.gateHp / gateMax()); cx.fillStyle = '#2a1a22'; cx.fillRect(200, GATE_Y + 50, 320, 12); cx.fillStyle = hp > 0.35 ? '#7bd15a' : '#e5533d'; cx.fillRect(200, GATE_Y + 50, 320 * hp, 12);
-    // defenders
-    const els = elements(), towers = ['fire', 'frost', 'storm'];
-    DEF.forEach((d, i) => {
-      const e = els.length ? els[i % els.length] : null, t = img[(e || towers[i]) + '1'];
-      if (!t) return;
-      const h = 96, w = t.width / t.height * h;
-      if (!e) cx.filter = 'grayscale(1) brightness(.85)';
-      cx.drawImage(t, d.x - w / 2, d.y - h + 20, w, h); cx.filter = 'none';
-    });
     // enemies
     for (const e of S.enemies) {
       // one asset, one sheet: each enemy draws only from its own 6-frame walk sheet
@@ -194,8 +210,10 @@
         cx.drawImage(sh, (Math.floor(e.frame) % 6) * cw, 0, cw, ch, e.x - dw / 2, e.y - dh, dw, dh); }
       if (e.chill > 0) { cx.fillStyle = 'rgba(143,227,255,.35)'; cx.beginPath(); cx.arc(e.x, e.y - e.size / 2, e.size / 2, 0, 7); cx.fill(); }
       if (e.burn > 0) { cx.fillStyle = 'rgba(255,122,46,.25)'; cx.beginPath(); cx.arc(e.x, e.y - e.size / 2, e.size / 2.4, 0, 7); cx.fill(); }
-      cx.fillStyle = '#2a1a22'; cx.fillRect(e.x - 30, e.y - e.size - 10, 60, 7); cx.fillStyle = '#e5533d'; cx.fillRect(e.x - 30, e.y - e.size - 10, 60 * Math.max(0, e.hp / e.max), 7);
+      cx.fillStyle = '#2a1a22'; cx.fillRect(e.x - 30, e.y - e.size * 0.95 - 10, 60, 7); cx.fillStyle = '#e5533d'; cx.fillRect(e.x - 30, e.y - e.size * 0.95 - 10, 60 * Math.max(0, e.hp / e.max), 7);
     }
+    drawWall();
+    if (img.forest) piece('forest', W / 2, img.forest.height - 8);  // enemies step out from under the trees
     for (const s of S.shots) { cx.fillStyle = COLOR[s.el]; cx.beginPath(); cx.arc(s.x, s.y, 9, 0, 7); cx.fill(); }
     cx.textAlign = 'center';
     for (const p of S.pops) {
@@ -266,6 +284,7 @@
   }
   fit(); bind(); startWave();
   Promise.all([loadImg('ruined', 'assets/city/city-ruined.webp'), loadImg('restored', 'assets/city/city-restored.webp'), loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
+    loadImg('meadow', 'assets/ground/meadow.webp'), loadImg('forest', 'assets/kit/forest-edge-top.webp'), loadImg('wallA', 'assets/kit/wall-a.webp'), loadImg('wallB', 'assets/kit/wall-b.webp'), loadImg('gatepost', 'assets/kit/gatepost.webp'),
     loadImg('fire1', 'assets/towers/fire-1.webp'), loadImg('frost1', 'assets/towers/frost-1.webp'), loadImg('storm1', 'assets/towers/storm-1.webp')])
     .then(() => { el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); requestAnimationFrame(frame); });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

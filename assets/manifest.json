@@ -118,5 +118,60 @@
   ],
   "anchor": "bottom-center",
   "source": "warden towers/element-tiers.png r2 c2"
+ },
+ "kit/wall-a.webp": {
+  "subject": "stone wall section A",
+  "frames": 1,
+  "cell": [
+   166,
+   81
+  ],
+  "pad": 8,
+  "anchor": "bottom-center",
+  "source": "warden art/kits/outer/wall_a.png"
+ },
+ "kit/wall-b.webp": {
+  "subject": "stone wall section B",
+  "frames": 1,
+  "cell": [
+   166,
+   79
+  ],
+  "pad": 8,
+  "anchor": "bottom-center",
+  "source": "warden art/kits/outer/wall_b.png"
+ },
+ "kit/gatepost.webp": {
+  "subject": "gatepost with blue orb",
+  "frames": 1,
+  "cell": [
+   95,
+   186
+  ],
+  "pad": 8,
+  "anchor": "bottom-center",
+  "source": "warden art/kits/outer/gatepost.png"
+ },
+ "kit/pillar.webp": {
+  "subject": "wall pillar with blue orb",
+  "frames": 1,
+  "cell": [
+   84,
+   124
+  ],
+  "pad": 8,
+  "anchor": "bottom-center",
+  "source": "warden art/kits/outer/pillar.png"
+ },
+ "kit/forest-edge-top.webp": {
+  "subject": "forest edge, top of the map",
+  "frames": 1,
+  "cell": [
+   765,
+   86
+  ],
+  "pad": 8,
+  "anchor": "bottom-center",
+  "source": "warden art/kits/outer/forest_edge_top.png"
  }
 }
