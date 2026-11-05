@@ -121,7 +121,8 @@
     pop(e.x + (Math.random() - 0.5) * 30, e.y - 40, C.fmt(d), COLOR[el], 0.7, 30);
   }
   function combo(id, e, word, col) {
-    pop(e.x, e.y - 80, word, col, 1.1, 44);
+    // one combo word on screen at a time: a new one replaces the last, so words never pile into each other
+    S.pops = S.pops.filter(p => !p.combo); pop(e.x, e.y - 80, word, col, 1.1, 44); S.pops[S.pops.length - 1].combo = true;
     if (!P.combos.includes(id)) { P.combos.push(id); toast(`New combo: ${word.replace('!', '')}  ${P.combos.length}/3`); save(); }
   }
   function kill(e) {
