@@ -24,7 +24,36 @@
   const elements = () => P.restored.map(b => ELEMENT[b]).filter(Boolean);
   const isBoss = w => w % 10 === 0;
 
+  // Wave callout from Warden of Power (Nov 2 2026), carried over Nov 5 2026 at the user's request: a big WAVE N! with one
+  // encouraging line under it, special lines on the first wave, boss waves and after the gate falls back.
+  const CHEERS = ['Keep it up!', 'Great job!', 'WOOOAHH!', 'Unstoppable!', 'Hold the line!', 'Nice work!', 'You got this!',
+    'Crushing it!', 'On fire!', 'Legendary!', 'The city cheers you on!', 'Brick by brick!'];
+  let wavePop = null, cheerNext = null;
+  function showWavePop(n) {
+    const boss = isBoss(n);
+    const cheer = cheerNext || (n === 1 ? ['Good luck!', 'How far will you go?'][Math.floor(Math.random() * 2)]
+      : boss ? 'Boss incoming. Hold the gate!' : n % 50 === 0 ? 'HALFWAY TO GLORY!' : CHEERS[(n * 7 + 3) % CHEERS.length]);
+    cheerNext = null; wavePop = { n, cheer, big: boss, t: 0 };
+  }
+  function drawWavePop() {
+    if (!wavePop) return;
+    const age = wavePop.t, L = 2.4; if (age > L) { wavePop = null; return; }
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const pop = calm ? 1 : age < 0.22 ? 0.55 + 0.6 * age / 0.22 : age < 0.36 ? 1.15 - (age - 0.22) / 0.14 * 0.15 : 1;
+    const fade = age > L - 0.5 ? Math.max(0, (L - age) / 0.5) : 1;
+    cx.save(); cx.globalAlpha = fade; cx.translate(W / 2, 236 - (calm ? 0 : age * 6)); cx.scale(pop, pop);
+    cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineJoin = 'round';
+    const title = 'WAVE ' + C.fmt(wavePop.n) + '!';
+    cx.font = (wavePop.big ? 76 : 66) + 'px "HG Display", sans-serif'; cx.lineWidth = 12; cx.strokeStyle = '#24162c'; cx.strokeText(title, 0, 0);
+    const g = cx.createLinearGradient(0, -34, 0, 34); g.addColorStop(0, '#fff3c2'); g.addColorStop(0.55, '#ffd36b'); g.addColorStop(1, '#f08a2c');
+    cx.fillStyle = g; cx.fillText(title, 0, 0);
+    cx.globalAlpha = fade * Math.max(0, Math.min(1, (age - 0.18) / 0.2));
+    cx.font = (wavePop.big ? 38 : 34) + 'px "HG Display", sans-serif'; cx.lineWidth = 9; cx.strokeText(wavePop.cheer, 0, 56);
+    cx.fillStyle = wavePop.big ? '#ffb3f0' : '#bff3ff'; cx.fillText(wavePop.cheer, 0, 56); cx.restore();
+  }
+
   function startWave() {
+    showWavePop(P.wave);
     S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax();
     S.spawnLeft = isBoss(P.wave) ? 1 : 6 + Math.min(14, P.wave * 2);
     S.spawnT = 0.4;
@@ -32,14 +61,14 @@
   function spawn() {
     const boss = isBoss(P.wave), row = boss ? 2 : (P.wave > 3 && Math.random() < 0.35 ? 1 : 0);
     const hp = 10 * Math.pow(1.16, P.wave - 1) * (boss ? 40 : row === 1 ? 0.7 : 1);
-    S.enemies.push({ x: 90 + Math.random() * 540, y: 20, hp, max: hp, sp: (row === 1 ? 78 : 52) * (boss ? 0.6 : 1), row, boss,
+    S.enemies.push({ x: 90 + Math.random() * 540, y: 20, hp, max: hp, sp: (row === 1 ? 78 : 52) * (boss ? 0.6 : 1), kind: ['slime', 'beetle', 'golem'][row], boss,
       frame: Math.random() * 6, chill: 0, burn: 0, size: boss ? 150 : row === 1 ? 70 : 80 });
   }
 
   // ---------- simulation ----------
   const DEF = [[180, GATE_Y - 14], [360, GATE_Y - 24], [540, GATE_Y - 14]].map(([x, y], i) => ({ x, y, cd: i * 0.2 }));
   function step() {
-    S.t += DT; S.sessionT += DT;
+    S.t += DT; S.sessionT += DT; if (wavePop) wavePop.t += DT;
     if (S.spawnLeft > 0 && (S.spawnT -= DT) <= 0) { spawn(); S.spawnLeft--; S.spawnT = Math.max(0.35, 1.1 - P.wave * 0.03); }
     const els = elements();
     for (const d of DEF) {
@@ -97,7 +126,7 @@
   }
   function fallBack() {
     const to = Math.max(1, P.wave - 3);
-    toast(`The gate fell back to wave ${to}. Nothing lost.`);
+    toast(`The gate fell back to wave ${to}. Nothing lost.`); cheerNext = 'Regroup. You\'ve got this!';
     P.wave = to; S.enemies = []; S.shots = []; S.gateHp = gateMax(); startWave(); save();
   }
   function pop(x, y, text, col, life, size) { S.pops.push({ x, y, text, col, t: 0, life, size }); }
@@ -159,8 +188,10 @@
     });
     // enemies
     for (const e of S.enemies) {
-      const sh = img.walk; const cw = sh ? sh.width / 6 : 0, ch = sh ? sh.height / 3 : 0;
-      if (sh) cx.drawImage(sh, (Math.floor(e.frame) % 6) * cw, e.row * ch, cw, ch, e.x - e.size / 2, e.y - e.size, e.size, e.size);
+      // one asset, one sheet: each enemy draws only from its own 6-frame walk sheet
+      const sh = img[e.kind];
+      if (sh) { const cw = sh.width / 6, ch = sh.height, dw = e.size * 1.2, dh = dw * ch / cw;
+        cx.drawImage(sh, (Math.floor(e.frame) % 6) * cw, 0, cw, ch, e.x - dw / 2, e.y - dh, dw, dh); }
       if (e.chill > 0) { cx.fillStyle = 'rgba(143,227,255,.35)'; cx.beginPath(); cx.arc(e.x, e.y - e.size / 2, e.size / 2, 0, 7); cx.fill(); }
       if (e.burn > 0) { cx.fillStyle = 'rgba(255,122,46,.25)'; cx.beginPath(); cx.arc(e.x, e.y - e.size / 2, e.size / 2.4, 0, 7); cx.fill(); }
       cx.fillStyle = '#2a1a22'; cx.fillRect(e.x - 30, e.y - e.size - 10, 60, 7); cx.fillStyle = '#e5533d'; cx.fillRect(e.x - 30, e.y - e.size - 10, 60 * Math.max(0, e.hp / e.max), 7);
@@ -173,6 +204,7 @@
       cx.lineWidth = 6; cx.strokeStyle = '#2a1a22'; cx.strokeText(p.text, p.x, p.y - p.t * 40); cx.fillStyle = p.col; cx.fillText(p.text, p.x, p.y - p.t * 40);
       cx.globalAlpha = 1;
     }
+    drawWavePop();
     if (S.reveal && (S.reveal.t += 1 / 60) > 1) S.reveal = null;
   }
 
@@ -233,7 +265,7 @@
     if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.documentElement.classList.add('keys');
   }
   fit(); bind(); startWave();
-  Promise.all([loadImg('ruined', 'assets/city/hub-ruined.webp'), loadImg('restored', 'assets/city/hub-restored.webp'), loadImg('walk', 'assets/enemies/walk.webp'),
+  Promise.all([loadImg('ruined', 'assets/city/hub-ruined.webp'), loadImg('restored', 'assets/city/hub-restored.webp'), loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
     loadImg('fire1', 'assets/towers/fire-1.webp'), loadImg('frost1', 'assets/towers/frost-1.webp'), loadImg('storm1', 'assets/towers/storm-1.webp')])
     .then(() => { el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); requestAnimationFrame(frame); });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

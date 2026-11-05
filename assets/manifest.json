@@ -1,0 +1,122 @@
+{
+ "enemies/slime-walk.webp": {
+  "subject": "slime",
+  "frames": 6,
+  "cell": [
+   174,
+   153
+  ],
+  "anchor": "bottom-center",
+  "source": "warden enemies/enemy-walk.png row 0"
+ },
+ "enemies/beetle-walk.webp": {
+  "subject": "beetle",
+  "frames": 6,
+  "cell": [
+   163,
+   127
+  ],
+  "anchor": "bottom-center",
+  "source": "warden enemies/enemy-walk.png row 1"
+ },
+ "enemies/golem-walk.webp": {
+  "subject": "golem",
+  "frames": 6,
+  "cell": [
+   170,
+   155
+  ],
+  "anchor": "bottom-center",
+  "source": "warden enemies/enemy-walk.png row 2"
+ },
+ "towers/fire-1.webp": {
+  "subject": "fire tower tier 1",
+  "frames": 1,
+  "cell": [
+   154,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r0 c0"
+ },
+ "towers/fire-2.webp": {
+  "subject": "fire tower tier 2",
+  "frames": 1,
+  "cell": [
+   153,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r0 c1"
+ },
+ "towers/fire-3.webp": {
+  "subject": "fire tower tier 3",
+  "frames": 1,
+  "cell": [
+   160,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r0 c2"
+ },
+ "towers/frost-1.webp": {
+  "subject": "frost tower tier 1",
+  "frames": 1,
+  "cell": [
+   173,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r1 c0"
+ },
+ "towers/frost-2.webp": {
+  "subject": "frost tower tier 2",
+  "frames": 1,
+  "cell": [
+   170,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r1 c1"
+ },
+ "towers/frost-3.webp": {
+  "subject": "frost tower tier 3",
+  "frames": 1,
+  "cell": [
+   158,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r1 c2"
+ },
+ "towers/storm-1.webp": {
+  "subject": "storm tower tier 1",
+  "frames": 1,
+  "cell": [
+   161,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r2 c0"
+ },
+ "towers/storm-2.webp": {
+  "subject": "storm tower tier 2",
+  "frames": 1,
+  "cell": [
+   177,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r2 c1"
+ },
+ "towers/storm-3.webp": {
+  "subject": "storm tower tier 3",
+  "frames": 1,
+  "cell": [
+   159,
+   200
+  ],
+  "anchor": "bottom-center",
+  "source": "warden towers/element-tiers.png r2 c2"
+ }
+}
