@@ -61,7 +61,8 @@
   function spawn(role) {
     const R = C.ROLES[role], hp = C.enemyHp(P.wave, role);
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
-    const x0 = 80 + Math.random() * 560, y0 = FIELD_TOP + (R.size > 150 ? 70 : 0) + Math.random() * 40;
+    const lead = (S.packN || 0) % 3 === 0 || role === 'boss' || role === 'swarm';
+    const x0 = lead ? (S.packX = 80 + Math.random() * 560) : Math.max(70, Math.min(650, S.packX + (Math.random() - 0.5) * 140)), y0 = FIELD_TOP + (R.size > 150 ? 70 : 0) + Math.random() * 40;
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.fx.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
     S.enemies.push({ role, sheet: R.sheet, x: x0, y: y0, off: (Math.random() - 0.5) * 330, hp, max: hp,
       sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414, size: R.size, armour: R.armour || 0, weak: R.weak, boss: role === 'boss', frame: Math.random() * 6,
@@ -71,10 +72,11 @@
   // ---------- simulation ----------
   const TOWERS = PLATFORMS.map((p, i) => ({ x: p.x, y: p.y, cd: 0.2 + i * 0.13, recoil: 0, flash: 0, n: i }));
   function step() {
-    S.t += DT; S.sessionT += DT; if (S.wavePop) S.wavePop.t += DT;
+    S.t += DT; S.sessionT += DT; if (S.growTip) S.growTipT += DT; if (S.flash && (S.flash.t += DT) > 0.18) S.flash = null; if (S.wavePop) S.wavePop.t += DT;
     S.gateHit = Math.max(0, S.gateHit - DT * 4); S.shake = Math.max(0, S.shake - DT);
     for (const r of S.rings) r.t += DT; S.rings = S.rings.filter(r => r.t < 0.5);
-    if (S.spawnQ.length && (S.spawnT -= DT) <= 0) { const r = S.spawnQ.shift(); spawn(r); S.spawnT = r === 'swarm' ? 0.28 : Math.max(0.45, 1.35 - P.wave * 0.02); }
+    if (S.spawnQ.length && (S.spawnT -= DT) <= 0) { const r = S.spawnQ.shift(); spawn(r); S.packN = (S.packN || 0) + 1; const gap = Math.max(0.45, 1.35 - P.wave * 0.02);
+      S.spawnT = r === 'swarm' ? 0.28 : S.packN % 3 ? 0.3 : gap * 3 - 0.6; }   // packs of three, same total pace
     if (B.regen) S.gateHp = Math.min(gateMax(), S.gateHp + gateMax() * B.regen * DT);
     const els = elements(), interval = C.fireInterval(B);
     for (const t of TOWERS) {
@@ -156,14 +158,16 @@
   }
   function combo(id, e, word, col) {
     // one combo word on screen at a time, so words never pile into each other
+    // above the enemy, or below it near the treeline, so it never sits on the +N
     S.pops = S.pops.filter(p => !p.combo);
-    S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: Math.max(S.wavePop ? 500 : FIELD_TOP + 50, e.y - e.size - 40), text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
+    S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
+    if (id === 'shatter' && S.t - (S.lastFlash || -9) > 1.2) { S.flash = { col, t: 0 }; S.lastFlash = S.t; }   // the signature combo lights the screen
     if (!P.combos.includes(id)) { P.combos.push(id); toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/3`); save(); }
   }
   function kill(e) {
     e.dying = DT; const gain = C.killRes(P.wave, e.boss, B);
-    wisp(e, gain); pop(e.x, e.y - e.size * 0.6, '+' + C.fmt(gain), '#ffb8f0', 0.9, 32);
+    wisp(e, gain); pop(e.x, e.y - e.size * 0.6, '+' + C.fmt(gain), '#ff9ce8', 0.9, 34);
     burst(e, e.sheet === 'golem' ? '#b9b2a2' : e.sheet === 'beetle' ? '#ff9a4a' : '#8fe05a', e.boss ? 30 : 12, e.boss ? 260 : 160);
     if (e.boss || e.role === 'armoured') A.play('golem_death', 0.5);
   }
@@ -208,7 +212,7 @@
     const before = C.towerDamage(P, B), stage = C.stageOf(P.gateLevel);
     P.res -= c; P.gateLevel++; refresh(); S.gateHp = gateMax(); S.upsSinceRestore = (S.upsSinceRestore || 0) + 1;
     if (C.stageOf(P.gateLevel) > stage) { toast(`Gate stage ${C.stageOf(P.gateLevel)}! The towers grow.`); A.play('tier_up', 0.6); TOWERS.forEach(t => (t.flash = 1.5)); }
-    else { pop(GATE_X, WALL_FRONT - 150, `Damage ${C.fmt(before)} -> ${C.fmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach(t => (t.flash = 1.2)); A.play('tier_up', 0.25); }
+    else { pop(GATE_X, WALL_FRONT - 240, `Damage ${C.fmt(before)} -> ${C.fmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach(t => (t.flash = 1.2)); A.play('tier_up', 0.25); }
     save(); ui();
   }
   function restore() {
@@ -259,7 +263,7 @@
     const btn = (id, label, cls = '') => `<button id="${id}" class="cbtn ${cls}">${label}</button>`;
     let html = '';
     if (kind === 'daily') html = `<span class="eyebrow">Day ${data.day} reward</span><h2>+${C.fmt(data.amount)} Resonance</h2><p>${data.big ? 'Day 7 bonus: five times the reward!' : 'Day 7 pays five times as much.'}</p>${btn('c-ok', 'Claim')}`;
-    if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
+    if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
     if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
     if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. Best wave and combos stay.</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
@@ -342,7 +346,12 @@
   function outline() {
     for (const n of ['slime', 'beetle', 'golem']) { const im = img[n]; if (!im) continue;
       const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d');
-      g.filter = 'drop-shadow(0 0 1.5px rgba(34,14,24,1)) drop-shadow(0 0 1px rgba(34,14,24,1))'; g.drawImage(im, 0, 0); img[n] = c; }
+      // a solid dark rim about 2.5 px wide at play size (5 sheet px): enemies are drawn at about 0.45 of the sheet,
+      // so a hairline here would vanish (fresh-eyes review, Nov 5 2026: the grey golem disappeared on the grass)
+      const sil = document.createElement('canvas'); sil.width = im.width; sil.height = im.height; const sg = sil.getContext('2d');
+      sg.drawImage(im, 0, 0); sg.globalCompositeOperation = 'source-in'; sg.fillStyle = 'rgb(34,14,24)'; sg.fillRect(0, 0, im.width, im.height);
+      for (let a = 0; a < 16; a++) for (const r of [2.5, 5]) g.drawImage(sil, Math.cos(a * Math.PI / 8) * r, Math.sin(a * Math.PI / 8) * r);
+      g.drawImage(im, 0, 0); img[n] = c; }
   }
   // Draw a sprite from its own sheet, anchored bottom-centre on (x, baseY); pad = the sheet's clear margin.
   function sprite(im, x, baseY, h, frame = 0, frames = 1) {
@@ -401,10 +410,10 @@
 
   function drawShot(s) {
     const col = COLOR[s.el];
-    cx.save(); cx.globalCompositeOperation = 'lighter';
-    s.trail.forEach(([x, y], i) => { cx.globalAlpha = (i + 1) / s.trail.length * 0.5; cx.fillStyle = col; cx.beginPath(); cx.arc(x, y, 3 + i * 0.7, 0, 7); cx.fill(); });
-    cx.globalAlpha = 1; glow(s.x, s.y, 16, GLOW[s.el], 0.7);
-    cx.fillStyle = '#fff'; cx.beginPath(); cx.arc(s.x, s.y, 4.5, 0, 7); cx.fill();
+    cx.save();   // normal blending: added light turns every colour yellow-white on the bright meadow
+    s.trail.forEach(([x, y], i) => { cx.globalAlpha = (i + 1) / s.trail.length * 0.75; cx.fillStyle = col; cx.beginPath(); cx.arc(x, y, 3 + i * 0.8, 0, 7); cx.fill(); });
+    cx.globalAlpha = 1; glow(s.x, s.y, 18, GLOW[s.el], 0.8);
+    cx.fillStyle = '#fff'; cx.strokeStyle = 'rgba(42,26,34,.8)'; cx.lineWidth = 2; cx.beginPath(); cx.arc(s.x, s.y, 5, 0, 7); cx.fill(); cx.stroke();
     cx.restore();
   }
 
@@ -512,6 +521,7 @@
       cx.globalAlpha = 1;
     }
     for (const r of S.rings) { cx.save(); cx.globalAlpha = 1 - r.t / 0.5; cx.strokeStyle = r.col; cx.lineWidth = 8 * (1 - r.t / 0.5) + 2; cx.beginPath(); cx.arc(r.x, r.y, 20 + r.t * 260, 0, 7); cx.stroke(); cx.restore(); }
+    if (S.flash && !reduced()) { cx.save(); cx.globalAlpha = 0.16 * (1 - S.flash.t / 0.18); cx.fillStyle = S.flash.col; cx.fillRect(0, 0, W, H); cx.restore(); }
     if (!S.card) drawWavePop();   // one voice at a time: nothing banners behind a card
     if (S.reveal && (S.reveal.t += 1 / 60) > 1.4) S.reveal = null;
   }
@@ -554,7 +564,7 @@
     let spot = null;
     if (!target && !P.firstSession && !P.grown && !S.card && P.restored.length >= C.FIXED_ORDER && (toastT <= 0 || S.growTip)) {
       const id = P.restored.find(b => P.res >= C.levelCost(P, b, B));
-      if (id) { spot = CITY.spots[id]; target = 'bld'; if (!S.growTip) { S.growTip = true; toast('Tap a building to grow its Resonance'); } }
+      if (id && (S.growTipT || 0) < 20) { spot = CITY.spots[id]; target = 'bld'; if (!S.growTip) { S.growTip = true; S.growTipT = 0; toast('Tap a building to grow its Resonance'); } }
     }
     const hand = el('hand'); hand.className = target ? 'on ' + target : '';
     hand.style.left = spot ? (sx(spot[0]) - 48) + 'px' : ''; hand.style.top = spot ? (sy(spot[1]) + 6) + 'px' : '';   // finger up, from under the building

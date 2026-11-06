@@ -137,9 +137,11 @@
   // While the player is away the gate keeps fighting and the city keeps humming; the Granary adds to both.
   const offlineRate = (p, b) => (fightRate(p, b) + cityRate(p, b)) * (1 + b.offline);
   function offlineEarnings(p, b, now) {
-    if (!p.lastSeen || now <= p.lastSeen) return { secs: 0, res: 0 };
+    if (!p.lastSeen || now <= p.lastSeen) return { secs: 0, res: 0, fight: 0, city: 0 };
     const secs = Math.min(OFFLINE_CAP_H * 3600, (now - p.lastSeen) / 1000);
-    return secs < 60 ? { secs, res: 0 } : { secs, res: Math.floor(secs * offlineRate(p, b)) };
+    if (secs < 60) return { secs, res: 0, fight: 0, city: 0 };
+    const fight = Math.floor(secs * fightRate(p, b) * (1 + b.offline)), city = Math.floor(secs * cityRate(p, b) * (1 + b.offline));
+    return { secs, res: fight + city, fight, city };
   }
   // Daily reward: one tap on the first screen of the day; a missed day pauses the streak (never resets it);
   // day 7 of each week pays 5x. Days use the player's local midnight; a clock moved back never pays twice.

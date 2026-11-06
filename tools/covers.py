@@ -42,8 +42,10 @@ def scene(W, H, city_scale, meadow_h, split_x):
     wall = meadow_h + 70 * s          # just in front of the wall, where the crowd presses
     # every enemy stands in open grass between the towers, clear of the gatehouse and of each other
     # every enemy stands in open grass between the subtitle and the wall, between the towers, clear of each other
-    FOES = [('golem', 0.50, -22, 176, 1), ('slime', 0.385, -18, 108, 0), ('beetle', 0.615, -24, 102, 2),
-            ('slime', 0.25, -92, 94, 3), ('beetle', 0.75, -92, 94, 4), ('slime', 0.66, -150, 82, 5)]
+    # at the game's own scale: every enemy shorter than a tower (owner's correction, Nov 5 2026), so a crowd, not giants
+    FOES = [('golem', 0.50, -22, 132, 1), ('slime', 0.40, -14, 92, 0), ('beetle', 0.60, -20, 84, 2), ('slime', 0.33, -70, 80, 3),
+            ('beetle', 0.68, -78, 76, 4), ('slime', 0.56, -120, 72, 5), ('slime', 0.31, -135, 70, 2), ('beetle', 0.44, -150, 66, 1),
+            ('slime', 0.69, -160, 68, 4)]
     for kind, x, dy, h, frame in FOES:
         sheet = Image.open(A('assets', 'enemies', f'{kind}-walk.webp')).convert('RGBA'); fw = sheet.width // 6
         fr = sheet.crop((frame * fw, 0, (frame + 1) * fw, sheet.height)); k = h * u / (fr.height - 16)
@@ -66,7 +68,8 @@ def scene(W, H, city_scale, meadow_h, split_x):
     # glowing bolts from the towers toward the enemies, and the SHATTER burst on the golem
     glow = Image.new('RGBA', (W, H), (0, 0, 0, 0)); g = ImageDraw.Draw(glow)
     col = {'fire': (255, 140, 60), 'frost': (150, 230, 255), 'storm': (210, 150, 255)}
-    for (px, py), el, (tx, dty) in zip(PLAT, ['fire', 'frost', 'storm', 'fire'], [(0.25, -140), (0.385, -72), (0.615, -76), (0.75, -140)]):
+    # only the two inner towers fire: the outer towers fall outside the portrait and square crops, and a bolt cut by the edge reads as a defect
+    for (px, py), el, (tx, dty) in list(zip(PLAT, ['fire', 'frost', 'storm', 'fire'], [(0.31, -150), (0.385, -72), (0.615, -76), (0.69, -170)]))[1:3]:
         x0, y0 = ox + px * s, meadow_h + py * s - 150 * s
         x1, y1 = W * tx, wall + dty * u
         for i in range(9):
