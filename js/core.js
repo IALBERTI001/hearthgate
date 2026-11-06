@@ -33,6 +33,18 @@
     { at: 4, id: 'earth', name: 'The Earth element', line: 'A fourth element: Earth stuns, and QUAKE shakes frozen enemies apart' },
     { at: 5, id: 'ranks', name: 'Boss ranks', line: 'Bosses gain a rank each Ascension, with bigger rewards' }
   ];
+  // Constellations (Nov 6 2026): each of the first eight Ascension runs has its own constellation of five stars, lit at
+  // fixed waves on the way to that run's Ascend wave. Every star is a named, lasting boon, so a later run keeps bringing
+  // new things to the very end, and the collection (N of 40) shows how far the climb goes.
+  const CONSTELLATIONS = ['Anvil', 'Lantern', 'Hound', 'Crown', 'Serpent', 'Harp', 'Tower', 'Phoenix'];
+  const STAR_KINDS = [
+    [['Eye', 'damage', 0.04, 'damage'], ['Heart', 'gateHp', 0.08, 'gate health'], ['Spark', 'fireRate', 0.03, 'fire rate'], ['Crown', 'res', 0.05, 'Resonance'], ['Tail', 'combo', 0.08, 'combo damage']],
+    [['Ember', 'fire', 0.08, 'Fire damage'], ['Frost', 'frost', 0.08, 'Frost damage'], ['Bolt', 'storm', 0.08, 'Storm damage'], ['Hearth', 'city', 0.06, 'city output'], ['Wing', 'bossDmg', 0.1, 'boss damage']]
+  ];
+  const STARS = CONSTELLATIONS.flatMap((c, i) => STAR_KINDS[i % 2].map(([part, key, v, what], k) =>
+    ({ id: `${c.toLowerCase()}${k}`, asc: i + 1, k, name: `${c}'s ${part}`, line: `+${Math.round(v * 100)}% ${what}`, bonus: { [key]: v } })));
+  const starWave = (p, k) => Math.round((30 + 10 * p.ascensions) * (k + 1) / 6);   // five stars spread before the Ascend wave
+  const starsDue = p => STARS.filter(st => st.asc === p.ascensions && !p.stars.includes(st.id) && Math.max(p.runWave || 1, p.wave) >= starWave(p, st.k));
   const unlocked = (p, id) => { const u = ASCEND_UNLOCKS.find(x => x.id === id); return !!u && p.ascensions >= u.at; };
   const isTrial = (p, w) => unlocked(p, 'trials') && w % 5 === 0 && !isBoss(w);
   const RELICS = [
@@ -154,6 +166,7 @@
     const add = o => { for (const k in o) b[k] += o[k]; };
     for (const id of p.restored) { const d = byId(id); if (d && d.bonus) add(d.bonus); if (p.ascensions >= 1 && RANK2[id]) add(RANK2[id].bonus); }
     for (const s of FORK_STAGES) { const f = p.forks[s] && FORKS[s].find(x => x.id === p.forks[s]); if (f) add(f.bonus); }
+    if (p.stars) for (const id of p.stars) { const st = STARS.find(x => x.id === id); if (st) add(st.bonus); }
     if (p.relics) for (const id of p.relics) { const r = RELICS.find(x => x.id === id); if (r) add(r.bonus); }
     if (p.perks) add(perkBonus(p));
     if (p.omen) { const o = OMENS.find(x => x.id === p.omen); if (o) add(o.bonus); }   // p.omen is set each day by the game, never saved
@@ -305,15 +318,30 @@
     { id: 'laststand', name: 'Last Stand', line: 'The gate starts at half: every kill pays triple', asc: 3, from: 52 }
   ];
   const eventOpen = (p, e, w) => (!e.asc || p.ascensions >= e.asc) && w >= e.from;   // Ascension events spread across the new run
+  // Twin events (5th Ascension on): two known twists at once, five new pairs every run, placed between the stars
+  const TWIN_POOL = ['thunder', 'blizzard', 'inferno', 'eclipse', 'harvest', 'frenzy', 'hail', 'jackpot', 'winter', 'meteor', 'embers', 'stormfront', 'echo', 'giants', 'rush', 'aurora', 'goldrush', 'tremor', 'golden', 'horde', 'feast', 'gale'];
+  const evById = id => EVENTS.find(e => e.id === id);
+  function twinOf(id) {
+    const m = /^twin:(\w+):(\w+)$/.exec(id || ''); const a = m && evById(m[1]), b = m && evById(m[2]); if (!a || !b) return null;
+    return { id, ids: [a.id, b.id], name: `${a.name} + ${b.name}`, line: `${a.line}. ${b.line}` };
+  }
+  function twinsFor(p) {
+    if (p.ascensions < 5) return [];
+    const n = TWIN_POOL.length, out = [];
+    for (let k = 0; k < 5; k++) { const i = (p.ascensions * 5 + k) * 7 % n, j = (i + 3 + p.ascensions + k * 2) % n;
+      out.push(Object.assign(twinOf(`twin:${TWIN_POOL[i]}:${TWIN_POOL[j === i ? (j + 1) % n : j]}`), { from: Math.round(ascendWave(p) * (k + 0.5) / 6) })); }
+    return out;
+  }
   function eventFor(p, w) {
     if (isBoss(w) || isTrial(p, w) || w < 6) return null;
-    const open = EVENTS.filter(e => eventOpen(p, e, w)), fresh = open.find(e => !p.seenEvents.includes(e.id));
+    const open = EVENTS.filter(e => eventOpen(p, e, w)).concat(twinsFor(p).filter(e => w >= e.from)), fresh = open.find(e => !p.seenEvents.includes(e.id));
     if (fresh) return fresh;                                      // a new twist the first time it can happen
     if (w % 4 !== 1 || !open.length) return null;                // then one wave in four brings a known twist back
     return open[(w * 7 + p.ascensions * 3) % open.length];
   }
   function eventMix(mix, ev) {
     if (!ev) return mix;
+    if (ev.ids) return ev.ids.reduce((m, id) => eventMix(m, evById(id)), mix);
     const n = mix.reduce((a, [, c]) => a + c, 0), m = mix.map(([r, c]) => [r, c]);
     if (ev.id === 'stampede') return [['runner', Math.ceil(n * 0.6)], ['sprinter', Math.ceil(n * 0.4)]];
     if (ev.id === 'horde') return m.map(([r, c]) => [r, Math.ceil(c * 1.5)]);
@@ -375,7 +403,7 @@
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
     q.settings = Object.assign({}, p.settings); q.grown = p.grown;
     q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.stats = Object.assign({}, p.stats); q.feats = p.feats.slice(); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;
-    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p); q.relics = p.relics.slice(); q.seenRoles = p.seenRoles.slice(); q.seenEvents = p.seenEvents.slice();
+    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p); q.relics = p.relics.slice(); q.stars = (p.stars || []).slice(); q.seenRoles = p.seenRoles.slice(); q.seenEvents = p.seenEvents.slice();
     const st = (q.perks.start || 0) * 5; if (st) { q.wave = 1 + st; q.gateLevel = 1 + st; }   // Head Start   // looks and Starshards stay; Ascending pays
     return q;
   }
@@ -467,6 +495,9 @@
     .forEach(([n, nm, t]) => feat('city' + n, nm, t, `Restore ${n} buildings in one city`, p => p.restored.length, n));
   [[1, 'Reborn', 2], [3, 'Thrice Risen', 2], [10, 'Eternal City', 3]]
     .forEach(([n, nm, t]) => feat('ascend' + n, nm, t, n === 1 ? 'Ascend once' : `Ascend ${n} times`, p => p.ascensions, n));
+  [[5, 'First Light', 1], [20, 'Stargazer', 2], [40, 'Full Sky', 3]]
+    .forEach(([n, nm, t]) => feat('stars' + n, nm, t, `Light ${n} constellation stars`, p => (p.stars || []).length, n));
+  feat('bestiary', 'Monster Scholar', 2, 'Meet every kind of enemy', p => (p.seenRoles || []).filter(r => ROLES[r] && ROLES[r].tip).length, Object.values(ROLES).filter(r => r.tip).length);
   [[25, 'Iron Gate', 1], [50, 'Steel Gate', 2], [100, 'Starforged Gate', 3]]
     .forEach(([n, nm, t]) => feat('gate' + n, nm, t, `Upgrade the gate to level ${n}`, p => p.gateLevel, n));
   [[10, 'Humming Halls', 1], [25, 'Resonant', 2], [50, 'Heart of the City', 3]]
@@ -530,7 +561,7 @@
 
   // ---------- save profile ----------
   function defaults() {
-    return { v: 3, res: 0, wave: 1, bestWave: 1, runWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, runWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], stars: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false, stats: false } };
   }
@@ -567,8 +598,9 @@
     if (p.perks && typeof p.perks === 'object') for (const k of PERKS) { const n = Math.floor(num(p.perks[k.id], 0, k.max, 0)); if (n) out.perks[k.id] = n; }
     out.perkPts = Math.floor(num(p.perkPts, 0, 1e6, 0));
     if (p.perks === undefined && out.ascensions > 0) out.perkPts = out.ascensions * 2;   // saves from before perks: points for the Ascensions already made
+    if (Array.isArray(p.stars)) out.stars = [...new Set(p.stars.filter(id => STARS.some(x => x.id === id)))];
     if (Array.isArray(p.relics)) out.relics = [...new Set(p.relics.filter(id => RELICS.some(r => r.id === id)))].slice(0, 2);
-    if (Array.isArray(p.seenEvents)) out.seenEvents = [...new Set(p.seenEvents.filter(id => EVENTS.some(e => e.id === id)))];
+    if (Array.isArray(p.seenEvents)) out.seenEvents = [...new Set(p.seenEvents.filter(id => evById(id) || twinOf(id)))];
     if (Array.isArray(p.seenRoles)) out.seenRoles = [...new Set(p.seenRoles.filter(r => ROLES[r]))];
     if (Array.isArray(p.feats)) out.feats = [...new Set(p.feats.filter(id => FEATS.some(f => f.id === id)))];
     if (p.surge && typeof p.surge === 'object') out.surge = { until: num(p.surge.until, 0, 1e15, 0), adDay: typeof p.surge.adDay === 'string' ? p.surge.adDay : '',
@@ -598,7 +630,7 @@
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, cityWhole, ascendWave, ascend, defaults, sanitize,
-    CITY, cityToBand, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
+    CITY, cityToBand, twinsFor, twinOf, STARS, starWave, starsDue, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
     SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

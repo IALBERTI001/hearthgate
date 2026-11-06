@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06k';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06l';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -43,6 +43,7 @@
 
   const gateMax = () => C.gateMax(P, B);
   const has = id => P.restored.includes(id);
+  const evIs = id => !!S.event && (S.event.id === id || (!!S.event.ids && S.event.ids.includes(id)));   // twin events carry two ids
   // the Earth element joins the towers from the 4th Ascension on (Nov 6 2026)
   const elements = () => { const e = P.restored.map(b => ELEMENT[b]).filter(Boolean); if (e.length && C.unlocked(P, 'earth')) e.push('earth'); return e; };
   const reduced = () => P.settings.reduced || matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -59,17 +60,17 @@
     const mix = C.eventMix(C.waveMix(n, P.ascensions), S.event);
     // the first wave of each session (after the first) names today's Omen
     const om = !S.omenTold && P.omen && C.OMENS.find(o => o.id === P.omen); if (om) S.omenTold = true;
-    S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : S.trial ? 'TRIAL! Win it for Starshards' : S.event ? `${evNew ? 'NEW! ' : ''}${S.event.name}: ${S.event.line}` : cheer, big: boss || S.trial || !!S.event, t: 0, roles: mix.map(([r]) => r) };
+    S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : S.trial ? 'TRIAL! Win it for Starshards' : S.event ? `${evNew ? 'NEW! ' : ''}${S.event.name}: ${S.event.line}` : cheer, big: boss || S.trial || !!S.event, boss, t: 0, roles: mix.map(([r]) => r) };
     A.boss(boss);   // boss waves get the battle theme; every other wave the calm playlist
     if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('boss_horn', 0.6); }   // a boss wave is an event: red edges, a rumble
-    S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax(); if (S.event && S.event.id === 'laststand') S.gateHp = Math.min(S.gateHp, gateMax() * 0.5);
+    S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax(); if (S.event && evIs('laststand')) S.gateHp = Math.min(S.gateHp, gateMax() * 0.5);
     // a shuffled queue, so runners and armoured arrive among the slimes rather than in blocks; the boss comes last
     const q = []; for (const [role, c] of mix) for (let i = 0; i < c; i++) q.push(role);
     for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
     S.spawnQ = q.sort((a, b) => C.isBossRole(a) - C.isBossRole(b)); S.spawnT = 1.0;
   }
   function spawn(role, at) {
-    const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && S.event.id === 'bloodmoon' ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1) * ((S.event && S.event.id === 'giants') && !C.isBossRole(role) ? 2 : 1);
+    const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && evIs('bloodmoon') ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1) * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 2 : 1);
     if (R.tip && !P.seenRoles.includes(role)) { P.seenRoles.push(role); setTimeout(() => toast(`New: ${R.label}! ${R.tip}`), 400); }
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
     const lead = (S.packN || 0) % 3 === 0 || role === 'boss' || role === 'swarm';
@@ -77,8 +78,8 @@
     if (at) { x0 = Math.max(60, Math.min(660, at[0])); y0 = Math.min(WALL_FRONT - 4, at[1]); }
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.fx.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
     S.enemies.push({ role, sheet: R.sheet, x: x0, y: y0, off: (Math.random() - 0.5) * 330, hp, max: hp,
-      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (S.event.id === 'stampede' || S.event.id === 'eclipse' || S.event.id === 'frenzy') ? 1.3 : S.event && S.event.id === 'blizzard' ? 0.75 : 1), size: R.size * ((S.event && S.event.id === 'giants') && !C.isBossRole(role) ? 1.3 : 1), armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
-      chill: (S.event && S.event.id === 'winter') ? 4 : 0, burn: (S.event && S.event.id === 'embers') ? 4 : 0, flash: 0, born: S.t - (at ? 0.6 : 0), dying: 0, stun: 0, summonT: R.summon || 0, totemT: R.totem || 0, blinkT: Math.random() * 2.4, tint: S.event && S.event.id === 'golden' ? 'gold' : R.tint, shield: !!R.shield || !!(S.event && S.event.id === 'mirror') });
+      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (evIs('stampede') || evIs('eclipse') || evIs('frenzy')) ? 1.3 : S.event && evIs('blizzard') ? 0.75 : 1), size: R.size * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 1.3 : 1), armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
+      chill: (S.event && evIs('winter')) ? 4 : 0, burn: (S.event && evIs('embers')) ? 4 : 0, flash: 0, born: S.t - (at ? 0.6 : 0), dying: 0, stun: 0, summonT: R.summon || 0, totemT: R.totem || 0, blinkT: Math.random() * 2.4, tint: S.event && evIs('golden') ? 'gold' : R.tint, shield: !!R.shield || !!(S.event && evIs('mirror')) });
   }
 
   // ---------- simulation ----------
@@ -95,12 +96,12 @@
     for (const r of S.rings) r.t += DT; S.rings = S.rings.filter(r => r.t < 0.5);
     for (const h of S.hits) h.t += DT; S.hits = S.hits.filter(h => h.t < L.HIT_LIFE);
     if (S.spawnQ.length && (S.spawnT -= DT) <= 0) { const r = S.spawnQ.shift(); spawn(r); S.packN = (S.packN || 0) + 1; const gap = Math.max(0.45, 1.35 - P.wave * 0.02);
-      S.spawnT = (r === 'swarm' ? 0.28 : S.packN % 3 ? 0.3 : gap * 3 - 0.6) * ((S.event && S.event.id === 'rush') ? 0.5 : 1); }   // packs of three, same total pace
+      S.spawnT = (r === 'swarm' ? 0.28 : S.packN % 3 ? 0.3 : gap * 3 - 0.6) * ((S.event && evIs('rush')) ? 0.5 : 1); }   // packs of three, same total pace
     if (B.regen) S.gateHp = Math.min(gateMax(), S.gateHp + gateMax() * B.regen * DT);
     syncTowers();
-    const els = elements(), interval = C.fireInterval(B) * (S.cheerT > 0 ? 0.5 : 1) * (S.event && S.event.id === 'frenzy' ? 0.7 : 1);   // the Tavern's Cheer: towers fire twice as fast
+    const els = elements(), interval = C.fireInterval(B) * (S.cheerT > 0 ? 0.5 : 1) * (S.event && evIs('frenzy') ? 0.7 : 1);   // the Tavern's Cheer: towers fire twice as fast
     tickExtras();
-    if ((S.event && (S.event.id === 'meteor' || S.event.id === 'starstorm')) && (S.meteorT = (S.meteorT || 2) - DT) <= 0) { S.meteorT = 2.5;
+    if ((S.event && (evIs('meteor') || evIs('starstorm'))) && (S.meteorT = (S.meteorT || 2) - DT) <= 0) { S.meteorT = 2.5;
       const live = S.enemies.filter(e => !e.dying && e.y > FIELD_TOP + 40); const tg = live[Math.floor(Math.random() * live.length)];
       if (tg) { burst(tg, '#ffb36b', 24, 260); S.shake = 0.18; S.rings.push({ x: tg.x, y: tg.y - 20, t: 0, col: '#ffb36b' }); pop(tg.x, tg.y - tg.size - 30, 'METEOR!', '#ffb36b', 0.9, 40); A.play('shatter_combo', 0.3);
         S.enemies.filter(o => !o.dying && Math.hypot(o.x - tg.x, o.y - tg.y) < 100).forEach(o => { o.hp -= C.towerDamage(P, B) * 6; o.flash = 1; o.burn = 2; }); } }
@@ -169,11 +170,11 @@
   }
 
   function hit(e, el) {
-    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)) * (e.boss ? 1 + B.bossDmg : 1) * (S.event && ((S.event.id === 'thunder' && el === 'storm') || (S.event.id === 'blizzard' && el === 'frost') || (S.event.id === 'inferno' && el === 'fire') || (S.event.id === 'rockslide' && el === 'earth')) ? 2 : 1) * (S.event && S.event.id === 'hail' && (el === 'frost' || el === 'storm') ? 1.5 : 1) * ((S.event && S.event.id === 'stormfront') && el === 'storm' ? 1.5 : 1);
+    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)) * (e.boss ? 1 + B.bossDmg : 1) * (S.event && ((evIs('thunder') && el === 'storm') || (evIs('blizzard') && el === 'frost') || (evIs('inferno') && el === 'fire') || (evIs('rockslide') && el === 'earth')) ? 2 : 1) * (S.event && evIs('hail') && (el === 'frost' || el === 'storm') ? 1.5 : 1) * ((S.event && evIs('stormfront')) && el === 'storm' ? 1.5 : 1);
     if (e.faded && el !== 'storm') d *= 0.25;   // a faded Phantom: only Storm finds it
-    const comboMul = (1 + B.combo) * (S.event && S.event.id === 'eclipse' ? 2 : 1);
+    const comboMul = (1 + B.combo) * (S.event && evIs('eclipse') ? 2 : 1);
     if (e.shield) { if (el === 'storm') { e.shield = false; burst(e, '#bfe8ff', 16, 220); pop(e.x, e.y - e.size - 30, 'SHIELD BROKEN', '#bfe8ff', 1, 30); } else d *= 0.2; }
-    if (el === 'earth') { e.stun = S.event && S.event.id === 'tremor' ? 1.2 : 0.6; if (e.chill > 0) { d *= 2.5 * comboMul; combo('quake', e, 'QUAKE!', COLOR.earth); S.shake = 0.25; e.bigHit = true;
+    if (el === 'earth') { e.stun = S.event && evIs('tremor') ? 1.2 : 0.6; if (e.chill > 0) { d *= 2.5 * comboMul; combo('quake', e, 'QUAKE!', COLOR.earth); S.shake = 0.25; e.bigHit = true;
       S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 90).forEach(o => { o.hp -= d * 0.5; o.flash = 1; o.stun = 0.4; }); } }
     if (e.armour && el !== 'fire') d *= 1 - e.armour;                 // armour: only Fire bites fully
     if (el === 'fire') {
@@ -182,10 +183,10 @@
     }
     if (el === 'frost') { e.chill = B.deepFrost ? 3.3 : 2.2; if (e.weak === 'frost') d *= 1.3; }
     if (el === 'storm') {
-      const jumps = (e.chill > 0 ? 4 : 2) + B.chainPlus + ((S.event && S.event.id === 'stormfront') ? 3 : 0);
+      const jumps = (e.chill > 0 ? 4 : 2) + B.chainPlus + ((S.event && evIs('stormfront')) ? 3 : 0);
       if (e.chill > 0) { combo('frostStorm', e, 'SUPERCHAIN!', COLOR.storm); A.play('conduction_combo', 0.45); if (C.ROLES[e.role].comboWeak) e.bigHit = true; }
       if (e.burn > 0) { combo('fireStorm', e, 'FIRESTORM!', COLOR.fire); A.play('freeze_combo', 0.45); }
-      if (S.event && S.event.id === 'gale' && !e.boss) e.y = Math.max(FIELD_TOP, e.y - 30);
+      if (S.event && evIs('gale') && !e.boss) e.y = Math.max(FIELD_TOP, e.y - 30);
       const chainD = d * 0.6 * (e.chill > 0 || e.burn > 0 ? comboMul : 1) * (e.weak === 'storm' ? 2 : 1);
       S.enemies.filter(o => o !== e && !o.dying).sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y))
         .slice(0, jumps).forEach(o => { o.hp -= chainD; o.flash = 1; if (e.burn > 0) o.burn = 2; S.pops.push({ arc: [e.x, e.y - e.size * 0.45, o.x, o.y - o.size * 0.45], t: 0, life: 0.2 }); });
@@ -202,27 +203,27 @@
   }
   function combo(id, e, word, col) {
     quest('combo'); if (id === 'shatter') quest('shatter');
-    if (has('tavern') && !(S.cheerT > 0)) { S.cheer = Math.min(1, (S.cheer || 0) + 0.06 * (S.event && S.event.id === 'feast' ? 2 : 1)); if (S.cheer >= 1) startCheer(); }
+    if (has('tavern') && !(S.cheerT > 0)) { S.cheer = Math.min(1, (S.cheer || 0) + 0.06 * (S.event && evIs('feast') ? 2 : 1)); if (S.cheer >= 1) startCheer(); }
     // one combo word on screen at a time, so words never pile into each other
     // above the enemy, or below it near the treeline, so it never sits on the +N
     S.pops = S.pops.filter(p => !p.combo);
     S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
-    if ((S.event && (S.event.id === 'aurora' || S.event.id === 'starstorm')) && P.shop.open && (S.auroraN || 0) < 8 && Math.random() < 0.35) { S.auroraN = (S.auroraN || 0) + 1; P.shop.shards += 1; pop(e.x, e.y - e.size - 40, '+1 Starshard', SHARD, 1.1, 32); }
+    if ((S.event && (evIs('aurora') || evIs('starstorm'))) && P.shop.open && (S.auroraN || 0) < 8 && Math.random() < 0.35) { S.auroraN = (S.auroraN || 0) + 1; P.shop.shards += 1; pop(e.x, e.y - e.size - 40, '+1 Starshard', SHARD, 1.1, 32); }
     if (id === 'shatter' && S.t - (S.lastFlash || -9) > 1.2) { S.flash = { col, t: 0 }; S.lastFlash = S.t; }   // the signature combo lights the screen
     if (!P.combos.includes(id)) { P.combos.push(id); if (P.shop.open) P.shop.shards += C.SHARDS.combo; toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/${comboTotal()}`); save(); }
   }
   function kill(e) {
-    e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX() * (e.boss ? 1 + bossRank() : 1) * (S.event && S.event.id === 'golden' ? 2 : S.event && S.event.id === 'bloodmoon' ? 3 : 1) * ((S.event && S.event.id === 'giants') ? 2 : (S.event && S.event.id === 'laststand') ? 3 : 1); quest('kills');
+    e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX() * (e.boss ? 1 + bossRank() : 1) * (S.event && evIs('golden') ? 2 : S.event && evIs('bloodmoon') ? 3 : 1) * ((S.event && evIs('giants')) ? 2 : (S.event && evIs('laststand')) ? 3 : 1); quest('kills');
     const R = C.ROLES[e.role];
-    if ((S.event && S.event.id === 'echo') && !e.boss && !e.echo && e.role !== 'swarm') { spawnAt('swarm', e.x, e.y - 4); S.enemies[S.enemies.length - 1].echo = true; }
+    if ((S.event && evIs('echo')) && !e.boss && !e.echo && e.role !== 'swarm') { spawnAt('swarm', e.x, e.y - 4); S.enemies[S.enemies.length - 1].echo = true; }
     if (R.split) for (let k = 0; k < R.split; k++) spawnAt('swarm', e.x + (k - (R.split - 1) / 2) * 34, e.y - 4);
     S.kills = (S.kills || 0) + 1;
     if (B.molten && e.burn > 0 && !e.boss) { S.molten = (S.molten || 0) + 1; burst(e, COLOR.fire, 14, 200);
       S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 110).forEach(o => { o.burn = 2.2; o.hp -= C.towerDamage(P, B) * 0.6; o.flash = 1; }); }
     if (R.bomb) { S.shake = 0.2; burst(e, '#ff9a3a', 26, 280); pop(e.x, e.y - e.size - 30, 'BOOM!', '#ff9a3a', 1, 44); A.play('shatter_combo', 0.4);
       S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 150).forEach(o => { o.hp -= C.towerDamage(P, B) * 4; o.flash = 1; }); }
-    if (R.chest || (S.event && S.event.id === 'jackpot' && S.kills % 5 === 0)) { const amt = C.fightRate(P, B) * 1.6 * 5 * surgeX() * (1 + B.chestX); P.res += amt; pop(e.x, e.y - e.size - 40, `Treasure! +${C.fmt(amt)}`, '#ffd56b', 1.3, 40);
+    if (R.chest || (S.event && evIs('jackpot') && S.kills % 5 === 0)) { const amt = C.fightRate(P, B) * 1.6 * 5 * surgeX() * (1 + B.chestX); P.res += amt; pop(e.x, e.y - e.size - 40, `Treasure! +${C.fmt(amt)}`, '#ffd56b', 1.3, 40);
       if (P.shop.open && Math.random() < 0.3) { P.shop.shards += 1; pop(e.x, e.y - e.size - 80, '+1 Starshard', SHARD, 1.3, 34); } A.play('buy', 0.45); }
     wisp(e, gain); pop(e.x + 28, e.y - e.size * 0.2, '+' + C.fmt(gain), '#ff9ce8', 0.9, 34);
     burst(e, e.sheet === 'golem' ? '#b9b2a2' : e.sheet === 'beetle' ? '#ff9a4a' : '#8fe05a', e.boss ? 30 : 12, e.boss ? 260 : 160);
@@ -249,7 +250,17 @@
     }
     P.wave++; P.bestWave = Math.max(P.bestWave, P.wave);
     if (C.cityWhole(P) && P.runWave < C.ascendWave(P) && P.wave >= C.ascendWave(P)) setTimeout(() => toast('Wave ' + P.wave + ' reached: you can Ascend!'), 1200);
-    P.runWave = Math.max(P.runWave || 1, P.wave); openShop(); startWave(); save();
+    P.runWave = Math.max(P.runWave || 1, P.wave); lightStars(); openShop(); startWave(); save();
+  }
+  // a constellation star lights when the run reaches its wave: a big gold star, a lasting boon, the count of 40
+  function lightStars() {
+    const due = C.starsDue(P); if (!due.length) return;
+    for (const st of due) P.stars.push(st.id); refresh();
+    const st = due[due.length - 1], first = P.stars.length === due.length;
+    A.play('feat', 0.55); burst({ x: W / 2, y: 330, size: 40 }, '#ffe08a', 30, 260);
+    pop(W / 2, 300, `${st.name}!`, '#ffe08a', 2, 50); pop(W / 2, 352, `Star lit · ${st.line}`, '#fff3c4', 2, 32);
+    setTimeout(() => toast(first ? `A star lights in the ${st.name.split("'")[0]} constellation! Reach waves to light all five · ${P.stars.length}/${C.STARS.length}`
+      : `Star lit: ${st.name}, ${st.line} for good · ${P.stars.length}/${C.STARS.length}`), 900);
   }
   // The Shop opens when the first boss falls, with a welcome gift; older saves past wave 10 get it on load.
   function openShop() {
@@ -422,7 +433,7 @@
     if (S.cheerT > 0 && (S.cheerT -= DT) <= 0) { S.cheerT = 0; S.cheer = 0; }
     if (S.villagers) { S.villagers.t += DT; if (S.villagers.t > 2.6) S.villagers = null; }
     if (P.restored.length < 3) return;
-    if (S.event && (S.event.id === 'harvest' || S.event.id === 'goldrush') && !S.gold && S.goldT > 6) S.goldT = 6;
+    if (S.event && (evIs('harvest') || evIs('goldrush')) && !S.gold && S.goldT > 6) S.goldT = 6;
     if (S.gold) { const g = S.gold; g.t += DT; g.x += g.vx * DT; g.y = g.y0 + Math.sin(g.t * 2.4) * 26; if (g.t > g.life || g.x < -60 || g.x > W + 60) S.gold = null; return; }
     if (S.goldT === undefined) S.goldT = 8;
     if ((S.goldT -= DT) <= 0) {
@@ -435,9 +446,9 @@
   function tapGold(x, y) {
     const g = S.gold; if (!g || Math.hypot(x - g.x, y - g.y) > 70) return false;
     S.gold = null; S.goldCaught = (S.goldCaught || 0) + 1; A.play('claim', 0.6);
-    const roll = Math.random(), mult = (1 + (B.wispX || 0)) * (S.event && S.event.id === 'goldrush' ? 3 : 1);
+    const roll = Math.random(), mult = (1 + (B.wispX || 0)) * (S.event && evIs('goldrush') ? 3 : 1);
     burst({ x: g.x, y: g.y + 20, size: 40 }, '#ffd56b', 22, 220);
-    if ((roll < 0.15 || (S.event && S.event.id === 'starfall')) && P.shop.open) { const n = 2 * mult; P.shop.shards += n; pop(g.x, g.y - 20, `+${n} Starshards`, SHARD, 1.4, 42); }
+    if ((roll < 0.15 || (S.event && evIs('starfall'))) && P.shop.open) { const n = 2 * mult; P.shop.shards += n; pop(g.x, g.y - 20, `+${n} Starshards`, SHARD, 1.4, 42); }
     else if (roll < 0.3) { S.goldSurge = Date.now() + 15000; pop(g.x, g.y - 20, 'x2 for 15 s!', '#ff9ce8', 1.4, 42); }
     else { const amt = C.fightRate(P, B) * 1.6 * 10 * mult * surgeX(); P.res += amt; pop(g.x, g.y - 20, `+${C.fmt(amt)}`, '#ffd56b', 1.4, 46); }
     save(); return true;
@@ -543,7 +554,8 @@
   // ---------- Ascension perks: the star chip in the top bar opens them ----------
   function perksHtml() {
     return `<div class="cardhead"><h2>Perks</h2><span class="chip shards perkpts"><i class="star gold"></i><b>${P.perkPts}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
-      + `<p class="small">Ascension ${P.ascensions}. Each Ascension pays 1 perk point, plus 1 for every 25 waves reached first.</p><div class="perks">`
+      + `<p class="small">Ascension ${P.ascensions}. Each Ascension pays 1 perk point, plus 1 for every 25 waves reached first.</p>`
+      + (P.ascensions >= 1 ? `<p class="small">Constellation stars ${P.stars.length}/${C.STARS.length}${(() => { const nx = C.STARS.find(st => st.asc === P.ascensions && !P.stars.includes(st.id)); return nx ? ` · next: ${nx.name} at wave ${C.starWave(P, nx.k)}` : ''; })()}</p>` : '') + `<div class="perks">`
       + C.PERKS.map(k => { const n = P.perks[k.id] || 0, max = n >= k.max, c = C.perkCost(P, k.id);
         return `<div class="perkrow"><b>${k.name}<small>${n}/${k.max}</small></b><span>${k.line}</span>`
           + (max ? `<span class="qok">Max</span>` : `<button class="buy ${P.perkPts >= c ? 'can' : 'off'} perk" data-id="${k.id}"><i class="star gold"></i>${c}</button>`) + `</div>`; }).join('')
@@ -957,15 +969,23 @@
     const fade = age > L - 0.5 ? Math.max(0, (L - age) / 0.5) : 1;
     cx.save(); cx.globalAlpha = fade; cx.translate(W / 2, 236 - (calm ? 0 : age * 6)); cx.scale(pop, pop);
     cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineJoin = 'round';
-    const title = (w.big ? 'BOSS WAVE ' : 'WAVE ') + C.fmt(w.n) + '!';
+    const title = (w.boss ? 'BOSS WAVE ' : S.trial && !w.boss ? 'TRIAL WAVE ' : 'WAVE ') + C.fmt(w.n) + '!';   // event waves are big, but only a boss wave says BOSS
     cx.font = (w.big ? 76 : 66) + 'px "HG Display", sans-serif'; cx.lineWidth = 12; cx.strokeStyle = '#24162c'; cx.strokeText(title, 0, 0);
     const g = cx.createLinearGradient(0, -34, 0, 34); g.addColorStop(0, '#fff3c2'); g.addColorStop(0.55, '#ffd36b'); g.addColorStop(1, '#f08a2c');
     cx.fillStyle = g; cx.fillText(title, 0, 0);
     cx.globalAlpha = fade * Math.max(0, Math.min(1, (age - 0.18) / 0.2));
-    cx.font = (w.big ? 38 : 34) + 'px "HG Display", sans-serif'; cx.lineWidth = 9; cx.strokeText(w.cheer, 0, 56);
-    cx.fillStyle = w.big ? '#ffb3f0' : '#bff3ff'; cx.fillText(w.cheer, 0, 56);
+    // the line under the title fits the stage: long event lines break after the name, then shrink if still too wide
+    let fs = w.big ? 38 : 34; cx.font = fs + 'px "HG Display", sans-serif';
+    let lines = [w.cheer]; if (cx.measureText(w.cheer).width > 660) { const k = w.cheer.indexOf(': '); if (k > 0) lines = [w.cheer.slice(0, k + 1), w.cheer.slice(k + 2)]; }
+    const widest = Math.max(...lines.map(l => cx.measureText(l).width)); if (widest > 660) { fs = Math.floor(fs * 660 / widest); cx.font = fs + 'px "HG Display", sans-serif'; }
+    cx.lineWidth = 9; cx.fillStyle = w.big ? '#ffb3f0' : '#bff3ff';
+    const extra = (lines.length - 1) * (fs + 4);
+    lines.forEach((l, i) => { cx.strokeText(l, 0, 56 + i * (fs + 4)); cx.fillText(l, 0, 56 + i * (fs + 4)); });
+    cx.translate(0, extra);
     // what is coming: a portrait per new or special enemy role, named in its counter element's colour (approved fix 3)
-    const roles = w.roles.filter(r => r !== 'slime'), n = roles.length, gap = 156;
+    // at most four portraits: the boss and the newest kinds first, so a crowded wave never runs off the stage
+    const order = r => C.isBossRole(r) ? 99 : C.ASC_ROLES[r] ? 50 + C.ASC_ROLES[r][0] : C.VARIANT_FROM[r] ? C.VARIANT_FROM[r] / 2 : 1;
+    const roles = w.roles.filter(r => r !== 'slime').sort((a, b) => order(b) - order(a)).slice(0, 4), n = roles.length, gap = 156;
     roles.forEach((r, i) => {
       const R = C.ROLES[r], im = img[R.sheet], x = (i - (n - 1) / 2) * gap;
       cx.globalAlpha = fade * Math.max(0, Math.min(1, (age - 0.3) / 0.25));

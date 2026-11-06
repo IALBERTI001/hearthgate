@@ -31,7 +31,7 @@ const [url, mins = '45'] = process.argv.slice(2);
       return { wave: P.wave, best: P.bestWave, gate: P.gateLevel, stage: C.stageOf(P.gateLevel), restored: P.restored.slice(), combos: P.combos.slice(),
         forks: Object.keys(P.forks).length, roles: [...new Set(S.enemies.map(e => e.role))], shop: P.shop.open, feats: P.feats.length,
         quests: P.shop.open && C.questClaimable(P), surge: C.surgeOn(P, Date.now()), asc: P.ascensions, perks: Object.values(P.perks).reduce((a, b) => a + b, 0),
-        event: S.event ? S.event.id : '', gold: S.goldCaught || 0, cheer: S.cheersDone || 0, repairs: S.repairs || 0, trials: S.trialsWon || 0, tower5: P.restored.includes('watchtower'), relics: (P.relics || []).length, rank2: (S.rank2 || []).slice(), seen: (P.seenRoles || []).slice(),
+        event: S.event ? S.event.id : '', gold: S.goldCaught || 0, cheer: S.cheersDone || 0, repairs: S.repairs || 0, trials: S.trialsWon || 0, tower5: P.restored.includes('watchtower'), relics: (P.relics || []).length, rank2: (S.rank2 || []).slice(), seen: (P.seenRoles || []).slice(), stars: (P.stars || []).slice(),
         x2: P.restored.reduce((a, id) => a + C.MILESTONES.filter(m => (P.levels[id] || 1) >= m).length, 0), levels: P.restored.reduce((a, id) => a + (P.levels[id] || 1), 0) };
     });
     const T = t + 5;
@@ -60,6 +60,7 @@ const [url, mins = '45'] = process.argv.slice(2);
     if (s.tower5 && !prev.tower5) once(T, 'tower5', 'a fifth tower on the gatehouse');
     if (s.trials > (prev.trials || 0)) { if (!once(T, 'trial', 'first Trial won')) add(T, 'BEAT', 'Trial won'); }
     if (s.relics > (prev.relics || 0)) once(T, 'relic', 'first Relic');
+    for (const id of s.stars) once(T, 'star:' + id, `star lit: ${id}`);
     if (s.wave < (prev.wave || 0) - 1) add(T, 'WALL', `fell back from wave ${prev.wave}`);
     Object.assign(prev, s);
   }

@@ -200,3 +200,11 @@ assert.strictEqual(C.waveMix(20, 2)[0][0], 'wraith', 'the newest Ascension boss 
 assert.ok(!C.waveMix(10, 3).some(r => C.ASC_ROLES[r[0]]), 'boss waves stay boss waves');
 for (const r in C.ASC_ROLES) assert.ok(C.ROLES[r] && C.ROLES[r].tip, 'Ascension enemy has a tip: ' + r);
 console.log('after-Ascension tests passed');
+// Constellations: 40 distinct stars, five per Ascension run, lit before that run's Ascend wave
+assert.strictEqual(new Set(C.STARS.map(s => s.id)).size, 40); assert.strictEqual(new Set(C.STARS.map(s => s.name)).size, 40);
+{ const p = C.defaults(); p.wave = 50; assert.strictEqual(C.starsDue(p).length, 0, 'no stars before the 1st Ascension');
+  p.ascensions = 1; p.wave = 20; p.runWave = 20; assert.strictEqual(C.starsDue(p).length, 3);
+  for (let k = 0; k < 5; k++) assert.ok(C.starWave(p, k) < C.ascendWave(p), 'every star comes before the Ascend wave');
+  p.stars = C.starsDue(p).map(s => s.id); assert.ok(C.bonuses(p).damage > C.bonuses(C.defaults()).damage); assert.deepStrictEqual(C.sanitize(p).stars, p.stars);
+  p.restored = C.BUILDING_IDS.slice(); p.runWave = 40; assert.deepStrictEqual(C.ascend(p).stars, p.stars, 'stars stay through Ascension'); }
+console.log('constellation tests passed');
