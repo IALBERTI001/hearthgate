@@ -57,7 +57,7 @@ const [url, mins = '45'] = process.argv.slice(2);
     if (s.gold > (prev.gold || 0)) { if (!once(T, 'gold', 'first Golden Wisp caught')) add(T, 'BEAT', 'Golden Wisp'); }
     if (s.cheer > (prev.cheer || 0)) { if (!once(T, 'cheer', 'first Tavern Cheer')) add(T, 'BEAT', 'Cheer'); }
     if (s.repairs > (prev.repairs || 0)) once(T, 'repair', 'villagers repair the gate');
-    if (s.tower5 && !prev.tower5) once(T, 'tower5', 'a fifth tower on the gatehouse');
+    if (s.tower5 && !prev.tower5) once(T, 'tower5', 'the Watchtower beacon joins the fight');
     if (s.trials > (prev.trials || 0)) { if (!once(T, 'trial', 'first Trial won')) add(T, 'BEAT', 'Trial won'); }
     if (s.relics > (prev.relics || 0)) once(T, 'relic', 'first Relic');
     for (const id of s.stars) once(T, 'star:' + id, `star lit: ${id}`);

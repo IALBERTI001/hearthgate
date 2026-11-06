@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06o';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06p';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -84,7 +84,9 @@
 
   // ---------- simulation ----------
   const TOWERS4 = PLATFORMS.map((p, i) => ({ x: p.x, y: p.y, cd: 0.2 + i * 0.13, recoil: 0, flash: 0, n: i }));
-  const TOWER5 = { x: GATE_X, y: sy(CITY.wallTop) + 6, cd: 0.4, recoil: 0, flash: 0, n: 4, gate: true };   // on the gatehouse roof
+  // the fifth tower is the Watchtower's own beacon: a light on its roof that fires over the wall (owner, Nov 6 2026: a
+  // tower floating on the gate arch did not look natural)
+  const WT = CITY.spots.watchtower, TOWER5 = { x: sx(WT[0]) + WT[2] * K * 0.02, y: sy(WT[1]) - WT[3] * K * 0.43, cd: 0.4, recoil: 0, flash: 0, n: 4, gate: true, beacon: true };
   let TOWERS = TOWERS4.slice();
   const syncTowers = () => { TOWERS = has('watchtower') ? TOWERS4.concat(TOWER5) : TOWERS4.slice(); };
   function step() {
@@ -114,7 +116,7 @@
       const tgt = live[Math.min(live.length - 1, t.n % 2)];
       t.cd = interval * (t.gate && B.beacon ? 0.5 : 1); t.recoil = 1; t.flash = 1; t.shots = (t.shots || 0) + 1;
       const el = els.length ? els[(t.shots + t.n) % els.length] : 'none';
-      S.shots.push({ x: t.x, y: t.y - 70, tx: tgt, el, sp: 820, trail: [] });
+      S.shots.push({ x: t.x, y: t.beacon ? t.y : t.y - 70, tx: tgt, el, sp: t.beacon ? 1000 : 820, trail: [] });
       A.play(el === 'frost' ? 'ice_launch_0' : el === 'storm' ? 'lightning_launch_0' : 'fire_launch_0', 0.16);
     }
     for (const s of S.shots) {
@@ -407,7 +409,7 @@
     const els = elements(), dmg = C.towerDamage(P, B), rate = 1 / C.fireInterval(B);
     TOWERS.forEach((t, i) => {
       const e = els.length ? els[i % els.length] : 'none';
-      tag(t.x, t.y - 118, [`${C.fmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
+      tag(t.x, t.beacon ? t.y - 46 : t.y - 118, [`${C.fmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
     });
     // the gate
     tag(GATE_X, WALL_FRONT + 58, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`], '#7bd15a');   // over the arch, clear of the tower labels
@@ -834,6 +836,7 @@
   function drawTowers() {
     const els = elements(), stage = C.stageOf(P.gateLevel), idle = ['fire', 'frost', 'frost', 'storm'], calm = reduced();
     TOWERS.forEach((t, i) => {
+      if (t.beacon) return drawBeacon(t, els.length ? els[(t.shots || 0) % els.length] : null, calm);
       const tier = Math.min(3, stage), e = els.length ? els[i % els.length] : null, im = img[(e || idle[i % 4]) + tier]; if (!im) return;
       const grow = Math.min(0.16, (P.gateLevel - C.STAGES[stage - 1]) * 0.012);   // a little taller with every level of the stage
       const breathe = calm ? 0 : Math.sin(S.t * 2 + i) * 0.012, h = CITY.towerH * (1 + (tier - 1) * 0.1 + grow) * (t.gate ? 0.86 : 1) * (1 + breathe - t.recoil * 0.05);
@@ -851,6 +854,16 @@
     });
   }
 
+  // the Watchtower's beacon: an element-coloured flame in the tower's open lantern room, flaring when it fires
+  function drawBeacon(t, e, calm) {
+    const col = e ? ((L.TOWER[P.shop.equip[e]] || {}).glow || GLOW[e]) : 'rgba(255,214,107,', pulse = calm ? 0 : Math.sin(S.t * 4) * 0.08;
+    cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y, 34 + t.flash * 26, col, 0.35 + pulse + t.flash * 0.5); cx.restore();
+    cx.save(); cx.translate(t.x, t.y); cx.scale(1.5, 1.5);
+    cx.fillStyle = e ? COLOR[e] : '#ffd56b'; cx.beginPath(); cx.arc(0, 0, 5.5 + t.flash * 2, 0, 7); cx.fill();
+    cx.fillStyle = '#fff6d8'; cx.beginPath(); cx.arc(0, -1, 2.4, 0, 7); cx.fill();
+    cx.restore();
+    if (C.stageOf(P.gateLevel) >= 4) drawCrown(t.x, t.y - 22, C.stageOf(P.gateLevel), 4);
+  }
   function drawEnemy(e) {
     const sh = img[e.sheet]; if (!sh) return;
     const fade = Math.min(1, (S.t - e.born) / 0.6), die = e.dying ? 1 - e.dying / 0.45 : 1;
@@ -957,7 +970,7 @@
   }
 
   function drawGateBar() {
-    const hp = Math.max(0, S.gateHp / gateMax()), bw = 120, by = sy(CITY.gateBar) - (has('watchtower') ? 92 : 0);
+    const hp = Math.max(0, S.gateHp / gateMax()), bw = 120, by = sy(CITY.gateBar);
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(GATE_X - bw / 2 - 3, by - 3, bw + 6, 15);
     cx.fillStyle = hp > 0.35 ? '#7bd15a' : '#e5533d'; cx.fillRect(GATE_X - bw / 2, by, bw * hp, 9);
     if (S.gateHit > 0) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(GATE_X, WALL_FRONT + 8, 60, 'rgba(255,90,60,', 0.25 * S.gateHit); cx.restore(); }

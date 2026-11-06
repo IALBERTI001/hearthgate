@@ -108,7 +108,7 @@
     { id: 'granary', name: 'Granary', bonus: { offline: 0.5 }, ability: 'store', line: 'Stores 50% more while you are away, and 4 more hours.' },
     { id: 'library', name: 'Library', bonus: { combo: 0.25 }, ability: 'quests', line: 'Home of Quests and Feats. Combos hit 25% harder.' },
     { id: 'cottages', name: 'Cottages', bonus: { gateHp: 0.25 }, ability: 'repair', line: 'Villagers repair the gate after every wave.' },
-    { id: 'watchtower', name: 'Watchtower', bonus: { damage: 0.15 }, ability: 'tower5', line: 'A fifth tower rises on the gatehouse. Home of the Perks.' }
+    { id: 'watchtower', name: 'Watchtower', bonus: { damage: 0.15 }, ability: 'tower5', line: 'Its beacon joins the fight as a fifth tower. Home of the Perks.' }
   ];
   // After the first Ascension every building comes back Ascended with a second ability (Nov 6 2026: the 30-second rule
   // after Ascension, so each restore in the second run is something new); from the second Ascension it is also gilded.
@@ -122,7 +122,7 @@
     granary: { name: 'Harvest Stores', line: 'Every cleared wave pays 5 seconds of income', bonus: { harvest: 5 } },
     library: { name: 'Grand Archive', line: 'Combos hit another 25% harder', bonus: { combo: 0.25 } },
     cottages: { name: 'Masons', line: 'Villagers repair twice as much. Gate +25%', bonus: { repairX: 1, gateHp: 0.25 } },
-    watchtower: { name: 'Beacon', line: 'The fifth tower fires twice as fast', bonus: { beacon: 1 } }
+    watchtower: { name: 'Bright Beacon', line: 'The Watchtower beacon fires twice as fast', bonus: { beacon: 1 } }
   };
   const rankOf = p => p.ascensions >= 2 ? 3 : p.ascensions >= 1 ? 2 : 1;
   const BUILDING_IDS = BUILDINGS.map(b => b.id);
