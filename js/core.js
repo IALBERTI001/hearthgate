@@ -319,7 +319,7 @@
   ];
   const squeeze = (p, a, from) => p.ascensions === a ? Math.max(6, Math.round(from * ascendWave(p) / (30 + 10 * a))) : from;   // schedules written for 30 + 10 per Ascension, fitted to the real run
   const eventOpen = (p, e, w) => (!e.asc || p.ascensions >= e.asc) && w >= (e.asc ? squeeze(p, e.asc, e.from) : e.from);   // Ascension events spread across the new run
-  // Twin events (5th Ascension on): two known twists at once, five new pairs every run, placed between the stars
+  // Twin events (5th Ascension on): two known twists at once, nine new pairs every run, spread across it
   const TWIN_POOL = ['thunder', 'blizzard', 'inferno', 'eclipse', 'harvest', 'frenzy', 'hail', 'jackpot', 'winter', 'meteor', 'embers', 'stormfront', 'echo', 'giants', 'rush', 'aurora', 'goldrush', 'tremor', 'golden', 'horde', 'feast', 'gale'];
   const evById = id => EVENTS.find(e => e.id === id);
   function twinOf(id) {
@@ -329,8 +329,8 @@
   function twinsFor(p) {
     if (p.ascensions < 5) return [];
     const n = TWIN_POOL.length, out = [];
-    for (let k = 0; k < 5; k++) { const i = (p.ascensions * 5 + k) * 7 % n, j = (i + 3 + p.ascensions + k * 2) % n;
-      out.push(Object.assign(twinOf(`twin:${TWIN_POOL[i]}:${TWIN_POOL[j === i ? (j + 1) % n : j]}`), { from: Math.round(ascendWave(p) * (k + 0.5) / 6) })); }
+    for (let k = 0; k < 9; k++) { const i = (p.ascensions * 9 + k) * 7 % n, j = (i + 3 + p.ascensions + k * 2) % n;
+      out.push(Object.assign(twinOf(`twin:${TWIN_POOL[i]}:${TWIN_POOL[j === i ? (j + 1) % n : j]}`), { from: Math.max(6, Math.round(ascendWave(p) * (k + 0.6) / 10)) })); }
     return out;
   }
   function eventFor(p, w) {
