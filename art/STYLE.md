@@ -28,3 +28,9 @@ UI plum #4a2a4f and brass #c9a24a, ink #fff4dc. Fire #ff7a2e, Frost #8fe3ff, Sto
 ## Rules
 - One asset, one sheet (Nov 5 2026): every sprite in its own file, split by outline from any shared image.
 - A reused background is placed by its focal point on the screen's centre line.
+
+## Music (owner-approved rules, Nov 6 2026)
+- Calm 8-bit playlist for normal play: steady tempo 70 to 90 BPM, soft square and triangle voices in the low and middle range, major keys, phrases with rests.
+- Songs rotate with no repeat back to back and 30 to 60 s of quiet town ambience between them, so the music never wears out.
+- Boss waves switch to the energetic battle theme (a test is coming); after the boss, 10 s of ambience, then the calm songs return.
+- No "healing frequency" tuning: the evidence does not support it; lower register and slow tempo do the calming.

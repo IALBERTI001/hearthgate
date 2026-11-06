@@ -4,9 +4,9 @@
 // least 30 design px. The simulation runs on a fixed 60 Hz step and never pauses on a tab switch; only the player pauses.
 (function (root) {
   'use strict';
-  const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
+  const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06g';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06h';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -57,6 +57,7 @@
     // the first wave of each session (after the first) names today's Omen
     const om = !S.omenTold && P.omen && C.OMENS.find(o => o.id === P.omen); if (om) S.omenTold = true;
     S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : cheer, big: boss, t: 0, roles: mix.map(([r]) => r) };
+    A.boss(boss);   // boss waves get the battle theme; every other wave the calm playlist
     if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('boss_horn', 0.6); }   // a boss wave is an event: red edges, a rumble
     S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax();
     // a shuffled queue, so runners and armoured arrive among the slimes rather than in blocks; the boss comes last
