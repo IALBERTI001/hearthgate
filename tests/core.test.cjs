@@ -208,3 +208,5 @@ assert.strictEqual(new Set(C.STARS.map(s => s.id)).size, 40); assert.strictEqual
   p.stars = C.starsDue(p).map(s => s.id); assert.ok(C.bonuses(p).damage > C.bonuses(C.defaults()).damage); assert.deepStrictEqual(C.sanitize(p).stars, p.stars);
   p.restored = C.BUILDING_IDS.slice(); p.runWave = 40; assert.deepStrictEqual(C.ascend(p).stars, p.stars, 'stars stay through Ascension'); }
 console.log('constellation tests passed');
+{ const p = C.defaults(); p.wave = 47; p.runWave = 50; assert.strictEqual(C.perkPtsFor(p), 3, 'perk points count the best wave of the run'); }
+console.log('review fix tests passed');

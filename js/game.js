@@ -73,7 +73,7 @@
     const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && evIs('bloodmoon') ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1) * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 2 : 1);
     if (R.tip && !P.seenRoles.includes(role)) { P.seenRoles.push(role); setTimeout(() => toast(`New: ${R.label}! ${R.tip}`), 400); }
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
-    const lead = (S.packN || 0) % 3 === 0 || role === 'boss' || role === 'swarm';
+    const lead = (S.packN || 0) % 3 === 0 || C.isBossRole(role) || role === 'swarm';
     let x0 = lead ? (S.packX = 80 + Math.random() * 560) : Math.max(70, Math.min(650, S.packX + (Math.random() - 0.5) * 140)), y0 = FIELD_TOP + (R.size > 150 ? 70 : 0) + Math.random() * 40;
     if (at) { x0 = Math.max(60, Math.min(660, at[0])); y0 = Math.min(WALL_FRONT - 4, at[1]); }
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.fx.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
@@ -130,7 +130,7 @@
       e.chill = Math.max(0, e.chill - DT); e.flash = Math.max(0, e.flash - DT * 6); e.stun = Math.max(0, (e.stun || 0) - DT);
       const RR = C.ROLES[e.role];
       if (RR.heal && !(e.burn > 0)) for (const o of S.enemies) if (o !== e && !o.dying && o.hp < o.max && Math.hypot(o.x - e.x, o.y - e.y) < 130) { o.hp = Math.min(o.max, o.hp + o.max * RR.heal * DT); o.healed = 0.3; }
-      if (RR.summon && (e.summonT -= DT) <= 0) { e.summonT = RR.summon; spawnAt(RR.summonRole || 'runner', e.x + 50, e.y); spawnAt(RR.summonRole || 'runner', e.x - 50, e.y); }
+      if (RR.summon && (e.summonT -= DT) <= 0) { e.summonT = RR.summon; const sy0 = RR.summonRole ? Math.min(e.y, WALL_FRONT) - 150 : e.y; spawnAt(RR.summonRole || 'runner', e.x + 50, sy0); spawnAt(RR.summonRole || 'runner', e.x - 50, sy0); }   // thieves start well up the field so they can be stopped
       if (e.healed) e.healed = Math.max(0, e.healed - DT);
       if (RR.blink) { e.blinkT = (e.blinkT + DT) % 2.4; e.faded = e.blinkT > 1.4; }   // Phantoms: 1.4 s seen, 1 s faded
       if (RR.totem && (e.totemT -= DT) <= 0) { e.totemT = RR.totem; S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col: '#bfe8ff' });
@@ -1090,7 +1090,7 @@
     const offer = asc ? [] : C.restoreOffer(P);
     html(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `at wave ${aw} · now ${rw}` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${gem}${C.fmt(rc)}`);
     re.querySelector('.fill').style.width = asc ? '100%' : whole ? Math.min(100, rw / aw * 100) + '%' : Math.min(100, P.res / rc * 100) + '%';
-    re.classList.toggle('ready', asc || P.res >= rc);
+    re.classList.toggle('ready', asc || (!whole && P.res >= rc));
     for (const b of [up, re]) if (b.classList.contains('ready')) b.querySelector('.wait').textContent = '';
     // pointing hand: first session only, one button at a time, never while a card is open
     let target = null;

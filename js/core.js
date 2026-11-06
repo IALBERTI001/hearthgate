@@ -90,7 +90,7 @@
     const k = PERKS.find(x => x.id === id); if (!k || (p.perks[id] || 0) >= k.max || p.perkPts < perkCost(p, id)) return false;
     p.perkPts -= perkCost(p, id); p.perks[id] = (p.perks[id] || 0) + 1; return true;
   }
-  const perkPtsFor = p => 1 + Math.floor(p.wave / 25);   // Ascending at wave 50 pays 3, at wave 100 pays 5
+  const perkPtsFor = p => 1 + Math.floor(Math.max(p.runWave || 1, p.wave) / 25);   // Ascending at wave 50 pays 3, at wave 100 pays 5
   function perkBonus(p) {
     const b = {}; for (const k of PERKS) { const n = p.perks[k.id] || 0; for (const key in k.per) b[key] = (b[key] || 0) + k.per[key] * n; } return b;
   }
