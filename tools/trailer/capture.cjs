@@ -3,7 +3,7 @@
 // Output: frame-00000.jpg ... at 2x of a 450x800 phone (900x1600).
 const { chromium } = require('playwright');
 const [url, out] = process.argv.slice(2);
-const FPS = 30, SECONDS = 19;
+const FPS = 30, SECONDS = +(process.env.SECONDS || 19);   // 12.4 when later-game segments follow (capture-seg.cjs)
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 450, height: 800 }, deviceScaleFactor: 2 });
