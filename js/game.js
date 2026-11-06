@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06c';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06d';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -206,7 +206,7 @@
   function openShop() {
     if (P.shop.open || P.bestWave < C.SHOP_OPENS) return;
     P.shop.open = true; P.shop.shards += C.SHARDS.welcome; save();
-    setTimeout(() => { toast(`The Shop is open! +${C.SHARDS.welcome} Starshards`); el('shop').classList.add('fresh'); A.play('tier_up', 0.4); }, 2600);
+    setTimeout(() => { toast(`The Shop is open in the Market! +${C.SHARDS.welcome} Starshards`); S.pointAt = { id: 'market', t: 0 }; A.play('buy', 0.5); }, 2600);
   }
   function gateBroken(noAd) {
     // a boss wave can be saved once by an optional ad (Full Launch only); otherwise the gate falls back, nothing lost
@@ -278,6 +278,33 @@
 
   // sound is muted only while an ad plays
   const adHooks = { mute: () => A.set('muted', true), unmute: () => A.set('muted', false) };
+
+  // ---------- buildings with jobs (owner's idea, Nov 6 2026): the Market is the Shop, the Library keeps the quests and
+  // Feats, the Watchtower the Ascension perks. They work even in ruins; a badge over each opens it, with a dot for news.
+  const HALLS = {
+    market: { kind: 'shop', name: 'Shop', ok: () => P.shop.open, news: () => C.shopNews(P) },
+    library: { kind: 'quests', name: 'Quests and Feats', ok: () => P.shop.open, news: () => C.questClaimable(P) },
+    watchtower: { kind: 'perks', name: 'Perks', ok: () => P.ascensions > 0, news: () => C.PERKS.some(k => (P.perks[k.id] || 0) < k.max && P.perkPts >= C.perkCost(P, k.id)) }
+  };
+  const badgeAt = id => { const s = CITY.spots[id]; return [sx(s[0]) + s[2] * K * 0.5, sy(s[1]) - s[3] * K * 0.42]; };
+  function openHall(id) { const h = HALLS[id]; if (!h || !h.ok() || S.card) return false; A.unlock(); S.pointAt = null; if (h.kind === 'shop') openShopCard(); else showCard(h.kind); return true; }
+  function drawBadges() {
+    if (S.card || root.__storeCapture) return;
+    for (const id in HALLS) {
+      const h = HALLS[id]; if (!h.ok()) continue;
+      const [x, y0] = badgeAt(id), y = y0 + (reduced() ? 0 : Math.sin(S.t * 2.2 + x) * 3), point = S.pointAt && S.pointAt.id === id;
+      cx.save();
+      if (point && !reduced()) glow(x, y, 60, 'rgba(111,242,255,', 0.35 + 0.25 * Math.sin(S.t * 6));
+      cx.fillStyle = '#4a2a4f'; cx.strokeStyle = '#ffd56b'; cx.lineWidth = 4; cx.beginPath(); cx.arc(x, y, 27, 0, 7); cx.fill(); cx.stroke();
+      if (h.kind === 'shop') { cx.fillStyle = '#6ff2ff'; L.star(cx, x, y + 1, 17, 7, 5); }
+      else if (h.kind === 'perks') { cx.fillStyle = '#ffd56b'; L.star(cx, x, y + 1, 17, 7, 5); }
+      else { cx.fillStyle = '#f6e7c4'; cx.fillRect(x - 13, y - 10, 26, 20); cx.fillStyle = '#c9a24a'; cx.fillRect(x - 16, y - 12, 5, 24); cx.fillRect(x + 11, y - 12, 5, 24);
+        cx.fillStyle = '#8b6b3a'; cx.fillRect(x - 8, y - 5, 16, 3); cx.fillRect(x - 8, y + 2, 16, 3); }
+      if (h.news()) { cx.fillStyle = '#ff5a8a'; cx.strokeStyle = '#2a1a22'; cx.lineWidth = 3; cx.beginPath(); cx.arc(x + 20, y - 20, 9, 0, 7); cx.fill(); cx.stroke(); }
+      cx.restore();
+    }
+  }
+
   // ---------- daily quests and the Resonance Surge ----------
   const today = () => C.dayKey(new Date());
   // quests start with the Shop (their reward is Starshards); a new day brings three new ones
@@ -461,7 +488,8 @@
     if (kind === 'save') html = `<span class="eyebrow">Wave ${C.fmt(P.wave)} · boss</span><h2>The gate is breaking!</h2><p>Watch an ad to rebuild the gate and keep fighting this boss.</p>${btn('c-ad', 'Watch an ad: save the gate', 'gold')}${btn('c-no', 'Fall back', 'quiet')}`;
     if (kind === 'building') {
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
-      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} Resonance a second</span><h2>${b.name}</h2><p>${b.line}</p>`
+      const hall = HALLS[data] && HALLS[data].ok() ? HALLS[data] : null;
+      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} Resonance a second</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>`
         + `<p class="small">Next level: ${rfmt(r)} -> ${rfmt(r2)} a second${m ? `<br>Level ${m} doubles it` : ''}</p>`
         + btn('c-ok', `Level up · <i class="gem"></i>${C.fmt(c)}`, P.res >= c ? 'gold' : 'off') + `<span class="wait"></span>` + btn('c-no', 'Close', 'quiet');
     }
@@ -494,6 +522,7 @@
         body.querySelector('.wait').textContent = `About ${Math.max(1, Math.ceil((c - P.res) / (C.fightRate(P, B) * 1.6 + RATE)))}s of fighting`;
       });
       card.onclick = ev => { if (ev.target === card) close(); };
+      on('c-hall', () => { close(); openHall(data); });
     } else card.onclick = kind === 'shop' ? (ev => { if (ev.target === card) close(); }) : null;
     if (kind === 'ascend') on('c-ok', () => {
       P = C.ascend(P); refresh(); S.wisps = []; S.motes = []; S.enemies = []; S.shots = []; S.spawnQ = []; S.gateHp = 0; A.play('ascension', 0.7);
@@ -758,7 +787,7 @@
     if (S.plazaGlow > 0) glow(PLAZA.x, PLAZA.y, 80, RES_GLOW, 0.4 * S.plazaGlow);
     for (const m of S.motes) { const a = Math.sin(Math.PI * m.t / m.life); glow(m.x, m.y, m.r * 4, RES_GLOW, 0.35 * a); cx.globalAlpha = a; cx.fillStyle = '#fff0fb'; cx.beginPath(); cx.arc(m.x, m.y, m.r * 0.6, 0, 7); cx.fill(); cx.globalAlpha = 1; }
     cx.restore();
-    drawMarkers();
+    drawMarkers(); drawBadges();
     // the field, back to front
     for (const e of S.enemies.slice().sort((a, b) => a.y - b.y)) drawEnemy(e);
     if (img.wall) cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H);   // the wall is nearer the camera than anyone outside it
@@ -806,9 +835,9 @@
     el('unit').hidden = !P.firstSession;   // after the opening the crystal says it, and the top bar has room for the Shop
     el('city').textContent = `City ${P.restored.length}/10`;
     el('combos').textContent = P.combos.length < 3 ? `Combos ${P.combos.length}/3` : `Feats ${P.feats.length}/${C.FEATS.length}`;   // a collection to finish, always in view
-    el('shop').hidden = !P.shop.open; el('shop').classList.toggle('news', C.shopNews(P));
+    el('shop').hidden = true;   // the Shop lives in the Market now
     if (P.shop.open) C.questsFor(P, today());
-    el('quests').hidden = !P.shop.open; el('quests').classList.toggle('news', P.shop.open && C.questClaimable(P));
+    el('quests').hidden = true;   // quests and Feats live in the Library
     // the Surge button: running (x2 and time left), ready (free, or an ad in Full Launch), or charging
     const sb = el('surge'), now = Date.now(); sb.hidden = P.firstSession;
     if (!sb.hidden) {
@@ -819,8 +848,9 @@
       if (ready && !S.surgeTold) { S.surgeTold = true; toast('Surge ready: tap it for double Resonance'); }
     }
     el('rate').hidden = RATE <= 0; el('rateN').textContent = `+${rfmt(RATE)}/s`;
-    html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = !P.ascensions;   // perk points; the card it opens is titled Perks
-    if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the gold star'); }
+    html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
+    if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the Watchtower'); S.pointAt = { id: 'watchtower', t: 0 }; }
+    if (P.shop.open && C.questClaimable(P) && !S.questTold && !S.card) { S.questTold = true; toast('Quest done! Collect it at the Library'); S.pointAt = { id: 'library', t: 0 }; }
     el('stars').classList.toggle('news', C.PERKS.some(k => (P.perks[k.id] || 0) < k.max && P.perkPts >= C.perkCost(P, k.id)));
     const fork = C.pendingFork(P), uc = C.upgradeCost(P.gateLevel, B), up = el('up');
     up.querySelector('.label').textContent = fork ? 'New path!' : 'Upgrade';
@@ -846,12 +876,14 @@
     }
     // after the opening: point once at a building that can grow, until the player has levelled one
     let spot = null;
+    if (S.pointAt && (S.pointAt.t += 1 / 60) < 10 && !S.card && !target) { const [bx, by] = badgeAt(S.pointAt.id); spot = { hx: bx, hy: by }; target = 'bld'; }
     if (!target && !P.firstSession && !P.grown && !S.card && P.restored.length >= C.FIXED_ORDER && (toastT <= 0 || S.growTip)) {
       const id = P.restored.find(b => P.res >= C.levelCost(P, b, B));
       if (id && (S.growTipT || 0) < 20) { spot = CITY.spots[id]; target = 'bld'; if (!S.growTip) { S.growTip = true; S.growTipT = 0; toast('Tap a building to grow its Resonance'); } }
     }
     const hand = el('hand'); hand.className = target ? 'on ' + target : '';
-    hand.style.left = spot ? (sx(spot[0]) - 48) + 'px' : ''; hand.style.top = spot ? (sy(spot[1]) + 6) + 'px' : '';   // finger up, from under the building
+    hand.style.left = spot ? ((spot.hx !== undefined ? spot.hx : sx(spot[0])) - 48) + 'px' : '';
+    hand.style.top = spot ? ((spot.hy !== undefined ? spot.hy + 30 : sy(spot[1]) + 6)) + 'px' : '';   // finger up, from under the building or badge
   }
 
   // ---------- loop (never pauses on tab switch; only the player pauses) ----------
@@ -895,8 +927,9 @@
     // tap a restored building to level it up; a ruined one says what it will do once restored
     cv.addEventListener('click', ev => {
       if (S.card) return; const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H;
+      for (const id in HALLS) { const [bx, by] = badgeAt(id); if (HALLS[id].ok() && Math.hypot(x - bx, y - by) < 46 && openHall(id)) return; }
       for (const id of C.BUILDING_IDS) { const s = CITY.spots[id]; const dx = (x - sx(s[0])) / (s[2] * K * 0.8), dy = (y - sy(s[1])) / (s[3] * K * 0.8);
-        if (dx * dx + dy * dy < 1) { A.unlock(); if (P.restored.includes(id)) showCard('building', id); else { const b = C.byId(id); toast(`${b.name} (ruined). Restore it: ${b.line}`); } return; } }
+        if (dx * dx + dy * dy < 1) { A.unlock(); if (P.restored.includes(id)) showCard('building', id); else if (!openHall(id)) { const b = C.byId(id); toast(`${b.name} (ruined). Restore it: ${b.line}`); } return; } }
     });
     if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.documentElement.classList.add('keys');
   }

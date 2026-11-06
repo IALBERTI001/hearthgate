@@ -8,6 +8,12 @@ const KINDS = [['perks'], ['quests'], ['shop'], ['daily', { day: 3, big: false, 
     const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: w < 500 });
     await ctx.addInitScript(() => { if (!sessionStorage.s) { sessionStorage.s = 1; localStorage.setItem('hearthgate.profile.v1', JSON.stringify({ firstSession: false, lastSeen: Date.now(), daily: { day: new Date().toISOString().slice(0,10), streak: 1 }, restored: ['forge','frostSpire','stormBell'], combos: ['shatter'], res: 1e5, gateLevel: 20, wave: 30, bestWave: 30, ascensions: 4, perkPts: 6, shop: { open: true, shards: 50 } })); } });
     const p = await ctx.newPage(); await p.goto('http://localhost:8765/index.html?qa'); await p.waitForFunction(() => !document.getElementById('boot'));
+    // every on-screen control sits inside the stage (a CSS rule once moved the Surge button off screen, Nov 6 2026)
+    await p.waitForTimeout(400);
+    const off = await p.evaluate(() => { const st = document.getElementById('stage').getBoundingClientRect();
+      return ['#surge', '#pause', '#up', '#re', '#wave', '#city', '#combos'].filter(q => { const e = document.querySelector(q); if (!e || e.hidden) return false; const r = e.getBoundingClientRect();
+        return r.left < st.left - 1 || r.right > st.right + 1 || r.top < st.top - 1 || r.bottom > st.bottom + 1 || !r.width; }); });
+    if (off.length) bad.push(`${w}x${h} outside the stage: ${off.join(', ')}`);
     for (const [kind, data] of KINDS) {
       if (kind === 'quests') { await p.evaluate(() => Hearthgate.act('card', { kind: 'quests' })); }
       else await p.evaluate(([kind, data]) => Hearthgate.act('card', { kind, data }), [kind, data]);

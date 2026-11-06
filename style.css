@@ -237,7 +237,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .cardhead { display: flex; align-items: center; gap: 14px; }
 .cardhead h2 { margin-right: auto !important; margin-left: 0; text-align: left; }
 /* touch: on a phone the stage is drawn at about half size, so small buttons get an invisible hit area around them */
-.icon, .x, .tab, .buy, #surge, .perksbtn, .opt, .tog input { position: relative; }
+.icon, .x, .tab, .buy, .perksbtn, .opt { position: relative; }   /* #surge is already absolute */
 .icon::before, .x::before, .tab::before, .buy::before, #surge::before, .perksbtn::before { content: ''; position: absolute; inset: -14px; }
 .tab::before, .buy::before { inset: -6px -4px; }
 .perksbtn { overflow: visible !important; }
