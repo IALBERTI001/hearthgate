@@ -394,6 +394,7 @@
   // At 10/10 the player can Ascend: the city returns to ruins, the gate and waves restart, and Resonance and damage are
   // multiplied by 1.5 for good, stacking with each Ascension. Combos found and the best wave stay.
   const ASCEND_MULT = 1.5;
+  const ETERNAL_AT = 10;   // the 10th Ascension completes the Eternal City: a finale, and the game goes on
   // Each Ascension asks for a deeper run (Nov 6 2026): the city whole AND wave 30, 40, 50 ... reached in this run. Without it
   // the x1.5 per Ascension made every loop shorter (the 6th Ascension took 5 minutes at wave 15) and the new enemies and
   // events placed later in a run were never met.
@@ -632,7 +633,7 @@
   root.HGCore = { fmt, BUILDINGS, BUILDING_IDS, byId, FIXED_ORDER, COMBOS, restoreOffer, STAGES, FORKS, stageOf, pendingFork,
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
-    OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, cityWhole, ascendWave, ascend, defaults, sanitize,
+    OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, ETERNAL_AT, canAscend, cityWhole, ascendWave, ascend, defaults, sanitize,
     CITY, cityToBand, twinsFor, twinOf, STARS, starWave, starsDue, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
     SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;

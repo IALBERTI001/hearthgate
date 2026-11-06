@@ -303,7 +303,7 @@
     const before = C.towerDamage(P, B), stage = C.stageOf(P.gateLevel);
     P.res -= c; P.gateLevel++; quest('upgrade'); refresh(); S.gateHp = gateMax(); S.upsSinceRestore = (S.upsSinceRestore || 0) + 1;
     if (C.stageOf(P.gateLevel) > stage) { toast(`Gate stage ${C.stageOf(P.gateLevel)}! The towers grow.`); A.play('tier_up', 0.6); TOWERS.forEach(t => (t.flash = 1.5)); }
-    else { pop(GATE_X, WALL_FRONT - 240, `Damage ${C.fmt(before)} -> ${C.fmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach(t => (t.flash = 1.2)); A.play('tier_up', 0.25); }
+    else { pop(GATE_X, WALL_FRONT - 240, `Damage ${rfmt(before)} -> ${rfmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach(t => (t.flash = 1.2)); A.play('tier_up', 0.25); }
     save(); ui();
   }
   function restore() {
@@ -409,13 +409,13 @@
     const els = elements(), dmg = C.towerDamage(P, B), rate = 1 / C.fireInterval(B);
     TOWERS.forEach((t, i) => {
       const e = els.length ? els[i % els.length] : 'none';
-      tag(t.x, t.beacon ? t.y - 46 : t.y - 118, [`${C.fmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
+      tag(t.x, t.beacon ? t.y - 46 : t.y - 118, [`${rfmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
     });
     // the gate
     tag(GATE_X, WALL_FRONT + 58, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`], '#7bd15a');   // over the arch, clear of the tower labels
     // totals in one line under the counters
     const fight = C.fightRate(P, B) * surgeX();
-    tag(W / 2, 175, [`City +${rfmt(RATE * surgeX())}/s · fight about +${rfmt(fight)}/s · damage ${C.fmt(dmg)}`], '#ffd56b');
+    tag(W / 2, 175, [`City +${rfmt(RATE * surgeX())}/s · fight about +${rfmt(fight)}/s · damage ${rfmt(dmg)}`], '#ffd56b');
     bld(); S.tagRects = tagRects;   // kept for tools/qa/overlay-check.cjs
     cx.restore();
   }
@@ -680,7 +680,10 @@
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
     if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
-    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. ${(() => { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1); return un ? `<b>Unlocks: ${un.name}.</b> ` : ''; })()}The next run asks for wave ${Math.min(90, 35 + 5 * P.ascensions)} before it can Ascend. Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.${` You will earn <b>${C.perkPtsFor(P)} perk point${C.perkPtsFor(P) === 1 ? '' : 's'}</b> (1, plus 1 for every 25 waves reached).`}</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${rfmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. ${(() => { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1); return un ? `<b>Unlocks: ${un.name}.</b> ` : ''; })()}The next run asks for wave ${Math.min(90, 35 + 5 * P.ascensions)} before it can Ascend. ${P.ascensions + 1 < C.ETERNAL_AT ? `Ascension ${P.ascensions + 1} of ${C.ETERNAL_AT} on the road to the Eternal City. ` : P.ascensions + 1 === C.ETERNAL_AT ? '<b>This Ascension completes the Eternal City.</b> ' : ''}Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.${` You will earn <b>${C.perkPtsFor(P)} perk point${C.perkPtsFor(P) === 1 ? '' : 's'}</b> (1, plus 1 for every 25 waves reached).`}</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'eternal') html = `<span class="eyebrow">Ascension ${C.ETERNAL_AT}</span><h2>The Eternal City</h2><p>Ten times the city fell to ruin and ten times you raised it again. The Hearthgate stands for good, and its light will never go out.</p>`
+      + `<p class="small">Best wave ${C.fmt(P.bestWave)} · ${C.fmt(P.stats.kills)} enemies held back · ${C.fmt(P.stats.bosses)} bosses · ${P.feats.length}/${C.FEATS.length} Feats · ${P.stars.length}/${C.STARS.length} stars</p>`
+      + `<p class="small">The waves keep coming, and the city keeps growing: every Ascension from here still makes you stronger, with new twin events each run.</p>${btn('c-ok', 'Keep the light burning', 'gold')}`;
     if (kind === 'save') html = `<span class="eyebrow">Wave ${C.fmt(P.wave)} · boss</span><h2>The gate is breaking!</h2><p>Watch an ad to rebuild the gate and keep fighting this boss.</p>${btn('c-ad', 'Watch an ad: save the gate', 'gold')}${btn('c-no', 'Fall back', 'quiet')}`;
     if (kind === 'building') {
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
@@ -724,9 +727,11 @@
       P = C.ascend(P); refresh(); S.wisps = []; S.motes = []; S.enemies = []; S.shots = []; S.spawnQ = []; S.gateHp = 0; A.play('ascension', 0.7);
       S.cheerNext = 'A new dawn. Rebuild!'; startWave(); save(); close();
       const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions);
-      toast(un ? `Ascension ${P.ascensions} unlocks ${un.name}! ${un.line}` : `Ascension ${P.ascensions}: Resonance and damage x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))}`);
+      toast(un ? `Ascension ${P.ascensions} unlocks ${un.name}! ${un.line}` : `Ascension ${P.ascensions}: Resonance and damage x${rfmt(Math.pow(C.ASCEND_MULT, P.ascensions))}`);
       if (un && un.id === 'relics') S.pointAt = { id: 'watchtower', t: 0 };
+      if (P.ascensions === C.ETERNAL_AT) { const show = () => (S.card ? setTimeout(show, 1000) : showCard('eternal')); setTimeout(show, 1600); }
     });
+    if (kind === 'eternal') { on('c-ok', close); S.flash = { col: '#ffe08a', t: 0 }; S.shake = 0.3; A.play('feat', 0.7); SDK.happytime(); burst({ x: W / 2, y: PLAZA.y, size: 60 }, '#ffe08a', 60, 340); }
     if (kind === 'save') {
       on('c-ad', () => SDK.rewarded(adHooks).then(ok => { S.paused = false; close(); if (ok) { S.savedByAd = true; S.gateHp = gateMax(); toast('The gate is rebuilt!'); } else gateBroken(true); }));
       on('c-no', () => { S.paused = false; close(); gateBroken(true); });
@@ -1023,6 +1028,7 @@
     // the city's Resonance: the fountain flares as wisps land, motes rise from every restored building
     cx.save();
     if (S.plazaGlow > 0) glow(PLAZA.x, PLAZA.y, 80, RES_GLOW, 0.4 * S.plazaGlow);
+    if (P.ascensions >= C.ETERNAL_AT && P.restored.length >= 5) glow(PLAZA.x, PLAZA.y - 10, 120, 'rgba(255,224,138,', 0.22 + (reduced() ? 0 : 0.06 * Math.sin(S.t * 1.5)));   // the Eternal City's light
     for (const m of S.motes) { const a = Math.sin(Math.PI * m.t / m.life); glow(m.x, m.y, m.r * 4, RES_GLOW, 0.35 * a); cx.globalAlpha = a; cx.fillStyle = '#fff0fb'; cx.beginPath(); cx.arc(m.x, m.y, m.r * 0.6, 0, 7); cx.fill(); cx.globalAlpha = 1; }
     cx.restore();
     drawMarkers(); drawBadges(); drawCheer();
