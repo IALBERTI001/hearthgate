@@ -167,4 +167,9 @@ assert.strictEqual(C.sanitize({ ascensions: 3, perks: {}, perkPts: 1 }).perkPts,
 const ow = C.defaults(); ow.lastSeen = 1e12; ow.wave = 10; const ob = C.bonuses(ow);
 const cap0 = C.offlineEarnings(ow, ob, 1e12 + 24 * 3600e3).secs; ow.perks.night = 2; assert.strictEqual(C.offlineEarnings(ow, C.bonuses(ow), 1e12 + 24 * 3600e3).secs, cap0 + 4 * 3600, 'Night Watch extends the cap');
 const sp2 = C.defaults(); sp2.perks.surge = 2; assert.strictEqual(C.surgeCooldown(sp2), C.SURGE_COOLDOWN_MS - 6 * 60e3);
+// Every Feat can be earned (owner's report, Nov 6 2026: "Own every look" needed 27 but only 20 looks can be bought).
+const all = C.defaults(); all.shop.open = true; all.shop.shards = 1e6;
+for (const it of C.SHOP) if (it.price) C.buy(all, it.id);
+const wardrobe = C.FEATS.find(f => f.id.startsWith('looks') && f.tier === 3);
+assert.ok(C.featProgress(all, wardrobe) >= wardrobe.need, `owning every look completes ${wardrobe.name}`);
 console.log('core tests passed');

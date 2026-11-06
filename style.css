@@ -265,3 +265,12 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 #card.shop .grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: start; padding-bottom: 30px; scrollbar-width: thin; scrollbar-color: var(--brass) #1a0f15;
   -webkit-mask-image: linear-gradient(#000 calc(100% - 36px), transparent); mask-image: linear-gradient(#000 calc(100% - 36px), transparent); }
 #card.shop .detail { flex: none; margin-top: 0; min-height: 0; }
+/* the stats overlay switch: three bars; gold when on */
+.statsbtn { margin-left: 0 !important; display: grid; place-items: center; }
+#hud .statsbtn { order: 0; }
+#surge[hidden] + .statsbtn { margin-left: auto !important; }
+.bars { width: 28px; height: 26px; background: linear-gradient(90deg, var(--ink) 0 6px, transparent 6px 11px, var(--ink) 11px 17px, transparent 17px 22px, var(--ink) 22px 28px);
+  -webkit-mask: linear-gradient(transparent 0 14px, #000 14px) 0 0 / 6px 100% no-repeat, linear-gradient(transparent 0 4px, #000 4px) 11px 0 / 6px 100% no-repeat, linear-gradient(transparent 0 9px, #000 9px) 22px 0 / 6px 100% no-repeat;
+  mask: linear-gradient(transparent 0 14px, #000 14px) 0 0 / 6px 100% no-repeat, linear-gradient(transparent 0 4px, #000 4px) 11px 0 / 6px 100% no-repeat, linear-gradient(transparent 0 9px, #000 9px) 22px 0 / 6px 100% no-repeat; }
+.statsbtn.on { background: var(--brass); } .statsbtn.on .bars { background: var(--plum-dark); }
+#stats + #pause { margin-left: 0; }

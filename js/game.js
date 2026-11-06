@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06h';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06i';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -312,6 +312,48 @@
       cx.restore();
     }
   }
+
+
+  // ---------- the stats overlay (owner's request, Nov 6 2026): a see-through layer with only the numbers ----------
+  // Each building's level and Resonance a second, each tower's damage and shots a second, the gate's health and every
+  // enemy's health. Toggled by the bars button in the top bar (or I); the fight goes on underneath and taps still work.
+  function tag(x, y, lines, col, align = 'center') {
+    cx.font = '26px "HG Display", sans-serif'; const w = Math.max(...lines.map(l => cx.measureText(l).width)) + 18, h = 30 * lines.length + 6;
+    const x0 = Math.max(6, Math.min(W - 6 - w, align === 'center' ? x - w / 2 : x));   // labels stay on screen
+    cx.fillStyle = 'rgba(24,12,20,.82)'; cx.strokeStyle = col; cx.lineWidth = 2;
+    cx.beginPath(); cx.roundRect(x0, y - h / 2, w, h, 10); cx.fill(); cx.stroke();
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    lines.forEach((l, i) => { cx.fillStyle = i ? '#f1e3c8' : col; cx.fillText(l, x0 + w / 2, y - h / 2 + 18 + i * 30); });
+  }
+  function drawStats() {
+    if (!P.settings.stats || S.card || root.__storeCapture) return;
+    cx.save();
+    cx.fillStyle = 'rgba(20,10,18,.45)'; cx.fillRect(0, CITY_Y - 40, W, CITY_H + 40);   // dim the town so the numbers read
+    // buildings
+    for (const id of C.BUILDING_IDS) {
+      const sp = CITY.spots[id], x = sx(sp[0]), y = sy(sp[1]) + 8, b = C.byId(id);
+      if (P.restored.includes(id)) tag(x, y, [`${b.name} · Lv ${C.levelOf(P, id)}`, `+${rfmt(C.buildingRate(P, id, B) * surgeX())}/s`], '#ff9ce8');
+      else { cx.globalAlpha = 0.75; tag(x, y, [b.name, 'ruined'], '#a99a86'); cx.globalAlpha = 1; }
+    }
+    // towers: damage per hit for the element each tower is firing now, and shots a second
+    const els = elements(), dmg = C.towerDamage(P, B), rate = 1 / C.fireInterval(B);
+    TOWERS.forEach((t, i) => {
+      const e = els.length ? els[i % els.length] : 'none';
+      tag(t.x, t.y - 118, [`${C.fmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
+    });
+    // the gate
+    tag(GATE_X, WALL_FRONT - 60, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`], '#7bd15a');
+    // totals in one line under the counters
+    const fight = C.fightRate(P, B) * surgeX();
+    tag(W / 2, 175, [`City +${rfmt(RATE * surgeX())}/s · fight about +${rfmt(fight)}/s · damage ${C.fmt(dmg)}`], '#ffd56b');
+    cx.restore();
+  }
+  function drawEnemyHp(e) {
+    if (!P.settings.stats || e.dying || root.__storeCapture) return;
+    cx.font = '22px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineWidth = 4; cx.strokeStyle = '#1a0f15';
+    const t = C.fmt(Math.max(0, e.hp)); cx.strokeText(t, e.x, e.y - e.size - 22); cx.fillStyle = '#fff4dc'; cx.fillText(t, e.x, e.y - e.size - 22);
+  }
+  function toggleStats() { A.unlock(); P.settings.stats = !P.settings.stats; el('stats').classList.toggle('on', P.settings.stats); A.play('claim', 0.25); save(); }
 
   // ---------- daily quests and the Resonance Surge ----------
   const today = () => C.dayKey(new Date());
@@ -668,6 +710,7 @@
     const bw = e.boss ? 120 : 44, by = e.y - e.size - 8;
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(e.x - bw / 2 - 2, by - 2, bw + 4, 9);
     cx.fillStyle = e.boss ? '#ff6a3a' : e.armour ? '#c8c2b4' : '#e5533d'; cx.fillRect(e.x - bw / 2, by, bw * Math.max(0, e.hp / e.max), 5);
+    drawEnemyHp(e);
   }
 
   function drawShot(s) {
@@ -802,7 +845,7 @@
     for (const e of S.enemies.slice().sort((a, b) => a.y - b.y)) drawEnemy(e);
     if (img.wall) cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H);   // the wall is nearer the camera than anyone outside it
     drawGateBar();
-    drawBossBar();
+    drawBossBar(); drawStats();
     drawTowers();
     for (const s of S.shots) drawShot(s);
     for (const h of S.hits) L.drawHit(cx, h);
@@ -921,7 +964,7 @@
 
   // ---------- boot ----------
   function bind() {
-    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
+    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('stats').addEventListener('click', toggleStats); el('stats').classList.toggle('on', P.settings.stats); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
     el('shop').addEventListener('click', () => { if (S.card === 'shop') { const x = el('card').querySelector('#c-no'); if (x) x.click(); } else openShopCard(); });
     el('pause').addEventListener('click', () => {
       A.unlock();
@@ -932,7 +975,7 @@
     root.addEventListener('keydown', e => {
       if (e.repeat) return; const key = e.key.toLowerCase();
       if (S.card) { if (key === 'enter') { const b = el('card').querySelector('#c-ok'); if (b) { e.preventDefault(); b.click(); } } return; }
-      if (key === 'u') upgrade(); else if (key === 'r') restore(); else if (key === 'p') el('pause').click(); else if (key === 's') openShopCard(); else if (key === 'q' && P.shop.open && !S.card) showCard('quests'); else if (key === 'x') surgeTap();
+      if (key === 'u') upgrade(); else if (key === 'r') restore(); else if (key === 'p') el('pause').click(); else if (key === 's') openShopCard(); else if (key === 'q' && P.shop.open && !S.card) showCard('quests'); else if (key === 'x') surgeTap(); else if (key === 'i') toggleStats();
     });
     root.addEventListener('pointerdown', () => A.unlock(), { once: true });
     // tap a restored building to level it up; a ruined one says what it will do once restored

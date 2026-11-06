@@ -299,8 +299,11 @@
     .forEach(([n, nm, t]) => feat('gate' + n, nm, t, `Upgrade the gate to level ${n}`, p => p.gateLevel, n));
   [[10, 'Humming Halls', 1], [25, 'Resonant', 2], [50, 'Heart of the City', 3]]
     .forEach(([n, nm, t]) => feat('blvl' + n, nm, t, `Get one building to level ${n}`, p => Math.max(0, ...p.restored.map(id => p.levels[id] || 1)), n));
-  [[3, 'New Look', 1], [10, 'Collector', 2], [SHOP.length, 'Grand Wardrobe', 3]]
-    .forEach(([n, nm, t]) => feat('looks' + n, nm, t, n === SHOP.length ? 'Own every look' : `Own ${n} looks`, p => p.shop.owned.filter(id => shopItem(id).price).length, n));
+  // counts looks bought in the Shop; the seven starting looks are free, so "every look" is every one with a price
+  // (owner's report, Nov 6 2026: the old goal was all 27, which counted the free ones and could never be reached)
+  const BUYABLE = SHOP.filter(i => i.price).length;
+  [[3, 'New Look', 1], [10, 'Collector', 2], [BUYABLE, 'Grand Wardrobe', 3]]
+    .forEach(([n, nm, t]) => feat('looks' + n, nm, t, n === BUYABLE ? 'Buy every look in the Shop' : `Buy ${n} looks`, p => p.shop.owned.filter(id => shopItem(id).price).length, n));
   [[10, 'Errand Runner', 1], [50, 'Questkeeper', 2]]
     .forEach(([n, nm, t]) => feat('quests' + n, nm, t, `Finish ${n} daily quests`, p => p.stats.quests, n));
   [[5, 'Surge Rider', 1], [25, 'Storm of Light', 2]]
@@ -357,7 +360,7 @@
   function defaults() {
     return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
-      settings: { music: true, sfx: true, reduced: false } };
+      settings: { music: true, sfx: true, reduced: false, stats: false } };
   }
   const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(hi, Math.max(lo, v)) : d;
   const LEGACY = { b4: 'bakery', b5: 'market', b6: 'tavern', b7: 'granary', b8: 'library', b9: 'cottages', b10: 'watchtower' };
@@ -403,7 +406,7 @@
       out.daily.streak = Math.floor(num(p.daily.streak, 0, 1e6, 0));
       out.daily.claimedTotal = Math.floor(num(p.daily.claimedTotal, 0, 1e15, 0));
     }
-    if (p.settings && typeof p.settings === 'object') for (const k of ['music', 'sfx', 'reduced']) {
+    if (p.settings && typeof p.settings === 'object') for (const k of ['music', 'sfx', 'reduced', 'stats']) {
       if (typeof p.settings[k] === 'boolean') out.settings[k] = p.settings[k];
     }
     return out;
