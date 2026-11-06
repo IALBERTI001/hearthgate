@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06i';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06j';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -16,11 +16,11 @@
   const FIELD_TOP = 250;   // nothing that moves or floats goes above this line: the HUD lives there
   const RANGE_Y = 196;   // towers reach the whole field below the treeline, on every screen height
   const ELEMENT = { forge: 'fire', frostSpire: 'frost', stormBell: 'storm' };
-  const COLOR = { fire: '#ff8a3a', frost: '#9fe8ff', storm: '#c98bff', none: '#efe2c0' };
+  const COLOR = { fire: '#ff8a3a', frost: '#9fe8ff', storm: '#c98bff', earth: '#e0b062', none: '#efe2c0' };
   const L = root.HGLooks, SHARD = '#6ff2ff';   // Starshards: the Shop's currency, a bright cyan star
   const RES = '#ff8ae6', RES_GLOW = 'rgba(255,110,220,';   // Resonance: the city's magic, rose-pink so it reads on green grass
   const PLAZA = { x: sx(CITY.focus[0]), y: sy(CITY.focus[1]) };   // the fountain every wisp flies into
-  const GLOW = { fire: 'rgba(255,140,50,', frost: 'rgba(140,220,255,', storm: 'rgba(200,140,255,', none: 'rgba(255,240,200,' };
+  const GLOW = { fire: 'rgba(255,140,50,', frost: 'rgba(140,220,255,', storm: 'rgba(200,140,255,', earth: 'rgba(225,175,90,', none: 'rgba(255,240,200,' };
 
   // ---------- state ----------
   let P = load(), B = C.bonuses(P);
@@ -37,26 +37,29 @@
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
   if (/[?&]qa\b/.test(location.search)) Object.assign(root.Hearthgate, {
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
-    act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
+    act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'gold' && S.gold) tapGold(S.gold.x, S.gold.y); if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
     card: () => S.card
   });
 
   const gateMax = () => C.gateMax(P, B);
-  const elements = () => P.restored.map(b => ELEMENT[b]).filter(Boolean);
+  const has = id => P.restored.includes(id);
+  // the Earth element joins the towers from the 4th Ascension on (Nov 6 2026)
+  const elements = () => { const e = P.restored.map(b => ELEMENT[b]).filter(Boolean); if (e.length && C.unlocked(P, 'earth')) e.push('earth'); return e; };
   const reduced = () => P.settings.reduced || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- waves ----------
   const CHEERS = ['Keep it up!', 'Great job!', 'WOOOAHH!', 'Unstoppable!', 'Hold the line!', 'Nice work!', 'You got this!',
     'Crushing it!', 'On fire!', 'Legendary!', 'The city cheers you on!', 'Brick by brick!'];
   function startWave() {
-    const n = P.wave, boss = C.isBoss(n);
+    const n = P.wave, boss = C.isBoss(n); S.trial = C.isTrial(P, n);
+    S.event = C.eventFor(P, n); const evNew = S.event && !P.seenEvents.includes(S.event.id); if (S.event && evNew) P.seenEvents.push(S.event.id);
     const cheer = S.cheerNext || (n === 1 ? ['Good luck!', 'How far will you go?'][Math.floor(Math.random() * 2)]
       : boss ? 'Boss incoming. Hold the gate!' : n % 50 === 0 ? 'HALFWAY TO GLORY!' : CHEERS[(n * 7 + 3) % CHEERS.length]);
     S.cheerNext = null;
-    const mix = C.waveMix(n);
+    const mix = C.eventMix(C.waveMix(n), S.event);
     // the first wave of each session (after the first) names today's Omen
     const om = !S.omenTold && P.omen && C.OMENS.find(o => o.id === P.omen); if (om) S.omenTold = true;
-    S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : cheer, big: boss, t: 0, roles: mix.map(([r]) => r) };
+    S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : S.trial ? 'TRIAL! Win it for Starshards' : S.event ? `${evNew ? 'NEW! ' : ''}${S.event.name}: ${S.event.line}` : cheer, big: boss || S.trial || !!S.event, t: 0, roles: mix.map(([r]) => r) };
     A.boss(boss);   // boss waves get the battle theme; every other wave the calm playlist
     if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('boss_horn', 0.6); }   // a boss wave is an event: red edges, a rumble
     S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax();
@@ -65,19 +68,24 @@
     for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
     S.spawnQ = q.sort((a, b) => (a === 'boss') - (b === 'boss')); S.spawnT = 1.0;
   }
-  function spawn(role) {
-    const R = C.ROLES[role], hp = C.enemyHp(P.wave, role);
+  function spawn(role, at) {
+    const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && S.event.id === 'bloodmoon' ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1);
+    if (R.tip && !P.seenRoles.includes(role)) { P.seenRoles.push(role); setTimeout(() => toast(`New: ${R.label}! ${R.tip}`), 400); }
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
     const lead = (S.packN || 0) % 3 === 0 || role === 'boss' || role === 'swarm';
-    const x0 = lead ? (S.packX = 80 + Math.random() * 560) : Math.max(70, Math.min(650, S.packX + (Math.random() - 0.5) * 140)), y0 = FIELD_TOP + (R.size > 150 ? 70 : 0) + Math.random() * 40;
+    let x0 = lead ? (S.packX = 80 + Math.random() * 560) : Math.max(70, Math.min(650, S.packX + (Math.random() - 0.5) * 140)), y0 = FIELD_TOP + (R.size > 150 ? 70 : 0) + Math.random() * 40;
+    if (at) { x0 = Math.max(60, Math.min(660, at[0])); y0 = Math.min(WALL_FRONT - 4, at[1]); }
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.fx.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
     S.enemies.push({ role, sheet: R.sheet, x: x0, y: y0, off: (Math.random() - 0.5) * 330, hp, max: hp,
-      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414, size: R.size, armour: R.armour || 0, weak: R.weak, boss: role === 'boss', frame: Math.random() * 6,
-      chill: 0, burn: 0, flash: 0, born: S.t, dying: 0 });
+      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (S.event.id === 'stampede' || S.event.id === 'eclipse' || S.event.id === 'frenzy') ? 1.3 : S.event && S.event.id === 'blizzard' ? 0.75 : 1), size: R.size, armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
+      chill: 0, burn: 0, flash: 0, born: S.t - (at ? 0.6 : 0), dying: 0, stun: 0, summonT: R.summon || 0, tint: S.event && S.event.id === 'golden' ? 'gold' : R.tint, shield: !!R.shield || !!(S.event && S.event.id === 'mirror') });
   }
 
   // ---------- simulation ----------
-  const TOWERS = PLATFORMS.map((p, i) => ({ x: p.x, y: p.y, cd: 0.2 + i * 0.13, recoil: 0, flash: 0, n: i }));
+  const TOWERS4 = PLATFORMS.map((p, i) => ({ x: p.x, y: p.y, cd: 0.2 + i * 0.13, recoil: 0, flash: 0, n: i }));
+  const TOWER5 = { x: GATE_X, y: sy(CITY.wallTop) + 6, cd: 0.4, recoil: 0, flash: 0, n: 4, gate: true };   // on the gatehouse roof
+  let TOWERS = TOWERS4.slice();
+  const syncTowers = () => { TOWERS = has('watchtower') ? TOWERS4.concat(TOWER5) : TOWERS4.slice(); };
   function step() {
     if ((S.featT = (S.featT || 0) + DT) > 0.5) { S.featT = 0; checkFeats(); }
     if (S.bossWarn !== undefined && (S.bossWarn += DT) > 2.6) S.bossWarn = undefined;
@@ -89,7 +97,9 @@
     if (S.spawnQ.length && (S.spawnT -= DT) <= 0) { const r = S.spawnQ.shift(); spawn(r); S.packN = (S.packN || 0) + 1; const gap = Math.max(0.45, 1.35 - P.wave * 0.02);
       S.spawnT = r === 'swarm' ? 0.28 : S.packN % 3 ? 0.3 : gap * 3 - 0.6; }   // packs of three, same total pace
     if (B.regen) S.gateHp = Math.min(gateMax(), S.gateHp + gateMax() * B.regen * DT);
-    const els = elements(), interval = C.fireInterval(B);
+    syncTowers();
+    const els = elements(), interval = C.fireInterval(B) * (S.cheerT > 0 ? 0.5 : 1) * (S.event && S.event.id === 'frenzy' ? 0.7 : 1);   // the Tavern's Cheer: towers fire twice as fast
+    tickExtras();
     for (const t of TOWERS) {
       t.recoil = Math.max(0, t.recoil - DT * 6); t.flash = Math.max(0, t.flash - DT * 5);
       if ((t.cd -= DT) > 0) continue;
@@ -112,8 +122,12 @@
     for (const e of S.enemies) {
       if (e.dying) { e.dying += DT; continue; }
       if (e.burn > 0) { e.burn -= DT; e.hp -= C.towerDamage(P, B) * (1 + B.fire) * 0.5 * DT * (e.weak === 'fire' ? 2 : 1); }
-      e.chill = Math.max(0, e.chill - DT); e.flash = Math.max(0, e.flash - DT * 6);
-      const slow = e.chill > 0 ? (e.weak === 'frost' ? 0.3 : 0.45) : 1;
+      e.chill = Math.max(0, e.chill - DT); e.flash = Math.max(0, e.flash - DT * 6); e.stun = Math.max(0, (e.stun || 0) - DT);
+      const RR = C.ROLES[e.role];
+      if (RR.heal && !(e.burn > 0)) for (const o of S.enemies) if (o !== e && !o.dying && o.hp < o.max && Math.hypot(o.x - e.x, o.y - e.y) < 130) { o.hp = Math.min(o.max, o.hp + o.max * RR.heal * DT); o.healed = 0.3; }
+      if (RR.summon && (e.summonT -= DT) <= 0) { e.summonT = RR.summon; spawnAt('runner', e.x + 50, e.y); spawnAt('runner', e.x - 50, e.y); }
+      if (e.healed) e.healed = Math.max(0, e.healed - DT);
+      const slow = e.stun > 0 ? 0 : e.chill > 0 ? (e.weak === 'frost' ? 0.3 : 0.45) : 1;
       e.frame += DT * 8 * slow;
       if (e.y < WALL_FRONT) {
         e.y = Math.min(WALL_FRONT, e.y + e.sp * slow * DT);
@@ -145,7 +159,11 @@
   }
 
   function hit(e, el) {
-    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)); const comboMul = 1 + B.combo;
+    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)) * (e.boss ? 1 + B.bossDmg : 1) * (S.event && ((S.event.id === 'thunder' && el === 'storm') || (S.event.id === 'blizzard' && el === 'frost') || (S.event.id === 'inferno' && el === 'fire')) ? 2 : 1);
+    const comboMul = (1 + B.combo) * (S.event && S.event.id === 'eclipse' ? 2 : 1);
+    if (e.shield) { if (el === 'storm') { e.shield = false; burst(e, '#bfe8ff', 16, 220); pop(e.x, e.y - e.size - 30, 'SHIELD BROKEN', '#bfe8ff', 1, 30); } else d *= 0.2; }
+    if (el === 'earth') { e.stun = 0.6; if (e.chill > 0) { d *= 2.5 * comboMul; combo('quake', e, 'QUAKE!', COLOR.earth); S.shake = 0.25; e.bigHit = true;
+      S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 90).forEach(o => { o.hp -= d * 0.5; o.flash = 1; o.stun = 0.4; }); } }
     if (e.armour && el !== 'fire') d *= 1 - e.armour;                 // armour: only Fire bites fully
     if (el === 'fire') {
       if (e.chill > 0) { d *= 3 * comboMul; combo('shatter', e, 'SHATTER!', COLOR.frost); burst(e, COLOR.frost, 22, 260); A.play('shatter_combo', 0.5); e.bigHit = true; }
@@ -154,36 +172,43 @@
     if (el === 'frost') { e.chill = 2.2; if (e.weak === 'frost') d *= 1.3; }
     if (el === 'storm') {
       const jumps = e.chill > 0 ? 4 : 2;
-      if (e.chill > 0) { combo('frostStorm', e, 'SUPERCHAIN!', COLOR.storm); A.play('conduction_combo', 0.45); }
+      if (e.chill > 0) { combo('frostStorm', e, 'SUPERCHAIN!', COLOR.storm); A.play('conduction_combo', 0.45); if (C.ROLES[e.role].comboWeak) e.bigHit = true; }
       if (e.burn > 0) { combo('fireStorm', e, 'FIRESTORM!', COLOR.fire); A.play('freeze_combo', 0.45); }
+      if (S.event && S.event.id === 'gale' && !e.boss) e.y = Math.max(FIELD_TOP, e.y - 30);
       const chainD = d * 0.6 * (e.chill > 0 || e.burn > 0 ? comboMul : 1) * (e.weak === 'storm' ? 2 : 1);
       S.enemies.filter(o => o !== e && !o.dying).sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y))
         .slice(0, jumps).forEach(o => { o.hp -= chainD; o.flash = 1; if (e.burn > 0) o.burn = 2; S.pops.push({ arc: [e.x, e.y - e.size * 0.45, o.x, o.y - o.size * 0.45], t: 0, life: 0.2 }); });
     }
+    if (C.ROLES[e.role].comboWeak && e.bigHit) d *= C.ROLES[e.role].comboWeak;
     e.hp -= d; e.flash = 1;
     const hs = P.shop.equip.hit;
     burst(e, COLOR[el], el === 'none' ? 4 : hs === 'hit-classic' ? 6 : 3, 120);
     if (hs !== 'hit-classic' && S.hits.length < 30) S.hits.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col: COLOR[el], style: hs, seed: Math.random() * 6 });
-    A.play(el === 'frost' ? 'ice_contact_0' : el === 'storm' ? 'lightning_contact_0' : el === 'fire' ? 'fire_contact_0' : 'ice_contact_0', 0.12);
+    A.play(el === 'frost' ? 'ice_contact_0' : el === 'storm' ? 'lightning_contact_0' : el === 'fire' || el === 'earth' ? 'fire_contact_0' : 'ice_contact_0', 0.12);
     if (e.dp && e.dp.t < 0.25 && S.pops.includes(e.dp) && !e.bigHit) { e.dp.val += d; e.dp.text = C.fmt(e.dp.val); }
     else { e.dp = pop(e.x, e.y - e.size * 0.55, C.fmt(d), e.bigHit ? '#ffffff' : COLOR[el], e.bigHit ? 0.9 : 0.7, e.bigHit ? 56 : 30); e.dp.val = d; }
     e.bigHit = false;
   }
   function combo(id, e, word, col) {
     quest('combo'); if (id === 'shatter') quest('shatter');
+    if (has('tavern') && !(S.cheerT > 0)) { S.cheer = Math.min(1, (S.cheer || 0) + 0.06); if (S.cheer >= 1) startCheer(); }
     // one combo word on screen at a time, so words never pile into each other
     // above the enemy, or below it near the treeline, so it never sits on the +N
     S.pops = S.pops.filter(p => !p.combo);
     S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
     if (id === 'shatter' && S.t - (S.lastFlash || -9) > 1.2) { S.flash = { col, t: 0 }; S.lastFlash = S.t; }   // the signature combo lights the screen
-    if (!P.combos.includes(id)) { P.combos.push(id); if (P.shop.open) P.shop.shards += C.SHARDS.combo; toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/3`); save(); }
+    if (!P.combos.includes(id)) { P.combos.push(id); if (P.shop.open) P.shop.shards += C.SHARDS.combo; toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/${comboTotal()}`); save(); }
   }
   function kill(e) {
-    e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX(); quest('kills');
+    e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX() * (e.boss ? 1 + bossRank() : 1) * (S.event && S.event.id === 'golden' ? 2 : S.event && S.event.id === 'bloodmoon' ? 3 : 1); quest('kills');
+    const R = C.ROLES[e.role];
+    if (R.split) for (let k = 0; k < R.split; k++) spawnAt('swarm', e.x + (k - (R.split - 1) / 2) * 34, e.y - 4);
+    if (R.chest) { const amt = C.fightRate(P, B) * 1.6 * 5 * surgeX(); P.res += amt; pop(e.x, e.y - e.size - 40, `Treasure! +${C.fmt(amt)}`, '#ffd56b', 1.3, 40);
+      if (P.shop.open && Math.random() < 0.3) { P.shop.shards += 1; pop(e.x, e.y - e.size - 80, '+1 Starshard', SHARD, 1.3, 34); } A.play('buy', 0.45); }
     wisp(e, gain); pop(e.x + 28, e.y - e.size * 0.2, '+' + C.fmt(gain), '#ff9ce8', 0.9, 34);
     burst(e, e.sheet === 'golem' ? '#b9b2a2' : e.sheet === 'beetle' ? '#ff9a4a' : '#8fe05a', e.boss ? 30 : 12, e.boss ? 260 : 160);
-    if (e.boss || e.role === 'armoured') A.play('golem_death', 0.5);
+    if (e.boss || e.role === 'armoured' || e.role === 'ironhide') A.play('golem_death', 0.5);
   }
   function wisp(e, amt) {
     if (S.wisps.length > 40) { P.res += amt; S.plazaGlow = 1; return; }   // a huge swarm: pay at once rather than flood the sky
@@ -195,6 +220,8 @@
   function flushWisps() { for (const w of S.wisps) P.res += w.amt; S.wisps = []; }
   function waveCleared() {
     quest('waves');
+    if (S.trial) { const n = 3 + Math.floor(P.wave / 20); if (P.shop.open) P.shop.shards += n; pop(W / 2, 380, `TRIAL WON! +${n} Starshards`, SHARD, 1.6, 44); A.play('feat', 0.5); S.trialsWon = (S.trialsWon || 0) + 1; }
+    if (has('cottages') && S.gateHp < gateMax()) repairGate();
     if (C.isBoss(P.wave)) {
       quest('boss');
       pop(W / 2, 330, 'BOSS DOWN!', '#ffd56b', 1.8, 60); SDK.happytime(); A.play('tier_up', 0.6);
@@ -317,24 +344,30 @@
   // ---------- the stats overlay (owner's request, Nov 6 2026): a see-through layer with only the numbers ----------
   // Each building's level and Resonance a second, each tower's damage and shots a second, the gate's health and every
   // enemy's health. Toggled by the bars button in the top bar (or I); the fight goes on underneath and taps still work.
+  // labels never overlap (owner's screenshot, Nov 6 2026: late-game numbers grew wide and piled into each other):
+  // each label is placed, and if it touches one already drawn this frame it steps down, then up, then sideways
+  let tagRects = [];
   function tag(x, y, lines, col, align = 'center') {
-    cx.font = '26px "HG Display", sans-serif'; const w = Math.max(...lines.map(l => cx.measureText(l).width)) + 18, h = 30 * lines.length + 6;
-    const x0 = Math.max(6, Math.min(W - 6 - w, align === 'center' ? x - w / 2 : x));   // labels stay on screen
+    cx.font = '24px "HG Display", sans-serif'; const w = Math.max(...lines.map(l => cx.measureText(l).width)) + 16, h = 27 * lines.length + 6;
+    let x0 = Math.max(6, Math.min(W - 6 - w, align === 'center' ? x - w / 2 : x));   // labels stay on screen
+    const hits = (a, b) => a[0] < b[0] + b[2] + 4 && b[0] < a[0] + a[2] + 4 && a[1] < b[1] + b[3] + 4 && b[1] < a[1] + a[3] + 4;
+    const tries = [[0, 0], [0, h + 6], [0, -(h + 6)], [w * 0.6, 0], [-w * 0.6, 0], [0, 2 * (h + 6)]];
+    for (const [dx, dy] of tries) { const r = [Math.max(6, Math.min(W - 6 - w, x0 + dx)), y - h / 2 + dy, w, h]; if (!tagRects.some(o => hits(r, o))) { x0 = r[0]; y = r[1] + h / 2; break; } }
+    tagRects.push([x0, y - h / 2, w, h]);
     cx.fillStyle = 'rgba(24,12,20,.82)'; cx.strokeStyle = col; cx.lineWidth = 2;
     cx.beginPath(); cx.roundRect(x0, y - h / 2, w, h, 10); cx.fill(); cx.stroke();
     cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    lines.forEach((l, i) => { cx.fillStyle = i ? '#f1e3c8' : col; cx.fillText(l, x0 + w / 2, y - h / 2 + 18 + i * 30); });
+    lines.forEach((l, i) => { cx.fillStyle = i ? '#f1e3c8' : col; cx.fillText(l, x0 + w / 2, y - h / 2 + 17 + i * 27); });
   }
   function drawStats() {
     if (!P.settings.stats || S.card || root.__storeCapture) return;
-    cx.save();
+    cx.save(); tagRects = [];
     cx.fillStyle = 'rgba(20,10,18,.45)'; cx.fillRect(0, CITY_Y - 40, W, CITY_H + 40);   // dim the town so the numbers read
-    // buildings
-    for (const id of C.BUILDING_IDS) {
+    const bld = () => { for (const id of C.BUILDING_IDS) {
       const sp = CITY.spots[id], x = sx(sp[0]), y = sy(sp[1]) + 8, b = C.byId(id);
-      if (P.restored.includes(id)) tag(x, y, [`${b.name} · Lv ${C.levelOf(P, id)}`, `+${rfmt(C.buildingRate(P, id, B) * surgeX())}/s`], '#ff9ce8');
-      else { cx.globalAlpha = 0.75; tag(x, y, [b.name, 'ruined'], '#a99a86'); cx.globalAlpha = 1; }
-    }
+      if (P.restored.includes(id)) tag(x, y, [`Lv ${C.levelOf(P, id)}`, `+${rfmt(C.buildingRate(P, id, B) * surgeX())}/s`], '#ff9ce8');
+      else { cx.globalAlpha = 0.7; tag(x, y, [b.name], '#a99a86'); cx.globalAlpha = 1; }
+    } };
     // towers: damage per hit for the element each tower is firing now, and shots a second
     const els = elements(), dmg = C.towerDamage(P, B), rate = 1 / C.fireInterval(B);
     TOWERS.forEach((t, i) => {
@@ -342,10 +375,11 @@
       tag(t.x, t.y - 118, [`${C.fmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
     });
     // the gate
-    tag(GATE_X, WALL_FRONT - 60, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`], '#7bd15a');
+    tag(GATE_X, WALL_FRONT + 58, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`], '#7bd15a');   // over the arch, clear of the tower labels
     // totals in one line under the counters
     const fight = C.fightRate(P, B) * surgeX();
     tag(W / 2, 175, [`City +${rfmt(RATE * surgeX())}/s · fight about +${rfmt(fight)}/s · damage ${C.fmt(dmg)}`], '#ffd56b');
+    bld(); S.tagRects = tagRects;   // kept for tools/qa/overlay-check.cjs
     cx.restore();
   }
   function drawEnemyHp(e) {
@@ -354,6 +388,76 @@
     const t = C.fmt(Math.max(0, e.hp)); cx.strokeText(t, e.x, e.y - e.size - 22); cx.fillStyle = '#fff4dc'; cx.fillText(t, e.x, e.y - e.size - 22);
   }
   function toggleStats() { A.unlock(); P.settings.stats = !P.settings.stats; el('stats').classList.toggle('on', P.settings.stats); A.play('claim', 0.25); save(); }
+
+  // ---------- the 30-second beats (Nov 6 2026): Golden Wisp, Cheer, villagers, boss ranks, crowns ----------
+  const comboTotal = () => C.unlocked(P, 'earth') ? 4 : 3;
+  const bossRank = () => Math.max(0, P.ascensions - 4);   // from the 5th Ascension, bosses gain a rank each time
+  function spawnAt(role, x, y) { spawn(role, [x, y]); }
+  // a Golden Wisp crosses the field every 30 to 60 s once three buildings stand (every 15 to 30 s with the Bakery)
+  function tickExtras() {
+    if (S.cheerT > 0 && (S.cheerT -= DT) <= 0) { S.cheerT = 0; S.cheer = 0; }
+    if (S.villagers) { S.villagers.t += DT; if (S.villagers.t > 2.6) S.villagers = null; }
+    if (P.restored.length < 3) return;
+    if (S.event && S.event.id === 'harvest' && !S.gold && S.goldT > 6) S.goldT = 6;
+    if (S.gold) { const g = S.gold; g.t += DT; g.x += g.vx * DT; g.y = g.y0 + Math.sin(g.t * 2.4) * 26; if (g.t > g.life || g.x < -60 || g.x > W + 60) S.gold = null; return; }
+    if (S.goldT === undefined) S.goldT = 8;
+    if ((S.goldT -= DT) <= 0) {
+      S.goldT = (30 + Math.random() * 30) * (has('bakery') ? 0.5 : 1);
+      const fromLeft = Math.random() < 0.5;
+      S.gold = { x: fromLeft ? -40 : W + 40, y0: 330 + Math.random() * 300, y: 0, vx: (fromLeft ? 1 : -1) * (95 + Math.random() * 30), t: 0, life: 9 };
+      if (!P.goldSeen) { P.goldSeen = true; toast('A Golden Wisp! Tap it before it flies away'); }
+    }
+  }
+  function tapGold(x, y) {
+    const g = S.gold; if (!g || Math.hypot(x - g.x, y - g.y) > 70) return false;
+    S.gold = null; S.goldCaught = (S.goldCaught || 0) + 1; A.play('claim', 0.6);
+    const roll = Math.random(), mult = 1 + (B.wispX || 0);
+    burst({ x: g.x, y: g.y + 20, size: 40 }, '#ffd56b', 22, 220);
+    if ((roll < 0.15 || (S.event && S.event.id === 'starfall')) && P.shop.open) { const n = 2 * mult; P.shop.shards += n; pop(g.x, g.y - 20, `+${n} Starshards`, SHARD, 1.4, 42); }
+    else if (roll < 0.3) { S.goldSurge = Date.now() + 15000; pop(g.x, g.y - 20, 'x2 for 15 s!', '#ff9ce8', 1.4, 42); }
+    else { const amt = C.fightRate(P, B) * 1.6 * 10 * mult * surgeX(); P.res += amt; pop(g.x, g.y - 20, `+${C.fmt(amt)}`, '#ffd56b', 1.4, 46); }
+    save(); return true;
+  }
+  function drawGold() {
+    const g = S.gold; if (!g) return;
+    cx.save(); glow(g.x, g.y, 76, 'rgba(255,214,107,', 0.6 + 0.2 * Math.sin(S.t * 8));
+    for (let k = 1; k <= 4; k++) { cx.globalAlpha = 0.5 - k * 0.1; cx.fillStyle = '#ffd56b'; cx.beginPath(); cx.arc(g.x - Math.sign(g.vx) * k * 14, g.y + Math.sin((g.t - k * 0.08) * 2.4) * 4, 6 - k, 0, 7); cx.fill(); }
+    cx.globalAlpha = 1; cx.fillStyle = '#fff6c8'; cx.strokeStyle = '#a0701a'; cx.lineWidth = 3; L.star(cx, g.x, g.y, 28, 12, 5, S.t * 2); cx.stroke();
+    cx.restore();
+  }
+  // the Tavern: combos fill the Cheer meter; full, the towers fire twice as fast for 6 s
+  function startCheer() { S.cheerT = 6; S.cheersDone = (S.cheersDone || 0) + 1; pop(W / 2, 420, 'CHEER! Towers fire twice as fast', '#ffd56b', 1.8, 44); A.play('feat', 0.5); }
+  function drawCheer() {
+    if (!has('tavern') || root.__storeCapture) return;
+    const sp = CITY.spots.tavern, x = sx(sp[0]), y = sy(sp[1]) + sp[3] * K * 0.42, w = 92, f = S.cheerT > 0 ? S.cheerT / 6 : S.cheer || 0;
+    cx.save(); cx.fillStyle = 'rgba(24,12,20,.8)'; cx.beginPath(); cx.roundRect(x - w / 2 - 3, y - 3, w + 6, 16, 8); cx.fill();
+    cx.fillStyle = S.cheerT > 0 ? '#ffd56b' : '#e59a3a'; cx.beginPath(); cx.roundRect(x - w / 2, y, Math.max(6, w * f), 10, 5); cx.fill(); cx.restore();
+    if (S.cheerT > 0 && !reduced()) for (const t of TOWERS) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - 40, 50, 'rgba(255,214,107,', 0.25); cx.restore(); }
+  }
+  // the Cottages: three villagers walk to the gate and mend it after every wave
+  function repairGate() {
+    const add = Math.min(gateMax() - S.gateHp, gateMax() * 0.35); S.gateHp += add; S.repairs = (S.repairs || 0) + 1;
+    S.villagers = { t: 0 }; pop(GATE_X, WALL_FRONT - 110, `Repaired +${C.fmt(add)}`, '#7bd15a', 1.4, 34);
+  }
+  function drawVillagers() {
+    const v = S.villagers; if (!v || root.__storeCapture) return;
+    const sp = CITY.spots.cottages, x0 = sx(sp[0]), y0 = sy(sp[1]), x1 = GATE_X, y1 = WALL_FRONT + 60, u = Math.min(1, v.t / 1.6);
+    for (let k = 0; k < 3; k++) {
+      const uu = Math.max(0, Math.min(1, u - k * 0.08)), x = x0 + (x1 - x0) * uu + (k - 1) * 16, y = y0 + (y1 - y0) * uu - Math.abs(Math.sin(v.t * 10 + k)) * 4;
+      cx.save(); cx.fillStyle = ['#c0603a', '#3a6fc0', '#4a9a4a'][k]; cx.strokeStyle = '#2a1a22'; cx.lineWidth = 2;
+      cx.beginPath(); cx.roundRect(x - 6, y - 14, 12, 14, 4); cx.fill(); cx.stroke();
+      cx.fillStyle = '#f2c79a'; cx.beginPath(); cx.arc(x, y - 19, 6, 0, 7); cx.fill(); cx.stroke(); cx.restore();
+      if (uu >= 1 && Math.random() < 0.3) S.fx.push({ x: x1 + (Math.random() - 0.5) * 60, y: y1 - 20, vx: (Math.random() - 0.5) * 80, vy: -80, g: 260, t: 0, life: 0.4, col: '#ffe08a', r: 2.5 });
+    }
+  }
+  // gate stages 4 and 5: a gold crown over each tower, then a turning halo
+  function drawCrown(x, y, stage, i) {
+    cx.save(); cx.translate(x, y + Math.sin(S.t * 2 + i) * 2);
+    if (stage >= 5) { cx.save(); cx.rotate(S.t * 0.8); cx.strokeStyle = 'rgba(255,230,150,.8)'; cx.lineWidth = 3; cx.setLineDash([6, 6]); cx.beginPath(); cx.ellipse(0, 4, 26, 9, 0, 0, 7); cx.stroke(); cx.restore(); }
+    cx.fillStyle = '#ffd56b'; cx.strokeStyle = '#7a4f18'; cx.lineWidth = 2;
+    cx.beginPath(); cx.moveTo(-12, 0); cx.lineTo(-12, -10); cx.lineTo(-6, -4); cx.lineTo(0, -13); cx.lineTo(6, -4); cx.lineTo(12, -10); cx.lineTo(12, 0); cx.closePath(); cx.fill(); cx.stroke();
+    cx.restore();
+  }
 
   // ---------- daily quests and the Resonance Surge ----------
   const today = () => C.dayKey(new Date());
@@ -370,7 +474,7 @@
     toast(got.length === 1 ? `Feat: ${got[0].name} · +${pay} Starshards` : `${got.length} Feats earned · +${pay} Starshards`);
     S.medal = { tier: Math.max(...got.map(f => f.tier)), name: got.length === 1 ? got[0].name : `${got.length} Feats`, t: 0 }; A.play('feat', 0.6);
   }
-  const surgeX = () => C.surgeOn(P, Date.now()) ? 2 : 1;
+  const surgeX = () => C.surgeOn(P, Date.now()) || (S.goldSurge || 0) > Date.now() ? 2 : 1;
   function adDay() { const d = today(); if (P.surge.adDay !== d) { P.surge.adDay = d; P.surge.ads = 0; P.surge.shardAds = 0; } }
   // Basic Launch: free every 15 minutes. Full Launch: a rewarded ad, any time one is not running, 8 a day.
   function surgeTap() {
@@ -419,9 +523,13 @@
       + C.PERKS.map(k => { const n = P.perks[k.id] || 0, max = n >= k.max, c = C.perkCost(P, k.id);
         return `<div class="perkrow"><b>${k.name}<small>${n}/${k.max}</small></b><span>${k.line}</span>`
           + (max ? `<span class="qok">Max</span>` : `<button class="buy ${P.perkPts >= c ? 'can' : 'off'} perk" data-id="${k.id}"><i class="star gold"></i>${c}</button>`) + `</div>`; }).join('')
-      + `</div>`;
+      + `</div>`
+      + (C.unlocked(P, 'relics') ? `<h3 class="rel">Relics · choose 2</h3><div class="perks">` + C.RELICS.map(r => { const on = P.relics.includes(r.id);
+          return `<div class="perkrow"><b>${r.name}</b><span>${r.line}</span><button class="buy ${on ? 'eq' : 'can'} relic" data-id="${r.id}">${on ? 'Equipped' : 'Equip'}</button></div>`; }).join('') + `</div>`
+        : `<p class="small">Ascension 3 unlocks Relics.</p>`);
   }
   function wirePerks(body) {
+    body.querySelectorAll('.relic').forEach(b => (b.onclick = () => { if (C.equipRelic(P, b.dataset.id)) { A.play('buy', 0.5); refresh(); save(); showCard('perks'); } }));
     body.querySelectorAll('.perk').forEach(b => (b.onclick = () => {
       if (C.buyPerk(P, b.dataset.id)) { A.play('feat', 0.5); refresh(); save(); showCard('perks'); }
       else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
@@ -534,7 +642,7 @@
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
     if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
-    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.${` You will earn <b>${C.perkPtsFor(P)} perk point${C.perkPtsFor(P) === 1 ? '' : 's'}</b> (1, plus 1 for every 25 waves reached).`}</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. ${(() => { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1); return un ? `<b>Unlocks: ${un.name}.</b> ` : ''; })()}Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.${` You will earn <b>${C.perkPtsFor(P)} perk point${C.perkPtsFor(P) === 1 ? '' : 's'}</b> (1, plus 1 for every 25 waves reached).`}</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'save') html = `<span class="eyebrow">Wave ${C.fmt(P.wave)} · boss</span><h2>The gate is breaking!</h2><p>Watch an ad to rebuild the gate and keep fighting this boss.</p>${btn('c-ad', 'Watch an ad: save the gate', 'gold')}${btn('c-no', 'Fall back', 'quiet')}`;
     if (kind === 'building') {
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
@@ -577,7 +685,9 @@
     if (kind === 'ascend') on('c-ok', () => {
       P = C.ascend(P); refresh(); S.wisps = []; S.motes = []; S.enemies = []; S.shots = []; S.spawnQ = []; S.gateHp = 0; A.play('ascension', 0.7);
       S.cheerNext = 'A new dawn. Rebuild!'; startWave(); save(); close();
-      toast(`Ascension ${P.ascensions}: Resonance and damage x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))}`);
+      const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions);
+      toast(un ? `Ascension ${P.ascensions} unlocks ${un.name}! ${un.line}` : `Ascension ${P.ascensions}: Resonance and damage x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))}`);
+      if (un && un.id === 'relics') S.pointAt = { id: 'watchtower', t: 0 };
     });
     if (kind === 'save') {
       on('c-ad', () => SDK.rewarded(adHooks).then(ok => { S.paused = false; close(); if (ok) { S.savedByAd = true; S.gateHp = gateMax(); toast('The gate is rebuilt!'); } else gateBroken(true); }));
@@ -642,6 +752,8 @@
     for (const e of ['fire', 'frost', 'storm']) for (const t of [1, 2, 3]) {
       const id = P.shop.equip[e], key = id + t; if (orig[e + t]) img[e + t] = lookCache[key] || (lookCache[key] = L.towerGrade(id, orig[e + t]));
     }
+    // Earth towers: the Frost Spire's crystal tiers recoloured in amber and moss (made in code from the shipped sheet)
+    for (const t of [1, 2, 3]) if (orig['frost' + t]) img['earth' + t] = lookCache['earth' + t] || (lookCache['earth' + t] = L.grade(orig['frost' + t], (h, s, l) => s < 0.25 ? [30, 0.25 + s, l * 0.85] : [h > 150 && h < 260 ? 38 : 95, Math.min(1, s * 0.8), l * 0.9]));
     prepareCity();
     const bd = el('backdrop'); if (bd) bd.style.filter = `blur(26px) brightness(.42) saturate(1.15) ${(L.TOWN[town] || {}).backdrop || ''}`;
   }
@@ -677,14 +789,15 @@
   function drawTowers() {
     const els = elements(), stage = C.stageOf(P.gateLevel), idle = ['fire', 'frost', 'frost', 'storm'], calm = reduced();
     TOWERS.forEach((t, i) => {
-      const e = els.length ? els[i % els.length] : null, im = img[(e || idle[i]) + stage]; if (!im) return;
+      const tier = Math.min(3, stage), e = els.length ? els[i % els.length] : null, im = img[(e || idle[i % 4]) + tier]; if (!im) return;
       const grow = Math.min(0.16, (P.gateLevel - C.STAGES[stage - 1]) * 0.012);   // a little taller with every level of the stage
-      const breathe = calm ? 0 : Math.sin(S.t * 2 + i) * 0.012, h = CITY.towerH * (1 + (stage - 1) * 0.1 + grow) * (1 + breathe - t.recoil * 0.05);
+      const breathe = calm ? 0 : Math.sin(S.t * 2 + i) * 0.012, h = CITY.towerH * (1 + (tier - 1) * 0.1 + grow) * (t.gate ? 0.86 : 1) * (1 + breathe - t.recoil * 0.05);
       shadow(t.x + 5, t.y + 2, CITY.platformR * 0.95, CITY.platformR * 0.36, 0.42);
       if (!e) cx.filter = 'grayscale(0.85) brightness(0.8)';
       sprite(im, t.x, t.y + CITY.towerSink, h);
       cx.filter = 'none';
       if (t.flash > 1) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - h * 0.5, 60, 'rgba(255,230,150,', 0.5 * (t.flash - 1) * 5); cx.restore(); }
+      if (stage >= 4) drawCrown(t.x, t.y - h - 6, stage, i);
       if (e) {
         cx.save(); cx.globalCompositeOperation = 'lighter';
         glow(t.x, t.y - h * 0.78, 24 + t.flash * 16, (L.TOWER[P.shop.equip[e]] || {}).glow || GLOW[e], 0.16 + (calm ? 0 : 0.05 * Math.sin(S.t * 3 + i)) + t.flash * 0.4);
@@ -700,12 +813,17 @@
     shadow(e.x + 4, e.y - 2, e.size * 0.42, e.size * 0.13, 0.35);
     if (e.dying) { cx.translate(e.x, e.y); cx.scale(1 + e.dying, 1 - e.dying * 0.8); cx.translate(-e.x, -e.y); }
     if (GATE_X + e.off < e.x - 20) { cx.translate(e.x, 0); cx.scale(-1, 1); cx.translate(-e.x, 0); }   // face the way it walks
+    const TINT = { gold: 'sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.15)', shield: 'saturate(0.6) hue-rotate(170deg) brightness(1.05)', split: 'hue-rotate(150deg) saturate(1.3)', mend: 'hue-rotate(-75deg) saturate(0.7) brightness(1.3)', queen: 'hue-rotate(205deg) saturate(1.5) brightness(1.05)', pale: 'saturate(0.3) brightness(1.45)', stone: 'saturate(0.2) brightness(0.8) contrast(1.2)' };
     if (e.flash > 0) cx.filter = `brightness(${1 + e.flash * 0.9})`;
     else if (e.chill > 0) cx.filter = 'saturate(0.55) brightness(1.12)';
+    else if (e.tint) cx.filter = TINT[e.tint];
     sprite(sh, e.x, e.y, e.size, Math.floor(e.frame) % 6, 6);
     cx.filter = 'none'; cx.restore();
     if (e.dying) return;
     if (e.chill > 0) { cx.save(); cx.globalAlpha = 0.5; glow(e.x, e.y - e.size * 0.4, e.size * 0.55, GLOW.frost, 0.35); cx.restore(); }
+    if (e.shield) { cx.save(); cx.strokeStyle = 'rgba(170,225,255,.9)'; cx.fillStyle = 'rgba(150,210,255,.18)'; cx.lineWidth = 3; cx.beginPath(); cx.ellipse(e.x, e.y - e.size * 0.45, e.size * 0.62, e.size * 0.58, 0, 0, 7); cx.fill(); cx.stroke(); cx.restore(); }
+    if (C.ROLES[e.role].heal && !(e.burn > 0)) { cx.save(); cx.globalAlpha = 0.25 + 0.15 * Math.sin(S.t * 5); cx.strokeStyle = '#9dffb0'; cx.lineWidth = 3; cx.beginPath(); cx.arc(e.x, e.y - e.size * 0.3, 130, 0, 7); cx.stroke(); cx.restore(); }
+    if (e.healed) { cx.save(); cx.globalAlpha = e.healed * 2; cx.fillStyle = '#9dffb0'; cx.font = '26px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.fillText('+', e.x + e.size * 0.3, e.y - e.size * 0.8); cx.restore(); }
     if (e.burn > 0 && !reduced() && Math.random() < 0.3) S.fx.push({ x: e.x + (Math.random() - 0.5) * e.size * 0.5, y: e.y - e.size * 0.5, vx: 0, vy: -50, t: 0, life: 0.4, col: COLOR.fire, r: 2.5 });
     const bw = e.boss ? 120 : 44, by = e.y - e.size - 8;
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(e.x - bw / 2 - 2, by - 2, bw + 4, 9);
@@ -760,7 +878,7 @@
     const g2 = cx.createLinearGradient(x, 0, x + w, 0); g2.addColorStop(0, '#ff3a3a'); g2.addColorStop(1, '#ff9a3a');
     cx.fillStyle = g2; cx.beginPath(); cx.roundRect(x, y, Math.max(16, w * f), 34, 17); cx.fill();
     cx.font = '30px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.lineWidth = 6; cx.strokeStyle = '#2a1a22';
-    const label = `Golem King · ${Math.ceil(f * 100)}%`; cx.strokeText(label, W / 2, y + 28); cx.fillStyle = '#fff4dc'; cx.fillText(label, W / 2, y + 28);
+    const label = `${C.ROLES[b.role].label}${bossRank() ? ` · Rank ${bossRank()}` : ''} · ${Math.ceil(f * 100)}%`; cx.strokeText(label, W / 2, y + 28); cx.fillStyle = '#fff4dc'; cx.fillText(label, W / 2, y + 28);
     cx.restore();
   }
   // A Feat: the medal pops in big over the field with turning rays and its name on a ribbon, then flies into the
@@ -793,7 +911,7 @@
   }
 
   function drawGateBar() {
-    const hp = Math.max(0, S.gateHp / gateMax()), bw = 120, by = sy(CITY.gateBar);
+    const hp = Math.max(0, S.gateHp / gateMax()), bw = 120, by = sy(CITY.gateBar) - (has('watchtower') ? 92 : 0);
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(GATE_X - bw / 2 - 3, by - 3, bw + 6, 15);
     cx.fillStyle = hp > 0.35 ? '#7bd15a' : '#e5533d'; cx.fillRect(GATE_X - bw / 2, by, bw * hp, 9);
     if (S.gateHit > 0) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(GATE_X, WALL_FRONT + 8, 60, 'rgba(255,90,60,', 0.25 * S.gateHit); cx.restore(); }
@@ -840,11 +958,12 @@
     if (S.plazaGlow > 0) glow(PLAZA.x, PLAZA.y, 80, RES_GLOW, 0.4 * S.plazaGlow);
     for (const m of S.motes) { const a = Math.sin(Math.PI * m.t / m.life); glow(m.x, m.y, m.r * 4, RES_GLOW, 0.35 * a); cx.globalAlpha = a; cx.fillStyle = '#fff0fb'; cx.beginPath(); cx.arc(m.x, m.y, m.r * 0.6, 0, 7); cx.fill(); cx.globalAlpha = 1; }
     cx.restore();
-    drawMarkers(); drawBadges();
+    drawMarkers(); drawBadges(); drawCheer();
     // the field, back to front
     for (const e of S.enemies.slice().sort((a, b) => a.y - b.y)) drawEnemy(e);
     if (img.wall) cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H);   // the wall is nearer the camera than anyone outside it
     drawGateBar();
+    drawVillagers(); drawGold();
     drawBossBar(); drawStats();
     drawTowers();
     for (const s of S.shots) drawShot(s);
@@ -888,7 +1007,7 @@
     el('res').textContent = C.fmt(P.res);
     el('unit').hidden = !P.firstSession;   // after the opening the crystal says it, and the top bar has room for the Shop
     el('city').textContent = `City ${P.restored.length}/10`;
-    el('combos').textContent = P.combos.length < 3 ? `Combos ${P.combos.length}/3` : `Feats ${P.feats.length}/${C.FEATS.length}`;   // a collection to finish, always in view
+    el('combos').textContent = P.combos.length < comboTotal() ? `Combos ${P.combos.length}/${comboTotal()}` : `Feats ${P.feats.length}/${C.FEATS.length}`;   // a collection to finish, always in view
     el('shop').hidden = true;   // the Shop lives in the Market now
     if (P.shop.open) C.questsFor(P, today());
     el('quests').hidden = true;   // quests and Feats live in the Library
@@ -981,6 +1100,7 @@
     // tap a restored building to level it up; a ruined one says what it will do once restored
     cv.addEventListener('click', ev => {
       if (S.card) return; const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H;
+      if (tapGold(x, y)) return;
       for (const id in HALLS) { const [bx, by] = badgeAt(id); if (HALLS[id].ok() && Math.hypot(x - bx, y - by) < 46 && openHall(id)) return; }
       for (const id of C.BUILDING_IDS) { const s = CITY.spots[id]; const dx = (x - sx(s[0])) / (s[2] * K * 0.8), dy = (y - sy(s[1])) / (s[3] * K * 0.8);
         if (dx * dx + dy * dy < 1) { A.unlock(); if (P.restored.includes(id)) showCard('building', id); else if (!openHall(id)) { const b = C.byId(id); toast(`${b.name} (ruined). Restore it: ${b.line}`); } return; } }

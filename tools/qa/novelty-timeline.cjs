@@ -25,10 +25,13 @@ const [url, mins = '45'] = process.argv.slice(2);
       for (let i = 0; i < 40; i++) { const B2 = C.bonuses(P), lim = Math.min(C.upgradeCost(P.gateLevel, B2), C.canAscend(P) ? Infinity : C.restoreCost(P.restored.length)) / 3;
         const ch = P.restored.map(id => [id, C.levelCost(P, id, B2)]).sort((a, b) => a[1] - b[1])[0]; if (!ch || ch[1] > lim || ch[1] > P.res) break; H.act('level', ch[0]); }
       if (!P.firstSession && C.surgeReadyFree(P, Date.now())) document.getElementById('surge').click();
+      if (S.gold) H.act('gold');
       for (const k of C.PERKS) if (P.perkPts >= C.perkCost(P, k.id)) C.buyPerk(P, k.id);
+      if (C.unlocked(P, 'relics') && P.relics.length < 2) { C.equipRelic(P, 'ember'); C.equipRelic(P, 'hearth'); }
       return { wave: P.wave, best: P.bestWave, gate: P.gateLevel, stage: C.stageOf(P.gateLevel), restored: P.restored.slice(), combos: P.combos.slice(),
         forks: Object.keys(P.forks).length, roles: [...new Set(S.enemies.map(e => e.role))], shop: P.shop.open, feats: P.feats.length,
         quests: P.shop.open && C.questClaimable(P), surge: C.surgeOn(P, Date.now()), asc: P.ascensions, perks: Object.values(P.perks).reduce((a, b) => a + b, 0),
+        event: S.event ? S.event.id : '', gold: S.goldCaught || 0, cheer: S.cheersDone || 0, repairs: S.repairs || 0, trials: S.trialsWon || 0, tower5: P.restored.includes('watchtower'), relics: (P.relics || []).length,
         x2: P.restored.reduce((a, id) => a + C.MILESTONES.filter(m => (P.levels[id] || 1) >= m).length, 0), levels: P.restored.reduce((a, id) => a + (P.levels[id] || 1), 0) };
     });
     const T = t + 5;
@@ -47,6 +50,13 @@ const [url, mins = '45'] = process.argv.slice(2);
     if (Math.floor((s.best - 1) / 10) > Math.floor(((prev.best || 1) - 1) / 10)) { if (!once(T, 'boss', 'first boss beaten')) add(T, 'BEAT', `boss beaten (wave ${s.best - 1})`); }
     if (s.asc > (prev.asc || 0)) { if (!once(T, 'asc', 'first Ascension')) add(T, 'BEAT', `Ascension ${s.asc}`); }
     if (s.perks > (prev.perks || 0)) once(T, 'perk', 'first perk');
+    if (s.event && s.event !== prev.event) { if (!once(T, 'ev:' + s.event, `new wave event: ${s.event}`)) add(T, 'BEAT', `event ${s.event}`); }
+    if (s.gold > (prev.gold || 0)) { if (!once(T, 'gold', 'first Golden Wisp caught')) add(T, 'BEAT', 'Golden Wisp'); }
+    if (s.cheer > (prev.cheer || 0)) { if (!once(T, 'cheer', 'first Tavern Cheer')) add(T, 'BEAT', 'Cheer'); }
+    if (s.repairs > (prev.repairs || 0)) once(T, 'repair', 'villagers repair the gate');
+    if (s.tower5 && !prev.tower5) once(T, 'tower5', 'a fifth tower on the gatehouse');
+    if (s.trials > (prev.trials || 0)) { if (!once(T, 'trial', 'first Trial won')) add(T, 'BEAT', 'Trial won'); }
+    if (s.relics > (prev.relics || 0)) once(T, 'relic', 'first Relic');
     if (s.wave < (prev.wave || 0) - 1) add(T, 'WALL', `fell back from wave ${prev.wave}`);
     Object.assign(prev, s);
   }

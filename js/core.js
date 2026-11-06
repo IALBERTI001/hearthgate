@@ -22,6 +22,34 @@
   }
 
 
+
+  // ---------- New cores after each Ascension (Nov 6 2026): a fixed table, so every loop brings something new ----------
+  // 1 perks; 2 Challenge Trials (every 5th wave is a Trial: tougher, pays Starshards) and the Shadow enemies at night;
+  // 3 Relics (equip two); 4 the Earth element (a fourth tower kind and the QUAKE combo); 5+ a new boss rank every time.
+  const ASCEND_UNLOCKS = [
+    { at: 1, id: 'perks', name: 'Perks', line: 'Spend perk points in the Watchtower' },
+    { at: 2, id: 'trials', name: 'Challenge Trials', line: 'Every 5th wave is a Trial: tougher enemies, Starshards if you win' },
+    { at: 3, id: 'relics', name: 'Relics', line: 'Equip two Relics in the Watchtower' },
+    { at: 4, id: 'earth', name: 'The Earth element', line: 'A fourth element: Earth stuns, and QUAKE shakes frozen enemies apart' },
+    { at: 5, id: 'ranks', name: 'Boss ranks', line: 'Bosses gain a rank each Ascension, with bigger rewards' }
+  ];
+  const unlocked = (p, id) => { const u = ASCEND_UNLOCKS.find(x => x.id === id); return !!u && p.ascensions >= u.at; };
+  const isTrial = (p, w) => unlocked(p, 'trials') && w % 5 === 0 && !isBoss(w);
+  const RELICS = [
+    { id: 'ember', name: 'Ember Heart', line: 'Burning lasts twice as long and hits 40% harder', bonus: { fire: 0.4 } },
+    { id: 'rime', name: 'Rime Crown', line: 'Frost hits 40% harder', bonus: { frost: 0.4 } },
+    { id: 'thunder', name: 'Thunder Seal', line: 'Storm hits 40% harder', bonus: { storm: 0.4 } },
+    { id: 'chalice', name: 'Golden Chalice', line: 'Golden Wisps pay triple', bonus: { wispX: 2 } },
+    { id: 'hearth', name: 'Hearthstone', line: 'The city makes 40% more', bonus: { city: 0.4 } },
+    { id: 'crown', name: 'Slayer Crown', line: 'Bosses take 60% more damage', bonus: { bossDmg: 0.6 } }
+  ];
+  function equipRelic(p, id) {
+    if (!unlocked(p, 'relics') || !RELICS.some(r => r.id === id)) return false;
+    if (p.relics.includes(id)) { p.relics = p.relics.filter(x => x !== id); return true; }
+    if (p.relics.length >= 2) p.relics.shift();
+    p.relics.push(id); return true;
+  }
+
   // ---------- Daily Omen (Nov 6 2026): one small, always-good twist per day, the same for everyone that day ----------
   const OMENS = [
     { id: 'ember', name: 'Ember Day', line: 'Fire hits 30% harder', bonus: { fire: 0.3 } },
@@ -62,18 +90,18 @@
     { id: 'forge', name: 'Forge', element: 'fire', line: 'Towers gain Fire. Hits burn.' },
     { id: 'frostSpire', name: 'Frost Spire', element: 'frost', line: 'Towers gain Frost. Hits slow.' },
     { id: 'stormBell', name: 'Storm Bell', element: 'storm', line: 'Towers gain Storm. Hits chain.' },
-    { id: 'bakery', name: 'Bakery', bonus: { res: 0.15 }, line: '+15% Resonance from every enemy.' },
-    { id: 'market', name: 'Market', bonus: { upgradeDiscount: 0.10 }, line: 'Upgrades cost 10% less.' },
-    { id: 'tavern', name: 'Tavern', bonus: { fireRate: 0.10 }, line: 'Towers fire 10% faster.' },
-    { id: 'granary', name: 'Granary', bonus: { offline: 0.5 }, line: '+50% Resonance while you are away.' },
-    { id: 'library', name: 'Library', bonus: { combo: 0.25 }, line: 'Combos hit 25% harder.' },
-    { id: 'cottages', name: 'Cottages', bonus: { gateHp: 0.25 }, line: 'The gate has 25% more health.' },
-    { id: 'watchtower', name: 'Watchtower', bonus: { damage: 0.15 }, line: 'Towers hit 15% harder.' }
+    { id: 'bakery', name: 'Bakery', bonus: { res: 0.15 }, ability: 'wisps', line: 'Golden Wisps come twice as often. +15% Resonance.' },
+    { id: 'market', name: 'Market', bonus: { upgradeDiscount: 0.10 }, ability: 'shop', line: 'Home of the Shop. Upgrades cost 10% less.' },
+    { id: 'tavern', name: 'Tavern', bonus: { fireRate: 0.10 }, ability: 'cheer', line: 'Combos fill the Cheer meter: when full, towers fire twice as fast.' },
+    { id: 'granary', name: 'Granary', bonus: { offline: 0.5 }, ability: 'store', line: 'Stores 50% more while you are away, and 4 more hours.' },
+    { id: 'library', name: 'Library', bonus: { combo: 0.25 }, ability: 'quests', line: 'Home of Quests and Feats. Combos hit 25% harder.' },
+    { id: 'cottages', name: 'Cottages', bonus: { gateHp: 0.25 }, ability: 'repair', line: 'Villagers repair the gate after every wave.' },
+    { id: 'watchtower', name: 'Watchtower', bonus: { damage: 0.15 }, ability: 'tower5', line: 'A fifth tower rises on the gatehouse. Home of the Perks.' }
   ];
   const BUILDING_IDS = BUILDINGS.map(b => b.id);
   const byId = id => BUILDINGS.find(b => b.id === id);
   const FIXED_ORDER = 3;
-  const COMBOS = ['shatter', 'frostStorm', 'fireStorm'];
+  const COMBOS = ['shatter', 'frostStorm', 'fireStorm', 'quake'];   // QUAKE comes with the Earth element (4th Ascension)
 
   // Restore choice: the first three in fixed order; after that two unrestored buildings, the same two until one is
   // picked (seeded by how many are restored and the Ascension count, so reloading never rerolls the offer).
@@ -88,23 +116,30 @@
 
   // ---------- gate upgrades and forks ----------
   // The gate climbs levels; stages at levels 10 and 25 grow the towers a tier and each offers a fork (approved fix 2).
-  const STAGES = [1, 15, 40];
+  const STAGES = [1, 15, 40, 60, 85];   // stages 4 and 5 (Nov 6 2026): a crown, then a halo over the tier-3 towers
   const FORKS = {
     2: [{ id: 'ballistae', name: 'Heavy Bolts', line: '+40% tower damage', bonus: { damage: 0.40 } },
         { id: 'crews', name: 'Swift Crews', line: '+35% fire rate', bonus: { fireRate: 0.35 } }],
     3: [{ id: 'focus', name: 'Elemental Focus', line: 'Combos hit 50% harder', bonus: { combo: 0.50 } },
-        { id: 'ironGate', name: 'Iron Gate', line: 'Double gate health, slow repair', bonus: { gateHp: 1.0, regen: 0.02 } }]
+        { id: 'ironGate', name: 'Iron Gate', line: 'Double gate health, slow repair', bonus: { gateHp: 1.0, regen: 0.02 } }],
+    4: [{ id: 'volleys', name: 'Rapid Volleys', line: 'Towers fire 50% faster', bonus: { fireRate: 0.5 } },
+        { id: 'cores', name: 'Searing Cores', line: '+60% tower damage', bonus: { damage: 0.6 } }],
+    5: [{ id: 'resonant', name: 'Resonant Strikes', line: '+50% Resonance from enemies', bonus: { res: 0.5 } },
+        { id: 'kingslayer', name: 'Kingslayer', line: 'Bosses take double damage', bonus: { bossDmg: 1 } }]
   };
-  const stageOf = lvl => lvl >= STAGES[2] ? 3 : lvl >= STAGES[1] ? 2 : 1;
+  const stageOf = lvl => { let s = 1; for (let i = 1; i < STAGES.length; i++) if (lvl >= STAGES[i]) s = i + 1; return s; };
+  const FORK_STAGES = [2, 3, 4, 5];
   // A fork is waiting when the gate has reached a stage whose fork has not been chosen yet.
-  const pendingFork = p => [2, 3].find(s => stageOf(p.gateLevel) >= s && !p.forks[s]) || null;
+  const pendingFork = p => FORK_STAGES.find(s => stageOf(p.gateLevel) >= s && !p.forks[s]) || null;
 
   // Every bonus from buildings, forks and Ascension, summed.
   function bonuses(p) {
-    const b = { res: 0, upgradeDiscount: 0, fireRate: 0, offline: 0, combo: 0, gateHp: 0, damage: 0, regen: 0, fire: 0, frost: 0, storm: 0, city: 0, bossShards: 0, bossPlus: 0, offlineH: 0, surgeCd: 0, start: 0 };
+    const b = { res: 0, upgradeDiscount: 0, fireRate: 0, offline: 0, combo: 0, gateHp: 0, damage: 0, regen: 0, fire: 0, frost: 0, storm: 0, city: 0, bossShards: 0, bossPlus: 0, offlineH: 0, surgeCd: 0, start: 0, bossDmg: 0, wispX: 0 };
+    for (const id of p.restored) if (id === 'granary') b.offlineH += 4;
     const add = o => { for (const k in o) b[k] += o[k]; };
     for (const id of p.restored) { const d = byId(id); if (d && d.bonus) add(d.bonus); }
-    for (const s of [2, 3]) { const f = p.forks[s] && FORKS[s].find(x => x.id === p.forks[s]); if (f) add(f.bonus); }
+    for (const s of FORK_STAGES) { const f = p.forks[s] && FORKS[s].find(x => x.id === p.forks[s]); if (f) add(f.bonus); }
+    if (p.relics) for (const id of p.relics) { const r = RELICS.find(x => x.id === id); if (r) add(r.bonus); }
     if (p.perks) add(perkBonus(p));
     if (p.omen) { const o = OMENS.find(x => x.id === p.omen); if (o) add(o.bonus); }   // p.omen is set each day by the game, never saved
     b.ascend = Math.pow(ASCEND_MULT, p.ascensions);
@@ -144,26 +179,93 @@
     runner: { sheet: 'beetle', hp: 0.7, speed: 84, size: 60, label: 'Runners', weak: 'frost' },
     armoured: { sheet: 'golem', hp: 2.6, speed: 36, size: 76, label: 'Armoured', weak: 'fire', armour: 0.5 },
     swarm: { sheet: 'slime', hp: 0.35, speed: 54, size: 44, label: 'Swarm', weak: 'storm' },
-    boss: { sheet: 'golem', hp: 90, speed: 28, size: 190, label: 'Boss', armour: 0.3 }
+    // variants (Nov 6 2026, the 30-second rule): one new kind every few waves, each with a counter to learn
+    elite: { sheet: 'beetle', hp: 3, speed: 60, size: 70, label: 'Elite', tint: 'gold', tip: 'Elites drop a treasure chest', chest: true },
+    shielded: { sheet: 'beetle', hp: 1, speed: 70, size: 62, label: 'Shielded', weak: 'storm', shield: true, tint: 'shield', tip: 'Shields block most damage: Storm breaks them' },
+    splitter: { sheet: 'slime', hp: 1.6, speed: 40, size: 76, label: 'Splitters', weak: 'fire', split: 2, tint: 'split', tip: 'Splitters burst into two small slimes' },
+    mender: { sheet: 'slime', hp: 1.2, speed: 42, size: 64, label: 'Menders', weak: 'fire', heal: 0.05, tint: 'mend', tip: 'Menders heal their friends: burning stops them' },
+    sprinter: { sheet: 'beetle', hp: 0.8, speed: 128, size: 56, label: 'Sprinters', weak: 'frost', tint: 'pale', tip: 'Sprinters dash for the gate: Frost slows them' },
+    bulwark: { sheet: 'golem', hp: 6, speed: 26, size: 86, label: 'Bulwarks', comboWeak: 2, tint: 'stone', tip: 'Bulwarks shrug off hits: combos crack them for double' },
+    ironhide: { sheet: 'golem', hp: 3.4, speed: 32, size: 80, label: 'Ironhide', weak: 'storm', armour: 0.5, shield: true, tint: 'shield', tip: 'Ironhide: break the shield with Storm, then burn the armour' },
+    // bosses rotate (waves 10, 20, 30, then again): each one fights differently
+    boss: { sheet: 'golem', hp: 90, speed: 28, size: 190, label: 'Golem King', armour: 0.3 },
+    queen: { sheet: 'slime', hp: 70, speed: 30, size: 190, label: 'Slime Queen', split: 6, tint: 'queen', tip: 'The Slime Queen bursts into a swarm' },
+    lord: { sheet: 'beetle', hp: 60, speed: 40, size: 170, label: 'Swarmlord', summon: 3.5, tint: 'gold', tip: 'The Swarmlord calls runners as it walks' }
   };
+  const BOSS_ROLES = ['boss', 'queen', 'lord'];
+  const isBossRole = r => BOSS_ROLES.includes(r);
   const isBoss = w => w % 10 === 0;
+  const bossOf = w => BOSS_ROLES[((w / 10) - 1) % 3];
+  // When each variant first appears (and then keeps appearing): a fixed schedule, the anchor behind the levels.
+  const VARIANT_FROM = { elite: 12, shielded: 14, splitter: 16, mender: 19, ironhide: 26, sprinter: 33, bulwark: 37 };
   // The wave's make-up as [role, count] pairs. New roles arrive one at a time: runners at wave 3, armoured at 6, swarm at 12.
   function waveMix(w) {
-    if (isBoss(w)) return [['boss', 1], ['slime', Math.min(8, 2 + Math.floor(w / 10))]];
+    if (isBoss(w)) { const m = [[bossOf(w), 1], ['slime', Math.min(8, 2 + Math.floor(w / 10))]]; if (w >= 40) m.push(['mender', 2]); return m; }
     const n = 6 + Math.min(14, w * 2);
     const mix = [];
-    const runners = w >= 3 ? Math.floor(n * (w % 3 === 0 ? 0.5 : 0.25)) : 0;
-    const armoured = w >= 6 ? Math.max(1, Math.floor(n * (w % 4 === 2 ? 0.3 : 0.12))) : 0;
+    let runners = w >= 3 ? Math.floor(n * (w % 3 === 0 ? 0.5 : 0.25)) : 0;
+    let armoured = w >= 6 ? Math.max(1, Math.floor(n * (w % 4 === 2 ? 0.3 : 0.12))) : 0;
     const swarm = w >= 12 && w % 5 === 2 ? n : 0;
-    const slimes = Math.max(0, n - runners - armoured);
+    const v = {};
+    if (w >= VARIANT_FROM.elite) v.elite = w === VARIANT_FROM.elite ? 1 : (w % 3 === 0 ? 2 : 1);
+    if (w >= VARIANT_FROM.shielded) { v.shielded = Math.max(2, Math.floor(runners * 0.5)); runners -= Math.floor(runners * 0.5); }
+    if (w >= VARIANT_FROM.splitter && (w % 2 === 0 || w === VARIANT_FROM.splitter)) v.splitter = 2 + Math.floor((w - 16) / 8);
+    if (w >= VARIANT_FROM.mender && (w % 3 !== 2 || w === VARIANT_FROM.mender)) v.mender = 1 + Math.floor((w - 19) / 12);
+    if (w >= VARIANT_FROM.ironhide && w % 2 === 0) { v.ironhide = Math.max(1, Math.floor(armoured / 2)); armoured -= v.ironhide; }
+    if (w >= VARIANT_FROM.sprinter && w % 2 === 1) { v.sprinter = Math.max(2, Math.floor(runners / 2)); runners -= Math.floor(runners / 2); }
+    if (w >= VARIANT_FROM.bulwark && (w % 3 === 1 || w === VARIANT_FROM.bulwark)) v.bulwark = 1 + Math.floor((w - 37) / 15);
+    const vs = Object.values(v).reduce((a, b) => a + b, 0);
+    const slimes = Math.max(0, n - runners - armoured - vs);
     if (slimes) mix.push(['slime', slimes]);
     if (runners) mix.push(['runner', runners]);
-    if (armoured) mix.push(['armoured', armoured]);
+    if (armoured > 0) mix.push(['armoured', armoured]);
     if (swarm) mix.push(['swarm', swarm]);
+    for (const k in v) if (v[k] > 0) mix.push([k, v[k]]);
     return mix;
   }
+
+  // ---------- wave events (Nov 6 2026, the 30-second rule): named twists, each first met at a fixed wave, then they
+  // come back every few waves; every Ascension adds new ones to the pool, so later loops still bring something new ----------
+  const EVENTS = [
+    { id: 'stampede', name: 'Stampede', line: 'Runners only, and faster', from: 22 },
+    { id: 'golden', name: 'Golden Wave', line: 'Every enemy pays double', from: 25 },
+    { id: 'horde', name: 'Horde', line: 'Half again as many enemies', from: 29 },
+    { id: 'pack', name: 'Elite Pack', line: 'Elites lead the wave: chests galore', from: 34 },
+    { id: 'tide', name: 'Slime Tide', line: 'Splitters and Menders flood in', from: 39 },
+    { id: 'thunder', name: 'Thunderstorm', line: 'Storm hits twice as hard', from: 44 },
+    { id: 'blizzard', name: 'Blizzard', line: 'Frost hits twice as hard, enemies slow down', from: 49 },
+    { id: 'inferno', name: 'Inferno', line: 'Fire hits twice as hard', from: 54 },
+    { id: 'eclipse', name: 'Eclipse', line: 'Enemies are faster, combos pay double', asc: 1, from: 6 },
+    { id: 'harvest', name: 'Harvest Moon', line: 'Golden Wisps every few seconds', asc: 1, from: 12 },
+    { id: 'starfall', name: 'Starfall', line: 'Every Golden Wisp drops Starshards', asc: 1, from: 22 },
+    { id: 'frenzy', name: 'Frenzy', line: 'Everyone moves and fires faster', asc: 1, from: 32 },
+    { id: 'ironrain', name: 'Iron Rain', line: 'Armoured, Ironhide and Bulwarks only', asc: 2, from: 6 },
+    { id: 'gale', name: 'Gale', line: 'Storm hits blow enemies back', asc: 2, from: 20 },
+    { id: 'mirror', name: 'Mirror Wave', line: 'Every enemy is shielded: Storm rules', asc: 3, from: 6 },
+    { id: 'bloodmoon', name: 'Blood Moon', line: 'Tougher enemies that pay triple', asc: 3, from: 20 }
+  ];
+  const eventOpen = (p, e, w) => (!e.asc || p.ascensions >= e.asc) && w >= e.from;   // Ascension events spread across the new run
+  function eventFor(p, w) {
+    if (isBoss(w) || isTrial(p, w) || w < 6) return null;
+    const open = EVENTS.filter(e => eventOpen(p, e, w)), fresh = open.find(e => !p.seenEvents.includes(e.id));
+    if (fresh) return fresh;                                      // a new twist the first time it can happen
+    if (w % 4 !== 1 || !open.length) return null;                // then one wave in four brings a known twist back
+    return open[(w * 7 + p.ascensions * 3) % open.length];
+  }
+  function eventMix(mix, ev) {
+    if (!ev) return mix;
+    const n = mix.reduce((a, [, c]) => a + c, 0), m = mix.map(([r, c]) => [r, c]);
+    if (ev.id === 'stampede') return [['runner', Math.ceil(n * 0.6)], ['sprinter', Math.ceil(n * 0.4)]];
+    if (ev.id === 'horde') return m.map(([r, c]) => [r, Math.ceil(c * 1.5)]);
+    if (ev.id === 'pack') return m.concat([['elite', 3]]);
+    if (ev.id === 'tide') return m.concat([['splitter', 4], ['mender', 2]]);
+    if (ev.id === 'ironrain') return [['armoured', Math.ceil(n * 0.5)], ['ironhide', Math.ceil(n * 0.3)], ['bulwark', 2]];
+    if (ev.id === 'mirror') return [['shielded', Math.ceil(n * 0.6)], ['ironhide', Math.ceil(n * 0.2)]];
+    return m;
+  }
+
   // How hard an enemy at the gate hits it, per second; grows with the wave like the gate's health grows with its level.
-  const enemyBite = (w, role) => (role === 'boss' ? 16 : role === 'armoured' ? 7 : role === 'swarm' ? 2 : 4) * Math.pow(1.12, w - 1);
+  const enemyBite = (w, role) => (isBossRole(role) ? 16 : role === 'armoured' || role === 'ironhide' || role === 'bulwark' ? 7 : role === 'swarm' ? 2 : 4) * Math.pow(1.12, w - 1);
   const enemyHp = (w, role) => 10 * Math.pow(1.235, w - 1) * ROLES[role].hp;
 
   // ---------- idle: offline earnings, daily reward ----------
@@ -203,7 +305,7 @@
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
     q.settings = Object.assign({}, p.settings); q.grown = p.grown;
     q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.stats = Object.assign({}, p.stats); q.feats = p.feats.slice(); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;
-    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p);
+    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p); q.relics = p.relics.slice(); q.seenRoles = p.seenRoles.slice(); q.seenEvents = p.seenEvents.slice();
     const st = (q.perks.start || 0) * 5; if (st) { q.wave = 1 + st; q.gateLevel = 1 + st; }   // Head Start   // looks and Starshards stay; Ascending pays
     return q;
   }
@@ -358,7 +460,7 @@
 
   // ---------- save profile ----------
   function defaults() {
-    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false, stats: false } };
   }
@@ -394,11 +496,14 @@
     if (p.perks && typeof p.perks === 'object') for (const k of PERKS) { const n = Math.floor(num(p.perks[k.id], 0, k.max, 0)); if (n) out.perks[k.id] = n; }
     out.perkPts = Math.floor(num(p.perkPts, 0, 1e6, 0));
     if (p.perks === undefined && out.ascensions > 0) out.perkPts = out.ascensions * 2;   // saves from before perks: points for the Ascensions already made
+    if (Array.isArray(p.relics)) out.relics = [...new Set(p.relics.filter(id => RELICS.some(r => r.id === id)))].slice(0, 2);
+    if (Array.isArray(p.seenEvents)) out.seenEvents = [...new Set(p.seenEvents.filter(id => EVENTS.some(e => e.id === id)))];
+    if (Array.isArray(p.seenRoles)) out.seenRoles = [...new Set(p.seenRoles.filter(r => ROLES[r]))];
     if (Array.isArray(p.feats)) out.feats = [...new Set(p.feats.filter(id => FEATS.some(f => f.id === id)))];
     if (p.surge && typeof p.surge === 'object') out.surge = { until: num(p.surge.until, 0, 1e15, 0), adDay: typeof p.surge.adDay === 'string' ? p.surge.adDay : '',
       ads: Math.floor(num(p.surge.ads, 0, 99, 0)), shardAds: Math.floor(num(p.surge.shardAds, 0, 99, 0)) };
     out.combos = Array.isArray(p.combos) ? [...new Set(p.combos.filter(c => COMBOS.includes(c)))] : [];
-    if (p.forks && typeof p.forks === 'object') for (const s of [2, 3]) {
+    if (p.forks && typeof p.forks === 'object') for (const s of FORK_STAGES) {
       const f = p.forks[s]; if (typeof f === 'string' && FORKS[s].some(x => x.id === f) && stageOf(out.gateLevel) >= s) out.forks[s] = f;
     }
     if (p.daily && typeof p.daily === 'object') {
@@ -422,7 +527,7 @@
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, ascend, defaults, sanitize,
-    CITY, cityToBand, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
+    CITY, cityToBand, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
     SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

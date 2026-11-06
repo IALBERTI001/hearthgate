@@ -274,3 +274,5 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   mask: linear-gradient(transparent 0 14px, #000 14px) 0 0 / 6px 100% no-repeat, linear-gradient(transparent 0 4px, #000 4px) 11px 0 / 6px 100% no-repeat, linear-gradient(transparent 0 9px, #000 9px) 22px 0 / 6px 100% no-repeat; }
 .statsbtn.on { background: var(--brass); } .statsbtn.on .bars { background: var(--plum-dark); }
 #stats + #pause { margin-left: 0; }
+#card h3.rel { margin: 6px 0 0; font: 36px 'HG Display', sans-serif; color: var(--gold); text-align: left; }
+#card.perks .body { overflow-y: auto; }

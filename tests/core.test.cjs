@@ -172,4 +172,18 @@ const all = C.defaults(); all.shop.open = true; all.shop.shards = 1e6;
 for (const it of C.SHOP) if (it.price) C.buy(all, it.id);
 const wardrobe = C.FEATS.find(f => f.id.startsWith('looks') && f.tier === 3);
 assert.ok(C.featProgress(all, wardrobe) >= wardrobe.need, `owning every look completes ${wardrobe.name}`);
+// The 30-second rule's schedule (Nov 6 2026): variants, bosses, events and Ascension unlocks.
+assert.ok(C.waveMix(12).some(r => r[0] === 'elite'), 'elites from wave 12');
+assert.ok(C.waveMix(14).some(r => r[0] === 'shielded'));
+assert.ok(C.waveMix(16).some(r => r[0] === 'splitter')); assert.ok(C.waveMix(19).some(r => r[0] === 'mender'));
+assert.deepStrictEqual([10, 20, 30, 40].map(C.bossOf), ['boss', 'queen', 'lord', 'boss'], 'bosses rotate');
+for (const w of [12, 20, 33, 37, 60]) assert.ok(C.waveMix(w).every(([, c]) => c > 0), 'no empty groups at wave ' + w);
+const ev = C.defaults(); assert.strictEqual(C.eventFor(ev, 21), null); assert.strictEqual(C.eventFor(ev, 22).id, 'stampede', 'first event at wave 22');
+ev.seenEvents.push('stampede'); assert.strictEqual(C.eventFor(ev, 23), null); assert.strictEqual(C.eventFor(ev, 25).id, 'golden');
+ev.ascensions = 1; ev.seenEvents.push('golden'); assert.strictEqual(C.eventFor(ev, 7).id, 'eclipse', 'an Ascension adds new events, early in the run');
+assert.ok(C.STAGES.length === 5 && C.stageOf(85) === 5 && C.stageOf(60) === 4);
+const fk = C.defaults(); fk.gateLevel = 61; fk.forks = { 2: 'crews', 3: 'focus' }; assert.strictEqual(C.pendingFork(fk), 4);
+assert.ok(!C.unlocked(C.defaults(), 'trials')); const a2 = C.defaults(); a2.ascensions = 2; assert.ok(C.isTrial(a2, 15) && !C.isTrial(a2, 20));
+const rl = C.defaults(); rl.ascensions = 3; C.equipRelic(rl, 'ember'); C.equipRelic(rl, 'rime'); C.equipRelic(rl, 'crown'); assert.deepStrictEqual(rl.relics, ['rime', 'crown'], 'two relics at most');
+assert.ok(C.bonuses(rl).bossDmg > 0);
 console.log('core tests passed');
