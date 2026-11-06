@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06p';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06q';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -169,6 +169,7 @@
     if (S.gateHp <= 0) gateBroken();
     else if (!S.spawnQ.length && !S.enemies.length) waveCleared();
     if ((S.saveT += DT) > 5) { S.saveT = 0; save(); }
+    if ((S.sideT = (S.sideT || 0) + DT) > 0.5) { S.sideT = 0; drawSides(); }
   }
 
   function hit(e, el) {
@@ -467,6 +468,7 @@
   function drawCheer() {
     if (!has('tavern') || root.__storeCapture) return;
     const sp = CITY.spots.tavern, x = sx(sp[0]), y = sy(sp[1]) + sp[3] * K * 0.42, w = 92, f = S.cheerT > 0 ? S.cheerT / (S.cheerMax || 6) : S.cheer || 0;
+    if (f <= 0) return;   // an empty meter read as a stray bar on the Tavern (fresh-eyes review): it shows once combos start filling it
     cx.save(); cx.fillStyle = 'rgba(24,12,20,.8)'; cx.beginPath(); cx.roundRect(x - w / 2 - 3, y - 3, w + 6, 16, 8); cx.fill();
     cx.fillStyle = S.cheerT > 0 ? '#ffd56b' : '#e59a3a'; cx.beginPath(); cx.roundRect(x - w / 2, y, Math.max(6, w * f), 10, 5); cx.fill(); cx.restore();
     if (S.cheerT > 0 && !reduced()) for (const t of TOWERS) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - 40, 50, 'rgba(255,214,107,', 0.25); cx.restore(); }
@@ -584,7 +586,7 @@
     showCard('shop');
   }
   // what a trade costs in time, at the income the player actually has now (fight and city together)
-  const tradeMins = tc => { const m = tc / (C.fightRate(P, B) * 1.6 + RATE) / 60; return m < 1.5 ? '1 minute' : `${Math.round(m)} minutes`; };
+  const tradeMins = tc => { const m = tc / (C.fightRate(P, B) * 1.6) / 60; return m < 1.5 ? '1 minute' : `${Math.round(m)} minutes`; };
   function shopHtml() {
     const tab = S.shopTab || 'tower', sh = P.shop, tc = C.exchangeCost(P, B), items = C.SHOP.filter(i => i.cat === tab);
     const sel = C.shopItem(S.shopSel) && C.shopItem(S.shopSel).cat === tab ? C.shopItem(S.shopSel) : C.shopItem(sh.equip[C.slotOf(items[0])]);
@@ -596,7 +598,7 @@
     };
     return `<div class="shophead"><h2>Shop</h2><span class="chip shards"><i class="star"></i><b>${sh.shards}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
       + `<p class="earn"><i class="star"></i> Boss +${C.SHARDS.boss} · combo +${C.SHARDS.combo} · daily +${C.SHARDS.daily} · Ascend +${C.SHARDS.ascend}</p>`
-      + `<div class="trade">${SDK.rewardsOn ? '' : `<span>or trade about<br>${tradeMins(tc)} of income</span>`}`
+      + `<div class="trade">${SDK.rewardsOn ? '' : `<span>or trade about<br>${tradeMins(tc)} of kills</span>`}`
       + `<button id="c-trade" class="cbtn ${P.res >= tc ? 'gold' : 'off'}">Trade <i class="gem"></i>${C.fmt(tc)}<span class="to"></span><i class="star"></i>1</button>`
       // Full Launch only: an ad for Starshards, side by side with the trade so the panel keeps its height
       + (SDK.rewardsOn ? (adDay(), `<button id="c-shardad" class="cbtn ${P.surge.shardAds < C.SHARD_ADS_PER_DAY ? 'gold' : 'off'}"><span class="play"></span>+${C.SHARD_AD}<i class="star"></i><span class="small">${C.SHARD_ADS_PER_DAY - P.surge.shardAds} left</span></button>`) : '') + `</div>`
@@ -680,7 +682,12 @@
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
     if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
-    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${rfmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. ${(() => { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1); return un ? `<b>Unlocks: ${un.name}.</b> ` : ''; })()}The next run asks for wave ${Math.min(90, 35 + 5 * P.ascensions)} before it can Ascend. ${P.ascensions + 1 < C.ETERNAL_AT ? `Ascension ${P.ascensions + 1} of ${C.ETERNAL_AT} on the road to the Eternal City. ` : P.ascensions + 1 === C.ETERNAL_AT ? '<b>This Ascension completes the Eternal City.</b> ' : ''}Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.${` You will earn <b>${C.perkPtsFor(P)} perk point${C.perkPtsFor(P) === 1 ? '' : 's'}</b> (1, plus 1 for every 25 waves reached).`}</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'ascend') { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1), next = Math.min(90, 35 + 5 * P.ascensions), pp = C.perkPtsFor(P), n = P.ascensions + 1;
+      // three short lines instead of a paragraph (fresh-eyes review, Nov 6): what you gain, what stays, what starts over
+      html = `<span class="eyebrow">${n < C.ETERNAL_AT ? `Ascension ${n} of ${C.ETERNAL_AT} on the road to the Eternal City` : n === C.ETERNAL_AT ? 'This Ascension completes the Eternal City' : `Ascension ${n}`}</span><h2>Ascend?</h2>`
+        + `<ul class="asc"><li><b>Gain:</b> Resonance and damage x${C.ASCEND_MULT} for good (x${rfmt(Math.pow(C.ASCEND_MULT, n))} in all), ${pp} perk point${pp === 1 ? '' : 's'}${P.shop.open ? `, ${C.SHARDS.ascend} Starshards` : ''}${un ? `, and <b>${un.name}</b>` : ''}.</li>`
+        + `<li><b>Keep:</b> best wave, combos, Feats, perks, Relics, stars and Shop looks.</li>`
+        + `<li><b>Start over:</b> the city returns to ruins at wave 1. The next Ascension needs wave ${next}.</li></ul>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`; }
     if (kind === 'eternal') html = `<span class="eyebrow">Ascension ${C.ETERNAL_AT}</span><h2>The Eternal City</h2><p>Ten times the city fell to ruin and ten times you raised it again. The Hearthgate stands for good, and its light will never go out.</p>`
       + `<p class="small">Best wave ${C.fmt(P.bestWave)} · ${C.fmt(P.stats.kills)} enemies held back · ${C.fmt(P.stats.bosses)} bosses · ${P.feats.length}/${C.FEATS.length} Feats · ${P.stars.length}/${C.STARS.length} stars</p>`
       + `<p class="small">The waves keep coming, and the city keeps growing: every Ascension from here still makes you stronger, with new twin events each run.</p>${btn('c-ok', 'Keep the light burning', 'gold')}`;
@@ -889,10 +896,12 @@
     if (e.healed) { cx.save(); cx.globalAlpha = e.healed * 2; cx.fillStyle = '#9dffb0'; cx.font = '26px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.fillText('+', e.x + e.size * 0.3, e.y - e.size * 0.8); cx.restore(); }
     if (e.burn > 0 && !reduced() && Math.random() < 0.3) S.fx.push({ x: e.x + (Math.random() - 0.5) * e.size * 0.5, y: e.y - e.size * 0.5, vx: 0, vy: -50, t: 0, life: 0.4, col: COLOR.fire, r: 2.5 });
     if (evIs('fog') && e.y < WALL_FRONT - 330) return;   // in the mist: no bar either
+    cx.save(); cx.globalAlpha = Math.min(1, (S.t - e.born) / 0.6) * (e.faded ? 0.3 : 1);   // the bar fades in with its enemy, never alone
     const bw = e.boss ? 120 : 44, by = e.y - e.size - 8;
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(e.x - bw / 2 - 2, by - 2, bw + 4, 9);
     cx.fillStyle = e.boss ? '#ff6a3a' : e.armour ? '#c8c2b4' : '#e5533d'; cx.fillRect(e.x - bw / 2, by, bw * Math.max(0, e.hp / e.max), 5);
     drawEnemyHp(e);
+    cx.restore();
   }
 
   function drawShot(s) {
@@ -1151,7 +1160,46 @@
     el('stage').style.transform = `translate(${(vw - W * f) / 2}px,${(vh - H * f) / 2}px) scale(${f})`;
     k = Math.max(0.5, Math.min(2, f * (root.devicePixelRatio || 1)));
     cv.width = Math.round(W * k); cv.height = Math.round(H * k);
+    placeSides(vw, vh, W * f);
   }
+  // ---------- desktop side panels (fresh-eyes review, Nov 6 2026: on a wide window the portrait stage left two thirds
+  // of the screen as blurred filler). When there is room, the city's buildings sit on the left (level them with a click)
+  // and the goals on the right (next step, quests, the next star, collections). Phones never see them. ----------
+  const sides = [el('sideL'), el('sideR')].filter(Boolean);
+  let sidesOn = false;
+  function placeSides(vw, vh, sw) {
+    const room = (vw - sw) / 2; sidesOn = sides.length === 2 && room >= 250 && vh >= 420;
+    sides.forEach((p, i) => { p.hidden = !sidesOn || P.firstSession; if (!sidesOn) return;
+      const z = Math.max(0.75, Math.min(1.5, vh / 720)), w = Math.min(360, (room - 36) / z);   // panels grow with the window like the stage
+      p.style.width = w + 'px'; p.style.maxHeight = (vh - 40) / z + 'px'; p.style.transform = `translateY(-50%) scale(${z})`;
+      p.style.left = (i === 0 ? (room - w * z) / 2 : vw - room + (room - w * z) / 2) + 'px'; });
+    if (sidesOn) drawSides();
+  }
+  function drawSides() {
+    if (!sidesOn) return;
+    // a brand-new player sees only the fight and one pointed button: the panels arrive once the opening is over
+    for (const p of sides) if (p.hidden !== !!P.firstSession) p.hidden = !!P.firstSession;
+    if (P.firstSession) return;
+    const gem = '<i class="gem sm"></i>', offer = C.restoreOffer(P), rc = C.cityWhole(P) ? 0 : C.restoreCost(P.restored.length);
+    const rows = C.BUILDINGS.map(b => {
+      if (P.restored.includes(b.id)) { const L = C.levelOf(P, b.id), c = C.levelCost(P, b.id, B);
+        return `<div class="srow on"><span class="sn">${b.name}<small>Lv ${L} · +${rfmt(C.buildingRate(P, b.id, B) * surgeX())}/s</small></span><button class="slv ${P.res >= c ? 'can' : ''}" data-lv="${b.id}" aria-label="Level up ${b.name}">${gem}${C.fmt(c)}</button></div>`; }
+      const next = offer.includes(b.id);
+      return `<div class="srow${next ? ' next' : ''}"><span class="sn">${b.name}<small>${next ? `Restore next · ${C.fmt(rc)}` : 'In ruins'}</small></span></div>`; }).join('');
+    html(el('sideL'), `<h3>The city <small>${P.restored.length}/10</small></h3>${rows}<p class="shint">Click a level button, or a building in the city.</p>`);
+    const rw = Math.max(P.runWave || 1, P.wave), aw = C.ascendWave(P);
+    const step = C.canAscend(P) ? '<b>Ascend is ready!</b> Press Restore.' : C.cityWhole(P) ? `Reach wave <b>${aw}</b> to Ascend (now ${rw}).` : `Restore ${offer.map(id => C.byId(id).name).join(' or ')} for ${gem}${C.fmt(rc)}.`;
+    const stage = C.stageOf(P.gateLevel), nextStage = C.STAGES[stage];
+    const qs = P.shop.open && P.quests.list.length ? `<h4>Today's quests</h4>${P.quests.list.map(q => `<div class="sq${q.claimed ? ' done' : ''}"><span>${C.questText(q)}</span><b>${Math.min(q.n, q.need)}/${q.need}</b></div>`).join('')}` : '';
+    const star = P.ascensions >= 1 ? C.STARS.find(st => st.asc === P.ascensions && !P.stars.includes(st.id)) : null;
+    html(el('sideR'), `<h3>Goals</h3><div class="sstep">${step}</div>`
+      + `<div class="sline">Gate level <b>${P.gateLevel}</b>${nextStage ? ` · stage ${stage + 1} at level ${nextStage}` : ' · top stage'}</div>`
+      + `<div class="sline">Best wave <b>${C.fmt(P.bestWave)}</b> · this run ${rw}</div>`
+      + (star ? `<div class="sline">Next star: <b>${star.name}</b> at wave ${C.starWave(P, star.k)}</div>` : '') + qs
+      + `<h4>Collections</h4><div class="sgrid"><span>Feats<b>${P.feats.length}/${C.FEATS.length}</b></span><span>Combos<b>${P.combos.length}/${comboTotal()}</b></span>`
+      + `<span>Enemies met<b>${(P.seenRoles || []).length}</b></span><span>Ascension<b>${P.ascensions}/${C.ETERNAL_AT}</b></span>${P.ascensions >= 1 ? `<span>Stars<b>${P.stars.length}/${C.STARS.length}</b></span>` : ''}</div>`);
+  }
+  if (sides[0]) sides[0].addEventListener('click', ev => { const b = ev.target.closest('[data-lv]'); if (!b || S.card) return; A.unlock(); if (levelUp(b.dataset.lv)) drawSides(); else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } });
   root.addEventListener('resize', fit);
 
   // ---------- boot ----------

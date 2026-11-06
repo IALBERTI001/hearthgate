@@ -54,6 +54,8 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .big .label { position: relative; font-size: 44px; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
 .big .cost { position: relative; font-size: 32px; color: var(--gold); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 .big .cost .what { color: #e8cf98; }
+i.gem { display: inline-block; vertical-align: -4px; }   /* inline in card buttons it collapsed to a bar (fresh-eyes review, Nov 6) */
+.cbtn i.gem { width: 18px; height: 18px; border-width: 2px; margin: 0 8px 0 6px; }
 .gem.sm { width: 18px; height: 18px; border-width: 2px; margin: 0 4px 0 2px; }
 .big .wait { position: absolute; left: 16px; top: 10px; font: 30px 'HG Display', sans-serif; color: var(--gold); }
 .big kbd { display: none; position: absolute; right: 12px; top: 10px; min-width: 40px; padding: 2px 8px; border-radius: 8px; border: 2px solid var(--brass);
@@ -276,3 +278,33 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 #stats + #pause { margin-left: 0; }
 #card h3.rel { margin: 6px 0 0; font: 36px 'HG Display', sans-serif; color: var(--gold); text-align: left; }
 #card.perks .body { overflow-y: auto; }
+/* a card is open: the bottom bar dims too, since Upgrade and Restore wait until it closes (fresh-eyes review, Nov 6) */
+#stage:has(#card.on) #bar { filter: brightness(.5) saturate(.6); pointer-events: none; }
+ul.asc { margin: 6px 0 10px; padding: 0; list-style: none; text-align: left; display: flex; flex-direction: column; gap: 8px; font: 600 27px/1.3 'HG Text', sans-serif; color: #f1e3c8; }
+ul.asc li { background: rgba(0, 0, 0, .18); border-radius: 12px; padding: 8px 12px; }
+ul.asc b { color: var(--gold); }
+/* desktop side panels: the city on the left, goals on the right (only when the window has room beside the stage) */
+.side { position: fixed; top: 50%; transform: translateY(-50%); transform-origin: left center; overflow-y: auto; z-index: 5; padding: 16px 16px 12px; border-radius: 18px;
+  background: rgba(36, 20, 32, .9); border: 3px solid var(--brass); box-shadow: 0 8px 30px rgba(0, 0, 0, .45); color: var(--ink);
+  font: 600 15px/1.35 'HG Text', 'Trebuchet MS', sans-serif; scrollbar-width: thin; scrollbar-color: var(--brass) transparent; }
+.side h3 { margin: 0 0 10px; font: 26px/1 'HG Display', sans-serif; color: var(--gold); display: flex; justify-content: space-between; align-items: baseline; }
+.side h3 small { font-size: 18px; color: #e8cf98; }
+.side h4 { margin: 14px 0 6px; font: 18px/1 'HG Display', sans-serif; color: #e8cf98; letter-spacing: .02em; }
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 10px; margin-bottom: 4px; background: rgba(0, 0, 0, .18); opacity: .55; }
+.srow.on { opacity: 1; } .srow.next { opacity: 1; outline: 2px dashed rgba(255, 213, 107, .6); }
+.sn { display: flex; flex-direction: column; font: 18px/1.1 'HG Display', sans-serif; min-width: 0; }
+.sn small { font: 600 14px/1.3 'HG Text', sans-serif; color: #d9c6a6; }
+.slv { flex: none; display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 10px; border: 2px solid var(--brass); background: #3b2440; color: #cdb99a; font: 16px/1 'HG Display', sans-serif; cursor: pointer; }
+.slv.can { background: linear-gradient(#c7962f, #8a5a1b); color: var(--ink); border-color: var(--gold); }
+.slv.shake { animation: shake .3s; }
+.slv .gem.sm { width: 12px; height: 12px; border-width: 2px; margin: 0 6px 0 2px; }
+.side .gem.sm { width: 12px; height: 12px; border-width: 2px; margin: 0 4px; }
+.shint { margin: 8px 2px 0; font-size: 14px; color: #bfae92; }
+.sstep { padding: 10px 12px; border-radius: 12px; background: rgba(255, 213, 107, .12); border: 2px solid rgba(255, 213, 107, .45); font-size: 16px; margin-bottom: 8px; }
+.sstep b, .sline b, .sq b { color: var(--gold); }
+.sline { padding: 4px 2px; }
+.sq { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 8px; background: rgba(0, 0, 0, .18); margin-bottom: 4px; }
+.sq.done { opacity: .5; text-decoration: line-through; }
+.sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sgrid span { display: flex; flex-direction: column; padding: 6px 8px; border-radius: 10px; background: rgba(0, 0, 0, .18); font-size: 14px; color: #d9c6a6; }
+.sgrid b { font: 20px/1.1 'HG Display', sans-serif; color: var(--ink); }

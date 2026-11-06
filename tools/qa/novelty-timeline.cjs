@@ -17,7 +17,7 @@ const [url, mins = '45'] = process.argv.slice(2);
   for (let t = 0; t <= +mins * 60; t += 5) {
     const s = await p.evaluate(() => {
       const H = Hearthgate; H.sim(5); const { P, S } = H.state(), C = HGCore;
-      for (let k = 0; k < 3 && H.card(); k++) H.act(H.card() === 'ascend' ? 'ok' : H.card() === 'daily' || H.card() === 'offline' ? 'ok' : 'pick');
+      for (let k = 0; k < 3 && H.card(); k++) H.act(['ascend', 'daily', 'offline', 'eternal'].includes(H.card()) ? 'ok' : 'pick');
       if (H.card()) H.act('close');
       const B = C.bonuses(P), uc = C.upgradeCost(P.gateLevel, B), rc = C.cityWhole(P) ? Infinity : C.restoreCost(P.restored.length);
       if (C.pendingFork(P)) H.act('up'); else if (C.canAscend(P)) H.act('re'); else if (P.res >= Math.min(uc, rc)) H.act(rc <= uc ? 're' : 'up');
@@ -51,6 +51,7 @@ const [url, mins = '45'] = process.argv.slice(2);
     if (s.x2 > (prev.x2 || 0)) { if (!once(T, 'x2', 'first building x2 milestone')) add(T, 'BEAT', 'building x2 milestone'); }
     if (s.levels > 0 && !(prev.levels > 0)) once(T, 'level', 'first building level-up');
     if (Math.floor((s.best - 1) / 10) > Math.floor(((prev.best || 1) - 1) / 10)) { if (!once(T, 'boss', 'first boss beaten')) add(T, 'BEAT', `boss beaten (wave ${s.best - 1})`); }
+    if (s.asc >= 10 && !(prev.asc >= 10)) once(T, 'eternal', 'the Eternal City (10th Ascension)');
     if (s.asc > (prev.asc || 0)) { if (!once(T, 'asc', 'first Ascension')) add(T, 'BEAT', `Ascension ${s.asc}`); }
     if (s.perks > (prev.perks || 0)) once(T, 'perk', 'first perk');
     if (s.event && s.event !== prev.event) { if (!once(T, 'ev:' + s.event, `new wave event: ${s.event}`)) add(T, 'BEAT', `event ${s.event}`); }
