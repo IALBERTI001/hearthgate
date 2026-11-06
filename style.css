@@ -215,7 +215,7 @@ i.gem { display: inline-block; vertical-align: -4px; }   /* inline in card butto
 /* ---------- perks, quests panel, feats polish ---------- */
 .perksbtn { cursor: pointer; color: var(--gold); position: relative; flex: none !important; }
 .perksbtn.news::after { content: ''; position: absolute; right: -4px; top: -4px; width: 20px; height: 20px; border-radius: 50%; background: #ff5a8a; border: 3px solid var(--plum-dark); }
-.star.gold { background: linear-gradient(#fff6cf, #ffd56b 50%, #c98a1c); }
+.star.gold { background: linear-gradient(#fff6cf, #ffd56b 50%, #c98a1c); clip-path: polygon(4% 88%, 0% 22%, 27% 52%, 50% 6%, 73% 52%, 100% 22%, 96% 88%); }   /* perk points are a crown, so they never read as Starshards or constellation stars (fresh-eyes review) */
 .perkpts { align-self: center; color: #fff1c4; border-color: var(--gold); font-size: 36px; }
 .quest .pl { grid-column: 1; margin: 0; font: 700 30px/1.15 'HG Text', sans-serif !important; color: #e2d0b0 !important; }
 #card.quests, #card.perks { align-items: flex-start; padding-top: 168px; }   /* pinned like the Shop: tabs never jump */
@@ -313,3 +313,6 @@ ul.asc b { color: var(--gold); }
 .feat.unseen { opacity: .6; }
 .feat .ft b small { font: 22px 'HG Display', sans-serif; color: #ff9c7a; margin-left: 6px; }
 .feat .fr em { font-style: normal; }
+/* with the stats overlay on, toasts move up into the field so they never cover the tower and building labels */
+#stage.stats-on #toast { bottom: auto; top: 222px; }
+#stage.stats-on #hand { display: none; }   /* the pointer hid a building label */

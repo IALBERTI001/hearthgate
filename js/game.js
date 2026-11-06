@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06r';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06s';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -62,7 +62,8 @@
     const om = !S.omenTold && P.omen && C.OMENS.find(o => o.id === P.omen); if (om) S.omenTold = true;
     S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : S.trial ? 'TRIAL! Win it for Starshards' : S.event ? `${evNew ? 'NEW! ' : ''}${S.event.name}: ${S.event.line}` : cheer, big: boss || S.trial || !!S.event, boss, t: 0, roles: mix.map(([r]) => r) };
     A.boss(boss);   // boss waves get the battle theme; every other wave the calm playlist
-    if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('boss_horn', 0.6); }   // a boss wave is an event: red edges, a rumble
+    if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('boss_horn', 0.6); }
+    else if (S.event) A.play(evNew ? 'feat' : 'surge', evNew ? 0.45 : 0.3);   // a named twist sounds different from an ordinary wave   // a boss wave is an event: red edges, a rumble
     S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax(); if (S.event && evIs('laststand')) S.gateHp = Math.min(S.gateHp, gateMax() * 0.5);
     // a shuffled queue, so runners and armoured arrive among the slimes rather than in blocks; the boss comes last
     const q = []; for (const [role, c] of mix) for (let i = 0; i < c; i++) q.push(role);
@@ -411,7 +412,7 @@
     const els = elements(), dmg = C.towerDamage(P, B), rate = 1 / C.fireInterval(B);
     TOWERS.forEach((t, i) => {
       const e = els.length ? els[i % els.length] : 'none';
-      tag(t.x, t.beacon ? t.y - 46 : t.y - 118, [`${rfmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
+      tag(t.x, t.beacon ? t.y - 46 : t.y - 118, [`hit ${rfmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
     });
     // the gate
     tag(GATE_X, WALL_FRONT + 58, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`], '#7bd15a');   // over the arch, clear of the tower labels
@@ -426,7 +427,7 @@
     cx.font = '22px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineWidth = 4; cx.strokeStyle = '#1a0f15';
     const t = C.fmt(Math.max(0, e.hp)); cx.strokeText(t, e.x, e.y - e.size - 22); cx.fillStyle = '#fff4dc'; cx.fillText(t, e.x, e.y - e.size - 22);
   }
-  function toggleStats() { A.unlock(); P.settings.stats = !P.settings.stats; el('stats').classList.toggle('on', P.settings.stats); A.play('claim', 0.25); save(); }
+  function toggleStats() { A.unlock(); P.settings.stats = !P.settings.stats; el('stats').classList.toggle('on', P.settings.stats); el('stage').classList.toggle('stats-on', P.settings.stats); A.play('claim', 0.25); save(); }
 
   // ---------- the 30-second beats (Nov 6 2026): Golden Wisp, Cheer, villagers, boss ranks, crowns ----------
   const comboTotal = () => C.unlocked(P, 'earth') ? 4 : 3;
@@ -1214,7 +1215,7 @@
 
   // ---------- boot ----------
   function bind() {
-    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('stats').addEventListener('click', toggleStats); el('stats').classList.toggle('on', P.settings.stats); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
+    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('stats').addEventListener('click', toggleStats); el('stage').classList.toggle('stats-on', !!P.settings.stats); el('stats').classList.toggle('on', !!P.settings.stats); el('stats').classList.toggle('on', P.settings.stats); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
     el('shop').addEventListener('click', () => { if (S.card === 'shop') { const x = el('card').querySelector('#c-no'); if (x) x.click(); } else openShopCard(); });
     el('pause').addEventListener('click', () => {
       A.unlock();
