@@ -210,3 +210,7 @@ assert.strictEqual(new Set(C.STARS.map(s => s.id)).size, 40); assert.strictEqual
 console.log('constellation tests passed');
 { const p = C.defaults(); p.wave = 47; p.runWave = 50; assert.strictEqual(C.perkPtsFor(p), 3, 'perk points count the best wave of the run'); }
 console.log('review fix tests passed');
+// the Eternal City: the 10th Ascension, and every Ascend wave stays reachable (capped)
+assert.strictEqual(C.ETERNAL_AT, 10);
+{ const p = C.defaults(); for (let a = 0; a <= 40; a++) { p.ascensions = a; assert.ok(C.ascendWave(p) <= 90, 'Ascend wave capped'); } }
+console.log('eternal tests passed');
