@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06s';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06t';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -841,6 +841,13 @@
       g.drawImage(im, 0, 0); img[n] = c; }
   }
   // Draw a sprite from its own sheet, anchored bottom-centre on (x, baseY); pad = the sheet's clear margin.
+  const VARIANT_FILTER = () => Object.assign({ flash: 'brightness(1.8)', chill: 'saturate(0.55) brightness(1.12)', dormant: 'grayscale(0.85) brightness(0.8)' }, TINT);
+  function variant(im, key) {
+    const cache = im._v || (im._v = {}); if (cache[key]) return cache[key];
+    const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d');
+    g.filter = VARIANT_FILTER()[key] || 'none'; g.drawImage(im, 0, 0); g.filter = 'none';
+    return (cache[key] = c);
+  }
   function sprite(im, x, baseY, h, frame = 0, frames = 1) {
     const pad = 8, fw = im.width / frames, ch = im.height - 2 * pad, s = h / ch;
     cx.drawImage(im, frame * fw, 0, fw, im.height, x - fw * s / 2, baseY - (ch + pad) * s, fw * s, im.height * s);
@@ -865,9 +872,7 @@
       const grow = Math.min(0.16, (P.gateLevel - C.STAGES[stage - 1]) * 0.012);   // a little taller with every level of the stage
       const breathe = calm ? 0 : Math.sin(S.t * 2 + i) * 0.012, h = CITY.towerH * (1 + (tier - 1) * 0.1 + grow) * (t.gate ? 0.86 : 1) * (1 + breathe - t.recoil * 0.05);
       shadow(t.x + 5, t.y + 2, CITY.platformR * 0.95, CITY.platformR * 0.36, 0.42);
-      if (!e) cx.filter = 'grayscale(0.85) brightness(0.8)';
-      sprite(im, t.x, t.y + CITY.towerSink, h);
-      cx.filter = 'none';
+      sprite(e ? im : variant(im, 'dormant'), t.x, t.y + CITY.towerSink, h);
       if (t.flash > 1) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - h * 0.5, 60, 'rgba(255,230,150,', 0.5 * (t.flash - 1) * 5); cx.restore(); }
       if (stage >= 4) drawCrown(t.x, t.y - h - 6, stage, i);
       if (e) {
@@ -895,11 +900,11 @@
     shadow(e.x + 4, e.y - 2, e.size * 0.42, e.size * 0.13, 0.35);
     if (e.dying) { cx.translate(e.x, e.y); cx.scale(1 + e.dying, 1 - e.dying * 0.8); cx.translate(-e.x, -e.y); }
     if (GATE_X + e.off < e.x - 20) { cx.translate(e.x, 0); cx.scale(-1, 1); cx.translate(-e.x, 0); }   // face the way it walks
-    if (e.flash > 0) cx.filter = `brightness(${1 + e.flash * 0.9})`;
-    else if (e.chill > 0) cx.filter = 'saturate(0.55) brightness(1.12)';
-    else if (e.tint) cx.filter = TINT[e.tint];
-    sprite(sh, e.x, e.y, e.size, Math.floor(e.frame) % 6, 6);
-    cx.filter = 'none'; cx.restore();
+    // colour variants come from sheets filtered once and cached, never a canvas filter per draw: with 40 enemies the
+    // per-draw filters dropped a test phone render to 9 frames a second (Nov 6 2026)
+    const vk = e.flash > 0.3 ? 'flash' : e.chill > 0 ? 'chill' : e.tint || '';
+    sprite(vk ? variant(sh, vk) : sh, e.x, e.y, e.size, Math.floor(e.frame) % 6, 6);
+    cx.restore();
     if (e.dying) return;
     if (e.chill > 0) { cx.save(); cx.globalAlpha = 0.5; glow(e.x, e.y - e.size * 0.4, e.size * 0.55, GLOW.frost, 0.35); cx.restore(); }
     if (e.shield) { cx.save(); cx.strokeStyle = 'rgba(170,225,255,.9)'; cx.fillStyle = 'rgba(150,210,255,.18)'; cx.lineWidth = 3; cx.beginPath(); cx.ellipse(e.x, e.y - e.size * 0.45, e.size * 0.62, e.size * 0.58, 0, 0, 7); cx.fill(); cx.stroke(); cx.restore(); }
