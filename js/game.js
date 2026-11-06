@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06y';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06z';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -70,6 +70,8 @@
     const q = []; for (const [role, c] of mix) for (let i = 0; i < c; i++) q.push(role);
     for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
     S.spawnQ = q.sort((a, b) => C.isBossRole(a) - C.isBossRole(b)); S.spawnT = 1.0;
+    // a brand-new player drops into a fight already under way: the first three slimes are halfway across the field
+    if (n === 1 && P.firstSession && !S.introPack) { S.introPack = true; for (let i = 0; i < 3; i++) { spawn(S.spawnQ.shift(), [170 + i * 190 + (Math.random() - 0.5) * 60, FIELD_TOP + 150 + Math.random() * 90]); S.enemies[S.enemies.length - 1].born = S.t - 1; } }
   }
   function spawn(role, at) {
     const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && evIs('bloodmoon') ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1) * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 2 : 1);
