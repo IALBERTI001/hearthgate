@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06t';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06u';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -286,6 +286,7 @@
     y = Math.max(FIELD_TOP - 20 + size, y);
     for (let k = 0; k < 4; k++) { const hit = S.pops.find(q => q.text && !q.combo && q.t < 0.35 && Math.abs(q.x - x) < 60 && Math.abs(q.y - q.t * 40 - y) < size * 0.9); if (!hit) break; y -= size * 0.95; }
     const small = S.pops.filter(q => q.text && !q.combo && q.size <= 40); if (size <= 40 && small.length >= 8) S.pops.splice(S.pops.indexOf(small[0]), 1);
+    const big = S.pops.filter(q => q.text && !q.combo && q.size > 40 && q.size < 60 && q.life < 1.2); if (size > 40 && size < 60 && life < 1.2 && big.length >= 2) S.pops.splice(S.pops.indexOf(big[0]), 1);   // at most two big hit numbers at once (review: a column of 26.8M)
     const p = { x, y, text, col, t: 0, life, size }; S.pops.push(p); return p;
   }
   function burst(e, col, n, sp) {
@@ -418,7 +419,7 @@
     tag(GATE_X, WALL_FRONT + 58, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`], '#7bd15a');   // over the arch, clear of the tower labels
     // totals in one line under the counters
     const fight = C.fightRate(P, B) * surgeX();
-    tag(W / 2, 175, [`City +${rfmt(RATE * surgeX())}/s · fight about +${rfmt(fight)}/s · damage ${rfmt(dmg)}`], '#ffd56b');
+    tag(W / 2, 175, [`City +${rfmt(RATE * surgeX())}/s · fight about +${rfmt(fight)}/s · base hit ${rfmt(dmg)}`], '#ffd56b');
     bld(); S.tagRects = tagRects;   // kept for tools/qa/overlay-check.cjs
     cx.restore();
   }
@@ -541,14 +542,13 @@
     if (C.surgeReadyFree(P, now)) go(); else toast(`The next Surge charges in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`);
   }
   const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
-  const qTabs = on => `<div class="tabs">${[['daily', 'Quests'], ['feats', `Feats ${P.feats.length}/${C.FEATS.length}`], ['beasts', `Bestiary ${C.BESTIARY.filter(r => P.seenRoles.includes(r)).length}/${C.BESTIARY.length}`]].map(([k, n]) => `<button class="tab qtab${k === on ? ' on' : ''}" data-q="${k}">${n}</button>`).join('')}</div>`;
+  const qTabs = on => `<div class="tabs">${[['daily', 'Quests'], ['feats', `Feats ${P.feats.length}/${C.FEATS.length}`], ['beasts', `Beasts ${C.BESTIARY.filter(r => P.seenRoles.includes(r)).length}/${C.BESTIARY.length}`]].map(([k, n]) => `<button class="tab qtab${k === on ? ' on' : ''}" data-q="${k}">${n}</button>`).join('')}</div>`;
   // the Bestiary (Nov 6 2026): every kind of enemy met, with what beats it; the rest stay dark silhouettes
   const SHEET_SRC = { slime: 'assets/enemies/slime-walk.webp', beetle: 'assets/enemies/beetle-walk.webp', golem: 'assets/enemies/golem-walk.webp' };
   function beastsHtml() {
     const rows = C.BESTIARY.map(r => { const R = C.ROLES[r], seen = P.seenRoles.includes(r);
       const pic = `<i class="beast" style="background-image:url(${SHEET_SRC[R.sheet]});filter:${seen ? (R.tint ? TINT[R.tint] : 'none') : 'brightness(0) opacity(.55)'}"></i>`;
-      return `<div class="feat${seen ? '' : ' unseen'}">${pic}<div class="ft"><b>${seen ? R.label : '???'}${seen && C.isBossRole(r) ? ' <small>boss</small>' : ''}</b><span>${seen ? (R.tip || R.about || '') : 'Not met yet'}</span></div>`
-        + `<span class="fr">${seen && R.weak ? `<em style="color:${COLOR[R.weak]}">${R.weak[0].toUpperCase() + R.weak.slice(1)}</em>` : ''}</span></div>`; }).join('');
+      return `<div class="feat${seen ? '' : ' unseen'}">${pic}<div class="ft"><b>${seen ? R.label : '???'}${seen && C.isBossRole(r) ? ' <small>boss</small>' : ''}</b><span>${seen ? (R.tip || R.about || '') : 'Not met yet'}</span>${seen && R.weak ? `<em class="weak" style="color:${COLOR[R.weak]}">Weak to ${R.weak[0].toUpperCase() + R.weak.slice(1)}</em>` : ''}</div></div>`; }).join('');
     return `<div class="cardhead"><h2>Bestiary</h2><button id="c-no" class="x" aria-label="Close"></button></div>${qTabs('beasts')}<div class="feats">${rows}</div>`;
   }
   function featsHtml() {
@@ -717,7 +717,7 @@
         + `<li><b>Start over:</b> the city returns to ruins at wave 1. The next Ascension needs wave ${next}.</li></ul>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`; }
     if (kind === 'eternal') html = `<span class="eyebrow">Ascension ${C.ETERNAL_AT}</span><h2>The Eternal City</h2><p>Ten times the city fell to ruin and ten times you raised it again. The Hearthgate stands for good, and its light will never go out.</p>`
       + `<p class="small">Best wave ${C.fmt(P.bestWave)} · ${C.fmt(P.stats.kills)} enemies held back · ${C.fmt(P.stats.bosses)} bosses · ${P.feats.length}/${C.FEATS.length} Feats · ${P.stars.length}/${C.STARS.length} stars</p>`
-      + `<p class="small">The waves keep coming, and the city keeps growing: every Ascension from here still makes you stronger, with new twin events each run.</p>${btn('c-ok', 'Keep the light burning', 'gold')}`;
+      + `<p class="small">The waves keep coming, and the city keeps growing: every Ascension from here still makes you stronger, with new double events each run.</p>${btn('c-ok', 'Keep the light burning', 'gold')}`;
     if (kind === 'save') html = `<span class="eyebrow">Wave ${C.fmt(P.wave)} · boss</span><h2>The gate is breaking!</h2><p>Watch an ad to rebuild the gate and keep fighting this boss.</p>${btn('c-ad', 'Watch an ad: save the gate', 'gold')}${btn('c-no', 'Fall back', 'quiet')}`;
     if (kind === 'building') {
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
@@ -900,10 +900,11 @@
 
   // the Watchtower's beacon: an element-coloured flame in the tower's open lantern room, flaring when it fires
   function drawBeacon(t, e, calm) {
-    const col = e ? ((L.TOWER[P.shop.equip[e]] || {}).glow || GLOW[e]) : 'rgba(255,214,107,', pulse = calm ? 0 : Math.sin(S.t * 4) * 0.08;
-    cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y, 34 + t.flash * 26, col, 0.35 + pulse + t.flash * 0.5); cx.restore();
+    const col = e ? ((L.TOWER[P.shop.equip[e]] || {}).glow || GLOW[e]) : 'rgba(255,214,107,', pulse = calm ? 0 : Math.sin(S.t * 3) * 0.1;
+    // a warm lantern light that is always there, with the firing element's colour flaring around it (review: a faint dot)
+    cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y, 30, 'rgba(255,214,140,', 0.55 + pulse); glow(t.x, t.y, 48 + t.flash * 30, col, 0.18 + t.flash * 0.5); cx.restore();
     cx.save(); cx.translate(t.x, t.y); cx.scale(1.5, 1.5);
-    cx.fillStyle = e ? COLOR[e] : '#ffd56b'; cx.beginPath(); cx.arc(0, 0, 5.5 + t.flash * 2, 0, 7); cx.fill();
+    cx.fillStyle = '#ffd88a'; cx.beginPath(); cx.arc(0, 0, 6 + t.flash * 2, 0, 7); cx.fill();
     cx.fillStyle = '#fff6d8'; cx.beginPath(); cx.arc(0, -1, 2.4, 0, 7); cx.fill();
     cx.restore();
     if (C.stageOf(P.gateLevel) >= 4) drawCrown(t.x, t.y - 22, C.stageOf(P.gateLevel), 4);
@@ -955,7 +956,7 @@
   }
   // A small gold arrow bobs over every restored building the player can afford to level up.
   function drawMarkers() {
-    if (S.card || root.__storeCapture) return;   // store-cover captures hide them
+    if (S.card || root.__storeCapture || P.settings.stats) return;   // store-cover captures hide them; so does the stats overlay, whose labels sit there
     for (const id of P.restored) {
       if (P.res < C.levelCost(P, id, B)) continue;
       // on the building's upper-left corner, clear of its roof and spires (owner's screenshot, Nov 6 2026: the arrow sat on the
@@ -1015,7 +1016,7 @@
   }
 
   function drawGateBar() {
-    const hp = Math.max(0, S.gateHp / gateMax()), bw = 120, by = sy(CITY.gateBar);
+    const hp = Math.max(0, Math.min(1, S.gateHp / gateMax())), bw = 120, by = sy(CITY.gateBar);
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(GATE_X - bw / 2 - 3, by - 3, bw + 6, 15);
     cx.fillStyle = hp > 0.35 ? '#7bd15a' : '#e5533d'; cx.fillRect(GATE_X - bw / 2, by, bw * hp, 9);
     if (S.gateHit > 0) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(GATE_X, WALL_FRONT + 8, 60, 'rgba(255,90,60,', 0.25 * S.gateHit); cx.restore(); }
@@ -1132,7 +1133,7 @@
       sb.className = on ? 'on' : ready ? 'ready' : 'wait';
       html(sb, on ? `<b>x2</b><span>${mmss(P.surge.until - now)}</span>` : ready ? `${SDK.rewardsOn ? '<span class="play"></span>' : ''}<b>Surge</b><span>x2</span>`
         : `<b>Surge</b><span>${mmss(P.surge.until + C.surgeCooldown(P) - now)}</span>`);
-      if (ready && !S.surgeTold) { S.surgeTold = true; toast('Surge ready: tap it for double Resonance'); }
+      if (ready && !S.surgeTold) { S.surgeTold = true; toast('Surge ready: tap Surge for double Resonance'); }
     }
     el('rate').hidden = RATE <= 0; el('rateN').textContent = `+${rfmt(RATE)}/s`;
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower

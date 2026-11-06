@@ -316,3 +316,4 @@ ul.asc b { color: var(--gold); }
 /* with the stats overlay on, toasts move up into the field so they never cover the tower and building labels */
 #stage.stats-on #toast { bottom: auto; top: 222px; }
 #stage.stats-on #hand { display: none; }   /* the pointer hid a building label */
+.feat .ft em.weak { font: 24px "HG Display", sans-serif; font-style: normal; }
