@@ -15,12 +15,15 @@ button { font-family: inherit; }
 [hidden] { display: none !important; }
 button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 
-/* HUD: wave, Parts, Ascension stars, pause; the two counters under it */
-.chip { display: inline-flex; align-items: center; gap: 10px; padding: 8px 20px; border-radius: 999px; font: 38px/1 'HG Display', sans-serif;
+/* HUD: wave, Resonance, Ascension stars, pause; the two counters under it */
+.chip { white-space: nowrap; display: inline-flex; align-items: center; gap: 10px; padding: 8px 20px; border-radius: 999px; font: 38px/1 'HG Display', sans-serif;
   background: rgba(42, 26, 34, .84); border: 3px solid var(--brass); box-shadow: 0 3px 0 rgba(0, 0, 0, .25); }
 #hud { position: absolute; left: 16px; right: 16px; top: 16px; display: flex; gap: 12px; align-items: center; }
 .unit { font-size: 32px; color: #e8cf98; }
-.cog { width: 26px; height: 26px; border-radius: 50%; border: 6px dotted var(--brass); }
+/* Resonance: a rose crystal, the city's magic */
+.gem { flex: none; width: 24px; height: 24px; margin: 0 4px; transform: rotate(45deg); border-radius: 4px; border: 3px solid #5a1748;
+  background: linear-gradient(135deg, #fff0fb, #ff8ae6 45%, #b02a8f); box-shadow: 0 0 12px rgba(255, 110, 220, .7); }
+#counters .rate { color: #ffd0f4; }
 #stars { color: var(--gold); }
 .icon { margin-left: auto; width: 68px; height: 68px; border-radius: 50%; border: 3px solid var(--brass); background: var(--plum);
   color: var(--ink); font: 30px/1 'HG Display', sans-serif; cursor: pointer; box-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
@@ -60,6 +63,8 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 #hand.on { display: block; }
 #hand.up { left: 132px; bottom: 178px; }
 #hand.re { left: 492px; bottom: 178px; }
+#hand.bld { bottom: auto; transform: none; animation-name: tapup; }
+@keyframes tapup { to { transform: translateY(-16px); } }
 @keyframes tap { to { transform: rotate(180deg) translateY(-16px); } }
 
 /* cards: daily reward, offline, restore pick, fork, Ascend, save the gate, settings */
@@ -75,6 +80,9 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .cbtn { margin-top: 4px; padding: 18px; border-radius: 18px; border: 4px solid var(--brass); background: #6a3a5f; color: var(--ink);
   font: 40px 'HG Display', sans-serif; cursor: pointer; box-shadow: 0 5px 0 #1a0f15; }
 .cbtn.gold { background: linear-gradient(#c7962f, #8a5a1b); border-color: var(--gold); }
+.cbtn.off { background: #3b2440; color: #cdb99a; }
+#card .wait { min-height: 0; font: 30px 'HG Display', sans-serif; color: var(--gold); }
+#card .wait:empty { display: none; }
 .cbtn.quiet { background: transparent; border-color: rgba(201, 162, 74, .5); box-shadow: none; font-size: 34px; }
 .pick { display: flex; gap: 16px; }
 .opt { flex: 1; padding: 20px 14px; border-radius: 20px; border: 4px solid var(--brass); background: #3b2440; color: var(--ink); cursor: pointer;

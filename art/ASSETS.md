@@ -21,4 +21,4 @@
 | art/masters/city-wall.png, assets/city/city-wall.webp | city wall layer | cut from the restored master by tools/wall_layer.py | Nov 5 2026 | - | wall, gatehouse and platforms as a foreground layer over enemies outside the wall |
 | assets/sfx/*.mp3, assets/music/battle.mp3 | sound | Warden of Power (studio-made) previews/audio-v3 and theme-engine | Nov 5 2026 | - | mono 64 kbps MP3; levels -22 to -28 LUFS, peaks under -9.7 dBFS |
 | store/cover-A-*.jpg | cover concept A | built by tools/covers.py from the shipped masters, sprites and Lilita One | Nov 5 2026 | - | ruins left, restored right; no art made for the cover only |
-| store/cover-B-800x1200.jpg | cover concept B | real game frame (late-game save, HUD hidden) at 2x, title in Lilita One | Nov 5 2026 | - | numbers on it (wave 41) reachable in the build |
+| store/cover-B-800x1200.jpg | cover concept B | real game frame (late-game save, HUD and markers hidden) at 2x, tools/cover_b_capture.cjs + tools/cover_b.py, title in Lilita One | Nov 5 2026 (recaptured after the enemy rescale and Resonance) | - | numbers on it (wave 41) reachable in the build |

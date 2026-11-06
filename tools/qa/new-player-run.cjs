@@ -13,15 +13,18 @@ const [url, out, w, h, secs = '75'] = process.argv.slice(2);
   await p.screenshot({ path: `${out}/0-load.png` });
   let shotSeen = false;
   while ((Date.now() - t0) / 1000 < +secs) {
-    const st = await p.evaluate(() => { const { P, S } = Hearthgate.state(); return { parts: P.parts, lvl: P.gateLevel, rest: P.restored.length, combos: P.combos.slice(), pops: S.pops.filter(x => x.text).map(x => x.text), hand: document.getElementById('hand').className, words: document.body.innerText.split(/\s+/).filter(Boolean).length }; });
+    const st = await p.evaluate(() => { const { P, S } = Hearthgate.state(); return { res: P.res, lvl: P.gateLevel, rest: P.restored.length, combos: P.combos.slice(), pops: S.pops.filter(x => x.text).map(x => x.text), hand: document.getElementById('hand').className, words: document.body.innerText.split(/\s+/).filter(Boolean).length }; });
     if (st.pops.length) mark('firstPayoff');
     if (st.hand.includes('up')) { mark('handUpgrade'); await p.waitForTimeout(2000); await p.click('#up'); mark('firstUpgrade'); await p.screenshot({ path: `${out}/1-upgrade.png` }); }
     else if (st.hand.includes('re')) { mark('handRestore' + st.rest); await p.waitForTimeout(2000); await p.click('#re'); mark('restore' + (st.rest + 1)); await p.waitForTimeout(400); await p.screenshot({ path: `${out}/2-restore${st.rest + 1}.png` }); }
+    else if (st.hand.includes('bld')) { mark('handBuilding'); await p.waitForTimeout(2000); const r = await p.evaluate(() => { const b = document.getElementById('hand').getBoundingClientRect(); return [b.left + b.width / 2, b.top - 4]; });
+      await p.mouse.click(r[0], r[1]); await p.waitForTimeout(500); await p.screenshot({ path: `${out}/5-building-card.png` }); mark('buildingCard');
+      await p.click('#c-ok'); mark('firstLevelUp'); await p.waitForTimeout(400); await p.click('#c-no'); }
     if (st.combos.includes('shatter') && !shotSeen) { shotSeen = true; mark('firstShatter'); await p.screenshot({ path: `${out}/3-shatter.png` }); }
     log.maxWords = Math.max(log.maxWords || 0, st.words);
     await p.waitForTimeout(250);
   }
   await p.screenshot({ path: `${out}/4-end.png` });
-  log.final = await p.evaluate(() => { const { P } = Hearthgate.state(); return { wave: P.wave, parts: P.parts, gate: P.gateLevel, restored: P.restored, combos: P.combos }; });
+  log.final = await p.evaluate(() => { const { P } = Hearthgate.state(); return { wave: P.wave, res: P.res, gate: P.gateLevel, restored: P.restored, combos: P.combos }; });
   log.errors = errors; console.log(JSON.stringify(log, null, 1)); await b.close();
 })();

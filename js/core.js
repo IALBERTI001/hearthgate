@@ -28,10 +28,10 @@
     { id: 'forge', name: 'Forge', element: 'fire', line: 'Towers gain Fire. Hits burn.' },
     { id: 'frostSpire', name: 'Frost Spire', element: 'frost', line: 'Towers gain Frost. Hits slow.' },
     { id: 'stormBell', name: 'Storm Bell', element: 'storm', line: 'Towers gain Storm. Hits chain.' },
-    { id: 'bakery', name: 'Bakery', bonus: { parts: 0.15 }, line: '+15% Parts from every enemy.' },
+    { id: 'bakery', name: 'Bakery', bonus: { res: 0.15 }, line: '+15% Resonance from every enemy.' },
     { id: 'market', name: 'Market', bonus: { upgradeDiscount: 0.10 }, line: 'Upgrades cost 10% less.' },
     { id: 'tavern', name: 'Tavern', bonus: { fireRate: 0.10 }, line: 'Towers fire 10% faster.' },
-    { id: 'granary', name: 'Granary', bonus: { offline: 0.5 }, line: '+50% Parts while you are away.' },
+    { id: 'granary', name: 'Granary', bonus: { offline: 0.5 }, line: '+50% Resonance while you are away.' },
     { id: 'library', name: 'Library', bonus: { combo: 0.25 }, line: 'Combos hit 25% harder.' },
     { id: 'cottages', name: 'Cottages', bonus: { gateHp: 0.25 }, line: 'The gate has 25% more health.' },
     { id: 'watchtower', name: 'Watchtower', bonus: { damage: 0.15 }, line: 'Towers hit 15% harder.' }
@@ -67,7 +67,7 @@
 
   // Every bonus from buildings, forks and Ascension, summed.
   function bonuses(p) {
-    const b = { parts: 0, upgradeDiscount: 0, fireRate: 0, offline: 0, combo: 0, gateHp: 0, damage: 0, regen: 0 };
+    const b = { res: 0, upgradeDiscount: 0, fireRate: 0, offline: 0, combo: 0, gateHp: 0, damage: 0, regen: 0 };
     const add = o => { for (const k in o) b[k] += o[k]; };
     for (const id of p.restored) { const d = byId(id); if (d && d.bonus) add(d.bonus); }
     for (const s of [2, 3]) { const f = p.forks[s] && FORKS[s].find(x => x.id === p.forks[s]); if (f) add(f.bonus); }
@@ -80,17 +80,35 @@
   const towerDamage = (p, b) => 3 * Math.pow(1.235, p.gateLevel - 1) * (1 + b.damage) * b.ascend;
   const fireInterval = b => 0.55 / (1 + b.fireRate);
   const gateMax = (p, b) => Math.floor(100 * Math.pow(1.11, p.gateLevel - 1) * (1 + b.gateHp));
-  const killParts = (wave, boss, b) => Math.ceil(4 * Math.pow(1.12, wave - 1) * (boss ? 25 : 1) * (1 + b.parts) * b.ascend);
+  const killRes = (wave, boss, b) => Math.ceil(4 * Math.pow(1.12, wave - 1) * (boss ? 25 : 1) * (1 + b.res) * b.ascend);
+
+  // ---------- the city makes Resonance (Nov 5 2026, the owner's idea) ----------
+  // Every restored building hums out Resonance each second and can be levelled up by tapping it. Its base output follows
+  // the order it was restored in (later restores cost more, so they make more); levels 10, 25, 50 and 100 each double it.
+  // Kills stay the main income: the city is tuned so the fight pays more than the town until late in a run (pacing bot).
+  const MILESTONES = [10, 25, 50, 100];
+  const levelOf = (p, id) => p.restored.includes(id) ? (p.levels[id] || 1) : 0;
+  function buildingRate(p, id, b, lvl) {
+    const idx = p.restored.indexOf(id); if (idx < 0) return 0;
+    const L = lvl || levelOf(p, id), dbl = MILESTONES.filter(m => L >= m).length;
+    return CITY_BASE * Math.pow(2.7, idx) * L * Math.pow(2, dbl) * b.ascend;
+  }
+  const cityRate = (p, b) => p.restored.reduce((s, id) => s + buildingRate(p, id, b), 0);
+  const levelCost = (p, id, b) => { const idx = p.restored.indexOf(id); return idx < 0 ? Infinity
+    : Math.floor(restoreCost(idx) * LEVEL_COST * Math.pow(1.15, levelOf(p, id) - 1) * (1 - b.upgradeDiscount)); };
+  const nextMilestone = L => MILESTONES.find(m => m > L) || null;
 
   // ---------- waves and enemy roles (approved fix 3) ----------
   // slime: basic. runner (beetle): fast, Frost slows it. armoured (golem): Fire burns through the armour.
   // swarm (small slimes): many and weak, Storm chains through them. A boss every 10 waves.
+  // Sizes in stage px: every regular enemy is shorter than a tier-1 tower (82 px); only the boss towers over the wall
+  // (owner's correction, Nov 5 2026: "regular mobs towering over a small fence seems a stretch").
   const ROLES = {
-    slime: { sheet: 'slime', hp: 1, speed: 46, size: 108, label: 'Slimes' },
-    runner: { sheet: 'beetle', hp: 0.7, speed: 84, size: 96, label: 'Runners', weak: 'frost' },
-    armoured: { sheet: 'golem', hp: 2.6, speed: 36, size: 128, label: 'Armoured', weak: 'fire', armour: 0.5 },
-    swarm: { sheet: 'slime', hp: 0.35, speed: 54, size: 70, label: 'Swarm', weak: 'storm' },
-    boss: { sheet: 'golem', hp: 90, speed: 28, size: 200, label: 'Boss', armour: 0.3 }
+    slime: { sheet: 'slime', hp: 1, speed: 46, size: 66, label: 'Slimes' },
+    runner: { sheet: 'beetle', hp: 0.7, speed: 84, size: 60, label: 'Runners', weak: 'frost' },
+    armoured: { sheet: 'golem', hp: 2.6, speed: 36, size: 76, label: 'Armoured', weak: 'fire', armour: 0.5 },
+    swarm: { sheet: 'slime', hp: 0.35, speed: 54, size: 44, label: 'Swarm', weak: 'storm' },
+    boss: { sheet: 'golem', hp: 90, speed: 28, size: 160, label: 'Boss', armour: 0.3 }
   };
   const isBoss = w => w % 10 === 0;
   // The wave's make-up as [role, count] pairs. New roles arrive one at a time: runners at wave 3, armoured at 6, swarm at 12.
@@ -113,13 +131,15 @@
   const enemyHp = (w, role) => 10 * Math.pow(1.235, w - 1) * ROLES[role].hp;
 
   // ---------- idle: offline earnings, daily reward ----------
-  const OFFLINE_CAP_H = 8;
-  // Parts per second the gate earns while the player is away: about what the current wave pays when fought live.
-  const offlineRate = (p, b) => 4 * Math.pow(1.12, p.wave - 1) * 1.2 * (1 + b.parts) * b.ascend * (1 + b.offline);
+  const OFFLINE_CAP_H = 8, CITY_BASE = 0.09, LEVEL_COST = 0.4;
+  // Resonance per second from the fight: about what the current wave pays when fought live.
+  const fightRate = (p, b) => 4 * Math.pow(1.12, p.wave - 1) * 1.2 * (1 + b.res) * b.ascend;
+  // While the player is away the gate keeps fighting and the city keeps humming; the Granary adds to both.
+  const offlineRate = (p, b) => (fightRate(p, b) + cityRate(p, b)) * (1 + b.offline);
   function offlineEarnings(p, b, now) {
-    if (!p.lastSeen || now <= p.lastSeen) return { secs: 0, parts: 0 };
+    if (!p.lastSeen || now <= p.lastSeen) return { secs: 0, res: 0 };
     const secs = Math.min(OFFLINE_CAP_H * 3600, (now - p.lastSeen) / 1000);
-    return secs < 60 ? { secs, parts: 0 } : { secs, parts: Math.floor(secs * offlineRate(p, b)) };
+    return secs < 60 ? { secs, res: 0 } : { secs, res: Math.floor(secs * offlineRate(p, b)) };
   }
   // Daily reward: one tap on the first screen of the day; a missed day pauses the streak (never resets it);
   // day 7 of each week pays 5x. Days use the player's local midnight; a clock moved back never pays twice.
@@ -135,7 +155,7 @@
   }
 
   // ---------- Ascension ----------
-  // At 10/10 the player can Ascend: the city returns to ruins, the gate and waves restart, and Parts and damage are
+  // At 10/10 the player can Ascend: the city returns to ruins, the gate and waves restart, and Resonance and damage are
   // multiplied by 1.5 for good, stacking with each Ascension. Combos found and the best wave stay.
   const ASCEND_MULT = 1.5;
   const canAscend = p => p.restored.length >= BUILDINGS.length;
@@ -143,13 +163,13 @@
     const q = defaults();
     q.ascensions = p.ascensions + 1; q.bestWave = p.bestWave; q.combos = p.combos.slice();
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
-    q.settings = Object.assign({}, p.settings);
+    q.settings = Object.assign({}, p.settings); q.grown = p.grown;
     return q;
   }
 
   // ---------- save profile ----------
   function defaults() {
-    return { v: 2, parts: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false } };
   }
@@ -162,7 +182,7 @@
     if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } }
     const out = defaults();
     if (!p || typeof p !== 'object') return out;
-    out.parts = num(p.parts, 0, 1e300, 0);
+    out.res = num(p.res !== undefined ? p.res : p.parts, 0, 1e300, 0);   // v2 saves called it Parts
     out.wave = Math.floor(num(p.wave, 1, 1e9, 1));
     out.bestWave = Math.max(out.wave, Math.floor(num(p.bestWave, 1, 1e9, 1)));
     out.gateLevel = Math.floor(num(p.gateLevel, 1, 1e6, 1));
@@ -171,6 +191,10 @@
     out.firstSession = p.firstSession !== false;
     const rest = Array.isArray(p.restored) ? p.restored.map(b => LEGACY[b] || b) : [];
     out.restored = [...new Set(rest.filter(b => BUILDING_IDS.includes(b)))];
+    if (p.levels && typeof p.levels === 'object') for (const id of out.restored) {
+      const L = Math.floor(num(p.levels[id], 1, 1e5, 1)); if (L > 1) out.levels[id] = L;
+    }
+    out.grown = p.grown === true;
     out.combos = Array.isArray(p.combos) ? [...new Set(p.combos.filter(c => COMBOS.includes(c)))] : [];
     if (p.forks && typeof p.forks === 'object') for (const s of [2, 3]) {
       const f = p.forks[s]; if (typeof f === 'string' && FORKS[s].some(x => x.id === f) && stageOf(out.gateLevel) >= s) out.forks[s] = f;
@@ -193,7 +217,8 @@
   const cityToBand = (sx, sy) => [(sx - CITY.crop[0]) * CITY.band[0] / CITY.crop[2], (sy - CITY.crop[1]) * CITY.band[1] / CITY.crop[3]];
 
   root.HGCore = { fmt, BUILDINGS, BUILDING_IDS, byId, FIXED_ORDER, COMBOS, restoreOffer, STAGES, FORKS, stageOf, pendingFork,
-    bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killParts, ROLES, isBoss, waveMix, enemyHp, enemyBite,
+    bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
+    MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, ascend, defaults, sanitize,
     CITY, cityToBand };
   if (typeof module !== 'undefined') module.exports = root.HGCore;

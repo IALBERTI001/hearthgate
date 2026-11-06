@@ -32,7 +32,7 @@ const sizes = [[390, 844], [800, 450], [821, 462], [910, 512], [1080, 607], [128
     // a returning player with progress: daily reward and offline cards, then a restore pick and a fork
     const ctx2 = await b.newContext({ viewport: { width: w, height: h } }); await ctx2.addInitScript(fake);
     await ctx2.addInitScript(() => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
-      localStorage.setItem('hearthgate.profile.v1', JSON.stringify({ firstSession: false, lastSeen: Date.now() - 5 * 3600e3, daily: { day: '2026-01-01', streak: 3, claimedTotal: 0 }, restored: ['forge', 'frostSpire', 'stormBell'], parts: 9e5, gateLevel: 15, wave: 12, bestWave: 12 })); });
+      localStorage.setItem('hearthgate.profile.v1', JSON.stringify({ firstSession: false, lastSeen: Date.now() - 5 * 3600e3, daily: { day: '2026-01-01', streak: 3, claimedTotal: 0 }, restored: ['forge', 'frostSpire', 'stormBell'], res: 9e5, gateLevel: 15, wave: 12, bestWave: 12 })); });
     const pg1 = pg; await ctx.close(); const pg2 = await ctx2.newPage(); pg2.on('pageerror', e => bad.push(`${w}x${h} JS ${e.message}`));
     await pg2.goto(B); await pg2.waitForTimeout(1500); await pg2.screenshot({ path: `${OUT}/${w}x${h}-daily.png` });
     await pg2.click('#c-ok'); await pg2.waitForTimeout(400); await pg2.screenshot({ path: `${OUT}/${w}x${h}-offline.png` });
@@ -47,8 +47,8 @@ const sizes = [[390, 844], [800, 450], [821, 462], [910, 512], [1080, 607], [128
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const pg = await ctx.newPage();
   await pg.route('**/sdk.crazygames.com/**', r => r.abort()); const errs = []; pg.on('pageerror', e => errs.push(e.message));
   await pg.goto(B + '?useLocalSdk=true'); await pg.waitForTimeout(5000);
-  const kills = await pg.evaluate(() => window.Hearthgate ? Hearthgate.state().P.parts : -1);
-  out.push(`ad blocker: playable ${kills > 0} (Parts ${kills}), errors ${errs.length}`);
+  const kills = await pg.evaluate(() => window.Hearthgate ? Hearthgate.state().P.res : -1);
+  out.push(`ad blocker: playable ${kills > 0} (Resonance ${kills}), errors ${errs.length}`);
   await ctx.close(); await b.close();
   console.log(out.join('\n')); console.log('hosts:', [...hosts].join(' ')); console.log('problems:', bad.length ? '\n' + bad.join('\n') : 'none');
 })();
