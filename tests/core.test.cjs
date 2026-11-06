@@ -25,7 +25,9 @@ assert.deepStrictEqual(C.restoreOffer(p), ['forge']);
 p.restored = ['forge', 'frostSpire', 'stormBell'];
 const offer = C.restoreOffer(p); assert.strictEqual(offer.length, 2); assert.deepStrictEqual(C.restoreOffer(p), offer);
 assert.ok(offer.every(id => !p.restored.includes(id)));
-p.restored = C.BUILDING_IDS.slice(); assert.deepStrictEqual(C.restoreOffer(p), []); assert.ok(C.canAscend(p));
+p.restored = C.BUILDING_IDS.slice(); assert.deepStrictEqual(C.restoreOffer(p), []); assert.ok(C.cityWhole(p) && !C.canAscend(p), 'a whole city at wave 1 cannot Ascend yet');
+p.runWave = 30; assert.ok(C.canAscend(p)); p.ascensions = 1; assert.ok(!C.canAscend(p), 'the 2nd Ascension asks for wave 40'); p.runWave = 40; assert.ok(C.canAscend(p)); p.ascensions = 0;
+assert.strictEqual(C.sanitize({ wave: 37, restored: [] }).runWave, 37, 'old saves count their current wave');
 assert.ok(C.restoreCost(0) + C.restoreCost(1) <= 45 * C.killRes(1, false, C.bonuses(C.defaults())), 'first two restores within about 45 early kills, so SHATTER lands inside 60 s');
 for (let i = 1; i < 10; i++) assert.ok(C.restoreCost(i) > C.restoreCost(i - 1));
 
@@ -176,7 +178,7 @@ assert.ok(C.featProgress(all, wardrobe) >= wardrobe.need, `owning every look com
 assert.ok(C.waveMix(12).some(r => r[0] === 'elite'), 'elites from wave 12');
 assert.ok(C.waveMix(14).some(r => r[0] === 'shielded'));
 assert.ok(C.waveMix(16).some(r => r[0] === 'splitter')); assert.ok(C.waveMix(19).some(r => r[0] === 'mender'));
-assert.deepStrictEqual([10, 20, 30, 40].map(C.bossOf), ['boss', 'queen', 'lord', 'boss'], 'bosses rotate');
+assert.deepStrictEqual([10, 20, 30, 40].map(w => C.bossOf(w)), ['boss', 'queen', 'lord', 'boss'], 'bosses rotate');
 for (const w of [12, 20, 33, 37, 60]) assert.ok(C.waveMix(w).every(([, c]) => c > 0), 'no empty groups at wave ' + w);
 const ev = C.defaults(); assert.strictEqual(C.eventFor(ev, 21), null); assert.strictEqual(C.eventFor(ev, 22).id, 'stampede', 'first event at wave 22');
 ev.seenEvents.push('stampede'); assert.strictEqual(C.eventFor(ev, 23), null); assert.strictEqual(C.eventFor(ev, 25).id, 'golden');
@@ -187,3 +189,14 @@ assert.ok(!C.unlocked(C.defaults(), 'trials')); const a2 = C.defaults(); a2.asce
 const rl = C.defaults(); rl.ascensions = 3; C.equipRelic(rl, 'ember'); C.equipRelic(rl, 'rime'); C.equipRelic(rl, 'crown'); assert.deepStrictEqual(rl.relics, ['rime', 'crown'], 'two relics at most');
 assert.ok(C.bonuses(rl).bossDmg > 0);
 console.log('core tests passed');
+// After-Ascension novelty (Nov 6 2026): every building has an Ascended ability, later loops meet new enemies and events
+for (const b of C.BUILDINGS) assert.ok(C.RANK2[b.id] && C.RANK2[b.id].name && C.RANK2[b.id].line, 'Ascended ability for ' + b.id);
+{ const p = C.defaults ? C.defaults() : null; if (p) { p.restored = ['forge', 'bakery']; const b0 = C.bonuses(p); p.ascensions = 1; const b1 = C.bonuses(p);
+  assert.ok(b1.molten === 1 && b0.molten === 0, 'Molten Forge only after an Ascension'); assert.ok(b1.wispX === b0.wispX + 1, 'Golden Ovens'); } }
+assert.ok(!C.waveMix(15, 0).some(r => r[0] === 'phantom'), 'no Phantoms before the 1st Ascension');
+
+assert.ok(C.waveMix(15, 1).some(r => r[0] === 'phantom') && C.waveMix(8, 2).some(r => r[0] === 'thief') && C.waveMix(26, 2).some(r => r[0] === 'bomber') && C.waveMix(16, 3).some(r => r[0] === 'totem'));
+assert.strictEqual(C.waveMix(20, 2)[0][0], 'wraith', 'the newest Ascension boss takes wave 20'); assert.strictEqual(C.waveMix(20, 4)[0][0], 'tyrant'); assert.strictEqual(C.waveMix(20, 0)[0][0], 'queen');
+assert.ok(!C.waveMix(10, 3).some(r => C.ASC_ROLES[r[0]]), 'boss waves stay boss waves');
+for (const r in C.ASC_ROLES) assert.ok(C.ROLES[r] && C.ROLES[r].tip, 'Ascension enemy has a tip: ' + r);
+console.log('after-Ascension tests passed');

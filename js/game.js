@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06j';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06k';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -51,25 +51,25 @@
   const CHEERS = ['Keep it up!', 'Great job!', 'WOOOAHH!', 'Unstoppable!', 'Hold the line!', 'Nice work!', 'You got this!',
     'Crushing it!', 'On fire!', 'Legendary!', 'The city cheers you on!', 'Brick by brick!'];
   function startWave() {
-    const n = P.wave, boss = C.isBoss(n); S.trial = C.isTrial(P, n);
+    const n = P.wave, boss = C.isBoss(n); S.trial = C.isTrial(P, n); S.auroraN = 0;
     S.event = C.eventFor(P, n); const evNew = S.event && !P.seenEvents.includes(S.event.id); if (S.event && evNew) P.seenEvents.push(S.event.id);
     const cheer = S.cheerNext || (n === 1 ? ['Good luck!', 'How far will you go?'][Math.floor(Math.random() * 2)]
       : boss ? 'Boss incoming. Hold the gate!' : n % 50 === 0 ? 'HALFWAY TO GLORY!' : CHEERS[(n * 7 + 3) % CHEERS.length]);
     S.cheerNext = null;
-    const mix = C.eventMix(C.waveMix(n), S.event);
+    const mix = C.eventMix(C.waveMix(n, P.ascensions), S.event);
     // the first wave of each session (after the first) names today's Omen
     const om = !S.omenTold && P.omen && C.OMENS.find(o => o.id === P.omen); if (om) S.omenTold = true;
     S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : S.trial ? 'TRIAL! Win it for Starshards' : S.event ? `${evNew ? 'NEW! ' : ''}${S.event.name}: ${S.event.line}` : cheer, big: boss || S.trial || !!S.event, t: 0, roles: mix.map(([r]) => r) };
     A.boss(boss);   // boss waves get the battle theme; every other wave the calm playlist
     if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('boss_horn', 0.6); }   // a boss wave is an event: red edges, a rumble
-    S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax();
+    S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax(); if (S.event && S.event.id === 'laststand') S.gateHp = Math.min(S.gateHp, gateMax() * 0.5);
     // a shuffled queue, so runners and armoured arrive among the slimes rather than in blocks; the boss comes last
     const q = []; for (const [role, c] of mix) for (let i = 0; i < c; i++) q.push(role);
     for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
-    S.spawnQ = q.sort((a, b) => (a === 'boss') - (b === 'boss')); S.spawnT = 1.0;
+    S.spawnQ = q.sort((a, b) => C.isBossRole(a) - C.isBossRole(b)); S.spawnT = 1.0;
   }
   function spawn(role, at) {
-    const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && S.event.id === 'bloodmoon' ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1);
+    const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && S.event.id === 'bloodmoon' ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1) * ((S.event && S.event.id === 'giants') && !C.isBossRole(role) ? 2 : 1);
     if (R.tip && !P.seenRoles.includes(role)) { P.seenRoles.push(role); setTimeout(() => toast(`New: ${R.label}! ${R.tip}`), 400); }
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
     const lead = (S.packN || 0) % 3 === 0 || role === 'boss' || role === 'swarm';
@@ -77,8 +77,8 @@
     if (at) { x0 = Math.max(60, Math.min(660, at[0])); y0 = Math.min(WALL_FRONT - 4, at[1]); }
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.fx.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
     S.enemies.push({ role, sheet: R.sheet, x: x0, y: y0, off: (Math.random() - 0.5) * 330, hp, max: hp,
-      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (S.event.id === 'stampede' || S.event.id === 'eclipse' || S.event.id === 'frenzy') ? 1.3 : S.event && S.event.id === 'blizzard' ? 0.75 : 1), size: R.size, armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
-      chill: 0, burn: 0, flash: 0, born: S.t - (at ? 0.6 : 0), dying: 0, stun: 0, summonT: R.summon || 0, tint: S.event && S.event.id === 'golden' ? 'gold' : R.tint, shield: !!R.shield || !!(S.event && S.event.id === 'mirror') });
+      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (S.event.id === 'stampede' || S.event.id === 'eclipse' || S.event.id === 'frenzy') ? 1.3 : S.event && S.event.id === 'blizzard' ? 0.75 : 1), size: R.size * ((S.event && S.event.id === 'giants') && !C.isBossRole(role) ? 1.3 : 1), armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
+      chill: (S.event && S.event.id === 'winter') ? 4 : 0, burn: (S.event && S.event.id === 'embers') ? 4 : 0, flash: 0, born: S.t - (at ? 0.6 : 0), dying: 0, stun: 0, summonT: R.summon || 0, totemT: R.totem || 0, blinkT: Math.random() * 2.4, tint: S.event && S.event.id === 'golden' ? 'gold' : R.tint, shield: !!R.shield || !!(S.event && S.event.id === 'mirror') });
   }
 
   // ---------- simulation ----------
@@ -95,11 +95,15 @@
     for (const r of S.rings) r.t += DT; S.rings = S.rings.filter(r => r.t < 0.5);
     for (const h of S.hits) h.t += DT; S.hits = S.hits.filter(h => h.t < L.HIT_LIFE);
     if (S.spawnQ.length && (S.spawnT -= DT) <= 0) { const r = S.spawnQ.shift(); spawn(r); S.packN = (S.packN || 0) + 1; const gap = Math.max(0.45, 1.35 - P.wave * 0.02);
-      S.spawnT = r === 'swarm' ? 0.28 : S.packN % 3 ? 0.3 : gap * 3 - 0.6; }   // packs of three, same total pace
+      S.spawnT = (r === 'swarm' ? 0.28 : S.packN % 3 ? 0.3 : gap * 3 - 0.6) * ((S.event && S.event.id === 'rush') ? 0.5 : 1); }   // packs of three, same total pace
     if (B.regen) S.gateHp = Math.min(gateMax(), S.gateHp + gateMax() * B.regen * DT);
     syncTowers();
     const els = elements(), interval = C.fireInterval(B) * (S.cheerT > 0 ? 0.5 : 1) * (S.event && S.event.id === 'frenzy' ? 0.7 : 1);   // the Tavern's Cheer: towers fire twice as fast
     tickExtras();
+    if ((S.event && (S.event.id === 'meteor' || S.event.id === 'starstorm')) && (S.meteorT = (S.meteorT || 2) - DT) <= 0) { S.meteorT = 2.5;
+      const live = S.enemies.filter(e => !e.dying && e.y > FIELD_TOP + 40); const tg = live[Math.floor(Math.random() * live.length)];
+      if (tg) { burst(tg, '#ffb36b', 24, 260); S.shake = 0.18; S.rings.push({ x: tg.x, y: tg.y - 20, t: 0, col: '#ffb36b' }); pop(tg.x, tg.y - tg.size - 30, 'METEOR!', '#ffb36b', 0.9, 40); A.play('shatter_combo', 0.3);
+        S.enemies.filter(o => !o.dying && Math.hypot(o.x - tg.x, o.y - tg.y) < 100).forEach(o => { o.hp -= C.towerDamage(P, B) * 6; o.flash = 1; o.burn = 2; }); } }
     for (const t of TOWERS) {
       t.recoil = Math.max(0, t.recoil - DT * 6); t.flash = Math.max(0, t.flash - DT * 5);
       if ((t.cd -= DT) > 0) continue;
@@ -107,7 +111,7 @@
       const live = S.enemies.filter(e => !e.dying && e.y > RANGE_Y).sort((a, b) => b.y - a.y);
       if (!live.length) continue;
       const tgt = live[Math.min(live.length - 1, t.n % 2)];
-      t.cd = interval; t.recoil = 1; t.flash = 1; t.shots = (t.shots || 0) + 1;
+      t.cd = interval * (t.gate && B.beacon ? 0.5 : 1); t.recoil = 1; t.flash = 1; t.shots = (t.shots || 0) + 1;
       const el = els.length ? els[(t.shots + t.n) % els.length] : 'none';
       S.shots.push({ x: t.x, y: t.y - 70, tx: tgt, el, sp: 820, trail: [] });
       A.play(el === 'frost' ? 'ice_launch_0' : el === 'storm' ? 'lightning_launch_0' : 'fire_launch_0', 0.16);
@@ -125,14 +129,20 @@
       e.chill = Math.max(0, e.chill - DT); e.flash = Math.max(0, e.flash - DT * 6); e.stun = Math.max(0, (e.stun || 0) - DT);
       const RR = C.ROLES[e.role];
       if (RR.heal && !(e.burn > 0)) for (const o of S.enemies) if (o !== e && !o.dying && o.hp < o.max && Math.hypot(o.x - e.x, o.y - e.y) < 130) { o.hp = Math.min(o.max, o.hp + o.max * RR.heal * DT); o.healed = 0.3; }
-      if (RR.summon && (e.summonT -= DT) <= 0) { e.summonT = RR.summon; spawnAt('runner', e.x + 50, e.y); spawnAt('runner', e.x - 50, e.y); }
+      if (RR.summon && (e.summonT -= DT) <= 0) { e.summonT = RR.summon; spawnAt(RR.summonRole || 'runner', e.x + 50, e.y); spawnAt(RR.summonRole || 'runner', e.x - 50, e.y); }
       if (e.healed) e.healed = Math.max(0, e.healed - DT);
+      if (RR.blink) { e.blinkT = (e.blinkT + DT) % 2.4; e.faded = e.blinkT > 1.4; }   // Phantoms: 1.4 s seen, 1 s faded
+      if (RR.totem && (e.totemT -= DT) <= 0) { e.totemT = RR.totem; S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col: '#bfe8ff' });
+        S.enemies.filter(o => o !== e && !o.dying && !o.shield && !o.boss && Math.hypot(o.x - e.x, o.y - e.y) < 160).slice(0, 3).forEach(o => { o.shield = true; }); }
       const slow = e.stun > 0 ? 0 : e.chill > 0 ? (e.weak === 'frost' ? 0.3 : 0.45) : 1;
       e.frame += DT * 8 * slow;
       if (e.y < WALL_FRONT) {
         e.y = Math.min(WALL_FRONT, e.y + e.sp * slow * DT);
         if (e.y > 230) e.x += (GATE_X + e.off - e.x) * Math.min(1, 0.8 * DT);
-      } else { S.gateHp -= C.enemyBite(P.wave, e.role) * DT; S.gateHit = 1; }
+      } else if (RR.thief) { const amt = Math.min(P.res * 0.5, (C.fightRate(P, B) * 1.6 + RATE) * 6); P.res -= amt; e.dying = DT; S.thefts = (S.thefts || 0) + 1;
+        pop(e.x, WALL_FRONT - 90, `Stolen -${C.fmt(amt)}`, '#ff8a6a', 1.3, 36); continue; }
+      else if (RR.bomb) { S.gateHp -= C.enemyBite(P.wave, e.role) * 10; S.gateHit = 1; S.shake = 0.3; e.dying = DT; burst(e, '#ff9a3a', 26, 280); pop(e.x, WALL_FRONT - 90, 'BOOM!', '#ff9a3a', 1.1, 44); continue; }
+      else { S.gateHp -= C.enemyBite(P.wave, e.role) * DT; S.gateHit = 1; }
       if (e.hp <= 0) kill(e);
     }
     S.enemies = S.enemies.filter(e => !e.dying || e.dying < 0.45);
@@ -159,19 +169,20 @@
   }
 
   function hit(e, el) {
-    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)) * (e.boss ? 1 + B.bossDmg : 1) * (S.event && ((S.event.id === 'thunder' && el === 'storm') || (S.event.id === 'blizzard' && el === 'frost') || (S.event.id === 'inferno' && el === 'fire')) ? 2 : 1);
+    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)) * (e.boss ? 1 + B.bossDmg : 1) * (S.event && ((S.event.id === 'thunder' && el === 'storm') || (S.event.id === 'blizzard' && el === 'frost') || (S.event.id === 'inferno' && el === 'fire') || (S.event.id === 'rockslide' && el === 'earth')) ? 2 : 1) * (S.event && S.event.id === 'hail' && (el === 'frost' || el === 'storm') ? 1.5 : 1) * ((S.event && S.event.id === 'stormfront') && el === 'storm' ? 1.5 : 1);
+    if (e.faded && el !== 'storm') d *= 0.25;   // a faded Phantom: only Storm finds it
     const comboMul = (1 + B.combo) * (S.event && S.event.id === 'eclipse' ? 2 : 1);
     if (e.shield) { if (el === 'storm') { e.shield = false; burst(e, '#bfe8ff', 16, 220); pop(e.x, e.y - e.size - 30, 'SHIELD BROKEN', '#bfe8ff', 1, 30); } else d *= 0.2; }
-    if (el === 'earth') { e.stun = 0.6; if (e.chill > 0) { d *= 2.5 * comboMul; combo('quake', e, 'QUAKE!', COLOR.earth); S.shake = 0.25; e.bigHit = true;
+    if (el === 'earth') { e.stun = S.event && S.event.id === 'tremor' ? 1.2 : 0.6; if (e.chill > 0) { d *= 2.5 * comboMul; combo('quake', e, 'QUAKE!', COLOR.earth); S.shake = 0.25; e.bigHit = true;
       S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 90).forEach(o => { o.hp -= d * 0.5; o.flash = 1; o.stun = 0.4; }); } }
     if (e.armour && el !== 'fire') d *= 1 - e.armour;                 // armour: only Fire bites fully
     if (el === 'fire') {
       if (e.chill > 0) { d *= 3 * comboMul; combo('shatter', e, 'SHATTER!', COLOR.frost); burst(e, COLOR.frost, 22, 260); A.play('shatter_combo', 0.5); e.bigHit = true; }
       e.burn = 2.2;
     }
-    if (el === 'frost') { e.chill = 2.2; if (e.weak === 'frost') d *= 1.3; }
+    if (el === 'frost') { e.chill = B.deepFrost ? 3.3 : 2.2; if (e.weak === 'frost') d *= 1.3; }
     if (el === 'storm') {
-      const jumps = e.chill > 0 ? 4 : 2;
+      const jumps = (e.chill > 0 ? 4 : 2) + B.chainPlus + ((S.event && S.event.id === 'stormfront') ? 3 : 0);
       if (e.chill > 0) { combo('frostStorm', e, 'SUPERCHAIN!', COLOR.storm); A.play('conduction_combo', 0.45); if (C.ROLES[e.role].comboWeak) e.bigHit = true; }
       if (e.burn > 0) { combo('fireStorm', e, 'FIRESTORM!', COLOR.fire); A.play('freeze_combo', 0.45); }
       if (S.event && S.event.id === 'gale' && !e.boss) e.y = Math.max(FIELD_TOP, e.y - 30);
@@ -191,20 +202,27 @@
   }
   function combo(id, e, word, col) {
     quest('combo'); if (id === 'shatter') quest('shatter');
-    if (has('tavern') && !(S.cheerT > 0)) { S.cheer = Math.min(1, (S.cheer || 0) + 0.06); if (S.cheer >= 1) startCheer(); }
+    if (has('tavern') && !(S.cheerT > 0)) { S.cheer = Math.min(1, (S.cheer || 0) + 0.06 * (S.event && S.event.id === 'feast' ? 2 : 1)); if (S.cheer >= 1) startCheer(); }
     // one combo word on screen at a time, so words never pile into each other
     // above the enemy, or below it near the treeline, so it never sits on the +N
     S.pops = S.pops.filter(p => !p.combo);
     S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
+    if ((S.event && (S.event.id === 'aurora' || S.event.id === 'starstorm')) && P.shop.open && (S.auroraN || 0) < 8 && Math.random() < 0.35) { S.auroraN = (S.auroraN || 0) + 1; P.shop.shards += 1; pop(e.x, e.y - e.size - 40, '+1 Starshard', SHARD, 1.1, 32); }
     if (id === 'shatter' && S.t - (S.lastFlash || -9) > 1.2) { S.flash = { col, t: 0 }; S.lastFlash = S.t; }   // the signature combo lights the screen
     if (!P.combos.includes(id)) { P.combos.push(id); if (P.shop.open) P.shop.shards += C.SHARDS.combo; toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/${comboTotal()}`); save(); }
   }
   function kill(e) {
-    e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX() * (e.boss ? 1 + bossRank() : 1) * (S.event && S.event.id === 'golden' ? 2 : S.event && S.event.id === 'bloodmoon' ? 3 : 1); quest('kills');
+    e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX() * (e.boss ? 1 + bossRank() : 1) * (S.event && S.event.id === 'golden' ? 2 : S.event && S.event.id === 'bloodmoon' ? 3 : 1) * ((S.event && S.event.id === 'giants') ? 2 : (S.event && S.event.id === 'laststand') ? 3 : 1); quest('kills');
     const R = C.ROLES[e.role];
+    if ((S.event && S.event.id === 'echo') && !e.boss && !e.echo && e.role !== 'swarm') { spawnAt('swarm', e.x, e.y - 4); S.enemies[S.enemies.length - 1].echo = true; }
     if (R.split) for (let k = 0; k < R.split; k++) spawnAt('swarm', e.x + (k - (R.split - 1) / 2) * 34, e.y - 4);
-    if (R.chest) { const amt = C.fightRate(P, B) * 1.6 * 5 * surgeX(); P.res += amt; pop(e.x, e.y - e.size - 40, `Treasure! +${C.fmt(amt)}`, '#ffd56b', 1.3, 40);
+    S.kills = (S.kills || 0) + 1;
+    if (B.molten && e.burn > 0 && !e.boss) { S.molten = (S.molten || 0) + 1; burst(e, COLOR.fire, 14, 200);
+      S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 110).forEach(o => { o.burn = 2.2; o.hp -= C.towerDamage(P, B) * 0.6; o.flash = 1; }); }
+    if (R.bomb) { S.shake = 0.2; burst(e, '#ff9a3a', 26, 280); pop(e.x, e.y - e.size - 30, 'BOOM!', '#ff9a3a', 1, 44); A.play('shatter_combo', 0.4);
+      S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 150).forEach(o => { o.hp -= C.towerDamage(P, B) * 4; o.flash = 1; }); }
+    if (R.chest || (S.event && S.event.id === 'jackpot' && S.kills % 5 === 0)) { const amt = C.fightRate(P, B) * 1.6 * 5 * surgeX() * (1 + B.chestX); P.res += amt; pop(e.x, e.y - e.size - 40, `Treasure! +${C.fmt(amt)}`, '#ffd56b', 1.3, 40);
       if (P.shop.open && Math.random() < 0.3) { P.shop.shards += 1; pop(e.x, e.y - e.size - 80, '+1 Starshard', SHARD, 1.3, 34); } A.play('buy', 0.45); }
     wisp(e, gain); pop(e.x + 28, e.y - e.size * 0.2, '+' + C.fmt(gain), '#ff9ce8', 0.9, 34);
     burst(e, e.sheet === 'golem' ? '#b9b2a2' : e.sheet === 'beetle' ? '#ff9a4a' : '#8fe05a', e.boss ? 30 : 12, e.boss ? 260 : 160);
@@ -222,13 +240,16 @@
     quest('waves');
     if (S.trial) { const n = 3 + Math.floor(P.wave / 20); if (P.shop.open) P.shop.shards += n; pop(W / 2, 380, `TRIAL WON! +${n} Starshards`, SHARD, 1.6, 44); A.play('feat', 0.5); S.trialsWon = (S.trialsWon || 0) + 1; }
     if (has('cottages') && S.gateHp < gateMax()) repairGate();
+    if (B.harvest) { const amt = (C.fightRate(P, B) * 1.6 + RATE) * B.harvest * surgeX(); P.res += amt; pop(W / 2, WALL_FRONT + 120, `Harvest +${C.fmt(amt)}`, '#ffd56b', 1.1, 32); }
     if (C.isBoss(P.wave)) {
       quest('boss');
       pop(W / 2, 330, 'BOSS DOWN!', '#ffd56b', 1.8, 60); SDK.happytime(); A.play('tier_up', 0.6);
       if (P.shop.open) { const n = (C.SHARDS.boss + B.bossPlus) * (1 + B.bossShards); P.shop.shards += n; pop(W / 2, 400, `+${n} Starshards`, SHARD, 1.6, 40); }
       if (P.wave === 10 && !P.tomorrowShown) { P.tomorrowShown = true; setTimeout(() => toast('Come back tomorrow: a daily Resonance reward waits'), 1900); }
     }
-    P.wave++; P.bestWave = Math.max(P.bestWave, P.wave); openShop(); startWave(); save();
+    P.wave++; P.bestWave = Math.max(P.bestWave, P.wave);
+    if (C.cityWhole(P) && P.runWave < C.ascendWave(P) && P.wave >= C.ascendWave(P)) setTimeout(() => toast('Wave ' + P.wave + ' reached: you can Ascend!'), 1200);
+    P.runWave = Math.max(P.runWave || 1, P.wave); openShop(); startWave(); save();
   }
   // The Shop opens when the first boss falls, with a welcome gift; older saves past wave 10 get it on load.
   function openShop() {
@@ -276,6 +297,7 @@
     A.unlock();
     if (S.card) return;
     if (C.canAscend(P)) return showCard('ascend');
+    if (C.cityWhole(P)) return toast(`Reach wave ${C.ascendWave(P)} to Ascend · best this run ${Math.max(P.runWave || 1, P.wave)}`);
     const offer = C.restoreOffer(P); if (!offer.length) return;
     const c = C.restoreCost(P.restored.length);
     if (P.res < c) return refuse('re', c);
@@ -285,10 +307,12 @@
   function doRestore(id) {
     const c = C.restoreCost(P.restored.length); if (P.res < c) return;
     P.res -= c; P.restored.push(id); refresh(); S.upsSinceRestore = 0;
-    const b = C.byId(id); toast(`${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 };
+    const b = C.byId(id), r2 = P.ascensions >= 1 && C.RANK2[id];
+    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 };
+    if (r2) { S.rank2 = (S.rank2 || []).concat(id); pop(sx(CITY.spots[id][0]), sy(CITY.spots[id][1]) - 50, r2.name + '!', '#ffd56b', 1.8, 40); }
     A.play('tier_up', 0.55); SDK.happytime();
     if (P.restored.length === 5) setTimeout(() => { toast('The fountain flows again!'); S.reveal = { b: 'plaza', t: 0 }; }, 2900);
-    if (C.canAscend(P)) setTimeout(() => toast('The city is whole! Restore is now Ascend.'), 2900);
+    if (C.cityWhole(P)) setTimeout(() => toast(C.canAscend(P) ? 'The city is whole! Restore is now Ascend.' : `The city is whole! Reach wave ${C.ascendWave(P)} to Ascend.`), 2900);
     save(); ui();
   }
   function refuse(id, cost) {
@@ -398,7 +422,7 @@
     if (S.cheerT > 0 && (S.cheerT -= DT) <= 0) { S.cheerT = 0; S.cheer = 0; }
     if (S.villagers) { S.villagers.t += DT; if (S.villagers.t > 2.6) S.villagers = null; }
     if (P.restored.length < 3) return;
-    if (S.event && S.event.id === 'harvest' && !S.gold && S.goldT > 6) S.goldT = 6;
+    if (S.event && (S.event.id === 'harvest' || S.event.id === 'goldrush') && !S.gold && S.goldT > 6) S.goldT = 6;
     if (S.gold) { const g = S.gold; g.t += DT; g.x += g.vx * DT; g.y = g.y0 + Math.sin(g.t * 2.4) * 26; if (g.t > g.life || g.x < -60 || g.x > W + 60) S.gold = null; return; }
     if (S.goldT === undefined) S.goldT = 8;
     if ((S.goldT -= DT) <= 0) {
@@ -411,7 +435,7 @@
   function tapGold(x, y) {
     const g = S.gold; if (!g || Math.hypot(x - g.x, y - g.y) > 70) return false;
     S.gold = null; S.goldCaught = (S.goldCaught || 0) + 1; A.play('claim', 0.6);
-    const roll = Math.random(), mult = 1 + (B.wispX || 0);
+    const roll = Math.random(), mult = (1 + (B.wispX || 0)) * (S.event && S.event.id === 'goldrush' ? 3 : 1);
     burst({ x: g.x, y: g.y + 20, size: 40 }, '#ffd56b', 22, 220);
     if ((roll < 0.15 || (S.event && S.event.id === 'starfall')) && P.shop.open) { const n = 2 * mult; P.shop.shards += n; pop(g.x, g.y - 20, `+${n} Starshards`, SHARD, 1.4, 42); }
     else if (roll < 0.3) { S.goldSurge = Date.now() + 15000; pop(g.x, g.y - 20, 'x2 for 15 s!', '#ff9ce8', 1.4, 42); }
@@ -426,17 +450,17 @@
     cx.restore();
   }
   // the Tavern: combos fill the Cheer meter; full, the towers fire twice as fast for 6 s
-  function startCheer() { S.cheerT = 6; S.cheersDone = (S.cheersDone || 0) + 1; pop(W / 2, 420, 'CHEER! Towers fire twice as fast', '#ffd56b', 1.8, 44); A.play('feat', 0.5); }
+  function startCheer() { S.cheerT = S.cheerMax = B.cheerLong ? 10 : 6; S.cheersDone = (S.cheersDone || 0) + 1; pop(W / 2, 420, 'CHEER! Towers fire twice as fast', '#ffd56b', 1.8, 44); A.play('feat', 0.5); }
   function drawCheer() {
     if (!has('tavern') || root.__storeCapture) return;
-    const sp = CITY.spots.tavern, x = sx(sp[0]), y = sy(sp[1]) + sp[3] * K * 0.42, w = 92, f = S.cheerT > 0 ? S.cheerT / 6 : S.cheer || 0;
+    const sp = CITY.spots.tavern, x = sx(sp[0]), y = sy(sp[1]) + sp[3] * K * 0.42, w = 92, f = S.cheerT > 0 ? S.cheerT / (S.cheerMax || 6) : S.cheer || 0;
     cx.save(); cx.fillStyle = 'rgba(24,12,20,.8)'; cx.beginPath(); cx.roundRect(x - w / 2 - 3, y - 3, w + 6, 16, 8); cx.fill();
     cx.fillStyle = S.cheerT > 0 ? '#ffd56b' : '#e59a3a'; cx.beginPath(); cx.roundRect(x - w / 2, y, Math.max(6, w * f), 10, 5); cx.fill(); cx.restore();
     if (S.cheerT > 0 && !reduced()) for (const t of TOWERS) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - 40, 50, 'rgba(255,214,107,', 0.25); cx.restore(); }
   }
   // the Cottages: three villagers walk to the gate and mend it after every wave
   function repairGate() {
-    const add = Math.min(gateMax() - S.gateHp, gateMax() * 0.35); S.gateHp += add; S.repairs = (S.repairs || 0) + 1;
+    const add = Math.min(gateMax() - S.gateHp, gateMax() * 0.35 * (1 + B.repairX)); S.gateHp += add; S.repairs = (S.repairs || 0) + 1;
     S.villagers = { t: 0 }; pop(GATE_X, WALL_FRONT - 110, `Repaired +${C.fmt(add)}`, '#7bd15a', 1.4, 34);
   }
   function drawVillagers() {
@@ -642,12 +666,12 @@
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
     if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
-    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. ${(() => { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1); return un ? `<b>Unlocks: ${un.name}.</b> ` : ''; })()}Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.${` You will earn <b>${C.perkPtsFor(P)} perk point${C.perkPtsFor(P) === 1 ? '' : 's'}</b> (1, plus 1 for every 25 waves reached).`}</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. ${(() => { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1); return un ? `<b>Unlocks: ${un.name}.</b> ` : ''; })()}The next run asks for wave ${Math.min(120, 40 + 10 * P.ascensions)} before it can Ascend. Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.${` You will earn <b>${C.perkPtsFor(P)} perk point${C.perkPtsFor(P) === 1 ? '' : 's'}</b> (1, plus 1 for every 25 waves reached).`}</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'save') html = `<span class="eyebrow">Wave ${C.fmt(P.wave)} · boss</span><h2>The gate is breaking!</h2><p>Watch an ad to rebuild the gate and keep fighting this boss.</p>${btn('c-ad', 'Watch an ad: save the gate', 'gold')}${btn('c-no', 'Fall back', 'quiet')}`;
     if (kind === 'building') {
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
       const hall = HALLS[data] && HALLS[data].ok() ? HALLS[data] : null;
-      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} Resonance a second</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>`
+      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} Resonance a second</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>${P.ascensions >= 1 ? `<p><b>Ascended · ${C.RANK2[data].name}:</b> ${C.RANK2[data].line}</p>` : ''}`
         + `<p class="small">Next level: ${rfmt(r)} -> ${rfmt(r2)} a second${m ? `<br>Level ${m} doubles it` : ''}</p>`
         + btn('c-ok', `Level up · <i class="gem"></i>${C.fmt(c)}`, P.res >= c ? 'gold' : 'off') + `<span class="wait"></span>` + btn('c-no', 'Close', 'quiet');
     }
@@ -712,14 +736,23 @@
   function groundLayer() {
     const reveal = S.reveal && S.reveal.t < 0.9 ? S.reveal.b : '';
     const parts = (P.restored.length >= 5 ? P.restored.concat('plaza') : P.restored).filter(id => id !== reveal);
-    const key = [groundVer, k, H, parts.join(',')].join('|'); if (ground && key === groundKey) return ground;
+    const gild = P.ascensions >= 2, key = [groundVer, k, H, gild, parts.join(',')].join('|'); if (ground && key === groundKey) return ground;
     const c = ground && ground.width === Math.round(W * k) && ground.height === Math.round(GROUND_H() * k) ? ground : document.createElement('canvas');
     c.width = Math.round(W * k); c.height = Math.round(GROUND_H() * k); const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, 0, 0);
     if (img.meadow) g.drawImage(img.meadow, 0, 0, W, CITY_Y + 30); else { g.fillStyle = '#6f9a3c'; g.fillRect(0, 0, W, CITY_Y + 30); }
     if (img.forest) { const f = img.forest, fw = f.width * 1.5, fh = f.height * 1.5; g.drawImage(f, (W - fw) / 2, -14, fw, fh); g.drawImage(f, (W - fw) / 2 + 60, 40, fw, fh * 0.9); }
     if (cityRuined) g.drawImage(cityRuined, 0, CITY_Y);
-    for (const id of parts) if (cityRestored[id]) g.drawImage(cityRestored[id], 0, CITY_Y);
+    for (const id of parts) if (cityRestored[id]) g.drawImage(gild && id !== 'plaza' ? gilded(id) : cityRestored[id], 0, CITY_Y);
     ground = c; groundKey = key; return c;
+  }
+  // from the 2nd Ascension the restored city is gilded: warm gold light on every rebuilt building (made in code)
+  const gildCache = {};
+  function gilded(id) {
+    if (gildCache[id] && gildCache[id].v === groundVer) return gildCache[id].c;
+    const src = cityRestored[id], c = document.createElement('canvas'); c.width = src.width; c.height = src.height; const g = c.getContext('2d');
+    g.filter = 'saturate(1.15) contrast(1.05)'; g.drawImage(src, 0, 0); g.filter = 'none';
+    g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(255,190,70,.2)'; g.fillRect(0, 0, c.width, c.height);
+    gildCache[id] = { v: groundVer, c }; return c;
   }
   function prepareCity() {
     groundVer++;
@@ -809,11 +842,11 @@
   function drawEnemy(e) {
     const sh = img[e.sheet]; if (!sh) return;
     const fade = Math.min(1, (S.t - e.born) / 0.6), die = e.dying ? 1 - e.dying / 0.45 : 1;
-    cx.save(); cx.globalAlpha = fade * die;
+    cx.save(); cx.globalAlpha = fade * die * (e.faded ? 0.28 : 1);
     shadow(e.x + 4, e.y - 2, e.size * 0.42, e.size * 0.13, 0.35);
     if (e.dying) { cx.translate(e.x, e.y); cx.scale(1 + e.dying, 1 - e.dying * 0.8); cx.translate(-e.x, -e.y); }
     if (GATE_X + e.off < e.x - 20) { cx.translate(e.x, 0); cx.scale(-1, 1); cx.translate(-e.x, 0); }   // face the way it walks
-    const TINT = { gold: 'sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.15)', shield: 'saturate(0.6) hue-rotate(170deg) brightness(1.05)', split: 'hue-rotate(150deg) saturate(1.3)', mend: 'hue-rotate(-75deg) saturate(0.7) brightness(1.3)', queen: 'hue-rotate(205deg) saturate(1.5) brightness(1.05)', pale: 'saturate(0.3) brightness(1.45)', stone: 'saturate(0.2) brightness(0.8) contrast(1.2)' };
+    const TINT = { gold: 'sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.15)', shield: 'saturate(0.6) hue-rotate(170deg) brightness(1.05)', split: 'hue-rotate(150deg) saturate(1.3)', mend: 'hue-rotate(-75deg) saturate(0.7) brightness(1.3)', queen: 'hue-rotate(205deg) saturate(1.5) brightness(1.05)', pale: 'saturate(0.3) brightness(1.45)', stone: 'saturate(0.2) brightness(0.8) contrast(1.2)', ghost: 'saturate(0.2) brightness(1.6) hue-rotate(180deg)', thief: 'saturate(0.4) brightness(0.55)', bomb: 'hue-rotate(-95deg) saturate(1.8) brightness(1.05)', totem: 'sepia(0.7) hue-rotate(160deg) saturate(1.4)' };
     if (e.flash > 0) cx.filter = `brightness(${1 + e.flash * 0.9})`;
     else if (e.chill > 0) cx.filter = 'saturate(0.55) brightness(1.12)';
     else if (e.tint) cx.filter = TINT[e.tint];
@@ -951,7 +984,7 @@
     // the ground (meadow, treeline, the city and every restored building) comes from one cached canvas; only a building
     // that is fading in right now is drawn on its own. Eleven full-band draws a frame became one (Nov 6 2026, perf pass).
     cx.drawImage(groundLayer(), 0, 0, W, GROUND_H());
-    if (S.reveal) { const part = cityRestored[S.reveal.b]; if (part) { cx.save(); cx.globalAlpha = Math.min(1, S.reveal.t / 0.9); cx.drawImage(part, 0, CITY_Y); cx.restore(); } }
+    if (S.reveal) { const part = cityRestored[S.reveal.b] && (P.ascensions >= 2 && S.reveal.b !== 'plaza' ? gilded(S.reveal.b) : cityRestored[S.reveal.b]); if (part) { cx.save(); cx.globalAlpha = Math.min(1, S.reveal.t / 0.9); cx.drawImage(part, 0, CITY_Y); cx.restore(); } }
     if (S.reveal && !reduced()) { const s = CITY.spots[S.reveal.b]; if (s && S.reveal.t < 1.2) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(sx(s[0]), sy(s[1]), 95, 'rgba(255,220,140,', 0.5 * (1 - S.reveal.t / 1.2)); cx.restore(); } }
     // the city's Resonance: the fountain flares as wisps land, motes rise from every restored building
     cx.save();
@@ -1031,12 +1064,12 @@
     html(up.querySelector('.cost'), fork ? `Stage ${fork}` : `${gem}${C.fmt(uc)} <span class="what">· damage +${dmgUp}%</span>`);
     up.querySelector('.fill').style.width = fork ? '100%' : Math.min(100, P.res / uc * 100) + '%';
     up.classList.toggle('ready', !!fork || P.res >= uc);
-    const re = el('re'), asc = C.canAscend(P), n = P.restored.length, rc = asc ? 0 : C.restoreCost(n);
-    re.classList.toggle('ascend', asc);
-    re.querySelector('.label').textContent = asc ? 'Ascend' : 'Restore';
+    const re = el('re'), whole = C.cityWhole(P), asc = C.canAscend(P), n = P.restored.length, rc = whole ? 0 : C.restoreCost(n), aw = C.ascendWave(P), rw = Math.max(P.runWave || 1, P.wave);
+    re.classList.toggle('ascend', whole);
+    re.querySelector('.label').textContent = whole ? 'Ascend' : 'Restore';
     const offer = asc ? [] : C.restoreOffer(P);
-    html(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${gem}${C.fmt(rc)}`);
-    re.querySelector('.fill').style.width = asc ? '100%' : Math.min(100, P.res / rc * 100) + '%';
+    html(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `at wave ${aw} · now ${rw}` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${gem}${C.fmt(rc)}`);
+    re.querySelector('.fill').style.width = asc ? '100%' : whole ? Math.min(100, rw / aw * 100) + '%' : Math.min(100, P.res / rc * 100) + '%';
     re.classList.toggle('ready', asc || P.res >= rc);
     for (const b of [up, re]) if (b.classList.contains('ready')) b.querySelector('.wait').textContent = '';
     // pointing hand: first session only, one button at a time, never while a card is open

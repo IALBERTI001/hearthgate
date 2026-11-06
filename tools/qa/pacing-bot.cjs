@@ -12,11 +12,11 @@ const [url, mins = '60'] = process.argv.slice(2);
   for (let t = 0; t < +mins * 60; t += 5) {
     const st = await p.evaluate(() => { const H = Hearthgate; H.sim(5); const { P } = H.state();
       if (H.card()) H.act(H.card() === 'ascend' ? 'ok' : 'pick'); if (H.card()) H.act('ok');
-      const C = HGCore, B = C.bonuses(P), uc = C.upgradeCost(P.gateLevel, B), rc = C.canAscend(P) ? 0 : C.restoreCost(P.restored.length);
+      const C = HGCore, B = C.bonuses(P), uc = C.upgradeCost(P.gateLevel, B), rc = C.cityWhole(P) ? Infinity : C.restoreCost(P.restored.length);
       if (C.pendingFork(P)) H.act('up'); else if (C.canAscend(P)) H.act('re'); else if (P.res >= Math.min(uc, rc)) H.act(rc <= uc ? 're' : 'up');
       if (H.card()) H.act(H.card() === 'ascend' ? 'ok' : 'pick');
       for (let i = 0; i < 40; i++) {
-        const B2 = C.bonuses(P), lim = Math.min(C.upgradeCost(P.gateLevel, B2), C.canAscend(P) ? Infinity : C.restoreCost(P.restored.length)) / 3;
+        const B2 = C.bonuses(P), lim = Math.min(C.upgradeCost(P.gateLevel, B2), C.cityWhole(P) ? Infinity : C.restoreCost(P.restored.length)) / 3;
         const cheap = P.restored.map(id => [id, C.levelCost(P, id, B2)]).sort((a, b) => a[1] - b[1])[0];
         if (!cheap || cheap[1] > lim || cheap[1] > P.res) break; H.act('level', cheap[0]);
       }

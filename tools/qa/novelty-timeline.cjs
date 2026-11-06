@@ -19,10 +19,10 @@ const [url, mins = '45'] = process.argv.slice(2);
       const H = Hearthgate; H.sim(5); const { P, S } = H.state(), C = HGCore;
       for (let k = 0; k < 3 && H.card(); k++) H.act(H.card() === 'ascend' ? 'ok' : H.card() === 'daily' || H.card() === 'offline' ? 'ok' : 'pick');
       if (H.card()) H.act('close');
-      const B = C.bonuses(P), uc = C.upgradeCost(P.gateLevel, B), rc = C.canAscend(P) ? 0 : C.restoreCost(P.restored.length);
+      const B = C.bonuses(P), uc = C.upgradeCost(P.gateLevel, B), rc = C.cityWhole(P) ? Infinity : C.restoreCost(P.restored.length);
       if (C.pendingFork(P)) H.act('up'); else if (C.canAscend(P)) H.act('re'); else if (P.res >= Math.min(uc, rc)) H.act(rc <= uc ? 're' : 'up');
       if (H.card()) H.act(H.card() === 'ascend' ? 'ok' : 'pick');
-      for (let i = 0; i < 40; i++) { const B2 = C.bonuses(P), lim = Math.min(C.upgradeCost(P.gateLevel, B2), C.canAscend(P) ? Infinity : C.restoreCost(P.restored.length)) / 3;
+      for (let i = 0; i < 40; i++) { const B2 = C.bonuses(P), lim = Math.min(C.upgradeCost(P.gateLevel, B2), C.cityWhole(P) ? Infinity : C.restoreCost(P.restored.length)) / 3;
         const ch = P.restored.map(id => [id, C.levelCost(P, id, B2)]).sort((a, b) => a[1] - b[1])[0]; if (!ch || ch[1] > lim || ch[1] > P.res) break; H.act('level', ch[0]); }
       if (!P.firstSession && C.surgeReadyFree(P, Date.now())) document.getElementById('surge').click();
       if (S.gold) H.act('gold');
@@ -31,13 +31,16 @@ const [url, mins = '45'] = process.argv.slice(2);
       return { wave: P.wave, best: P.bestWave, gate: P.gateLevel, stage: C.stageOf(P.gateLevel), restored: P.restored.slice(), combos: P.combos.slice(),
         forks: Object.keys(P.forks).length, roles: [...new Set(S.enemies.map(e => e.role))], shop: P.shop.open, feats: P.feats.length,
         quests: P.shop.open && C.questClaimable(P), surge: C.surgeOn(P, Date.now()), asc: P.ascensions, perks: Object.values(P.perks).reduce((a, b) => a + b, 0),
-        event: S.event ? S.event.id : '', gold: S.goldCaught || 0, cheer: S.cheersDone || 0, repairs: S.repairs || 0, trials: S.trialsWon || 0, tower5: P.restored.includes('watchtower'), relics: (P.relics || []).length,
+        event: S.event ? S.event.id : '', gold: S.goldCaught || 0, cheer: S.cheersDone || 0, repairs: S.repairs || 0, trials: S.trialsWon || 0, tower5: P.restored.includes('watchtower'), relics: (P.relics || []).length, rank2: (S.rank2 || []).slice(), seen: (P.seenRoles || []).slice(),
         x2: P.restored.reduce((a, id) => a + C.MILESTONES.filter(m => (P.levels[id] || 1) >= m).length, 0), levels: P.restored.reduce((a, id) => a + (P.levels[id] || 1), 0) };
     });
     const T = t + 5;
-    for (const r of s.roles) once(T, 'role:' + r, `new enemy: ${r}`);
+    for (const r of s.roles.concat(s.seen)) once(T, 'role:' + r, `new enemy: ${r}`);   // seenRoles catches kinds killed between samples
     if (s.restored.length > (prev.restored || []).length) { const id = s.restored[s.restored.length - 1];
-      if (!once(T, 'b:' + id, `new building: ${id}`)) add(T, 'BEAT', `restored ${id} again (after Ascension)`); }
+      if (!once(T, 'b:' + id, `new building: ${id}`)) {
+        if (s.rank2.includes(id) && once(T, 'r2:' + id, `Ascended building: ${id} (a second ability)`)) {}
+        else if (s.asc >= 2 && once(T, 'gild', 'gilded buildings (2nd Ascension)')) {}
+        else add(T, 'BEAT', `restored ${id} again (after Ascension)`); } }
     for (const c of s.combos) once(T, 'c:' + c, `new combo: ${c}`);
     if (s.forks > (prev.forks || 0)) once(T, 'fork' + s.forks, `new upgrade path (stage ${s.forks + 1})`);
     if (s.stage > (prev.stage || 1)) once(T, 'stage' + s.stage, `towers grow a tier (stage ${s.stage})`);
