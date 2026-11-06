@@ -101,4 +101,24 @@ assert.ok(C.cityRate(oc, C.bonuses(oc)) < 0.5 * C.fightRate(oc, C.bonuses(oc)));
 // Enemy scale (owner's correction, Nov 5 2026): every regular enemy is shorter than a tier-1 tower; only the boss is taller.
 for (const r of ['slime', 'runner', 'armoured', 'swarm']) assert.ok(C.ROLES[r].size < C.CITY.towerH, `${r} (${C.ROLES[r].size}) shorter than a tower (${C.CITY.towerH})`);
 assert.ok(C.ROLES.boss.size > C.CITY.towerH);
+// The Shop (Nov 5 2026): cosmetic looks bought with Starshards.
+const sp = C.defaults();
+assert.strictEqual(sp.shop.open, false); assert.strictEqual(sp.shop.equip.town, 'town-spring');
+assert.ok(C.SHOP.every(i => C.SLOTS.includes(C.slotOf(i))), 'every item fits a slot');
+assert.ok(C.SLOTS.every(k => C.SHOP.some(i => C.slotOf(i) === k && !i.price)), 'every slot has a free default');
+assert.strictEqual(C.buy(sp, 'town-moon'), false, 'no Starshards, no purchase');
+sp.shop.shards = 35; assert.ok(C.buy(sp, 'town-moon')); assert.strictEqual(sp.shop.shards, 5); assert.strictEqual(sp.shop.equip.town, 'town-moon', 'a purchase is worn at once');
+assert.strictEqual(C.buy(sp, 'town-moon'), false, 'never bought twice');
+assert.strictEqual(C.equip(sp, 'fire-obsidian'), false, 'cannot wear what is not owned');
+assert.ok(C.equip(sp, 'town-spring')); assert.ok(C.equip(sp, 'town-moon'));
+sp.shop.open = true; assert.ok(!C.shopNews(sp), '5 Starshards buys nothing new'); sp.shop.shards = 8; assert.ok(C.shopNews(sp), 'a wisp at 8 is news');
+const bad2 = C.sanitize({ shop: { open: true, shards: -4, owned: ['town-moon', 'nope'], equip: { town: 'town-moon', fire: 'fire-ember', trail: 'hit-star' } } }).shop;
+assert.strictEqual(bad2.shards, 0); assert.ok(!bad2.owned.includes('nope')); assert.strictEqual(bad2.equip.town, 'town-moon');
+assert.strictEqual(bad2.equip.fire, 'fire-classic', 'an unowned look falls back to the default'); assert.strictEqual(bad2.equip.trail, 'trail-classic', 'a look in the wrong slot is dropped');
+assert.deepStrictEqual(C.sanitize({}).shop.equip, C.defaults().shop.equip, 'old saves get the default looks');
+const asc = C.ascend(Object.assign(C.defaults(), { restored: C.BUILDING_IDS.slice(), shop: { open: true, shards: 4, owned: C.defaults().shop.owned.concat('wisp-gold'), equip: Object.assign(C.defaults().shop.equip, { wisp: 'wisp-gold' }), seen: [] } }));
+assert.strictEqual(asc.shop.shards, 4 + C.SHARDS.ascend, 'Ascending pays Starshards'); assert.strictEqual(asc.shop.equip.wisp, 'wisp-gold', 'looks survive Ascension');
+const tp = C.defaults(); tp.wave = 30; const tb = C.bonuses(tp), tc = C.exchangeCost(tp, tb);
+tp.wave = 5; assert.ok(C.exchangeCost(tp, C.bonuses(tp)) < tc, 'the trade price follows income'); tp.wave = 30;
+tp.res = tc - 1; assert.strictEqual(C.trade(tp, tb), false); tp.res = tc; assert.ok(C.trade(tp, tb)); assert.strictEqual(tp.res, 0); assert.strictEqual(tp.shop.shards, 1);
 console.log('core tests passed');

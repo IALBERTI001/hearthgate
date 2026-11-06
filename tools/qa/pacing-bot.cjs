@@ -21,7 +21,7 @@ const [url, mins = '60'] = process.argv.slice(2);
         if (!cheap || cheap[1] > lim || cheap[1] > P.res) break; H.act('level', cheap[0]);
       }
       const B3 = C.bonuses(P), city = C.cityRate(P, B3), fight = C.fightRate(P, B3);
-      return { share: city / (city + fight), lvls: P.restored.reduce((s, id) => s + C.levelOf(P, id), 0), w: P.wave, best: P.bestWave, lvl: P.gateLevel, city: P.restored.length, asc: P.ascensions, res: P.res, combos: P.combos.length, forks: Object.keys(P.forks).length };
+      return { share: city / (city + fight), lvls: P.restored.reduce((s, id) => s + C.levelOf(P, id), 0), w: P.wave, best: P.bestWave, lvl: P.gateLevel, city: P.restored.length, asc: P.ascensions, res: P.res, combos: P.combos.length, forks: Object.keys(P.forks).length, shards: P.shop.shards };
     });
     const m = (k, v) => { if (!seen[k]) { seen[k] = 1; log.push(`${(t / 60).toFixed(1)} min  ${k}${v ? '  ' + v : ''}`); } };
     if (st.best >= 11) m('first boss beaten (wave 10)'); if (st.best >= 21) m('wave 20 boss beaten'); if (st.best >= 31) m('wave 30 boss beaten');
@@ -31,9 +31,10 @@ const [url, mins = '60'] = process.argv.slice(2);
     if (st.asc >= 1) m('first Ascension'); if (st.asc >= 2) m('second Ascension');
     if (st.w < (seen.lastW || 0) - 1) falls.push(`${(t / 60).toFixed(1)} min: fell back from ${seen.lastW} to ${st.w}`);
     seen.lastW = st.w;
+    if (st.shards !== undefined && t % 600 === 0) log.push(`${(t / 60).toFixed(0)} min  Starshards ${st.shards}`);
     if (t % 300 === 0) log.push(`${(t / 60).toFixed(0)} min  wave ${st.w}, gate ${st.lvl}, city ${st.city}, building levels ${st.lvls}, city share of income ${(st.share * 100).toFixed(0)}%`);
   }
-  const end = await p.evaluate(() => { const { P } = Hearthgate.state(); return { wave: P.wave, best: P.bestWave, gate: P.gateLevel, city: P.restored.length, asc: P.ascensions }; });
+  const end = await p.evaluate(() => { const { P } = Hearthgate.state(); return { wave: P.wave, best: P.bestWave, gate: P.gateLevel, city: P.restored.length, asc: P.ascensions, shards: P.shop.shards, shopOpen: P.shop.open }; });
   console.log(log.join('\n')); console.log('fall-backs:', falls.length, falls.slice(0, 8).join(' | ')); console.log('end', JSON.stringify(end), 'errors', errors.length, errors.slice(0, 3));
   await b.close();
 })();

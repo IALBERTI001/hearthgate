@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-05b';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-05c';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -17,13 +17,14 @@
   const RANGE_Y = 196;   // towers reach the whole field below the treeline, on every screen height
   const ELEMENT = { forge: 'fire', frostSpire: 'frost', stormBell: 'storm' };
   const COLOR = { fire: '#ff8a3a', frost: '#9fe8ff', storm: '#c98bff', none: '#efe2c0' };
+  const L = root.HGLooks, SHARD = '#6ff2ff';   // Starshards: the Shop's currency, a bright cyan star
   const RES = '#ff8ae6', RES_GLOW = 'rgba(255,110,220,';   // Resonance: the city's magic, rose-pink so it reads on green grass
   const PLAZA = { x: sx(CITY.focus[0]), y: sy(CITY.focus[1]) };   // the fountain every wisp flies into
   const GLOW = { fire: 'rgba(255,140,50,', frost: 'rgba(140,220,255,', storm: 'rgba(200,140,255,', none: 'rgba(255,240,200,' };
 
   // ---------- state ----------
   let P = load(), B = C.bonuses(P);
-  const S = { t: 0, enemies: [], shots: [], pops: [], fx: [], wisps: [], motes: [], spawnQ: [], spawnT: 0, gateHp: 0, gateHit: 0, paused: false,
+  const S = { t: 0, enemies: [], shots: [], pops: [], fx: [], hits: [], wisps: [], motes: [], spawnQ: [], spawnT: 0, gateHp: 0, gateHit: 0, paused: false,
     sessionT: 0, saveT: 0, reveal: null, card: null, rings: [], shake: 0, wavePop: null, cheerNext: null, savedByAd: false };
   function load() { try { return C.sanitize(localStorage.getItem(SAVE_KEY)); } catch (e) { return C.defaults(); } }
   function save() { P.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(P)); } catch (e) {} }
@@ -34,7 +35,7 @@
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
   if (/[?&]qa\b/.test(location.search)) Object.assign(root.Hearthgate, {
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
-    act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
+    act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
     card: () => S.card
   });
 
@@ -75,6 +76,7 @@
     S.t += DT; S.sessionT += DT; if (S.growTip) S.growTipT += DT; if (S.flash && (S.flash.t += DT) > 0.18) S.flash = null; if (S.wavePop) S.wavePop.t += DT;
     S.gateHit = Math.max(0, S.gateHit - DT * 4); S.shake = Math.max(0, S.shake - DT);
     for (const r of S.rings) r.t += DT; S.rings = S.rings.filter(r => r.t < 0.5);
+    for (const h of S.hits) h.t += DT; S.hits = S.hits.filter(h => h.t < L.HIT_LIFE);
     if (S.spawnQ.length && (S.spawnT -= DT) <= 0) { const r = S.spawnQ.shift(); spawn(r); S.packN = (S.packN || 0) + 1; const gap = Math.max(0.45, 1.35 - P.wave * 0.02);
       S.spawnT = r === 'swarm' ? 0.28 : S.packN % 3 ? 0.3 : gap * 3 - 0.6; }   // packs of three, same total pace
     if (B.regen) S.gateHp = Math.min(gateMax(), S.gateHp + gateMax() * B.regen * DT);
@@ -150,7 +152,9 @@
         .slice(0, jumps).forEach(o => { o.hp -= chainD; o.flash = 1; if (e.burn > 0) o.burn = 2; S.pops.push({ arc: [e.x, e.y - e.size * 0.45, o.x, o.y - o.size * 0.45], t: 0, life: 0.2 }); });
     }
     e.hp -= d; e.flash = 1;
-    burst(e, COLOR[el], el === 'none' ? 4 : 6, 120);
+    const hs = P.shop.equip.hit;
+    burst(e, COLOR[el], el === 'none' ? 4 : hs === 'hit-classic' ? 6 : 3, 120);
+    if (hs !== 'hit-classic' && S.hits.length < 30) S.hits.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col: COLOR[el], style: hs, seed: Math.random() * 6 });
     A.play(el === 'frost' ? 'ice_contact_0' : el === 'storm' ? 'lightning_contact_0' : el === 'fire' ? 'fire_contact_0' : 'ice_contact_0', 0.12);
     if (e.dp && e.dp.t < 0.25 && S.pops.includes(e.dp) && !e.bigHit) { e.dp.val += d; e.dp.text = C.fmt(e.dp.val); }
     else { e.dp = pop(e.x, e.y - e.size * 0.55, C.fmt(d), e.bigHit ? '#ffffff' : COLOR[el], e.bigHit ? 0.9 : 0.7, e.bigHit ? 56 : 30); e.dp.val = d; }
@@ -163,7 +167,7 @@
     S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
     if (id === 'shatter' && S.t - (S.lastFlash || -9) > 1.2) { S.flash = { col, t: 0 }; S.lastFlash = S.t; }   // the signature combo lights the screen
-    if (!P.combos.includes(id)) { P.combos.push(id); toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/3`); save(); }
+    if (!P.combos.includes(id)) { P.combos.push(id); if (P.shop.open) P.shop.shards += C.SHARDS.combo; toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/3`); save(); }
   }
   function kill(e) {
     e.dying = DT; const gain = C.killRes(P.wave, e.boss, B);
@@ -182,9 +186,16 @@
   function waveCleared() {
     if (C.isBoss(P.wave)) {
       pop(W / 2, 330, 'BOSS DOWN!', '#ffd56b', 1.8, 60); SDK.happytime(); A.play('tier_up', 0.6);
+      if (P.shop.open) { P.shop.shards += C.SHARDS.boss; pop(W / 2, 400, `+${C.SHARDS.boss} Starshards`, SHARD, 1.6, 40); }
       if (P.wave === 10 && !P.tomorrowShown) { P.tomorrowShown = true; setTimeout(() => toast('Come back tomorrow: a daily Resonance reward waits'), 1900); }
     }
-    P.wave++; P.bestWave = Math.max(P.bestWave, P.wave); startWave(); save();
+    P.wave++; P.bestWave = Math.max(P.bestWave, P.wave); openShop(); startWave(); save();
+  }
+  // The Shop opens when the first boss falls, with a welcome gift; older saves past wave 10 get it on load.
+  function openShop() {
+    if (P.shop.open || P.bestWave < C.SHOP_OPENS) return;
+    P.shop.open = true; P.shop.shards += C.SHARDS.welcome; save();
+    setTimeout(() => { toast(`The Shop is open! +${C.SHARDS.welcome} Starshards`); el('shop').classList.add('fresh'); A.play('tier_up', 0.4); }, 2600);
   }
   function gateBroken(noAd) {
     // a boss wave can be saved once by an optional ad (Full Launch only); otherwise the gate falls back, nothing lost
@@ -252,6 +263,91 @@
     save(); return true;
   }
 
+
+  // ---------- the Shop: tower looks, shot trails, hit effects, the city's look and wisps ----------
+  const TABS = [['tower', 'Towers'], ['trail', 'Shots'], ['hit', 'Hits'], ['town', 'City'], ['wisp', 'Wisps']];
+  let previews = [];
+  function openShopCard() {
+    if (S.card || !P.shop.open) return;
+    A.unlock(); el('shop').classList.remove('fresh');
+    for (const i of C.SHOP) if (i.price <= P.shop.shards && !P.shop.seen.includes(i.id)) P.shop.seen.push(i.id);   // the dot clears
+    showCard('shop');
+  }
+  function shopHtml() {
+    const tab = S.shopTab || 'tower', sh = P.shop, tc = C.exchangeCost(P, B), items = C.SHOP.filter(i => i.cat === tab);
+    const sel = C.shopItem(S.shopSel) && C.shopItem(S.shopSel).cat === tab ? C.shopItem(S.shopSel) : C.shopItem(sh.equip[C.slotOf(items[0])]);
+    const tile = it => {
+      const own = sh.owned.includes(it.id), on = sh.equip[C.slotOf(it)] === it.id;
+      const state = on ? 'eq' : own ? 'own' : sh.shards >= it.price ? 'can' : 'off';
+      return `<div class="item ${state}${it.id === sel.id ? ' sel' : ''}" data-id="${it.id}"><canvas width="360" height="240"></canvas><b>${it.name}</b>`
+        + `<button class="buy ${state}" data-id="${it.id}">${on ? 'Equipped' : own ? 'Equip' : `<i class="star"></i>${it.price}`}</button></div>`;
+    };
+    return `<div class="shophead"><h2>Shop</h2><span class="chip shards"><i class="star"></i><b>${sh.shards}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
+      + `<div class="trade"><span>Earned in play,<br>or trade:</span>`
+      + `<button id="c-trade" class="cbtn ${P.res >= tc ? 'gold' : 'off'}">Trade <i class="gem"></i>${C.fmt(tc)}<span class="to"></span><i class="star"></i>1</button></div>`
+      + `<div class="tabs">${TABS.map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>`
+      + `<div class="grid">${items.map(tile).join('')}</div>`
+      + `<p class="detail"><b>${sel.name}</b> · ${sel.line}${tab === 'tower' ? ` <span class="small">(${{ fire: 'Fire', frost: 'Frost', storm: 'Storm' }[sel.el]} towers)</span>` : ''}</p>`;
+  }
+  function wireShop(body, rerender) {
+    body.querySelectorAll('.tab').forEach(b => (b.onclick = () => { A.unlock(); S.shopTab = b.dataset.tab; S.shopSel = null; A.play('tier_up', 0.08); rerender(); }));
+    body.querySelectorAll('.item').forEach(t => (t.onclick = ev => { if (ev.target.closest('.buy')) return; S.shopSel = t.dataset.id; rerender(); }));
+    body.querySelectorAll('.buy').forEach(b => (b.onclick = () => {
+      A.unlock(); const it = C.shopItem(b.dataset.id); S.shopSel = it.id;
+      if (P.shop.owned.includes(it.id)) { C.equip(P, it.id); A.play('tier_up', 0.15); }
+      else if (C.buy(P, it.id)) { A.play('tier_up', 0.55); toast(`${it.name} unlocked!`); }
+      else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); b.textContent = `${it.price - P.shop.shards} more`; return; }
+      applyLooks(); save(); rerender();
+    }));
+    const tr = body.querySelector('#c-trade');
+    if (tr) tr.onclick = () => {
+      A.unlock();
+      if (C.trade(P, B)) { A.play('tier_up', 0.3); save(); rerender(); }
+      else { tr.classList.remove('shake'); void tr.offsetWidth; tr.classList.add('shake'); }
+    };
+    previews = [...body.querySelectorAll('.item canvas')].map(c => ({ c, id: c.parentNode.dataset.id }));
+    drawPreviews(performance.now() / 1000);
+  }
+  // Live previews: the real tower sprite in its skin, a shot flying with the trail, a hit landing, the city thumbnail, a wisp.
+  function drawPreviews(t) {
+    for (const { c, id } of previews) {
+      const g = c.getContext('2d'), it = C.shopItem(id), Wp = c.width, Hp = c.height;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      if (it.cat === 'town') {
+        const key = 'thumb' + id;
+        if (!lookCache[key] && orig.restored) { const q = document.createElement('canvas'); q.width = 360; q.height = 240;
+          q.getContext('2d').drawImage(orig.restored, orig.restored.width * 0.25, 0, orig.restored.width * 0.5, orig.restored.height * 0.5, 0, 0, 360, 240); lookCache[key] = L.townGrade(id, q); }
+        if (lookCache[key]) g.drawImage(lookCache[key], 0, 0); continue;
+      }
+      if (it.cat === 'tower') {
+        const bgd = g.createRadialGradient(Wp / 2, Hp * 0.7, 10, Wp / 2, Hp * 0.6, Wp * 0.6); bgd.addColorStop(0, '#5c3a5a'); bgd.addColorStop(1, '#2a1a22');
+        g.fillStyle = bgd; g.fillRect(0, 0, Wp, Hp);
+        const im = lookCache[id + '3'] || (orig[it.el + 3] && (lookCache[id + '3'] = L.towerGrade(id, orig[it.el + 3]))); if (!im) continue;
+        g.fillStyle = 'rgba(10,6,10,.45)'; g.beginPath(); g.ellipse(Wp / 2, Hp - 26, 70, 16, 0, 0, 7); g.fill();
+        const h = 206, sc = h / (im.height - 16), w = im.width * sc; g.drawImage(im, Wp / 2 - w / 2, Hp - 22 - (im.height - 8) * sc, w, im.height * sc);
+        g.globalCompositeOperation = 'lighter'; glow(Wp / 2, Hp - 22 - h * 0.8, 40, L.TOWER[id].glow, 0.35 + 0.12 * Math.sin(t * 3), g); continue;
+      }
+      // a close-up of the meadow at twice the game's scale, so the effect reads at thumbnail size
+      if (img.meadow) g.drawImage(img.meadow, 0, 0, img.meadow.width * 0.25, img.meadow.width * 0.25 * Hp / Wp, 0, 0, Wp, Hp); else { g.fillStyle = '#6f9a3c'; g.fillRect(0, 0, Wp, Hp); }
+      g.setTransform(2, 0, 0, 2, 0, 0);
+      const els = ['fire', 'frost', 'storm'];
+      if (it.cat === 'trail') {
+        const loop = t / 1.1, u = loop % 1, el2 = els[Math.floor(loop) % 3], path = v => [10 + v * 160, 92 - v * 64 + Math.sin(v * 6) * 8];
+        const head = path(u), tr = []; for (let k = 7; k >= 1; k--) tr.push(path(Math.max(0, u - k * 0.06)));
+        L.drawTrail(g, id, { x: head[0], y: head[1], trail: tr }, COLOR[el2], GLOW[el2], glow, t);
+      } else if (it.cat === 'hit') {
+        const sl = img.slime; if (sl) { const fw = sl.width / 6, sc = 64 / sl.height; g.drawImage(sl, Math.floor(t * 8) % 6 * fw, 0, fw, sl.height, 90 - fw * sc / 2, 108 - sl.height * sc, fw * sc, sl.height * sc); }
+        const u = (t % 0.6) / 0.6, el2 = els[Math.floor(t / 0.6) % 3], hx = 90, hy = 72;
+        if (id === 'hit-classic') { g.fillStyle = COLOR[el2]; for (let k = 0; k < 8; k++) { const a = k * 0.8 + Math.floor(t / 0.6), d = u * 30; g.globalAlpha = 1 - u; g.beginPath(); g.arc(hx + Math.cos(a) * d, hy + Math.sin(a) * d + u * u * 30, 4, 0, 7); g.fill(); } }
+        else if (u < 0.55) L.drawHit(g, { x: hx, y: hy, t: u / 0.55 * L.HIT_LIFE, col: COLOR[el2], style: id, seed: Math.floor(t / 0.6) });
+      } else if (it.cat === 'wisp') {
+        const u = (t % 1.2) / 1.2, path = v => [16 + v * 148, 104 - Math.sin(v * Math.PI) * 76], hd = path(u), tr = [];
+        for (let k = 10; k >= 1; k--) tr.push(path(Math.max(0, u - k * 0.03)));
+        drawWisp(g, { x: hd[0], y: hd[1], trail: tr }, L.WISP[id]);
+      }
+    }
+  }
+
   // ---------- cards: daily reward, offline earnings, restore pick, fork, Ascend, save the gate, settings ----------
   const cardQueue = [];
   function nextCard() { const c = cardQueue.shift(); if (c) showCard(c[0], c[1]); }
@@ -262,11 +358,11 @@
     el('toast').classList.remove('show'); toastT = 0;
     const btn = (id, label, cls = '') => `<button id="${id}" class="cbtn ${cls}">${label}</button>`;
     let html = '';
-    if (kind === 'daily') html = `<span class="eyebrow">Day ${data.day} reward</span><h2>+${C.fmt(data.amount)} Resonance</h2><p>${data.big ? 'Day 7 bonus: five times the reward!' : 'Day 7 pays five times as much.'}</p>${btn('c-ok', 'Claim')}`;
+    if (kind === 'daily') html = `<span class="eyebrow">Day ${data.day} reward</span><h2>+${C.fmt(data.amount)} Resonance</h2><p>${data.big ? 'Day 7 bonus: five times the reward!' : 'Day 7 pays five times as much.'}</p>${P.shop.open ? `<p class="small">and ${data.big ? C.SHARDS.daily7 : C.SHARDS.daily} Starshards for the Shop</p>` : ''}${btn('c-ok', 'Claim')}`;
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
     if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
-    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. Best wave and combos stay.</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'save') html = `<span class="eyebrow">Wave ${C.fmt(P.wave)} · boss</span><h2>The gate is breaking!</h2><p>Watch an ad to rebuild the gate and keep fighting this boss.</p>${btn('c-ad', 'Watch an ad: save the gate', 'gold')}${btn('c-no', 'Fall back', 'quiet')}`;
     if (kind === 'building') {
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
@@ -274,12 +370,13 @@
         + `<p class="small">Next level: ${rfmt(r)} -> ${rfmt(r2)} a second${m ? `<br>Level ${m} doubles it` : ''}</p>`
         + btn('c-ok', `Level up · ${C.fmt(c)}`, P.res >= c ? 'gold' : 'off') + `<span class="wait"></span>` + btn('c-no', 'Close', 'quiet');
     }
+    if (kind === 'shop') html = shopHtml();
     if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · ★ ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}`;
     body.innerHTML = html;
     const close = () => { card.className = ''; S.card = null; if (!S.paused) SDK.gameplay(true); ui(); nextCard(); };
     const on = (id, f) => { const b = body.querySelector('#' + id); if (b) b.onclick = () => { A.unlock(); f(); }; };
     const adHooks = { mute: () => A.set('muted', true), unmute: () => A.set('muted', false) };
-    if (kind === 'daily') on('c-ok', () => { P.res += data.amount; P.daily = { day: data.today, streak: data.day, claimedTotal: P.daily.claimedTotal + data.amount }; A.play('tier_up', 0.5); save(); close(); });
+    if (kind === 'daily') on('c-ok', () => { P.res += data.amount; if (P.shop.open) P.shop.shards += data.big ? C.SHARDS.daily7 : C.SHARDS.daily; P.daily = { day: data.today, streak: data.day, claimedTotal: P.daily.claimedTotal + data.amount }; A.play('tier_up', 0.5); save(); close(); });
     if (kind === 'offline') {
       on('c-ok', () => { P.res += data.res; save(); close(); });
       on('c-ad', () => SDK.rewarded(adHooks).then(ok => { P.res += data.res * (ok ? 2 : 1); if (ok) toast('Doubled!'); save(); close(); }));
@@ -290,7 +387,8 @@
       P.forks[data] = o.dataset.id; refresh(); S.gateHp = gateMax();
       toast(`${C.FORKS[data].find(f => f.id === o.dataset.id).name} chosen`); A.play('tier_up', 0.5); save(); close();
     }));
-    if (kind === 'pick' || kind === 'ascend' || kind === 'building') on('c-no', close);
+    if (kind === 'pick' || kind === 'ascend' || kind === 'building' || kind === 'shop') on('c-no', close);
+    if (kind === 'shop') wireShop(body, () => showCard('shop'));
     if (kind === 'building') {
       on('c-ok', () => {
         if (levelUp(data)) return showCard('building', data);
@@ -298,7 +396,7 @@
         body.querySelector('.wait').textContent = `About ${Math.max(1, Math.ceil((c - P.res) / (C.fightRate(P, B) * 1.6 + RATE)))}s of fighting`;
       });
       card.onclick = ev => { if (ev.target === card) close(); };
-    } else card.onclick = null;
+    } else card.onclick = kind === 'shop' ? (ev => { if (ev.target === card) close(); }) : null;
     if (kind === 'ascend') on('c-ok', () => {
       P = C.ascend(P); refresh(); S.wisps = []; S.motes = []; S.enemies = []; S.shots = []; S.spawnQ = []; S.gateHp = 0; A.play('ascension', 0.7);
       S.cheerNext = 'A new dawn. Rebuild!'; startWave(); save(); close();
@@ -342,6 +440,19 @@
     }
   }
 
+  // ---------- looks from the Shop: the originals stay untouched, each skin is graded once and cached ----------
+  const orig = {}, lookCache = {};
+  const GROUND = ['ruined', 'restored', 'meadow', 'wall', 'forest'];
+  function applyLooks() {
+    const town = P.shop.equip.town;
+    for (const n of GROUND) if (orig[n]) img[n] = lookCache[town + n] || (lookCache[town + n] = L.townGrade(town, orig[n]));
+    for (const e of ['fire', 'frost', 'storm']) for (const t of [1, 2, 3]) {
+      const id = P.shop.equip[e], key = id + t; if (orig[e + t]) img[e + t] = lookCache[key] || (lookCache[key] = L.towerGrade(id, orig[e + t]));
+    }
+    prepareCity();
+    const bd = el('backdrop'); if (bd) bd.style.filter = `blur(26px) brightness(.42) saturate(1.15) ${(L.TOWN[town] || {}).backdrop || ''}`;
+  }
+
   // Enemies get a dark outline once at load, so a green slime always reads against green grass.
   function outline() {
     for (const n of ['slime', 'beetle', 'golem']) { const im = img[n]; if (!im) continue;
@@ -363,9 +474,9 @@
     const g = cx.createRadialGradient(0, 0, 1, 0, 0, rx); g.addColorStop(0, `rgba(20,24,10,${a})`); g.addColorStop(1, 'rgba(20,24,10,0)');
     cx.fillStyle = g; cx.beginPath(); cx.arc(0, 0, rx, 0, 7); cx.fill(); cx.restore();
   }
-  function glow(x, y, r, rgba, a) {
-    const g = cx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, rgba + a + ')'); g.addColorStop(1, rgba + '0)');
-    cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.fill();
+  function glow(x, y, r, rgba, a, c = cx) {
+    const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, rgba + a + ')'); g.addColorStop(1, rgba + '0)');
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
   }
 
   // Towers stand on the painted platforms: a contact shadow on the stone, a slow breath, a kick and a flash when they
@@ -383,7 +494,7 @@
       if (t.flash > 1) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - h * 0.5, 60, 'rgba(255,230,150,', 0.5 * (t.flash - 1) * 5); cx.restore(); }
       if (e) {
         cx.save(); cx.globalCompositeOperation = 'lighter';
-        glow(t.x, t.y - h * 0.78, 24 + t.flash * 16, GLOW[e], 0.16 + (calm ? 0 : 0.05 * Math.sin(S.t * 3 + i)) + t.flash * 0.4);
+        glow(t.x, t.y - h * 0.78, 24 + t.flash * 16, (L.TOWER[P.shop.equip[e]] || {}).glow || GLOW[e], 0.16 + (calm ? 0 : 0.05 * Math.sin(S.t * 3 + i)) + t.flash * 0.4);
         cx.restore();
       }
     });
@@ -409,20 +520,20 @@
   }
 
   function drawShot(s) {
-    const col = COLOR[s.el];
     cx.save();   // normal blending: added light turns every colour yellow-white on the bright meadow
-    s.trail.forEach(([x, y], i) => { cx.globalAlpha = (i + 1) / s.trail.length * 0.75; cx.fillStyle = col; cx.beginPath(); cx.arc(x, y, 3 + i * 0.8, 0, 7); cx.fill(); });
-    cx.globalAlpha = 1; glow(s.x, s.y, 18, GLOW[s.el], 0.8);
-    cx.fillStyle = '#fff'; cx.strokeStyle = 'rgba(42,26,34,.8)'; cx.lineWidth = 2; cx.beginPath(); cx.arc(s.x, s.y, 5, 0, 7); cx.fill(); cx.stroke();
+    L.drawTrail(cx, P.shop.equip.trail, s, COLOR[s.el], GLOW[s.el], glow, S.t);   // the trail the player chose in the Shop
     cx.restore();
   }
 
+  function drawWisp(c, w, k) {
+    w.trail.forEach(([x, y], i) => { c.globalAlpha = (i + 1) / w.trail.length * 0.45; c.fillStyle = k.col; c.beginPath(); c.arc(x, y, 3 + i * 1.3, 0, 7); c.fill(); });
+    c.globalAlpha = 1; glow(w.x, w.y, 38, k.glow, 0.8, c); c.fillStyle = k.core; c.strokeStyle = k.rim; c.lineWidth = 3; c.beginPath(); c.arc(w.x, w.y, 9, 0, 7); c.fill(); c.stroke();
+  }
   // Each kill's Resonance as a wisp with a short trail, flying over the wall into the fountain.
   function drawWisps() {
     cx.save();   // normal blending: added light washes out to white on the bright meadow, pink must stay pink
     for (const w of S.wisps) {
-      w.trail.forEach(([x, y], i) => { cx.globalAlpha = (i + 1) / w.trail.length * 0.45; cx.fillStyle = RES; cx.beginPath(); cx.arc(x, y, 3 + i * 1.3, 0, 7); cx.fill(); });
-      cx.globalAlpha = 1; glow(w.x, w.y, 38, RES_GLOW, 0.8); cx.fillStyle = '#fff4fc'; cx.strokeStyle = '#a11d7f'; cx.lineWidth = 3; cx.beginPath(); cx.arc(w.x, w.y, 9, 0, 7); cx.fill(); cx.stroke();
+      drawWisp(cx, w, L.WISP[P.shop.equip.wisp] || L.WISP['wisp-rose']);
     }
     cx.restore();
   }
@@ -501,6 +612,7 @@
     drawGateBar();
     drawTowers();
     for (const s of S.shots) drawShot(s);
+    for (const h of S.hits) L.drawHit(cx, h);
     drawWisps();
     for (const p of S.fx) if (p.dust) { cx.globalAlpha = 0.6 * (1 - p.t / p.life); cx.fillStyle = p.col; cx.beginPath(); cx.arc(p.x, p.y, p.r * (1 + p.t * 2), 0, 7); cx.fill(); }
     cx.globalAlpha = 1;
@@ -530,25 +642,30 @@
   const el = id => document.getElementById(id);
   let toastT = 0;
   function toast(text) { const t = el('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.8; }
+  // set markup only when it changes: ui() runs every frame
+  const html = (node, h) => { if (node._h !== h) { node._h = h; node.innerHTML = h; } };
   function ui() {
     el('wave').textContent = `Wave ${C.fmt(P.wave)}`;
+    document.documentElement.classList.toggle('calm', P.settings.reduced);   // the in-game Reduced motion switch stills CSS motion too
     el('res').textContent = C.fmt(P.res);
-    el('unit').hidden = P.ascensions > 0 || P.wave >= 100;   // by then the crystal says it; keeps the top bar on one line
+    el('unit').hidden = !P.firstSession;   // after the opening the crystal says it, and the top bar has room for the Shop
     el('city').textContent = `City ${P.restored.length}/10`;
     el('combos').textContent = `Combos ${P.combos.length}/3`;
+    el('shop').hidden = !P.shop.open; el('shop').classList.toggle('news', C.shopNews(P));
     el('rate').hidden = RATE <= 0; el('rateN').textContent = `+${rfmt(RATE)}/s`;
     el('stars').textContent = P.ascensions ? `★ ${P.ascensions}` : '';
     el('stars').hidden = !P.ascensions;
     const fork = C.pendingFork(P), uc = C.upgradeCost(P.gateLevel, B), up = el('up');
     up.querySelector('.label').textContent = fork ? 'New path!' : 'Upgrade';
-    up.querySelector('.cost').textContent = fork ? `Stage ${fork}` : C.fmt(uc);
+    const gem = '<i class="gem sm"></i>', dmgUp = Math.round((Math.pow(1.235, 1) - 1) * 100);
+    html(up.querySelector('.cost'), fork ? `Stage ${fork}` : `${gem}${C.fmt(uc)} <span class="what">· damage +${dmgUp}%</span>`);
     up.querySelector('.fill').style.width = fork ? '100%' : Math.min(100, P.res / uc * 100) + '%';
     up.classList.toggle('ready', !!fork || P.res >= uc);
     const re = el('re'), asc = C.canAscend(P), n = P.restored.length, rc = asc ? 0 : C.restoreCost(n);
     re.classList.toggle('ascend', asc);
     re.querySelector('.label').textContent = asc ? 'Ascend' : 'Restore';
     const offer = asc ? [] : C.restoreOffer(P);
-    re.querySelector('.cost').textContent = asc ? `x${C.ASCEND_MULT} forever` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${C.fmt(rc)}`;
+    html(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${gem}${C.fmt(rc)}`);
     re.querySelector('.fill').style.width = asc ? '100%' : Math.min(100, P.res / rc * 100) + '%';
     re.classList.toggle('ready', asc || P.res >= rc);
     for (const b of [up, re]) if (b.classList.contains('ready')) b.querySelector('.wait').textContent = '';
@@ -577,7 +694,7 @@
     let n = 0; while (acc >= DT && n < 600) { if (!S.paused && !S.card) step(); acc -= DT; n++; }
     if ((toastT -= n * DT) <= 0) el('toast').classList.remove('show');
   }
-  function frame(now) { advance(now); render(); ui(); requestAnimationFrame(frame); }
+  function frame(now) { advance(now); render(); ui(); if (S.card === 'shop') drawPreviews(now / 1000); requestAnimationFrame(frame); }
   setInterval(() => { if (document.hidden) advance(performance.now()); }, 250);
   document.addEventListener('visibilitychange', () => { SDK.gameplay(!document.hidden && !S.paused); if (document.hidden) { flushWisps(); save(); } });
   root.addEventListener('pagehide', () => { flushWisps(); save(); });
@@ -594,7 +711,7 @@
 
   // ---------- boot ----------
   function bind() {
-    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore);
+    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore); el('shop').addEventListener('click', () => { if (S.card === 'shop') { const x = el('card').querySelector('#c-no'); if (x) x.click(); } else openShopCard(); });
     el('pause').addEventListener('click', () => {
       A.unlock();
       if (S.card === 'settings') { el('card').querySelector('#c-ok').click(); return; }
@@ -604,7 +721,7 @@
     root.addEventListener('keydown', e => {
       if (e.repeat) return; const key = e.key.toLowerCase();
       if (S.card) { if (key === 'enter') { const b = el('card').querySelector('#c-ok'); if (b) { e.preventDefault(); b.click(); } } return; }
-      if (key === 'u') upgrade(); else if (key === 'r') restore(); else if (key === 'p') el('pause').click();
+      if (key === 'u') upgrade(); else if (key === 'r') restore(); else if (key === 'p') el('pause').click(); else if (key === 's') openShopCard();
     });
     root.addEventListener('pointerdown', () => A.unlock(), { once: true });
     // tap a restored building to level it up; a ruined one says what it will do once restored
@@ -628,5 +745,5 @@
     loadImg('meadow', 'assets/ground/meadow.webp'), loadImg('wall', 'assets/city/city-wall.webp'), loadImg('forest', 'assets/kit/forest-edge-top.webp'),
     loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
     ...['fire', 'frost', 'storm'].flatMap(e => [1, 2, 3].map(t => loadImg(e + t, T(`${e}-${t}`))))])
-    .then(() => { outline(); prepareCity(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); returnCards(); requestAnimationFrame(frame); });
+    .then(() => { outline(); for (const n of GROUND.concat(['fire', 'frost', 'storm'].flatMap(e => [e + 1, e + 2, e + 3]))) orig[n] = img[n]; applyLooks(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); returnCards(); openShop(); /* after the return cards: opening saves, which stamps lastSeen */ requestAnimationFrame(frame); });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

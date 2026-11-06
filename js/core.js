@@ -166,12 +166,78 @@
     q.ascensions = p.ascensions + 1; q.bestWave = p.bestWave; q.combos = p.combos.slice();
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
     q.settings = Object.assign({}, p.settings); q.grown = p.grown;
+    q.shop = JSON.parse(JSON.stringify(p.shop)); q.shop.shards += SHARDS.ascend;   // looks and Starshards stay; Ascending pays
     return q;
+  }
+
+
+  // ---------- the Shop: looks bought with Starshards (Nov 5 2026) ----------
+  // Cosmetic only: nothing here changes a number in the fight. Starshards come from milestones (the shop opening, bosses,
+  // new combos, daily rewards, Ascension) or from trading Resonance at a price that follows the player's own income,
+  // so a trade always costs about two and a half minutes of fighting whatever the stage.
+  const SHOP = [
+    { id: 'fire-classic', cat: 'tower', el: 'fire', name: 'Forge Fire', line: 'The first flame', price: 0 },
+    { id: 'fire-obsidian', cat: 'tower', el: 'fire', name: 'Obsidian', line: 'Black glass and magma', price: 20 },
+    { id: 'fire-ember', cat: 'tower', el: 'fire', name: 'Ember Gold', line: 'Gilded and white-hot', price: 20 },
+    { id: 'frost-classic', cat: 'tower', el: 'frost', name: 'Frost Spire', line: 'The first ice', price: 0 },
+    { id: 'frost-night', cat: 'tower', el: 'frost', name: 'Glacier Night', line: 'Deep-sea ice, cold light', price: 20 },
+    { id: 'frost-aurora', cat: 'tower', el: 'frost', name: 'Aurora', line: 'Ice that holds the northern lights', price: 20 },
+    { id: 'storm-classic', cat: 'tower', el: 'storm', name: 'Storm Bell', line: 'The first thunder', price: 0 },
+    { id: 'storm-void', cat: 'tower', el: 'storm', name: 'Voidcaller', line: 'Night-purple and humming', price: 20 },
+    { id: 'storm-steel', cat: 'tower', el: 'storm', name: 'Thunder Steel', line: 'Silver iron, white sparks', price: 20 },
+    { id: 'trail-classic', cat: 'trail', name: 'Orbs', line: 'A string of glowing beads', price: 0 },
+    { id: 'trail-comet', cat: 'trail', name: 'Comet', line: 'One long burning tail', price: 12 },
+    { id: 'trail-sparkle', cat: 'trail', name: 'Stardust', line: 'Twinkling sparks behind every shot', price: 12 },
+    { id: 'trail-spiral', cat: 'trail', name: 'Twin Spiral', line: 'Two threads wound round the bolt', price: 15 },
+    { id: 'trail-runes', cat: 'trail', name: 'Rune Orbit', line: 'Runes circle each shot', price: 15 },
+    { id: 'hit-classic', cat: 'hit', name: 'Sparks', line: 'A spray of sparks', price: 0 },
+    { id: 'hit-star', cat: 'hit', name: 'Starburst', line: 'An eight-point flash', price: 12 },
+    { id: 'hit-ring', cat: 'hit', name: 'Shockwave', line: 'A ring rolls out from every hit', price: 12 },
+    { id: 'hit-shards', cat: 'hit', name: 'Crystals', line: 'Glittering splinters of crystal', price: 15 },
+    { id: 'wisp-rose', cat: 'wisp', name: 'Rose', line: 'The city\'s own colour', price: 0 },
+    { id: 'wisp-gold', cat: 'wisp', name: 'Sunlit Gold', line: 'Wisps like falling coins', price: 8 },
+    { id: 'wisp-star', cat: 'wisp', name: 'Starlight', line: 'White wisps with a blue rim', price: 8 },
+    { id: 'wisp-ruby', cat: 'wisp', name: 'Ruby', line: 'Deep red and bright', price: 8 },
+    { id: 'town-spring', cat: 'town', name: 'Spring Day', line: 'The city as it was painted', price: 0 },
+    { id: 'town-golden', cat: 'town', name: 'Golden Hour', line: 'Late sun on every roof', price: 30 },
+    { id: 'town-autumn', cat: 'town', name: 'Autumn', line: 'Amber fields and red leaves', price: 30 },
+    { id: 'town-winter', cat: 'town', name: 'First Snow', line: 'Snow on the grass, ice-blue light', price: 30 },
+    { id: 'town-moon', cat: 'town', name: 'Moonlit', line: 'Night falls, the windows glow', price: 30 }
+  ];
+  const SLOTS = ['fire', 'frost', 'storm', 'trail', 'hit', 'wisp', 'town'];
+  const shopItem = id => SHOP.find(i => i.id === id);
+  const slotOf = it => it.cat === 'tower' ? it.el : it.cat;
+  const FREE = SHOP.filter(i => !i.price).map(i => i.id);
+  const SHARDS = { welcome: 10, boss: 3, combo: 2, daily: 3, daily7: 10, ascend: 15 };
+  const SHOP_OPENS = 11;   // the shop opens once the first boss (wave 10) falls
+  const exchangeCost = (p, b) => Math.max(50, Math.ceil(fightRate(p, b) * 1.6 * 150));
+  function shopDefaults() {
+    const equip = {}; for (const i of SHOP) if (!i.price) equip[slotOf(i)] = i.id;
+    return { open: false, shards: 0, owned: FREE.slice(), equip, seen: [] };
+  }
+  function buy(p, id) {
+    const it = shopItem(id); if (!it || p.shop.owned.includes(id) || p.shop.shards < it.price) return false;
+    p.shop.shards -= it.price; p.shop.owned.push(id); p.shop.equip[slotOf(it)] = id; return true;
+  }
+  function equip(p, id) { const it = shopItem(id); if (!it || !p.shop.owned.includes(id)) return false; p.shop.equip[slotOf(it)] = id; return true; }
+  function trade(p, b) { const c = exchangeCost(p, b); if (p.res < c) return false; p.res -= c; p.shop.shards += 1; return true; }
+  // something new the player can afford: drives the dot on the shop button
+  const shopNews = p => p.shop.open && SHOP.some(i => !p.shop.owned.includes(i.id) && i.price <= p.shop.shards && !p.shop.seen.includes(i.id));
+  function sanitizeShop(s) {
+    const out = shopDefaults(); if (!s || typeof s !== 'object') return out;
+    out.open = s.open === true;
+    out.shards = Math.floor(num(s.shards, 0, 1e9, 0));
+    if (Array.isArray(s.owned)) out.owned = [...new Set(FREE.concat(s.owned.filter(id => shopItem(id))))];
+    if (Array.isArray(s.seen)) out.seen = [...new Set(s.seen.filter(id => shopItem(id)))];
+    if (s.equip && typeof s.equip === 'object') for (const k of SLOTS) {
+      const id = s.equip[k], it = shopItem(id); if (it && slotOf(it) === k && out.owned.includes(id)) out.equip[k] = id;
+    }
+    return out;
   }
 
   // ---------- save profile ----------
   function defaults() {
-    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false } };
   }
@@ -197,6 +263,7 @@
       const L = Math.floor(num(p.levels[id], 1, 1e5, 1)); if (L > 1) out.levels[id] = L;
     }
     out.grown = p.grown === true;
+    out.shop = sanitizeShop(p.shop);
     out.combos = Array.isArray(p.combos) ? [...new Set(p.combos.filter(c => COMBOS.includes(c)))] : [];
     if (p.forks && typeof p.forks === 'object') for (const s of [2, 3]) {
       const f = p.forks[s]; if (typeof f === 'string' && FORKS[s].some(x => x.id === f) && stageOf(out.gateLevel) >= s) out.forks[s] = f;
@@ -222,6 +289,6 @@
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, ascend, defaults, sanitize,
-    CITY, cityToBand };
+    CITY, cityToBand, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
