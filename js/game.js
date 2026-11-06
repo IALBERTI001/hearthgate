@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06b';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06c';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -37,7 +37,7 @@
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
   if (/[?&]qa\b/.test(location.search)) Object.assign(root.Hearthgate, {
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
-    act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
+    act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
     card: () => S.card
   });
 
@@ -308,23 +308,23 @@
   function featsHtml() {
     const rows = C.FEATS.map(f => ({ f, done: P.feats.includes(f.id), n: C.featProgress(P, f) }))
       .sort((a, b) => (a.done - b.done) || (b.n / b.f.need - a.n / a.f.need));   // closest unfinished first, finished last
-    return `<h2>Feats</h2>${qTabs('feats')}<div class="feats">` + rows.map(({ f, done, n }) => `<div class="feat${done ? ' done' : ''}"><i class="medal t${f.tier}"></i>`
+    return `<div class="cardhead"><h2>Feats</h2><button id="c-no" class="x" aria-label="Close"></button></div>${qTabs('feats')}<div class="feats">` + rows.map(({ f, done, n }) => `<div class="feat${done ? ' done' : ''}"><i class="medal t${f.tier}"></i>`
       + `<div class="ft"><b>${f.name}</b><span>${f.text}</span>${done ? '' : `<div class="qbar"><i style="width:${Math.round(n / f.need * 100)}%"></i></div>`}</div>`
       + `<span class="fr">${done ? 'Done' : `${C.fmt(n)}/${C.fmt(f.need)}`}<br><i class="star"></i>${C.FEAT_PAY[f.tier]}</span></div>`).join('')
-      + `</div><button id="c-no" class="cbtn quiet">Close</button>`;
+      + `</div>`;
   }
   const untilMidnight = () => { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); const mins = Math.ceil((m - n) / 60e3); return `${Math.floor(mins / 60)}h ${mins % 60}m`; };
   function questsHtml() {
     if (S.qTab === 'feats') return featsHtml();
     const qs = C.questsFor(P, today()), all = qs.list.every(q => q.claimed);
     const om = P.omen && C.OMENS.find(o => o.id === P.omen);
-    return `<h2>Quests</h2>${qTabs('daily')}${om ? `<p class="omen">Today's omen: <b>${om.name}</b> · ${om.line}</p>` : ''}<p class="small">New quests in ${untilMidnight()}</p><div class="quests">`
+    return `<div class="cardhead"><h2>Quests</h2><button id="c-no" class="x" aria-label="Close"></button></div>${qTabs('daily')}${om ? `<p class="omen">Today's omen: <b>${om.name}</b> · ${om.line}</p>` : ''}<p class="small">New quests in ${untilMidnight()}</p><div class="quests">`
       + qs.list.map((q, i) => `<div class="quest${q.claimed ? ' done' : ''}"><div class="qt"><b>${C.questText(q)}</b><span>${Math.min(q.n, q.need)}/${q.need}</span></div>`
         + `<div class="qbar"><i style="width:${Math.round(q.n / q.need * 100)}%"></i></div>`
         + (q.claimed ? `<span class="qok">Claimed</span>` : `<button class="buy ${q.n >= q.need ? 'can' : 'off'} qclaim" data-i="${i}"><i class="star"></i>${C.QUEST_REWARD}</button>`) + `</div>`).join('')
       + `<div class="quest bonus${qs.bonus ? ' done' : ''}"><div class="qt"><b>All three</b><span>${qs.list.filter(q => q.claimed).length}/3</span></div>`
       + (qs.bonus ? `<span class="qok">Claimed</span>` : `<button class="buy ${all ? 'can' : 'off'} qbonus"><i class="star"></i>${C.QUEST_BONUS}</button>`) + `</div></div>`
-      + `<p class="small">Spend Starshards in the Shop.</p><button id="c-no" class="cbtn quiet">Close</button>`;
+      + `<p class="small">Spend Starshards in the Shop.</p>`;
   }
   function wireQuests(body) {
     body.querySelectorAll('.qtab').forEach(b => (b.onclick = () => { S.qTab = b.dataset.q; A.play('tier_up', 0.08); showCard('quests'); }));
@@ -337,12 +337,12 @@
 
   // ---------- Ascension perks: the star chip in the top bar opens them ----------
   function perksHtml() {
-    return `<span class="eyebrow">Ascension ${P.ascensions} · points stay until spent</span><h2>Perks</h2>`
-      + `<div class="chip shards perkpts"><i class="star gold"></i><b>${P.perkPts}</b>&nbsp;perk point${P.perkPts === 1 ? '' : 's'}</div><div class="quests">`
+    return `<div class="cardhead"><h2>Perks</h2><span class="chip shards perkpts"><i class="star gold"></i><b>${P.perkPts}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
+      + `<p class="small">Ascension ${P.ascensions}. Each Ascension pays 1 perk point, plus 1 for every 25 waves reached first.</p><div class="perks">`
       + C.PERKS.map(k => { const n = P.perks[k.id] || 0, max = n >= k.max, c = C.perkCost(P, k.id);
-        return `<div class="quest"><div class="qt"><b>${k.name}</b><span>${'●'.repeat(n)}${'○'.repeat(k.max - n)}</span></div><p class="pl">${k.line}</p>`
+        return `<div class="perkrow"><b>${k.name}<small>${n}/${k.max}</small></b><span>${k.line}</span>`
           + (max ? `<span class="qok">Max</span>` : `<button class="buy ${P.perkPts >= c ? 'can' : 'off'} perk" data-id="${k.id}"><i class="star gold"></i>${c}</button>`) + `</div>`; }).join('')
-      + `</div><p class="small">Each Ascension pays 1 point, plus 1 for every 25 waves reached first.</p><button id="c-no" class="cbtn quiet">Close</button>`;
+      + `</div>`;
   }
   function wirePerks(body) {
     body.querySelectorAll('.perk').forEach(b => (b.onclick = () => {
