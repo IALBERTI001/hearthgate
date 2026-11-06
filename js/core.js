@@ -174,7 +174,7 @@
   // ---------- the Shop: looks bought with Starshards (Nov 5 2026) ----------
   // Cosmetic only: nothing here changes a number in the fight. Starshards come from milestones (the shop opening, bosses,
   // new combos, daily rewards, Ascension) or from trading Resonance at a price that follows the player's own income,
-  // so a trade always costs about two and a half minutes of fighting whatever the stage.
+  // so a trade always costs about a minute of fighting whatever the stage.
   const SHOP = [
     { id: 'fire-classic', cat: 'tower', el: 'fire', name: 'Forge Fire', line: 'The first flame', price: 0 },
     { id: 'fire-obsidian', cat: 'tower', el: 'fire', name: 'Obsidian', line: 'Black glass and magma', price: 20 },
@@ -210,7 +210,7 @@
   const FREE = SHOP.filter(i => !i.price).map(i => i.id);
   const SHARDS = { welcome: 10, boss: 3, combo: 2, daily: 3, daily7: 10, ascend: 15 };
   const SHOP_OPENS = 11;   // the shop opens once the first boss (wave 10) falls
-  const exchangeCost = (p, b) => Math.max(50, Math.ceil(fightRate(p, b) * 1.6 * 150));
+  const exchangeCost = (p, b) => Math.max(30, Math.ceil(fightRate(p, b) * 1.6 * 60));   // about a minute of fighting
   function shopDefaults() {
     const equip = {}; for (const i of SHOP) if (!i.price) equip[slotOf(i)] = i.id;
     return { open: false, shards: 0, owned: FREE.slice(), equip, seen: [] };

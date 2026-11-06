@@ -44,22 +44,26 @@
   const TOWER = {
     'fire-classic': { glow: 'rgba(255,150,60,' },
     // Obsidian: the copper body turns to black volcanic glass; only the brightest flame stays, as magma
-    'fire-obsidian': { glow: 'rgba(255,90,40,', fn: (h, s, l) => (near(h, 35, 30) && l > 0.5 && s > 0.6) ? [h - 14, 1, Math.min(0.68, l * 1.05)] : near(h, 25, 50) && s > 0.2 ? [272, 0.2, l * 0.55 + 0.05] : s < 0.32 ? [265, 0.14, l * 0.6] : [8, s, l * 0.8] },
+    'fire-obsidian': { glow: 'rgba(255,90,40,', fn: (h, s, l) => (near(h, 35, 32) && l > 0.46 && s > 0.55) ? [h - 12, 1, Math.min(0.7, l * 1.1)] : near(h, 25, 50) && s > 0.2 ? [272, 0.2, l * 0.55 + 0.05] : s < 0.32 ? [265, 0.14, l * 0.6] : [8, s, l * 0.8] },
     'fire-ember': { glow: 'rgba(255,220,110,', fn: (h, s, l) => s < 0.32 ? [42, 0.45 + s * 0.4, Math.min(0.85, l * 1.12 + 0.04)] : near(h, 25, 40) ? [h + 14, s, l + (1 - l) * 0.3] : [38, s * 0.85, l * 1.05] },
     'frost-classic': { glow: 'rgba(160,230,255,' },
     'frost-night': { glow: 'rgba(90,200,255,', fn: (h, s, l) => s < 0.25 ? [228, 0.35 + s, l * 0.5] : near(h, 200, 45) ? [192, Math.min(1, s * 1.2), Math.min(0.85, l * 1.05)] : [228, s * 0.7, l * 0.6] },
     'frost-aurora': { glow: 'rgba(140,255,200,', fn: (h, s, l, y) => s < 0.25 ? [190, 0.18 + s * 0.5, l * 0.78] : near(h, 200, 50) ? [300 - y * 170, Math.min(1, s * 1.1 + 0.1), l] : [175, s, l] },
     'storm-classic': { glow: 'rgba(200,140,255,' },
     'storm-void': { glow: 'rgba(255,90,220,', fn: (h, s, l) => s < 0.28 ? [272, 0.3 + s * 0.5, l * 0.38] : near(h, 275, 50) ? [312, Math.min(1, s * 1.2), Math.min(0.8, l * 1.12)] : [290, s * 0.8, l * 0.6] },
-    'storm-steel': { glow: 'rgba(210,235,255,', fn: (h, s, l) => s < 0.28 ? [212, 0.14, Math.min(0.88, l * 1.15 + 0.04)] : near(h, 275, 50) ? [205, s * 0.55, l + (1 - l) * 0.35] : [210, s * 0.4, l * 1.05] }
+    'storm-steel': { glow: 'rgba(120,230,255,', fn: (h, s, l) => s < 0.28 ? [212, 0.22, l * 0.78] : near(h, 275, 50) ? [192, Math.min(1, s * 0.9), Math.min(0.82, l * 1.15)] : [205, s * 0.5, l * 0.9] }
   };
 
   // ---------- town skins: the whole ground (meadow, forest, city, wall) graded together ----------
   const greenish = (h, s) => near(h, 105, 55) && s > 0.15;
   const TOWN = {
     'town-spring': { backdrop: '' },
-    'town-golden': { backdrop: 'sepia(.35) saturate(1.25)', rgb: (r, g, b) => [Math.min(255, r * 1.08 + 14), Math.min(255, g * 0.97 + 2), b * 0.74] },
-    'town-autumn': { backdrop: 'hue-rotate(-30deg) saturate(1.05)', fn: (h, s, l) => greenish(h, s) ? [44 + (h - 70) * 0.3, s * 0.8, l * 0.94] : null },
+    // a time of day, not a filter: warm light on the bright parts, cool violet in the shadows, a little less saturated
+    'town-golden': { backdrop: 'sepia(.3) saturate(1.1)', rgb: (r, g, b) => { const w = (r + g + b) / 765, m = (r + g + b) / 3;
+      r = r * 0.88 + m * 0.12; g = g * 0.88 + m * 0.12; b = b * 0.88 + m * 0.12;
+      return [Math.min(255, r * (0.92 + 0.22 * w) + 10 * w), Math.min(255, g * (0.9 + 0.1 * w)), Math.min(255, b * (0.7 + 0.1 * w) + 26 * (1 - w))]; } },
+    // greens turn to a spread of leaf colours, red-orange through gold, kept rich rather than olive
+    'town-autumn': { backdrop: 'hue-rotate(-30deg) saturate(1.05)', fn: (h, s, l) => greenish(h, s) ? [20 + ((h * 37) % 34), Math.min(1, s * 0.9 + 0.12), l * 0.9] : null },
     'town-winter': { backdrop: 'saturate(.35) brightness(1.15)', fn: (h, s, l) => greenish(h, s) ? [205, 0.18 * s, 0.7 + l * 0.27] : [h, s * 0.7, Math.min(1, l * 1.04)] },
     'town-moon': { backdrop: 'brightness(.45) hue-rotate(185deg) saturate(.8)',
       // night: everything sinks into blue, except warm bright light (windows, forges, lanterns), which keeps glowing

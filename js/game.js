@@ -171,7 +171,7 @@
   }
   function kill(e) {
     e.dying = DT; const gain = C.killRes(P.wave, e.boss, B);
-    wisp(e, gain); pop(e.x, e.y - e.size * 0.6, '+' + C.fmt(gain), '#ff9ce8', 0.9, 34);
+    wisp(e, gain); pop(e.x + 28, e.y - e.size * 0.2, '+' + C.fmt(gain), '#ff9ce8', 0.9, 34);
     burst(e, e.sheet === 'golem' ? '#b9b2a2' : e.sheet === 'beetle' ? '#ff9a4a' : '#8fe05a', e.boss ? 30 : 12, e.boss ? 260 : 160);
     if (e.boss || e.role === 'armoured') A.play('golem_death', 0.5);
   }
@@ -273,21 +273,24 @@
     for (const i of C.SHOP) if (i.price <= P.shop.shards && !P.shop.seen.includes(i.id)) P.shop.seen.push(i.id);   // the dot clears
     showCard('shop');
   }
+  // what a trade costs in time, at the income the player actually has now (fight and city together)
+  const tradeMins = tc => { const m = tc / (C.fightRate(P, B) * 1.6 + RATE) / 60; return m < 1.5 ? '1 minute' : `${Math.round(m)} minutes`; };
   function shopHtml() {
     const tab = S.shopTab || 'tower', sh = P.shop, tc = C.exchangeCost(P, B), items = C.SHOP.filter(i => i.cat === tab);
     const sel = C.shopItem(S.shopSel) && C.shopItem(S.shopSel).cat === tab ? C.shopItem(S.shopSel) : C.shopItem(sh.equip[C.slotOf(items[0])]);
     const tile = it => {
       const own = sh.owned.includes(it.id), on = sh.equip[C.slotOf(it)] === it.id;
       const state = on ? 'eq' : own ? 'own' : sh.shards >= it.price ? 'can' : 'off';
-      return `<div class="item ${state}${it.id === sel.id ? ' sel' : ''}" data-id="${it.id}"><canvas width="360" height="240"></canvas><b>${it.name}</b>`
+      return `<div class="item ${state}${it.id === sel.id ? ' sel' : ''}" data-id="${it.id}"><canvas width="360" height="202"></canvas><b>${it.name}</b>`
         + `<button class="buy ${state}" data-id="${it.id}">${on ? 'Equipped' : own ? 'Equip' : `<i class="star"></i>${it.price}`}</button></div>`;
     };
     return `<div class="shophead"><h2>Shop</h2><span class="chip shards"><i class="star"></i><b>${sh.shards}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
-      + `<div class="trade"><span>Earned in play,<br>or trade:</span>`
+      + `<p class="earn"><i class="star"></i> Boss +${C.SHARDS.boss} · combo +${C.SHARDS.combo} · daily +${C.SHARDS.daily} · Ascend +${C.SHARDS.ascend}</p>`
+      + `<div class="trade"><span>or trade about<br>${tradeMins(tc)} of income</span>`
       + `<button id="c-trade" class="cbtn ${P.res >= tc ? 'gold' : 'off'}">Trade <i class="gem"></i>${C.fmt(tc)}<span class="to"></span><i class="star"></i>1</button></div>`
-      + `<div class="tabs">${TABS.map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>`
+      + `<div class="tabs">${TABS.map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}${C.SHOP.some(i => i.cat === k && !sh.owned.includes(i.id) && i.price <= sh.shards) ? ' news' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>`
       + `<div class="grid">${items.map(tile).join('')}</div>`
-      + `<p class="detail"><b>${sel.name}</b> · ${sel.line}${tab === 'tower' ? ` <span class="small">(${{ fire: 'Fire', frost: 'Frost', storm: 'Storm' }[sel.el]} towers)</span>` : ''}</p>`;
+      + `<p class="detail"><b>${sel.name}</b> · ${sel.line}</p>`;
   }
   function wireShop(body, rerender) {
     body.querySelectorAll('.tab').forEach(b => (b.onclick = () => { A.unlock(); S.shopTab = b.dataset.tab; S.shopSel = null; A.play('tier_up', 0.08); rerender(); }));
@@ -315,33 +318,33 @@
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       if (it.cat === 'town') {
         const key = 'thumb' + id;
-        if (!lookCache[key] && orig.restored) { const q = document.createElement('canvas'); q.width = 360; q.height = 240;
-          q.getContext('2d').drawImage(orig.restored, orig.restored.width * 0.25, 0, orig.restored.width * 0.5, orig.restored.height * 0.5, 0, 0, 360, 240); lookCache[key] = L.townGrade(id, q); }
+        if (!lookCache[key] && orig.restored) { const q = document.createElement('canvas'); q.width = 360; q.height = 202;
+          q.getContext('2d').drawImage(orig.restored, orig.restored.width * 0.25, 0, orig.restored.width * 0.5, orig.restored.width * 0.5 * 202 / 360, 0, 0, 360, 202); lookCache[key] = L.townGrade(id, q); }
         if (lookCache[key]) g.drawImage(lookCache[key], 0, 0); continue;
       }
       if (it.cat === 'tower') {
         const bgd = g.createRadialGradient(Wp / 2, Hp * 0.7, 10, Wp / 2, Hp * 0.6, Wp * 0.6); bgd.addColorStop(0, '#5c3a5a'); bgd.addColorStop(1, '#2a1a22');
         g.fillStyle = bgd; g.fillRect(0, 0, Wp, Hp);
         const im = lookCache[id + '3'] || (orig[it.el + 3] && (lookCache[id + '3'] = L.towerGrade(id, orig[it.el + 3]))); if (!im) continue;
-        g.fillStyle = 'rgba(10,6,10,.45)'; g.beginPath(); g.ellipse(Wp / 2, Hp - 26, 70, 16, 0, 0, 7); g.fill();
-        const h = 206, sc = h / (im.height - 16), w = im.width * sc; g.drawImage(im, Wp / 2 - w / 2, Hp - 22 - (im.height - 8) * sc, w, im.height * sc);
-        g.globalCompositeOperation = 'lighter'; glow(Wp / 2, Hp - 22 - h * 0.8, 40, L.TOWER[id].glow, 0.35 + 0.12 * Math.sin(t * 3), g); continue;
+        g.fillStyle = 'rgba(10,6,10,.45)'; g.beginPath(); g.ellipse(Wp / 2, Hp - 16, 60, 12, 0, 0, 7); g.fill();
+        const h = Hp - 26, sc = h / (im.height - 16), w = im.width * sc; g.drawImage(im, Wp / 2 - w / 2, Hp - 12 - (im.height - 8) * sc, w, im.height * sc);
+        g.globalCompositeOperation = 'lighter'; glow(Wp / 2, Hp - 12 - h * 0.8, 40, L.TOWER[id].glow, 0.35 + 0.12 * Math.sin(t * 3), g); continue;
       }
       // a close-up of the meadow at twice the game's scale, so the effect reads at thumbnail size
       if (img.meadow) g.drawImage(img.meadow, 0, 0, img.meadow.width * 0.25, img.meadow.width * 0.25 * Hp / Wp, 0, 0, Wp, Hp); else { g.fillStyle = '#6f9a3c'; g.fillRect(0, 0, Wp, Hp); }
       g.setTransform(2, 0, 0, 2, 0, 0);
       const els = ['fire', 'frost', 'storm'];
       if (it.cat === 'trail') {
-        const loop = t / 1.1, u = loop % 1, el2 = els[Math.floor(loop) % 3], path = v => [10 + v * 160, 92 - v * 64 + Math.sin(v * 6) * 8];
-        const head = path(u), tr = []; for (let k = 7; k >= 1; k--) tr.push(path(Math.max(0, u - k * 0.06)));
+        const loop = t / 0.9, u = loop % 1, el2 = els[Math.floor(loop) % 3], path = v => [20 + v * 140, 84 - v * 56 + Math.sin(v * 6) * 7];
+        const head = path(u), tr = []; for (let k = 7; k >= 1; k--) tr.push(path(u - k * 0.07));
         L.drawTrail(g, id, { x: head[0], y: head[1], trail: tr }, COLOR[el2], GLOW[el2], glow, t);
       } else if (it.cat === 'hit') {
-        const sl = img.slime; if (sl) { const fw = sl.width / 6, sc = 64 / sl.height; g.drawImage(sl, Math.floor(t * 8) % 6 * fw, 0, fw, sl.height, 90 - fw * sc / 2, 108 - sl.height * sc, fw * sc, sl.height * sc); }
-        const u = (t % 0.6) / 0.6, el2 = els[Math.floor(t / 0.6) % 3], hx = 90, hy = 72;
+        const sl = img.slime; if (sl) { const fw = sl.width / 6, sc = 64 / sl.height; g.drawImage(sl, Math.floor(t * 8) % 6 * fw, 0, fw, sl.height, 90 - fw * sc / 2, 98 - sl.height * sc, fw * sc, sl.height * sc); }
+        const u = (t % 0.6) / 0.6, el2 = els[Math.floor(t / 0.6) % 3], hx = 90, hy = 64;
         if (id === 'hit-classic') { g.fillStyle = COLOR[el2]; for (let k = 0; k < 8; k++) { const a = k * 0.8 + Math.floor(t / 0.6), d = u * 30; g.globalAlpha = 1 - u; g.beginPath(); g.arc(hx + Math.cos(a) * d, hy + Math.sin(a) * d + u * u * 30, 4, 0, 7); g.fill(); } }
-        else if (u < 0.55) L.drawHit(g, { x: hx, y: hy, t: u / 0.55 * L.HIT_LIFE, col: COLOR[el2], style: id, seed: Math.floor(t / 0.6) });
+        else if (u < 0.9) { g.translate(hx, hy); g.scale(1.6, 1.6); g.translate(-hx, -hy); L.drawHit(g, { x: hx, y: hy, t: u / 0.9 * L.HIT_LIFE * 0.85, col: COLOR[el2], style: id, seed: Math.floor(t / 0.6) }); }   // a little bigger than in play, so it reads in a tile
       } else if (it.cat === 'wisp') {
-        const u = (t % 1.2) / 1.2, path = v => [16 + v * 148, 104 - Math.sin(v * Math.PI) * 76], hd = path(u), tr = [];
+        const u = (t % 1.2) / 1.2, path = v => [16 + v * 148, 90 - Math.sin(v * Math.PI) * 64], hd = path(u), tr = [];
         for (let k = 10; k >= 1; k--) tr.push(path(Math.max(0, u - k * 0.03)));
         drawWisp(g, { x: hd[0], y: hd[1], trail: tr }, L.WISP[id]);
       }

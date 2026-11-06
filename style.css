@@ -112,7 +112,12 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 #shop.news .dot { display: block; }
 #shop.fresh { animation: beckon 1s ease-in-out infinite alternate; }
 @keyframes beckon { to { box-shadow: 0 0 0 8px rgba(111, 242, 255, .45), 0 0 26px rgba(111, 242, 255, .7); transform: scale(1.08); } }
-#card.shop .body { width: 688px; padding: 22px 20px 20px; gap: 12px; }
+#card.shop { align-items: flex-start; padding-top: 168px; }   /* pinned under the top bar: the panel never jumps between tabs */
+#card.shop .body { width: 688px; padding: 18px 20px 16px; gap: 10px; min-height: 1090px; }
+#card .earn { font: 700 30px/1.2 'HG Text', sans-serif; color: #dffcff; text-align: left; white-space: nowrap; letter-spacing: -.01em; }
+#card .earn .star { width: 24px; height: 24px; }
+.tab { position: relative; }
+.tab.news::after { content: ''; position: absolute; right: 4px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: #ff5a8a; border: 2px solid var(--plum-dark); }
 .shophead { display: flex; align-items: center; gap: 14px; }
 .shophead h2 { margin-right: auto !important; }
 .shards { font-size: 38px; color: #dffcff; border-color: #6ff2ff; }
@@ -128,10 +133,12 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .tabs { display: flex; gap: 8px; }
 .tab { flex: 1; padding: 12px 2px; border-radius: 16px 16px 6px 6px; border: 3px solid rgba(201, 162, 74, .5); background: #2f1c33; color: #cdb99a; font: 31px 'HG Display', sans-serif; cursor: pointer; }
 .tab.on { background: var(--brass); color: var(--plum-dark); border-color: var(--gold); }
-.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.item { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 18px; background: #2f1c33; border: 3px solid rgba(201, 162, 74, .3); cursor: pointer; min-width: 0; }
-.item.sel { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(255, 213, 107, .25); }
-.item canvas { display: block; width: 100%; aspect-ratio: 3 / 2; border-radius: 12px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.item { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 18px; background: #2f1c33; border: 3px solid rgba(201, 162, 74, .3); cursor: pointer; min-width: 0; }
+.item.eq { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(255, 213, 107, .25); }
+.item.sel:not(.eq) { border-color: #f6efe2; }
+.item canvas { display: block; width: 100%; aspect-ratio: 360 / 202; border-radius: 12px; }
+#card .detail { margin-top: auto; }
 .item b { font: 30px/1.1 'HG Display', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .buy { padding: 8px 4px; border-radius: 12px; border: 3px solid var(--brass); background: #6a3a5f; color: var(--ink); font: 30px 'HG Display', sans-serif;
   display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 0 #1a0f15; }
