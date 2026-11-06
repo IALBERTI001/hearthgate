@@ -208,6 +208,22 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .medal.t3 { background: radial-gradient(circle at 35% 30%, #fff3b0, #d79a1c); }
 .feat.done .medal { filter: none; } .feat:not(.done) .medal { filter: grayscale(.8) brightness(.8); }
 
+
+/* ---------- perks, quests panel, feats polish ---------- */
+.perksbtn { cursor: pointer; color: var(--gold); position: relative; flex: none !important; }
+.perksbtn.news::after { content: ''; position: absolute; right: -4px; top: -4px; width: 20px; height: 20px; border-radius: 50%; background: #ff5a8a; border: 3px solid var(--plum-dark); }
+.star.gold { background: linear-gradient(#fff6cf, #ffd56b 50%, #c98a1c); }
+.perkpts { align-self: center; color: #fff1c4; border-color: var(--gold); font-size: 36px; }
+.quest .pl { grid-column: 1; margin: 0; font: 700 30px/1.15 'HG Text', sans-serif !important; color: #e2d0b0 !important; }
+#card.quests, #card.perks { align-items: flex-start; padding-top: 168px; }   /* pinned like the Shop: tabs never jump */
+#card.quests .body, #card.perks .body { width: 660px; }
+#card .omen { font: 700 30px/1.25 'HG Text', sans-serif; color: #ffe6a8; background: rgba(255, 213, 107, .12); border-radius: 12px; padding: 8px 12px; }
+#card .omen b { font-family: 'HG Display', sans-serif; font-weight: 400; color: var(--gold); }
+.quest .buy.off { background: transparent; box-shadow: none; border-style: dashed; }
+.feats { -webkit-mask-image: linear-gradient(#000 calc(100% - 50px), transparent); mask-image: linear-gradient(#000 calc(100% - 50px), transparent); padding-bottom: 40px; }
+#counters .pulse { animation: cpulse .6s ease-out; }
+@keyframes cpulse { 30% { transform: scale(1.18); box-shadow: 0 0 22px rgba(255, 213, 107, .8); } }
+
 #boot { position: absolute; inset: 0; display: grid; place-items: center; background: var(--plum-dark); font: 72px 'HG Display', sans-serif; color: var(--brass); z-index: 20; }
 @media (prefers-reduced-motion: reduce) { #hand, .shake, #card .body, .big.ready, #shop.fresh { animation: none; } }
 .calm #hand, .calm .shake, .calm #card .body, .calm .big.ready, .calm #shop.fresh { animation: none; }

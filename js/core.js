@@ -21,6 +21,40 @@
     return a[Math.floor(j / 26) % 26] + a[j % 26];
   }
 
+
+  // ---------- Daily Omen (Nov 6 2026): one small, always-good twist per day, the same for everyone that day ----------
+  const OMENS = [
+    { id: 'ember', name: 'Ember Day', line: 'Fire hits 30% harder', bonus: { fire: 0.3 } },
+    { id: 'rime', name: 'Rime Day', line: 'Frost hits 30% harder', bonus: { frost: 0.3 } },
+    { id: 'thunder', name: 'Thunder Day', line: 'Storm hits 30% harder', bonus: { storm: 0.3 } },
+    { id: 'harvest', name: 'Harvest Moon', line: '+25% Resonance from every enemy', bonus: { res: 0.25 } },
+    { id: 'hum', name: 'Humming Stones', line: 'The city makes 50% more Resonance', bonus: { city: 0.5 } },
+    { id: 'bounty', name: 'Bounty Day', line: 'Bosses pay double Starshards', bonus: { bossShards: 1 } },
+    { id: 'confluence', name: 'Confluence', line: 'Combos hit 50% harder', bonus: { combo: 0.5 } },
+    { id: 'drums', name: 'War Drums', line: 'Towers fire 15% faster', bonus: { fireRate: 0.15 } }
+  ];
+  const omenFor = day => OMENS[[...day].reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 11) % OMENS.length];
+
+  // ---------- Ascension perks (Nov 6 2026): every Ascension pays perk points, more for going further first ----------
+  const PERKS = [
+    { id: 'sharp', name: 'Keen Sights', line: 'Towers hit 15% harder', per: { damage: 0.15 }, max: 5 },
+    { id: 'hum', name: 'Deep Hum', line: 'The city makes 25% more', per: { city: 0.25 }, max: 4 },
+    { id: 'rich', name: 'Rich Veins', line: '+15% Resonance from enemies', per: { res: 0.15 }, max: 4 },
+    { id: 'night', name: 'Night Watch', line: 'Offline earnings last 2 hours longer', per: { offlineH: 2 }, max: 4 },
+    { id: 'surge', name: 'Quick Surge', line: 'Surge recharges 3 minutes sooner', per: { surgeCd: 3 }, max: 3 },
+    { id: 'lucky', name: 'Lucky Stars', line: '+1 Starshard from every boss', per: { bossPlus: 1 }, max: 3 },
+    { id: 'start', name: 'Head Start', line: 'Each new city starts 5 waves and 5 gate levels ahead', per: { start: 5 }, max: 3 }
+  ];
+  const perkCost = (p, id) => (p.perks[id] || 0) + 1;   // the next level costs one more point than the last
+  function buyPerk(p, id) {
+    const k = PERKS.find(x => x.id === id); if (!k || (p.perks[id] || 0) >= k.max || p.perkPts < perkCost(p, id)) return false;
+    p.perkPts -= perkCost(p, id); p.perks[id] = (p.perks[id] || 0) + 1; return true;
+  }
+  const perkPtsFor = p => 1 + Math.floor(p.wave / 25);   // Ascending at wave 50 pays 3, at wave 100 pays 5
+  function perkBonus(p) {
+    const b = {}; for (const k of PERKS) { const n = p.perks[k.id] || 0; for (const key in k.per) b[key] = (b[key] || 0) + k.per[key] * n; } return b;
+  }
+
   // ---------- buildings: city layer 1 ----------
   // The first three are restored in this order so SHATTER lands in the first minute (approved fix 1, Nov 5 2026);
   // after them, Restore offers a pick of two. Each building visibly changes the fight or the economy.
@@ -67,10 +101,12 @@
 
   // Every bonus from buildings, forks and Ascension, summed.
   function bonuses(p) {
-    const b = { res: 0, upgradeDiscount: 0, fireRate: 0, offline: 0, combo: 0, gateHp: 0, damage: 0, regen: 0 };
+    const b = { res: 0, upgradeDiscount: 0, fireRate: 0, offline: 0, combo: 0, gateHp: 0, damage: 0, regen: 0, fire: 0, frost: 0, storm: 0, city: 0, bossShards: 0, bossPlus: 0, offlineH: 0, surgeCd: 0, start: 0 };
     const add = o => { for (const k in o) b[k] += o[k]; };
     for (const id of p.restored) { const d = byId(id); if (d && d.bonus) add(d.bonus); }
     for (const s of [2, 3]) { const f = p.forks[s] && FORKS[s].find(x => x.id === p.forks[s]); if (f) add(f.bonus); }
+    if (p.perks) add(perkBonus(p));
+    if (p.omen) { const o = OMENS.find(x => x.id === p.omen); if (o) add(o.bonus); }   // p.omen is set each day by the game, never saved
     b.ascend = Math.pow(ASCEND_MULT, p.ascensions);
     return b;
   }
@@ -91,7 +127,7 @@
   function buildingRate(p, id, b, lvl) {
     const idx = p.restored.indexOf(id); if (idx < 0) return 0;
     const L = lvl || levelOf(p, id), dbl = MILESTONES.filter(m => L >= m).length;
-    return CITY_BASE * Math.pow(2.7, idx) * L * Math.pow(2, dbl) * b.ascend;
+    return CITY_BASE * Math.pow(2.7, idx) * L * Math.pow(2, dbl) * b.ascend * (1 + (b.city || 0));
   }
   const cityRate = (p, b) => p.restored.reduce((s, id) => s + buildingRate(p, id, b), 0);
   const levelCost = (p, id, b) => { const idx = p.restored.indexOf(id); return idx < 0 ? Infinity
@@ -108,7 +144,7 @@
     runner: { sheet: 'beetle', hp: 0.7, speed: 84, size: 60, label: 'Runners', weak: 'frost' },
     armoured: { sheet: 'golem', hp: 2.6, speed: 36, size: 76, label: 'Armoured', weak: 'fire', armour: 0.5 },
     swarm: { sheet: 'slime', hp: 0.35, speed: 54, size: 44, label: 'Swarm', weak: 'storm' },
-    boss: { sheet: 'golem', hp: 90, speed: 28, size: 160, label: 'Boss', armour: 0.3 }
+    boss: { sheet: 'golem', hp: 90, speed: 28, size: 190, label: 'Boss', armour: 0.3 }
   };
   const isBoss = w => w % 10 === 0;
   // The wave's make-up as [role, count] pairs. New roles arrive one at a time: runners at wave 3, armoured at 6, swarm at 12.
@@ -138,7 +174,7 @@
   const offlineRate = (p, b) => (fightRate(p, b) + cityRate(p, b)) * (1 + b.offline);
   function offlineEarnings(p, b, now) {
     if (!p.lastSeen || now <= p.lastSeen) return { secs: 0, res: 0, fight: 0, city: 0 };
-    const secs = Math.min(OFFLINE_CAP_H * 3600, (now - p.lastSeen) / 1000);
+    const secs = Math.min((OFFLINE_CAP_H + (b.offlineH || 0)) * 3600, (now - p.lastSeen) / 1000);
     if (secs < 60) return { secs, res: 0, fight: 0, city: 0 };
     const fight = Math.floor(secs * fightRate(p, b) * (1 + b.offline)), city = Math.floor(secs * cityRate(p, b) * (1 + b.offline));
     return { secs, res: fight + city, fight, city };
@@ -166,7 +202,9 @@
     q.ascensions = p.ascensions + 1; q.bestWave = p.bestWave; q.combos = p.combos.slice();
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
     q.settings = Object.assign({}, p.settings); q.grown = p.grown;
-    q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.stats = Object.assign({}, p.stats); q.feats = p.feats.slice(); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;   // looks and Starshards stay; Ascending pays
+    q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.stats = Object.assign({}, p.stats); q.feats = p.feats.slice(); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;
+    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p);
+    const st = (q.perks.start || 0) * 5; if (st) { q.wave = 1 + st; q.gateLevel = 1 + st; }   // Head Start   // looks and Starshards stay; Ascending pays
     return q;
   }
 
@@ -311,12 +349,13 @@
   // whenever none is running, up to 8 a day. Real-time stamps, so it runs on across reloads.
   const SURGE_MS = 3 * 60e3, SURGE_COOLDOWN_MS = 15 * 60e3, SURGE_ADS_PER_DAY = 8, SHARD_ADS_PER_DAY = 5, SHARD_AD = 3;
   const surgeOn = (p, now) => now < p.surge.until;
-  const surgeReadyFree = (p, now) => !surgeOn(p, now) && now >= p.surge.until + SURGE_COOLDOWN_MS;
+  const surgeCooldown = p => SURGE_COOLDOWN_MS - ((p.perks && p.perks.surge) || 0) * 3 * 60e3;
+  const surgeReadyFree = (p, now) => !surgeOn(p, now) && now >= p.surge.until + surgeCooldown(p);
   function startSurge(p, now) { p.surge.until = now + SURGE_MS; }
 
   // ---------- save profile ----------
   function defaults() {
-    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false } };
   }
@@ -349,6 +388,9 @@
       out.quests = { day: p.quests.day, list, bonus: p.quests.bonus === true };
     }
     if (p.stats && typeof p.stats === 'object') for (const k of STATS) out.stats[k] = Math.floor(num(p.stats[k], 0, 1e15, 0));
+    if (p.perks && typeof p.perks === 'object') for (const k of PERKS) { const n = Math.floor(num(p.perks[k.id], 0, k.max, 0)); if (n) out.perks[k.id] = n; }
+    out.perkPts = Math.floor(num(p.perkPts, 0, 1e6, 0));
+    if (p.perks === undefined && out.ascensions > 0) out.perkPts = out.ascensions * 2;   // saves from before perks: points for the Ascensions already made
     if (Array.isArray(p.feats)) out.feats = [...new Set(p.feats.filter(id => FEATS.some(f => f.id === id)))];
     if (p.surge && typeof p.surge === 'object') out.surge = { until: num(p.surge.until, 0, 1e15, 0), adDay: typeof p.surge.adDay === 'string' ? p.surge.adDay : '',
       ads: Math.floor(num(p.surge.ads, 0, 99, 0)), shardAds: Math.floor(num(p.surge.shardAds, 0, 99, 0)) };
@@ -377,7 +419,7 @@
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, ascend, defaults, sanitize,
-    CITY, cityToBand, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
+    CITY, cityToBand, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
     SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

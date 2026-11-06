@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-05e';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06a';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -29,7 +29,9 @@
   function load() { try { return C.sanitize(localStorage.getItem(SAVE_KEY)); } catch (e) { return C.defaults(); } }
   function save() { P.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(P)); } catch (e) {} }
   let RATE = C.cityRate(P, B);   // the city's Resonance per second, recomputed whenever the city or a bonus changes
-  const refresh = () => { B = C.bonuses(P); RATE = C.cityRate(P, B); };
+  // today's Omen joins the bonuses from the second session on (the opening stays as tested)
+  const refresh = () => { P.omen = P.firstSession ? null : C.omenFor(C.dayKey(new Date())).id; B = C.bonuses(P); RATE = C.cityRate(P, B); };
+  refresh();
   const rfmt = r => r < 10 ? String(+r.toFixed(r < 1 ? 2 : 1)) : C.fmt(r);
   root.Hearthgate = { reloadSave() { P = load(); refresh(); S.enemies = []; S.wisps = []; startWave(); }, state: () => ({ P, S, B }) };
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
@@ -52,7 +54,9 @@
       : boss ? 'Boss incoming. Hold the gate!' : n % 50 === 0 ? 'HALFWAY TO GLORY!' : CHEERS[(n * 7 + 3) % CHEERS.length]);
     S.cheerNext = null;
     const mix = C.waveMix(n);
-    S.wavePop = { n, cheer, big: boss, t: 0, roles: mix.map(([r]) => r) };
+    // the first wave of each session (after the first) names today's Omen
+    const om = !S.omenTold && P.omen && C.OMENS.find(o => o.id === P.omen); if (om) S.omenTold = true;
+    S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : cheer, big: boss, t: 0, roles: mix.map(([r]) => r) };
     if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('golem_death', 0.35); }   // a boss wave is an event: red edges, a rumble
     S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax();
     // a shuffled queue, so runners and armoured arrive among the slimes rather than in blocks; the boss comes last
@@ -76,7 +80,7 @@
   function step() {
     if ((S.featT = (S.featT || 0) + DT) > 0.5) { S.featT = 0; checkFeats(); }
     if (S.bossWarn !== undefined && (S.bossWarn += DT) > 2.6) S.bossWarn = undefined;
-    if (S.medal && (S.medal.t += DT) > 2.4) S.medal = null;
+    if (S.medal && (S.medal.t += DT) > 2.25) S.medal = null;
     S.t += DT; S.sessionT += DT; if (S.growTip) S.growTipT += DT; if (S.flash && (S.flash.t += DT) > 0.18) S.flash = null; if (S.wavePop) S.wavePop.t += DT;
     S.gateHit = Math.max(0, S.gateHit - DT * 4); S.shake = Math.max(0, S.shake - DT);
     for (const r of S.rings) r.t += DT; S.rings = S.rings.filter(r => r.t < 0.5);
@@ -106,7 +110,7 @@
     S.shots = S.shots.filter(s => !s.done);
     for (const e of S.enemies) {
       if (e.dying) { e.dying += DT; continue; }
-      if (e.burn > 0) { e.burn -= DT; e.hp -= C.towerDamage(P, B) * 0.5 * DT * (e.weak === 'fire' ? 2 : 1); }
+      if (e.burn > 0) { e.burn -= DT; e.hp -= C.towerDamage(P, B) * (1 + B.fire) * 0.5 * DT * (e.weak === 'fire' ? 2 : 1); }
       e.chill = Math.max(0, e.chill - DT); e.flash = Math.max(0, e.flash - DT * 6);
       const slow = e.chill > 0 ? (e.weak === 'frost' ? 0.3 : 0.45) : 1;
       e.frame += DT * 8 * slow;
@@ -140,7 +144,7 @@
   }
 
   function hit(e, el) {
-    let d = C.towerDamage(P, B); const comboMul = 1 + B.combo;
+    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)); const comboMul = 1 + B.combo;
     if (e.armour && el !== 'fire') d *= 1 - e.armour;                 // armour: only Fire bites fully
     if (el === 'fire') {
       if (e.chill > 0) { d *= 3 * comboMul; combo('shatter', e, 'SHATTER!', COLOR.frost); burst(e, COLOR.frost, 22, 260); A.play('shatter_combo', 0.5); e.bigHit = true; }
@@ -193,7 +197,7 @@
     if (C.isBoss(P.wave)) {
       quest('boss');
       pop(W / 2, 330, 'BOSS DOWN!', '#ffd56b', 1.8, 60); SDK.happytime(); A.play('tier_up', 0.6);
-      if (P.shop.open) { P.shop.shards += C.SHARDS.boss; pop(W / 2, 400, `+${C.SHARDS.boss} Starshards`, SHARD, 1.6, 40); }
+      if (P.shop.open) { const n = (C.SHARDS.boss + B.bossPlus) * (1 + B.bossShards); P.shop.shards += n; pop(W / 2, 400, `+${n} Starshards`, SHARD, 1.6, 40); }
       if (P.wave === 10 && !P.tomorrowShown) { P.tomorrowShown = true; setTimeout(() => toast('Come back tomorrow: a daily Resonance reward waits'), 1900); }
     }
     P.wave++; P.bestWave = Math.max(P.bestWave, P.wave); openShop(); startWave(); save();
@@ -297,7 +301,7 @@
     const go = () => { C.startSurge(P, Date.now()); quest('surge'); A.play('tier_up', 0.6); toast('Surge! Double Resonance for 3 minutes'); SDK.happytime(); save(); };
     if (SDK.rewardsOn) { adDay(); if (P.surge.ads >= C.SURGE_ADS_PER_DAY) return toast('No more Surges today'); S.paused = true;
       SDK.rewarded(adHooks).then(ok => { S.paused = false; if (ok) { P.surge.ads++; go(); } }); return; }
-    if (C.surgeReadyFree(P, now)) go(); else toast(`The next Surge charges in ${mmss(P.surge.until + C.SURGE_COOLDOWN_MS - now)}`);
+    if (C.surgeReadyFree(P, now)) go(); else toast(`The next Surge charges in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`);
   }
   const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
   const qTabs = on => `<div class="tabs">${[['daily', 'Daily quests'], ['feats', `Feats ${P.feats.length}/${C.FEATS.length}`]].map(([k, n]) => `<button class="tab qtab${k === on ? ' on' : ''}" data-q="${k}">${n}</button>`).join('')}</div>`;
@@ -309,10 +313,12 @@
       + `<span class="fr">${done ? 'Done' : `${C.fmt(n)}/${C.fmt(f.need)}`}<br><i class="star"></i>${C.FEAT_PAY[f.tier]}</span></div>`).join('')
       + `</div><button id="c-no" class="cbtn quiet">Close</button>`;
   }
+  const untilMidnight = () => { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); const mins = Math.ceil((m - n) / 60e3); return `${Math.floor(mins / 60)}h ${mins % 60}m`; };
   function questsHtml() {
     if (S.qTab === 'feats') return featsHtml();
     const qs = C.questsFor(P, today()), all = qs.list.every(q => q.claimed);
-    return `<h2>Quests</h2>${qTabs('daily')}<p class="small">Three new quests every day</p><div class="quests">`
+    const om = P.omen && C.OMENS.find(o => o.id === P.omen);
+    return `<h2>Quests</h2>${qTabs('daily')}${om ? `<p class="omen">Today's omen: <b>${om.name}</b> · ${om.line}</p>` : ''}<p class="small">New quests in ${untilMidnight()}</p><div class="quests">`
       + qs.list.map((q, i) => `<div class="quest${q.claimed ? ' done' : ''}"><div class="qt"><b>${C.questText(q)}</b><span>${Math.min(q.n, q.need)}/${q.need}</span></div>`
         + `<div class="qbar"><i style="width:${Math.round(q.n / q.need * 100)}%"></i></div>`
         + (q.claimed ? `<span class="qok">Claimed</span>` : `<button class="buy ${q.n >= q.need ? 'can' : 'off'} qclaim" data-i="${i}"><i class="star"></i>${C.QUEST_REWARD}</button>`) + `</div>`).join('')
@@ -326,6 +332,23 @@
       if (n) { A.play('tier_up', 0.4); pop(W / 2, 500, `+${n} Starshards`, SHARD, 1.2, 40); save(); showCard('quests'); } else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } }));
     const bb = body.querySelector('.qbonus');
     if (bb) bb.onclick = () => { const n = C.questBonus(P); if (n) { A.play('tier_up', 0.6); save(); showCard('quests'); } else { bb.classList.remove('shake'); void bb.offsetWidth; bb.classList.add('shake'); } };
+  }
+
+
+  // ---------- Ascension perks: the star chip in the top bar opens them ----------
+  function perksHtml() {
+    return `<span class="eyebrow">Ascension ${P.ascensions} · points stay until spent</span><h2>Perks</h2>`
+      + `<div class="chip shards perkpts"><i class="star gold"></i><b>${P.perkPts}</b>&nbsp;perk point${P.perkPts === 1 ? '' : 's'}</div><div class="quests">`
+      + C.PERKS.map(k => { const n = P.perks[k.id] || 0, max = n >= k.max, c = C.perkCost(P, k.id);
+        return `<div class="quest"><div class="qt"><b>${k.name}</b><span>${'●'.repeat(n)}${'○'.repeat(k.max - n)}</span></div><p class="pl">${k.line}</p>`
+          + (max ? `<span class="qok">Max</span>` : `<button class="buy ${P.perkPts >= c ? 'can' : 'off'} perk" data-id="${k.id}"><i class="star gold"></i>${c}</button>`) + `</div>`; }).join('')
+      + `</div><p class="small">Each Ascension pays 1 point, plus 1 for every 25 waves reached first.</p><button id="c-no" class="cbtn quiet">Close</button>`;
+  }
+  function wirePerks(body) {
+    body.querySelectorAll('.perk').forEach(b => (b.onclick = () => {
+      if (C.buyPerk(P, b.dataset.id)) { A.play('tier_up', 0.55); refresh(); save(); showCard('perks'); }
+      else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+    }));
   }
 
   // ---------- the Shop: tower looks, shot trails, hit effects, the city's look and wisps ----------
@@ -434,16 +457,17 @@
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
     if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
-    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'ascend') html = `<span class="eyebrow">The city is whole</span><h2>Ascend?</h2><p>The city returns to ruins and the waves start again, but Resonance and damage are <b>x${C.ASCEND_MULT}</b> for good${P.ascensions ? ` (now x${C.fmt(Math.pow(C.ASCEND_MULT, P.ascensions))})` : ''}. Best wave, combos and your Shop looks stay${P.shop.open ? `, and you get ${C.SHARDS.ascend} Starshards` : ''}.${` You will earn <b>${C.perkPtsFor(P)} perk point${C.perkPtsFor(P) === 1 ? '' : 's'}</b> (1, plus 1 for every 25 waves reached).`}</p>${btn('c-ok', 'Ascend', 'gold')}${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'save') html = `<span class="eyebrow">Wave ${C.fmt(P.wave)} · boss</span><h2>The gate is breaking!</h2><p>Watch an ad to rebuild the gate and keep fighting this boss.</p>${btn('c-ad', 'Watch an ad: save the gate', 'gold')}${btn('c-no', 'Fall back', 'quiet')}`;
     if (kind === 'building') {
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
       html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} Resonance a second</span><h2>${b.name}</h2><p>${b.line}</p>`
         + `<p class="small">Next level: ${rfmt(r)} -> ${rfmt(r2)} a second${m ? `<br>Level ${m} doubles it` : ''}</p>`
-        + btn('c-ok', `Level up · ${C.fmt(c)}`, P.res >= c ? 'gold' : 'off') + `<span class="wait"></span>` + btn('c-no', 'Close', 'quiet');
+        + btn('c-ok', `Level up · <i class="gem"></i>${C.fmt(c)}`, P.res >= c ? 'gold' : 'off') + `<span class="wait"></span>` + btn('c-no', 'Close', 'quiet');
     }
     if (kind === 'shop') html = shopHtml();
     if (kind === 'quests') html = questsHtml();
+    if (kind === 'perks') html = perksHtml();
     if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · ★ ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}`;
     body.innerHTML = html;
     const close = () => { card.className = ''; S.card = null; if (!S.paused) SDK.gameplay(true); ui(); nextCard(); };
@@ -461,6 +485,7 @@
     }));
     if (kind === 'pick' || kind === 'ascend' || kind === 'building' || kind === 'shop' || kind === 'quests') on('c-no', close);
     if (kind === 'quests') wireQuests(body);
+    if (kind === 'perks') { on('c-no', close); wirePerks(body); }
     if (kind === 'shop') wireShop(body, () => showCard('shop'));
     if (kind === 'building') {
       on('c-ok', () => {
@@ -631,23 +656,42 @@
       cx.fillStyle = g; cx.fillRect(0, 0, W, H);
     }
     const b = S.enemies.find(e => e.boss && !e.dying); if (!b || S.card) return;
-    const x = 80, y = 196, w = W - 160, f = Math.max(0, b.hp / b.max);
+    const x = 70, y = 190, w = W - 140, f = Math.max(0, b.hp / b.max);
     cx.save(); cx.fillStyle = 'rgba(42,26,34,.88)'; cx.strokeStyle = '#c9a24a'; cx.lineWidth = 3;
-    cx.beginPath(); cx.roundRect(x - 6, y - 6, w + 12, 34, 17); cx.fill(); cx.stroke();
+    cx.beginPath(); cx.roundRect(x - 6, y - 6, w + 12, 46, 23); cx.fill(); cx.stroke();
     const g2 = cx.createLinearGradient(x, 0, x + w, 0); g2.addColorStop(0, '#ff3a3a'); g2.addColorStop(1, '#ff9a3a');
-    cx.fillStyle = g2; cx.beginPath(); cx.roundRect(x, y, Math.max(12, w * f), 22, 11); cx.fill();
+    cx.fillStyle = g2; cx.beginPath(); cx.roundRect(x, y, Math.max(16, w * f), 34, 17); cx.fill();
     cx.font = '30px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.lineWidth = 6; cx.strokeStyle = '#2a1a22';
-    const label = `BOSS · ${Math.ceil(f * 100)}%`; cx.strokeText(label, W / 2, y + 22); cx.fillStyle = '#fff4dc'; cx.fillText(label, W / 2, y + 22);
+    const label = `Golem King · ${Math.ceil(f * 100)}%`; cx.strokeText(label, W / 2, y + 28); cx.fillStyle = '#fff4dc'; cx.fillText(label, W / 2, y + 28);
     cx.restore();
   }
-  // A medal drops in under the counters when a Feat is earned: bronze, silver or gold.
+  // A Feat: the medal pops in big over the field with turning rays and its name on a ribbon, then flies into the
+  // Feats counter, which pulses as it lands. Drawn last, over every number, so nothing hides it.
   function drawMedal() {
     const m = S.medal; if (!m || S.card) return;
-    const u = Math.min(1, m.t / 0.35), out = m.t > 2 ? (m.t - 2) / 0.4 : 0, y = 260 - (1 - u) * 60, col = ['', '#d08a4a', '#dfe6ee', '#ffd56b'][m.tier];
-    cx.save(); cx.globalAlpha = 1 - out; cx.translate(W / 2, y); cx.scale(0.6 + 0.4 * u, 0.6 + 0.4 * u);
-    glow(0, 0, 70, m.tier === 3 ? 'rgba(255,213,107,' : 'rgba(255,255,255,', 0.45);
-    cx.fillStyle = col; cx.strokeStyle = '#2a1a22'; cx.lineWidth = 5; cx.beginPath(); cx.arc(0, 0, 34, 0, 7); cx.fill(); cx.stroke();
-    cx.fillStyle = '#2a1a22'; L.star(cx, 0, 0, 20, 8, 5); cx.restore();
+    const t = m.t, col = ['', '#d08a4a', '#e8eef4', '#ffd56b'][m.tier], dark = ['', '#7a4316', '#7d8896', '#b0740e'][m.tier];
+    const pop = t < 0.3 ? 1.35 * t / 0.3 : t < 0.45 ? 1.35 - (t - 0.3) / 0.15 * 0.35 : 1;
+    const fly = t > 1.7 ? Math.min(1, (t - 1.7) / 0.5) : 0, e = fly * fly;
+    const tx = 600, ty = 128, x = W / 2 + (tx - W / 2) * e, y = 340 + (ty - 340) * e, sc = pop * (1 - 0.7 * e);
+    if (fly >= 1 && !m.landed) { m.landed = true; const c = el('combos'); c.classList.remove('pulse'); void c.offsetWidth; c.classList.add('pulse'); }
+    cx.save(); cx.translate(x, y); cx.scale(sc, sc);
+    if (!fly) {   // rays and a dark plate behind, so it reads over any fight
+      cx.fillStyle = 'rgba(30,14,26,.55)'; cx.beginPath(); cx.arc(0, 0, 96, 0, 7); cx.fill();
+      cx.save(); cx.rotate(t * 0.8); cx.fillStyle = m.tier === 3 ? 'rgba(255,213,107,.45)' : 'rgba(255,255,255,.3)';
+      for (let i = 0; i < 12; i++) { cx.rotate(Math.PI / 6); cx.beginPath(); cx.moveTo(-8, 44); cx.lineTo(8, 44); cx.lineTo(0, 92); cx.closePath(); cx.fill(); } cx.restore();
+    }
+    glow(0, 0, 80, m.tier === 3 ? 'rgba(255,213,107,' : 'rgba(255,255,255,', 0.5);
+    const g = cx.createRadialGradient(-14, -16, 4, 0, 0, 46); g.addColorStop(0, '#fffbe8'); g.addColorStop(0.35, col); g.addColorStop(1, dark);
+    cx.fillStyle = g; cx.strokeStyle = '#2a1a22'; cx.lineWidth = 6; cx.beginPath(); cx.arc(0, 0, 44, 0, 7); cx.fill(); cx.stroke();
+    cx.fillStyle = '#2a1a22'; L.star(cx, 0, 2, 26, 11, 5);
+    if (!fly) {   // the ribbon with the Feat's name
+      cx.font = '34px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      const w = Math.max(180, cx.measureText(m.name).width + 50);
+      cx.fillStyle = '#8a2a4a'; cx.strokeStyle = '#2a1a22'; cx.lineWidth = 4;
+      cx.beginPath(); cx.moveTo(-w / 2 - 18, 66); cx.lineTo(-w / 2, 82); cx.lineTo(-w / 2 - 18, 98); cx.lineTo(w / 2 + 18, 98); cx.lineTo(w / 2, 82); cx.lineTo(w / 2 + 18, 66); cx.closePath(); cx.fill(); cx.stroke();
+      cx.lineWidth = 6; cx.strokeText(m.name, 0, 83); cx.fillStyle = '#fff4dc'; cx.fillText(m.name, 0, 83);
+    }
+    cx.restore();
   }
 
   function drawGateBar() {
@@ -664,7 +708,7 @@
     const fade = age > L - 0.5 ? Math.max(0, (L - age) / 0.5) : 1;
     cx.save(); cx.globalAlpha = fade; cx.translate(W / 2, 236 - (calm ? 0 : age * 6)); cx.scale(pop, pop);
     cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineJoin = 'round';
-    const title = 'WAVE ' + C.fmt(w.n) + '!';
+    const title = (w.big ? 'BOSS WAVE ' : 'WAVE ') + C.fmt(w.n) + '!';
     cx.font = (w.big ? 76 : 66) + 'px "HG Display", sans-serif'; cx.lineWidth = 12; cx.strokeStyle = '#24162c'; cx.strokeText(title, 0, 0);
     const g = cx.createLinearGradient(0, -34, 0, 34); g.addColorStop(0, '#fff3c2'); g.addColorStop(0.55, '#ffd36b'); g.addColorStop(1, '#f08a2c');
     cx.fillStyle = g; cx.fillText(title, 0, 0);
@@ -710,7 +754,7 @@
     for (const e of S.enemies.slice().sort((a, b) => a.y - b.y)) drawEnemy(e);
     if (img.wall) cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H);   // the wall is nearer the camera than anyone outside it
     drawGateBar();
-    drawBossBar(); drawMedal();
+    drawBossBar();
     drawTowers();
     for (const s of S.shots) drawShot(s);
     for (const h of S.hits) L.drawHit(cx, h);
@@ -735,7 +779,8 @@
     }
     for (const r of S.rings) { cx.save(); cx.globalAlpha = 1 - r.t / 0.5; cx.strokeStyle = r.col; cx.lineWidth = 8 * (1 - r.t / 0.5) + 2; cx.beginPath(); cx.arc(r.x, r.y, 20 + r.t * 260, 0, 7); cx.stroke(); cx.restore(); }
     if (S.flash && !reduced()) { cx.save(); cx.globalAlpha = 0.16 * (1 - S.flash.t / 0.18); cx.fillStyle = S.flash.col; cx.fillRect(0, 0, W, H); cx.restore(); }
-    if (!S.card) drawWavePop();   // one voice at a time: nothing banners behind a card
+    if (!S.card) drawWavePop();
+    drawMedal();   // one voice at a time: nothing banners behind a card
     if (S.reveal && (S.reveal.t += 1 / 60) > 1.4) S.reveal = null;
   }
 
@@ -761,12 +806,13 @@
       const on = C.surgeOn(P, now), ready = !on && (SDK.rewardsOn || C.surgeReadyFree(P, now));
       sb.className = on ? 'on' : ready ? 'ready' : 'wait';
       html(sb, on ? `<b>x2</b><span>${mmss(P.surge.until - now)}</span>` : ready ? `${SDK.rewardsOn ? '<span class="play"></span>' : ''}<b>Surge</b><span>x2</span>`
-        : `<b>Surge</b><span>${mmss(P.surge.until + C.SURGE_COOLDOWN_MS - now)}</span>`);
+        : `<b>Surge</b><span>${mmss(P.surge.until + C.surgeCooldown(P) - now)}</span>`);
       if (ready && !S.surgeTold) { S.surgeTold = true; toast('Surge ready: tap it for double Resonance'); }
     }
     el('rate').hidden = RATE <= 0; el('rateN').textContent = `+${rfmt(RATE)}/s`;
-    el('stars').textContent = P.ascensions ? `★ ${P.ascensions}` : '';
-    el('stars').hidden = !P.ascensions;
+    html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = !P.ascensions;   // perk points; the card it opens is titled Perks
+    if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the gold star'); }
+    el('stars').classList.toggle('news', C.PERKS.some(k => (P.perks[k.id] || 0) < k.max && P.perkPts >= C.perkCost(P, k.id)));
     const fork = C.pendingFork(P), uc = C.upgradeCost(P.gateLevel, B), up = el('up');
     up.querySelector('.label').textContent = fork ? 'New path!' : 'Upgrade';
     const gem = '<i class="gem sm"></i>', dmgUp = Math.round((Math.pow(1.235, 1) - 1) * 100);
@@ -823,7 +869,7 @@
 
   // ---------- boot ----------
   function bind() {
-    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
+    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
     el('shop').addEventListener('click', () => { if (S.card === 'shop') { const x = el('card').querySelector('#c-no'); if (x) x.click(); } else openShopCard(); });
     el('pause').addEventListener('click', () => {
       A.unlock();

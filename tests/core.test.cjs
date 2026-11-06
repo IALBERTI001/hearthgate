@@ -151,4 +151,20 @@ assert.ok(fa.feats.includes('wave25') && fa.stats.kills === 100, 'Feats and life
 assert.deepStrictEqual(C.sanitize({ feats: ['wave10', 'nope', 'wave10'], stats: { kills: -3, bosses: 2.7 } }).feats, ['wave10']);
 assert.strictEqual(C.sanitize({ stats: { kills: -3 } }).stats.kills, 0);
 const qq = C.defaults(); qq.shop.open = true; C.questsFor(qq, 'd'); C.questTick(qq, qq.quests.list[0].id, 1e6); C.questClaim(qq, 0); assert.strictEqual(qq.stats.quests, 1, 'claimed quests count toward Feats');
+// Daily Omen and Ascension perks (Nov 6 2026).
+assert.strictEqual(C.omenFor('2026-11-06'), C.omenFor('2026-11-06'), 'one omen per day');
+assert.ok(new Set(['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07'].map(d => C.omenFor(d).id)).size >= 4, 'a week brings variety');
+const op = C.defaults(); op.omen = 'drums'; assert.ok(C.fireInterval(C.bonuses(op)) < C.fireInterval(C.bonuses(C.defaults())), 'an omen changes the fight');
+assert.strictEqual(C.sanitize(JSON.stringify(op)).omen, undefined, 'the omen is never saved');
+const pk = C.defaults(); assert.strictEqual(C.buyPerk(pk, 'sharp'), false, 'no points, no perk');
+pk.perkPts = 3; assert.ok(C.buyPerk(pk, 'sharp')); assert.strictEqual(C.perkCost(pk, 'sharp'), 2); assert.ok(C.buyPerk(pk, 'sharp')); assert.strictEqual(pk.perkPts, 0);
+assert.ok(Math.abs(C.bonuses(pk).damage - 0.3) < 1e-9);
+pk.perks.sharp = 5; pk.perkPts = 99; assert.strictEqual(C.buyPerk(pk, 'sharp'), false, 'capped at max');
+const pa = Object.assign(C.defaults(), { restored: C.BUILDING_IDS.slice(), wave: 55, perks: { start: 2 }, perkPts: 1 });
+const pq = C.ascend(pa); assert.strictEqual(pq.perkPts, 1 + 3, 'wave 55 pays 3 points'); assert.strictEqual(pq.wave, 11); assert.strictEqual(pq.gateLevel, 11); assert.deepStrictEqual(pq.perks, { start: 2 });
+assert.strictEqual(C.sanitize({ ascensions: 3 }).perkPts, 6, 'older saves get points for past Ascensions');
+assert.strictEqual(C.sanitize({ ascensions: 3, perks: {}, perkPts: 1 }).perkPts, 1);
+const ow = C.defaults(); ow.lastSeen = 1e12; ow.wave = 10; const ob = C.bonuses(ow);
+const cap0 = C.offlineEarnings(ow, ob, 1e12 + 24 * 3600e3).secs; ow.perks.night = 2; assert.strictEqual(C.offlineEarnings(ow, C.bonuses(ow), 1e12 + 24 * 3600e3).secs, cap0 + 4 * 3600, 'Night Watch extends the cap');
+const sp2 = C.defaults(); sp2.perks.surge = 2; assert.strictEqual(C.surgeCooldown(sp2), C.SURGE_COOLDOWN_MS - 6 * 60e3);
 console.log('core tests passed');
