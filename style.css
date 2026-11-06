@@ -16,16 +16,17 @@ button { font-family: inherit; }
 button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 
 /* HUD: wave, Resonance, Ascension stars, pause; the two counters under it */
-.chip { white-space: nowrap; display: inline-flex; align-items: center; gap: 10px; padding: 8px 20px; border-radius: 999px; font: 38px/1 'HG Display', sans-serif;
+.chip { white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; font: 38px/1 'HG Display', sans-serif;
   background: rgba(42, 26, 34, .84); border: 3px solid var(--brass); box-shadow: 0 3px 0 rgba(0, 0, 0, .25); }
-#hud { position: absolute; left: 16px; right: 16px; top: 16px; display: flex; gap: 12px; align-items: center; }
+#hud { position: absolute; left: 16px; right: 16px; top: 16px; display: flex; gap: 6px; align-items: center; }
 .unit { font-size: 32px; color: #e8cf98; }
 /* Resonance: a rose crystal, the city's magic */
 .gem { flex: none; width: 24px; height: 24px; margin: 0 4px; transform: rotate(45deg); border-radius: 4px; border: 3px solid #5a1748;
   background: linear-gradient(135deg, #fff0fb, #ff8ae6 45%, #b02a8f); box-shadow: 0 0 12px rgba(255, 110, 220, .7); }
 #counters .rate { color: #ffd0f4; }
-#stars { color: var(--gold); }
-.icon { margin-left: auto; width: 68px; height: 68px; border-radius: 50%; border: 3px solid var(--brass); background: var(--plum);
+#stars { color: var(--gold); padding: 8px 12px; gap: 4px; }
+#hud .chip { font-size: 36px; min-width: 0; flex-shrink: 1; overflow: hidden; }   /* the buttons never get pushed off */
+.icon { margin-left: auto; flex: none; width: 62px; height: 62px; border-radius: 50%; border: 3px solid var(--brass); background: var(--plum);
   color: var(--ink); font: 30px/1 'HG Display', sans-serif; cursor: pointer; box-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
 .icon.on { background: var(--brass); color: var(--plum-dark); }
 #counters { position: absolute; left: 16px; top: 104px; right: 16px; display: flex; justify-content: space-between; pointer-events: none; }
@@ -149,6 +150,43 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 #card .detail { min-height: 2.6em; font-size: 30px; }
 #card .detail b { font-family: 'HG Display', sans-serif; font-weight: 400; color: var(--ink); }
 #card .detail .small { color: #cdb99a; }
+
+
+/* ---------- quests and the Surge ---------- */
+#quests { margin-left: auto; position: relative; display: grid; place-items: center; }
+#quests:not([hidden]) + #shop { margin-left: 0; }
+#quests .dot { position: absolute; right: -2px; top: -2px; width: 22px; height: 22px; border-radius: 50%; background: #ff5a8a; border: 3px solid var(--plum-dark); display: none; }
+#quests.news .dot { display: block; }
+/* a rolled scroll, drawn in CSS */
+.scroll { width: 34px; height: 30px; border-radius: 4px; background: linear-gradient(90deg, #c9a24a 0 6px, #f6e7c4 6px calc(100% - 6px), #c9a24a calc(100% - 6px));
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .12); position: relative; }
+.scroll::before { content: ''; position: absolute; left: 10px; right: 10px; top: 8px; height: 3px; background: #8b6b3a; box-shadow: 0 7px 0 #8b6b3a; }
+.quests { display: flex; flex-direction: column; gap: 12px; }
+.quest { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; padding: 12px 14px; border-radius: 16px; background: #2f1c33; border: 3px solid rgba(201, 162, 74, .3); text-align: left; }
+.quest.done { opacity: .7; }
+.quest .qt { display: flex; justify-content: space-between; gap: 10px; font: 32px 'HG Display', sans-serif; }
+.quest .qt span { color: #cdb99a; }
+.quest .qt b { font-weight: 400; }
+.quest .qbar { grid-column: 1; height: 14px; border-radius: 7px; background: #1a0f15; overflow: hidden; }
+.quest .qbar i { display: block; height: 100%; background: linear-gradient(90deg, #6ff2ff, #c3f9ff); }
+.quest .buy, .quest .qok { grid-column: 2; grid-row: 1 / span 2; min-width: 120px; }
+.quest .qok { font: 30px 'HG Display', sans-serif; color: var(--gold); text-align: center; }
+.quest.bonus { grid-template-columns: 1fr auto; background: #3a2340; }
+.quest.bonus .qt { grid-row: 1 / span 2; }
+#surge { position: absolute; right: 16px; bottom: 186px; min-width: 150px; height: 76px; padding: 0 18px; border-radius: 38px; border: 4px solid var(--brass);
+  display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'HG Display', sans-serif; color: var(--ink); cursor: pointer;
+  background: #3b2440; box-shadow: 0 5px 0 #1a0f15; }
+#surge b { font-size: 34px; font-weight: 400; }
+#surge span { font-size: 30px; color: #ffc8f2; }
+#surge.ready { background: linear-gradient(#d0479f, #8a2470); border-color: #ff9ce8; animation: ready 1.4s ease-in-out infinite alternate; }
+#surge.on { background: linear-gradient(#ff7ad8, #b02a8f); border-color: #ffd0f4; box-shadow: 0 5px 0 #1a0f15, 0 0 28px rgba(255, 110, 220, .75); }
+#surge.on span { color: #fff; }
+#surge.wait { opacity: .78; }
+#surge.wait span { color: #cdb99a; }
+.play { width: 0; height: 0; border-left: 16px solid currentColor; border-top: 10px solid transparent; border-bottom: 10px solid transparent; }
+#c-shardad { margin: 0; padding: 10px 14px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 32px; }
+#c-shardad .small { font: 700 30px 'HG Text', sans-serif; color: #f1e3c8; }
+.calm #surge.ready { animation: none; }
 
 #boot { position: absolute; inset: 0; display: grid; place-items: center; background: var(--plum-dark); font: 72px 'HG Display', sans-serif; color: var(--brass); z-index: 20; }
 @media (prefers-reduced-motion: reduce) { #hand, .shake, #card .body, .big.ready, #shop.fresh { animation: none; } }

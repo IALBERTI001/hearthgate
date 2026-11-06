@@ -166,7 +166,7 @@
     q.ascensions = p.ascensions + 1; q.bestWave = p.bestWave; q.combos = p.combos.slice();
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
     q.settings = Object.assign({}, p.settings); q.grown = p.grown;
-    q.shop = JSON.parse(JSON.stringify(p.shop)); q.shop.shards += SHARDS.ascend;   // looks and Starshards stay; Ascending pays
+    q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;   // looks and Starshards stay; Ascending pays
     return q;
   }
 
@@ -235,9 +235,47 @@
     return out;
   }
 
+
+  // ---------- daily quests (Nov 5 2026): three goals a day, each pays Starshards, all three pay a bonus ----------
+  // Picked from the pool by the day, so a reload never rerolls them; a goal only appears once it can be done.
+  const QUESTS = [
+    { id: 'kills', text: n => `Defeat ${n} enemies`, need: 150, ok: () => true },
+    { id: 'waves', text: n => `Clear ${n} waves`, need: 8, ok: () => true },
+    { id: 'upgrade', text: n => `Upgrade the gate ${n} times`, need: 8, ok: () => true },
+    { id: 'combo', text: n => `Land ${n} combos`, need: 40, ok: p => p.combos.length > 0 },
+    { id: 'shatter', text: n => `Trigger SHATTER ${n} times`, need: 15, ok: p => p.combos.includes('shatter') },
+    { id: 'level', text: n => `Level up buildings ${n} times`, need: 6, ok: p => p.restored.length > 0 },
+    { id: 'boss', text: () => 'Defeat a boss', need: 1, ok: p => p.bestWave >= 10 },
+    { id: 'surge', text: () => 'Start a Resonance Surge', need: 1, ok: () => true }
+  ];
+  const QUEST_REWARD = 4, QUEST_BONUS = 5;
+  function questsFor(p, today) {
+    if (p.quests.day === today && p.quests.list.length) return p.quests;
+    const pool = QUESTS.filter(q => q.ok(p)), seed = [...today].reduce((a, c) => a * 31 + c.charCodeAt(0) >>> 0, 7), pick = [];
+    for (let i = 0; pick.length < 3 && i < pool.length * 3; i++) { const q = pool[(seed + i * 5) % pool.length]; if (!pick.includes(q)) pick.push(q); }
+    p.quests = { day: today, list: pick.map(q => ({ id: q.id, n: 0, need: q.need, claimed: false })), bonus: false };
+    return p.quests;
+  }
+  const questText = q => QUESTS.find(x => x.id === q.id).text(q.need);
+  function questTick(p, id, amount = 1) { for (const q of p.quests.list) if (q.id === id && q.n < q.need) q.n = Math.min(q.need, q.n + amount); }
+  const questClaimable = p => p.quests.list.some(q => q.n >= q.need && !q.claimed) || (!p.quests.bonus && p.quests.list.length && p.quests.list.every(q => q.claimed));
+  function questClaim(p, i) {
+    const q = p.quests.list[i]; if (!q || q.claimed || q.n < q.need) return 0;
+    q.claimed = true; p.shop.shards += QUEST_REWARD; return QUEST_REWARD;
+  }
+  function questBonus(p) { if (p.quests.bonus || !p.quests.list.length || !p.quests.list.every(q => q.claimed)) return 0; p.quests.bonus = true; p.shop.shards += QUEST_BONUS; return QUEST_BONUS; }
+
+  // ---------- Resonance Surge: double Resonance for 3 minutes ----------
+  // Basic Launch (no ads): it recharges for free, 15 minutes after a surge ends. Full Launch: a rewarded ad starts one
+  // whenever none is running, up to 8 a day. Real-time stamps, so it runs on across reloads.
+  const SURGE_MS = 3 * 60e3, SURGE_COOLDOWN_MS = 15 * 60e3, SURGE_ADS_PER_DAY = 8, SHARD_ADS_PER_DAY = 5, SHARD_AD = 3;
+  const surgeOn = (p, now) => now < p.surge.until;
+  const surgeReadyFree = (p, now) => !surgeOn(p, now) && now >= p.surge.until + SURGE_COOLDOWN_MS;
+  function startSurge(p, now) { p.surge.until = now + SURGE_MS; }
+
   // ---------- save profile ----------
   function defaults() {
-    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false } };
   }
@@ -264,6 +302,13 @@
     }
     out.grown = p.grown === true;
     out.shop = sanitizeShop(p.shop);
+    if (p.quests && typeof p.quests === 'object' && typeof p.quests.day === 'string' && Array.isArray(p.quests.list)) {
+      const list = p.quests.list.filter(q => q && QUESTS.some(x => x.id === q.id)).slice(0, 3)
+        .map(q => { const need = QUESTS.find(x => x.id === q.id).need; return { id: q.id, need, n: Math.floor(num(q.n, 0, need, 0)), claimed: q.claimed === true }; });
+      out.quests = { day: p.quests.day, list, bonus: p.quests.bonus === true };
+    }
+    if (p.surge && typeof p.surge === 'object') out.surge = { until: num(p.surge.until, 0, 1e15, 0), adDay: typeof p.surge.adDay === 'string' ? p.surge.adDay : '',
+      ads: Math.floor(num(p.surge.ads, 0, 99, 0)), shardAds: Math.floor(num(p.surge.shardAds, 0, 99, 0)) };
     out.combos = Array.isArray(p.combos) ? [...new Set(p.combos.filter(c => COMBOS.includes(c)))] : [];
     if (p.forks && typeof p.forks === 'object') for (const s of [2, 3]) {
       const f = p.forks[s]; if (typeof f === 'string' && FORKS[s].some(x => x.id === f) && stageOf(out.gateLevel) >= s) out.forks[s] = f;
@@ -289,6 +334,7 @@
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, ascend, defaults, sanitize,
-    CITY, cityToBand, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
+    CITY, cityToBand, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
+    SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

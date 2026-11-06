@@ -13,6 +13,7 @@ Hearthgate is an idle defense game about a city coming back to life. Waves of sl
 
 Restore the Forge and your towers shoot fire. Restore the Frost Spire and they slow. Restore the Storm Bell and lightning chains between enemies. Mix them for combos: SHATTER a frozen enemy with fire, chain lightning through a slowed crowd, set the whole wave burning.
 
+Three daily quests and a Resonance Surge (double Resonance for three minutes) keep every session moving.
 A Shop full of looks: new tower skins for every element, shot trails, hit effects, Resonance wisp colours, and city looks from Golden Hour to Moonlit and First Snow. Earn Starshards from bosses, combos and daily rewards, or trade Resonance for them.
 Ten buildings to raise from the ruins, each with its own bonus. Every restored building hums out Resonance of its own: tap it to level it up, and the city keeps earning even when the fight stalls. Upgrade paths at gate stages 2 and 3. A boss every 10 waves. Restore the whole city, then Ascend for a permanent bonus and build it again, stronger.
 

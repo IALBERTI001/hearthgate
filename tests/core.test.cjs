@@ -121,4 +121,23 @@ assert.strictEqual(asc.shop.shards, 4 + C.SHARDS.ascend, 'Ascending pays Starsha
 const tp = C.defaults(); tp.wave = 30; const tb = C.bonuses(tp), tc = C.exchangeCost(tp, tb);
 tp.wave = 5; assert.ok(C.exchangeCost(tp, C.bonuses(tp)) < tc, 'the trade price follows income'); tp.wave = 30;
 tp.res = tc - 1; assert.strictEqual(C.trade(tp, tb), false); tp.res = tc; assert.ok(C.trade(tp, tb)); assert.strictEqual(tp.res, 0); assert.strictEqual(tp.shop.shards, 1);
+// Daily quests and the Surge (Nov 5 2026).
+const qp = C.defaults(); qp.shop.open = true;
+const qa = C.questsFor(qp, '2026-11-05');
+assert.strictEqual(qa.list.length, 3); assert.strictEqual(new Set(qa.list.map(q => q.id)).size, 3, 'three different quests');
+assert.ok(!qa.list.some(q => q.id === 'shatter' || q.id === 'boss' || q.id === 'level'), 'no quest the player cannot do yet');
+assert.strictEqual(C.questsFor(qp, '2026-11-05'), qa, 'the same day keeps the same quests');
+const q0 = qa.list[0]; assert.strictEqual(C.questClaim(qp, 0), 0, 'an unfinished quest pays nothing');
+C.questTick(qp, q0.id, 1e6); assert.strictEqual(q0.n, q0.need, 'progress stops at the goal');
+assert.ok(C.questClaimable(qp)); assert.strictEqual(C.questClaim(qp, 0), C.QUEST_REWARD); assert.strictEqual(C.questClaim(qp, 0), 0, 'paid once');
+assert.strictEqual(C.questBonus(qp), 0, 'the bonus needs all three');
+for (let i = 1; i < 3; i++) { C.questTick(qp, qa.list[i].id, 1e6); C.questClaim(qp, i); }
+assert.strictEqual(C.questBonus(qp), C.QUEST_BONUS); assert.strictEqual(qp.shop.shards, 3 * C.QUEST_REWARD + C.QUEST_BONUS);
+assert.notDeepStrictEqual(C.questsFor(qp, '2026-11-06').list.map(q => q.n), [q0.need, 0, 0].slice(0, 0), 'a new day');
+assert.ok(C.questsFor(qp, '2026-11-06').list.every(q => q.n === 0 && !q.claimed), 'a new day starts fresh');
+assert.deepStrictEqual(C.sanitize({ quests: { day: '2026-11-05', list: [{ id: 'kills', n: 9e9 }, { id: 'nope' }] } }).quests.list, [{ id: 'kills', need: 150, n: 150, claimed: false }]);
+const sg = C.defaults(), t0 = 1e12;
+assert.ok(C.surgeReadyFree(sg, t0), 'the first Surge is free'); C.startSurge(sg, t0);
+assert.ok(C.surgeOn(sg, t0 + C.SURGE_MS - 1)); assert.ok(!C.surgeOn(sg, t0 + C.SURGE_MS));
+assert.ok(!C.surgeReadyFree(sg, t0 + C.SURGE_MS + 1), 'it charges after it ends'); assert.ok(C.surgeReadyFree(sg, t0 + C.SURGE_MS + C.SURGE_COOLDOWN_MS));
 console.log('core tests passed');
