@@ -173,11 +173,12 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .quest .qok { font: 30px 'HG Display', sans-serif; color: var(--gold); text-align: center; }
 .quest.bonus { grid-template-columns: 1fr auto; background: #3a2340; }
 .quest.bonus .qt { grid-row: 1 / span 2; }
-#surge { position: absolute; right: 16px; bottom: 186px; min-width: 150px; height: 76px; padding: 0 18px; border-radius: 38px; border: 4px solid var(--brass);
+/* in the top bar since Nov 6 2026: over the city it covered the Watchtower */
+#surge { position: relative; margin-left: auto; flex: none; min-width: 0; height: 62px; padding: 0 16px; border-radius: 31px; border: 4px solid var(--brass);
   display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'HG Display', sans-serif; color: var(--ink); cursor: pointer;
   background: #3b2440; box-shadow: 0 5px 0 #1a0f15; }
-#surge b { font-size: 34px; font-weight: 400; }
-#surge span { font-size: 30px; color: #ffc8f2; }
+#surge b { font-size: 32px; font-weight: 400; }
+#surge span { font-size: 30px; color: #ffc8f2; white-space: nowrap; }
 #surge.ready { background: linear-gradient(#d0479f, #8a2470); border-color: #ff9ce8; animation: ready 1.4s ease-in-out infinite alternate; }
 #surge.on { background: linear-gradient(#ff7ad8, #b02a8f); border-color: #ffd0f4; box-shadow: 0 5px 0 #1a0f15, 0 0 28px rgba(255, 110, 220, .75); }
 #surge.on span { color: #fff; }
@@ -252,3 +253,5 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .feats, .perks { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 #card.quests .body, #card.perks .body { overflow: hidden; }
 .perks { -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent); mask-image: linear-gradient(#000 calc(100% - 40px), transparent); padding-bottom: 30px; }   /* the fade says: more below */
+#surge:not([hidden]) + #pause { margin-left: 0; }
+#surge::before { content: ''; position: absolute; inset: -12px -6px; }

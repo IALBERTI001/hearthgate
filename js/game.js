@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06d';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06e';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -685,7 +685,9 @@
     if (S.card || root.__storeCapture) return;   // store-cover captures hide them
     for (const id of P.restored) {
       if (P.res < C.levelCost(P, id, B)) continue;
-      const sp = CITY.spots[id], x = sx(sp[0]), y = sy(sp[1]) - sp[3] * K * 0.62 + (reduced() ? 0 : Math.sin(S.t * 4 + x) * 4);
+      // on the building's upper-left corner, clear of its roof and spires (owner's screenshot, Nov 6 2026: the arrow sat on the
+      // Frost Spire's crystal with the tip poking out above it); the job badges sit on the upper-right
+      const sp = CITY.spots[id], x = sx(sp[0]) - sp[2] * K * 0.5, y = sy(sp[1]) - sp[3] * K * 0.3 + (reduced() ? 0 : Math.sin(S.t * 4 + x) * 3);
       cx.save(); cx.fillStyle = '#ffd56b'; cx.strokeStyle = '#2a1a22'; cx.lineWidth = 4;
       cx.beginPath(); cx.arc(x, y, 19, 0, 7); cx.fill(); cx.stroke();
       cx.fillStyle = '#2a1a22'; cx.beginPath(); cx.moveTo(x, y - 11); cx.lineTo(x + 10, y + 2); cx.lineTo(x + 4, y + 2); cx.lineTo(x + 4, y + 10); cx.lineTo(x - 4, y + 10); cx.lineTo(x - 4, y + 2); cx.lineTo(x - 10, y + 2); cx.closePath(); cx.fill();
