@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06q';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06r';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -71,7 +71,7 @@
   }
   function spawn(role, at) {
     const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && evIs('bloodmoon') ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1) * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 2 : 1);
-    if (R.tip && !P.seenRoles.includes(role)) { P.seenRoles.push(role); setTimeout(() => toast(`New: ${R.label}! ${R.tip}`), 400); }
+    if (!P.seenRoles.includes(role)) { P.seenRoles.push(role); if (R.tip) setTimeout(() => toast(`New: ${R.label}! ${R.tip}`), 400); }   // every kind goes in the Bestiary; only the special ones get a toast
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
     const lead = (S.packN || 0) % 3 === 0 || C.isBossRole(role) || role === 'swarm';
     let x0 = lead ? (S.packX = 80 + Math.random() * 560) : Math.max(70, Math.min(650, S.packX + (Math.random() - 0.5) * 140)), y0 = FIELD_TOP + (R.size > 150 ? 70 : 0) + Math.random() * 40;
@@ -82,6 +82,7 @@
       chill: (S.event && evIs('winter')) ? 4 : 0, burn: (S.event && evIs('embers')) ? 4 : 0, flash: 0, born: S.t - (at ? 0.6 : 0), dying: 0, stun: 0, summonT: R.summon || 0, totemT: R.totem || 0, blinkT: Math.random() * 2.4, tint: S.event && evIs('golden') ? 'gold' : R.tint, shield: !!R.shield || !!(S.event && evIs('mirror')) });
   }
 
+  const TINT = { gold: 'sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.15)', shield: 'saturate(0.6) hue-rotate(170deg) brightness(1.05)', split: 'hue-rotate(150deg) saturate(1.3)', mend: 'hue-rotate(-75deg) saturate(0.7) brightness(1.3)', queen: 'hue-rotate(205deg) saturate(1.5) brightness(1.05)', pale: 'saturate(0.3) brightness(1.45)', stone: 'saturate(0.2) brightness(0.8) contrast(1.2)', ghost: 'saturate(0.2) brightness(1.6) hue-rotate(180deg)', thief: 'saturate(0.4) brightness(0.55)', bomb: 'hue-rotate(-95deg) saturate(1.8) brightness(1.05)', totem: 'sepia(0.7) hue-rotate(160deg) saturate(1.4)' };   // enemy colour variants, shared by the field and the Bestiary
   // ---------- simulation ----------
   const TOWERS4 = PLATFORMS.map((p, i) => ({ x: p.x, y: p.y, cd: 0.2 + i * 0.13, recoil: 0, flash: 0, n: i }));
   // the fifth tower is the Watchtower's own beacon: a light on its roof that fires over the wall (owner, Nov 6 2026: a
@@ -524,7 +525,16 @@
     if (C.surgeReadyFree(P, now)) go(); else toast(`The next Surge charges in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`);
   }
   const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
-  const qTabs = on => `<div class="tabs">${[['daily', 'Daily quests'], ['feats', `Feats ${P.feats.length}/${C.FEATS.length}`]].map(([k, n]) => `<button class="tab qtab${k === on ? ' on' : ''}" data-q="${k}">${n}</button>`).join('')}</div>`;
+  const qTabs = on => `<div class="tabs">${[['daily', 'Quests'], ['feats', `Feats ${P.feats.length}/${C.FEATS.length}`], ['beasts', `Bestiary ${C.BESTIARY.filter(r => P.seenRoles.includes(r)).length}/${C.BESTIARY.length}`]].map(([k, n]) => `<button class="tab qtab${k === on ? ' on' : ''}" data-q="${k}">${n}</button>`).join('')}</div>`;
+  // the Bestiary (Nov 6 2026): every kind of enemy met, with what beats it; the rest stay dark silhouettes
+  const SHEET_SRC = { slime: 'assets/enemies/slime-walk.webp', beetle: 'assets/enemies/beetle-walk.webp', golem: 'assets/enemies/golem-walk.webp' };
+  function beastsHtml() {
+    const rows = C.BESTIARY.map(r => { const R = C.ROLES[r], seen = P.seenRoles.includes(r);
+      const pic = `<i class="beast" style="background-image:url(${SHEET_SRC[R.sheet]});filter:${seen ? (R.tint ? TINT[R.tint] : 'none') : 'brightness(0) opacity(.55)'}"></i>`;
+      return `<div class="feat${seen ? '' : ' unseen'}">${pic}<div class="ft"><b>${seen ? R.label : '???'}${seen && C.isBossRole(r) ? ' <small>boss</small>' : ''}</b><span>${seen ? (R.tip || R.about || '') : 'Not met yet'}</span></div>`
+        + `<span class="fr">${seen && R.weak ? `<em style="color:${COLOR[R.weak]}">${R.weak[0].toUpperCase() + R.weak.slice(1)}</em>` : ''}</span></div>`; }).join('');
+    return `<div class="cardhead"><h2>Bestiary</h2><button id="c-no" class="x" aria-label="Close"></button></div>${qTabs('beasts')}<div class="feats">${rows}</div>`;
+  }
   function featsHtml() {
     const rows = C.FEATS.map(f => ({ f, done: P.feats.includes(f.id), n: C.featProgress(P, f) }))
       .sort((a, b) => (a.done - b.done) || (b.n / b.f.need - a.n / a.f.need));   // closest unfinished first, finished last
@@ -536,6 +546,7 @@
   const untilMidnight = () => { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); const mins = Math.ceil((m - n) / 60e3); return `${Math.floor(mins / 60)}h ${mins % 60}m`; };
   function questsHtml() {
     if (S.qTab === 'feats') return featsHtml();
+    if (S.qTab === 'beasts') return beastsHtml();
     const qs = C.questsFor(P, today()), all = qs.list.every(q => q.claimed);
     const om = P.omen && C.OMENS.find(o => o.id === P.omen);
     return `<div class="cardhead"><h2>Quests</h2><button id="c-no" class="x" aria-label="Close"></button></div>${qTabs('daily')}${om ? `<p class="omen">Today's omen: <b>${om.name}</b> · ${om.line}</p>` : ''}<p class="small">New quests in ${untilMidnight()}</p><div class="quests">`
@@ -883,7 +894,6 @@
     shadow(e.x + 4, e.y - 2, e.size * 0.42, e.size * 0.13, 0.35);
     if (e.dying) { cx.translate(e.x, e.y); cx.scale(1 + e.dying, 1 - e.dying * 0.8); cx.translate(-e.x, -e.y); }
     if (GATE_X + e.off < e.x - 20) { cx.translate(e.x, 0); cx.scale(-1, 1); cx.translate(-e.x, 0); }   // face the way it walks
-    const TINT = { gold: 'sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.15)', shield: 'saturate(0.6) hue-rotate(170deg) brightness(1.05)', split: 'hue-rotate(150deg) saturate(1.3)', mend: 'hue-rotate(-75deg) saturate(0.7) brightness(1.3)', queen: 'hue-rotate(205deg) saturate(1.5) brightness(1.05)', pale: 'saturate(0.3) brightness(1.45)', stone: 'saturate(0.2) brightness(0.8) contrast(1.2)', ghost: 'saturate(0.2) brightness(1.6) hue-rotate(180deg)', thief: 'saturate(0.4) brightness(0.55)', bomb: 'hue-rotate(-95deg) saturate(1.8) brightness(1.05)', totem: 'sepia(0.7) hue-rotate(160deg) saturate(1.4)' };
     if (e.flash > 0) cx.filter = `brightness(${1 + e.flash * 0.9})`;
     else if (e.chill > 0) cx.filter = 'saturate(0.55) brightness(1.12)';
     else if (e.tint) cx.filter = TINT[e.tint];

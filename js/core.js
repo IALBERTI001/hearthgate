@@ -203,10 +203,10 @@
   // Sizes in stage px: every regular enemy is shorter than a tier-1 tower (82 px); only the boss towers over the wall
   // (owner's correction, Nov 5 2026: "regular mobs towering over a small fence seems a stretch").
   const ROLES = {
-    slime: { sheet: 'slime', hp: 1, speed: 46, size: 66, label: 'Slimes' },
-    runner: { sheet: 'beetle', hp: 0.7, speed: 84, size: 60, label: 'Runners', weak: 'frost' },
-    armoured: { sheet: 'golem', hp: 2.6, speed: 36, size: 76, label: 'Armoured', weak: 'fire', armour: 0.5 },
-    swarm: { sheet: 'slime', hp: 0.35, speed: 54, size: 44, label: 'Swarm', weak: 'storm' },
+    slime: { sheet: 'slime', hp: 1, speed: 46, size: 66, label: 'Slimes', about: 'The steady tide: slow and soft' },
+    runner: { sheet: 'beetle', hp: 0.7, speed: 84, size: 60, label: 'Runners', weak: 'frost', about: 'Fast and frail: Frost slows them' },
+    armoured: { sheet: 'golem', hp: 2.6, speed: 36, size: 76, label: 'Armoured', weak: 'fire', armour: 0.5, about: 'Armour halves every hit but Fire' },
+    swarm: { sheet: 'slime', hp: 0.35, speed: 54, size: 44, label: 'Swarm', weak: 'storm', about: 'Many and tiny: Storm chains through them' },
     // variants (Nov 6 2026, the 30-second rule): one new kind every few waves, each with a counter to learn
     elite: { sheet: 'beetle', hp: 3, speed: 60, size: 70, label: 'Elite', tint: 'gold', tip: 'Elites drop a treasure chest', chest: true },
     shielded: { sheet: 'beetle', hp: 1, speed: 70, size: 62, label: 'Shielded', weak: 'storm', shield: true, tint: 'shield', tip: 'Shields block most damage: Storm breaks them' },
@@ -221,7 +221,7 @@
     bomber: { sheet: 'slime', hp: 2, speed: 34, size: 78, label: 'Bombers', weak: 'fire', bomb: true, tint: 'bomb', tip: 'Bombers blow up: pop them in a crowd, never at the gate' },
     totem: { sheet: 'golem', hp: 4, speed: 24, size: 84, label: 'Totems', weak: 'fire', armour: 0.3, totem: 4, tint: 'totem', tip: 'Totems shield their friends: burn them down first' },
     // bosses rotate (waves 10, 20, 30, then again): each one fights differently
-    boss: { sheet: 'golem', hp: 90, speed: 28, size: 190, label: 'Golem King', armour: 0.3 },
+    boss: { sheet: 'golem', hp: 90, speed: 28, size: 190, label: 'Golem King', armour: 0.3, about: 'The first boss: armoured and huge' },
     queen: { sheet: 'slime', hp: 70, speed: 30, size: 190, label: 'Slime Queen', split: 6, tint: 'queen', tip: 'The Slime Queen bursts into a swarm' },
     lord: { sheet: 'beetle', hp: 60, speed: 40, size: 170, label: 'Swarmlord', summon: 3.5, tint: 'gold', tip: 'The Swarmlord calls runners as it walks' },
     // Ascension bosses join the rotation (2nd, 3rd and 4th Ascension), each first met at wave 20 of that run
@@ -229,6 +229,7 @@
     titan: { sheet: 'golem', hp: 110, speed: 22, size: 200, label: 'Totem Titan', armour: 0.3, totem: 3, tint: 'totem', tip: 'The Totem Titan shields his escort: burn them first' },
     tyrant: { sheet: 'beetle', hp: 80, speed: 30, size: 185, label: 'Thief Tyrant', summon: 3, summonRole: 'thief', tint: 'thief', tip: 'The Thief Tyrant sends thieves for your Resonance' }
   };
+  const BESTIARY = Object.keys(ROLES);   // every kind, in the order players meet them
   const BOSS_ROLES = ['boss', 'queen', 'lord', 'wraith', 'titan', 'tyrant'];
   const ASC_BOSSES = [['wraith', 2], ['titan', 3], ['tyrant', 4]];
   const isBossRole = r => BOSS_ROLES.includes(r);
@@ -501,7 +502,7 @@
     .forEach(([n, nm, t]) => feat('ascend' + n, nm, t, n === 1 ? 'Ascend once' : `Ascend ${n} times`, p => p.ascensions, n));
   [[5, 'First Light', 1], [20, 'Stargazer', 2], [40, 'Full Sky', 3]]
     .forEach(([n, nm, t]) => feat('stars' + n, nm, t, `Light ${n} constellation stars`, p => (p.stars || []).length, n));
-  feat('bestiary', 'Monster Scholar', 2, 'Meet every kind of enemy', p => (p.seenRoles || []).filter(r => ROLES[r] && ROLES[r].tip).length, Object.values(ROLES).filter(r => r.tip).length);
+  feat('bestiary', 'Monster Scholar', 2, 'Meet every kind of enemy', p => (p.seenRoles || []).filter(r => ROLES[r]).length, Object.keys(ROLES).length);
   [[25, 'Iron Gate', 1], [50, 'Steel Gate', 2], [100, 'Starforged Gate', 3]]
     .forEach(([n, nm, t]) => feat('gate' + n, nm, t, `Upgrade the gate to level ${n}`, p => p.gateLevel, n));
   [[10, 'Humming Halls', 1], [25, 'Resonant', 2], [50, 'Heart of the City', 3]]
@@ -634,7 +635,7 @@
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, ETERNAL_AT, canAscend, cityWhole, ascendWave, ascend, defaults, sanitize,
-    CITY, cityToBand, twinsFor, twinOf, STARS, starWave, starsDue, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
+    CITY, cityToBand, BESTIARY, twinsFor, twinOf, STARS, starWave, starsDue, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
     SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

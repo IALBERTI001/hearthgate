@@ -308,3 +308,8 @@ ul.asc b { color: var(--gold); }
 .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .sgrid span { display: flex; flex-direction: column; padding: 6px 8px; border-radius: 10px; background: rgba(0, 0, 0, .18); font-size: 14px; color: #d9c6a6; }
 .sgrid b { font: 20px/1.1 'HG Display', sans-serif; color: var(--ink); }
+/* the Bestiary: frame 0 of each enemy's walk sheet, tinted like on the field; unmet kinds are dark silhouettes */
+.beast { flex: none; width: 84px; height: 74px; background-repeat: no-repeat; background-size: 600% 100%; background-position: 0 0; }
+.feat.unseen { opacity: .6; }
+.feat .ft b small { font: 22px 'HG Display', sans-serif; color: #ff9c7a; margin-left: 6px; }
+.feat .fr em { font-style: normal; }
