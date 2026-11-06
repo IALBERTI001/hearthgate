@@ -458,6 +458,21 @@
     else { const amt = C.fightRate(P, B) * 1.6 * 10 * mult * surgeX(); P.res += amt; pop(g.x, g.y - 20, `+${C.fmt(amt)}`, '#ffd56b', 1.4, 46); }
     save(); return true;
   }
+  // a few butterflies drift over the meadow while the field is quiet, and flutter off when a wave crowds in
+  // (fresh-eyes review, Nov 6 2026: between packs the field was bare grass)
+  const FLY = [0, 1, 2, 3].map(i => ({ x: 120 + i * 160, y: FIELD_TOP + 120 + (i % 2) * 140, ph: i * 1.7, col: ['#ffe28c', '#bfe8ff', '#ffb3e6', '#ffffff'][i], a: 1 }));
+  function drawButterflies() {
+    if (root.__storeCapture) return;
+    const busy = S.enemies.filter(e => !e.dying).length >= 4, calm = reduced();
+    for (const f of FLY) {
+      f.a += ((busy ? 0 : 1) - f.a) * Math.min(1, DT * 2); if (f.a < 0.02) continue;
+      const t = S.t * 0.35 + f.ph, x = f.x + Math.sin(t) * 90 + Math.sin(t * 2.3) * 30, y = f.y + Math.sin(t * 1.7) * 50 - (calm ? 0 : Math.abs(Math.sin(S.t * 9 + f.ph)) * 3);
+      const flap = calm ? 0.6 : 0.25 + 0.75 * Math.abs(Math.sin(S.t * 14 + f.ph));
+      cx.save(); cx.globalAlpha = 0.9 * f.a; cx.translate(x, y); cx.scale(1.8, 1.8); cx.fillStyle = f.col; cx.strokeStyle = 'rgba(40,24,30,.7)'; cx.lineWidth = 1.2;
+      for (const sd of [-1, 1]) { cx.beginPath(); cx.ellipse(sd * 5 * flap, -2, 5.5 * flap, 4.5, sd * 0.5, 0, 7); cx.fill(); cx.stroke(); cx.beginPath(); cx.ellipse(sd * 3.6 * flap, 3.5, 3.6 * flap, 3, -sd * 0.4, 0, 7); cx.fill(); cx.stroke(); }
+      cx.fillStyle = '#3a2430'; cx.fillRect(-1, -4, 2, 9); cx.restore();
+    }
+  }
   function drawGold() {
     const g = S.gold; if (!g) return;
     cx.save(); glow(g.x, g.y, 76, 'rgba(255,214,107,', 0.6 + 0.2 * Math.sin(S.t * 8));
@@ -1057,6 +1072,7 @@
     for (const m of S.motes) { const a = Math.sin(Math.PI * m.t / m.life); glow(m.x, m.y, m.r * 4, RES_GLOW, 0.35 * a); cx.globalAlpha = a; cx.fillStyle = '#fff0fb'; cx.beginPath(); cx.arc(m.x, m.y, m.r * 0.6, 0, 7); cx.fill(); cx.globalAlpha = 1; }
     cx.restore();
     drawMarkers(); drawBadges(); drawCheer();
+    drawButterflies();
     // the field, back to front
     for (const e of S.enemies.slice().sort((a, b) => a.y - b.y)) drawEnemy(e);
     if (img.wall) cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H);   // the wall is nearer the camera than anyone outside it
