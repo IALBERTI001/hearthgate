@@ -547,7 +547,7 @@
   const SHEET_SRC = { slime: 'assets/enemies/slime-walk.webp', beetle: 'assets/enemies/beetle-walk.webp', golem: 'assets/enemies/golem-walk.webp' };
   function beastsHtml() {
     const rows = C.BESTIARY.map(r => { const R = C.ROLES[r], seen = P.seenRoles.includes(r);
-      const pic = `<i class="beast" style="background-image:url(${SHEET_SRC[R.sheet]});filter:${seen ? (R.tint ? TINT[R.tint] : 'none') : 'brightness(0) opacity(.55)'}"></i>`;
+      const pic = `<i class="beast${r === 'swarm' ? ' sm' : ''}" style="background-image:url(${SHEET_SRC[R.sheet]});filter:${seen ? (R.tint ? TINT[R.tint] : 'none') : 'brightness(0) opacity(.55)'}"></i>`;
       return `<div class="feat${seen ? '' : ' unseen'}">${pic}<div class="ft"><b>${seen ? R.label : '???'}${seen && C.isBossRole(r) ? ' <small>boss</small>' : ''}</b><span>${seen ? (R.tip || R.about || '') : 'Not met yet'}</span>${seen && R.weak ? `<em class="weak" style="color:${COLOR[R.weak]}">Weak to ${R.weak[0].toUpperCase() + R.weak.slice(1)}</em>` : ''}</div></div>`; }).join('');
     return `<div class="cardhead"><h2>Bestiary</h2><button id="c-no" class="x" aria-label="Close"></button></div>${qTabs('beasts')}<div class="feats">${rows}</div>`;
   }
