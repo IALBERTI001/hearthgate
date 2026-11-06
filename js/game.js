@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06f';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06g';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -215,7 +215,14 @@
     toast(`The gate fell back to wave ${to}. Nothing lost.`); S.cheerNext = 'Regroup. You\'ve got this!';
     P.wave = to; S.enemies = []; S.shots = []; S.spawnQ = []; S.gateHp = gateMax(); S.savedByAd = false; startWave(); save();
   }
-  function pop(x, y, text, col, life, size) { const p = { x, y: Math.max(FIELD_TOP - 20 + size, y), text, col, t: 0, life, size }; S.pops.push(p); return p; }
+  // Floating numbers never pile up: a new one that lands on a fresh one steps above it, and at most 8 small numbers
+  // live at once (the oldest goes first). Final-review fix, Nov 6 2026: "4.82K" sat on "3.81K".
+  function pop(x, y, text, col, life, size) {
+    y = Math.max(FIELD_TOP - 20 + size, y);
+    for (let k = 0; k < 4; k++) { const hit = S.pops.find(q => q.text && !q.combo && q.t < 0.35 && Math.abs(q.x - x) < 60 && Math.abs(q.y - q.t * 40 - y) < size * 0.9); if (!hit) break; y -= size * 0.95; }
+    const small = S.pops.filter(q => q.text && !q.combo && q.size <= 40); if (size <= 40 && small.length >= 8) S.pops.splice(S.pops.indexOf(small[0]), 1);
+    const p = { x, y, text, col, t: 0, life, size }; S.pops.push(p); return p;
+  }
   function burst(e, col, n, sp) {
     if (reduced()) n = Math.ceil(n / 3);
     for (let i = 0; i < n; i++) {
@@ -806,6 +813,7 @@
     cx.restore();
     cx.textAlign = 'center'; cx.textBaseline = 'alphabetic'; cx.lineJoin = 'round';
     for (const p of S.pops) {
+      if (root.__storeCapture && p.text && !p.combo) continue;   // covers and trailers: words, not number soup
       if (p.arc) {
         const [x0, y0, x1, y1] = p.arc, mx = (x0 + x1) / 2 + (Math.random() - 0.5) * 30, my = (y0 + y1) / 2 + (Math.random() - 0.5) * 30;
         cx.save(); cx.strokeStyle = COLOR.storm; cx.lineWidth = 3; cx.shadowColor = COLOR.storm; cx.shadowBlur = 10;
@@ -885,7 +893,7 @@
     }
     const hand = el('hand'); hand.className = target ? 'on ' + target : '';
     hand.style.left = spot ? ((spot.hx !== undefined ? spot.hx : sx(spot[0])) - 48) + 'px' : '';
-    hand.style.top = spot ? ((spot.hy !== undefined ? spot.hy + 30 : sy(spot[1]) + 6)) + 'px' : '';   // finger up, from under the building or badge
+    hand.style.top = spot ? ((spot.hy !== undefined ? spot.hy + 40 : sy(spot[1]) + 6)) + 'px' : '';   // finger up, from under the building or badge
   }
 
   // ---------- loop (never pauses on tab switch; only the player pauses) ----------

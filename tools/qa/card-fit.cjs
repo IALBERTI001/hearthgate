@@ -20,8 +20,8 @@ const KINDS = [['perks'], ['quests'], ['shop'], ['daily', { day: 3, big: false, 
       await p.waitForTimeout(350);
       const r = await p.evaluate(() => { const st = document.getElementById('stage').getBoundingClientRect(), bd = document.querySelector('#card .body').getBoundingClientRect();
         const btns = [...document.querySelectorAll('#card #c-no, #card #c-ok, #card .opt')]; const vis = btns.filter(x => { const r = x.getBoundingClientRect(); return r.top >= st.top - 1 && r.bottom <= st.bottom + 1 && r.height > 0; });
-        return { over: Math.round(bd.bottom - st.bottom), top: Math.round(bd.top - st.top), buttons: btns.length, visible: vis.length }; });
-      if (r.over > 1 || r.top < -1 || !r.visible) bad.push(`${w}x${h} ${kind} ${JSON.stringify(r)}`);
+        const bar = document.getElementById('bar').getBoundingClientRect(); return { overBar: Math.round(bd.bottom - bar.top), over: Math.round(bd.bottom - st.bottom), top: Math.round(bd.top - st.top), buttons: btns.length, visible: vis.length }; });
+      if (r.over > 1 || r.overBar > 1 || r.top < -1 || !r.visible) bad.push(`${w}x${h} ${kind} ${JSON.stringify(r)}`);
       await p.evaluate(() => { const x = document.querySelector('#card #c-no') || document.querySelector('#card #c-ok'); if (x) x.click(); else { document.getElementById('card').className = ''; } });
       await p.evaluate(() => { const s = Hearthgate.state().S; s.card = null; document.getElementById('card').className = ''; });
     }

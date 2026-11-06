@@ -20,7 +20,7 @@ const FPS = 30, SECONDS = 19;
   for (let i = 0; i < 60 && await p.evaluate(() => !!document.getElementById('boot')); i++) await p.clock.runFor(100);
   await p.addStyleTag({ content: '#toast{display:none!important} #hand{display:none!important}' });
   await p.clock.runFor(2500);   // the wave is under way when the video starts
-  const script = { 2.2: 'up', 3.6: 'up', 5.0: 're', 5.4: 'pick', 8.0: 'shop', 8.6: 'tabtown', 9.6: 'buywinter', 11.2: 'close', 11.6: 'boss' };
+  const script = { 2.2: 'up', 3.6: 'up', 5.0: 're', 5.4: 'pick', 8.6: 'shop', 9.0: 'tabtown', 9.6: 'buywinter', 10.0: 'close', 10.4: 'boss' };   // the Shop holds the screen about 1.4 s
   let n = 0;
   for (let f = 0; f < FPS * SECONDS; f++) {
     const t = +(f / FPS).toFixed(2);
