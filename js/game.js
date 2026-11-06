@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06n';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06o';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -181,7 +181,7 @@
       if (e.chill > 0) { d *= 3 * comboMul; combo('shatter', e, 'SHATTER!', COLOR.frost); burst(e, COLOR.frost, 22, 260); A.play('shatter_combo', 0.5); e.bigHit = true; }
       e.burn = 2.2;
     }
-    if (el === 'frost') { e.chill = B.deepFrost ? 3.3 : 2.2; if (e.weak === 'frost') d *= 1.3; }
+    if (el === 'frost') { e.chill = B.deepFrost ? 3.3 : 2.2; if (evIs('avalanche') && !e.boss) e.stun = Math.max(e.stun || 0, 0.8); if (e.weak === 'frost') d *= 1.3; }
     if (el === 'storm') {
       const jumps = (e.chill > 0 ? 4 : 2) + B.chainPlus + ((S.event && evIs('stormfront')) ? 3 : 0);
       if (e.chill > 0) { combo('frostStorm', e, 'SUPERCHAIN!', COLOR.storm); A.play('conduction_combo', 0.45); if (C.ROLES[e.role].comboWeak) e.bigHit = true; }
@@ -854,7 +854,7 @@
   function drawEnemy(e) {
     const sh = img[e.sheet]; if (!sh) return;
     const fade = Math.min(1, (S.t - e.born) / 0.6), die = e.dying ? 1 - e.dying / 0.45 : 1;
-    cx.save(); cx.globalAlpha = fade * die * (e.faded ? 0.28 : 1);
+    cx.save(); cx.globalAlpha = fade * die * (e.faded ? 0.28 : 1) * (evIs('fog') && e.y < WALL_FRONT - 330 ? 0.22 : 1);
     shadow(e.x + 4, e.y - 2, e.size * 0.42, e.size * 0.13, 0.35);
     if (e.dying) { cx.translate(e.x, e.y); cx.scale(1 + e.dying, 1 - e.dying * 0.8); cx.translate(-e.x, -e.y); }
     if (GATE_X + e.off < e.x - 20) { cx.translate(e.x, 0); cx.scale(-1, 1); cx.translate(-e.x, 0); }   // face the way it walks
@@ -870,6 +870,7 @@
     if (C.ROLES[e.role].heal && !(e.burn > 0)) { cx.save(); cx.globalAlpha = 0.25 + 0.15 * Math.sin(S.t * 5); cx.strokeStyle = '#9dffb0'; cx.lineWidth = 3; cx.beginPath(); cx.arc(e.x, e.y - e.size * 0.3, 130, 0, 7); cx.stroke(); cx.restore(); }
     if (e.healed) { cx.save(); cx.globalAlpha = e.healed * 2; cx.fillStyle = '#9dffb0'; cx.font = '26px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.fillText('+', e.x + e.size * 0.3, e.y - e.size * 0.8); cx.restore(); }
     if (e.burn > 0 && !reduced() && Math.random() < 0.3) S.fx.push({ x: e.x + (Math.random() - 0.5) * e.size * 0.5, y: e.y - e.size * 0.5, vx: 0, vy: -50, t: 0, life: 0.4, col: COLOR.fire, r: 2.5 });
+    if (evIs('fog') && e.y < WALL_FRONT - 330) return;   // in the mist: no bar either
     const bw = e.boss ? 120 : 44, by = e.y - e.size - 8;
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(e.x - bw / 2 - 2, by - 2, bw + 4, 9);
     cx.fillStyle = e.boss ? '#ff6a3a' : e.armour ? '#c8c2b4' : '#e5533d'; cx.fillRect(e.x - bw / 2, by, bw * Math.max(0, e.hp / e.max), 5);
