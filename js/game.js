@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06e';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06f';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -715,7 +715,7 @@
   // A Feat: the medal pops in big over the field with turning rays and its name on a ribbon, then flies into the
   // Feats counter, which pulses as it lands. Drawn last, over every number, so nothing hides it.
   function drawMedal() {
-    const m = S.medal; if (!m || S.card) return;
+    const m = S.medal; if (!m || S.card || root.__storeCapture) return;
     const t = m.t, col = ['', '#d08a4a', '#e8eef4', '#ffd56b'][m.tier], dark = ['', '#7a4316', '#7d8896', '#b0740e'][m.tier];
     const pop = t < 0.3 ? 1.35 * t / 0.3 : t < 0.45 ? 1.35 - (t - 0.3) / 0.15 * 0.35 : 1;
     const fly = t > 1.7 ? Math.min(1, (t - 1.7) / 0.5) : 0, e = fly * fly;
