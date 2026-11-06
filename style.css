@@ -318,3 +318,5 @@ ul.asc b { color: var(--gold); }
 #stage.stats-on #hand { display: none; }   /* the pointer hid a building label */
 .feat .ft em.weak { font: 24px "HG Display", sans-serif; font-style: normal; }
 .beast.sm { width: 50px; height: 44px; margin: 15px 17px; }   /* the Swarm: small slimes, not the Slime portrait again */
+.stew { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; margin: 4px 0 8px; border-radius: 14px; background: rgba(255, 213, 107, .1); border: 2px solid rgba(255, 213, 107, .35); font: 600 26px/1.25 "HG Text", sans-serif; color: #f1e3c8; text-align: left; }
+.stew b { color: var(--gold); } .stew .buy { flex: none; }

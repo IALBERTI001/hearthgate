@@ -214,3 +214,6 @@ console.log('review fix tests passed');
 assert.strictEqual(C.ETERNAL_AT, 10);
 { const p = C.defaults(); for (let a = 0; a <= 40; a++) { p.ascensions = a; assert.ok(C.ascendWave(p) <= 90, 'Ascend wave capped'); } }
 console.log('eternal tests passed');
+{ const p = C.defaults(); p.ascensions = 5; assert.ok(!C.unlocked(p, 'steward')); p.ascensions = 6; assert.ok(C.unlocked(p, 'steward'), 'the Steward at the 6th Ascension');
+  p.settings.steward = false; assert.strictEqual(C.sanitize(p).settings.steward, false, 'the Steward switch survives a reload'); }
+console.log('steward tests passed');

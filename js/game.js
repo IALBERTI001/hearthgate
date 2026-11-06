@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06u';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06v';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -172,6 +172,9 @@
     else if (!S.spawnQ.length && !S.enemies.length) waveCleared();
     if ((S.saveT += DT) > 5) { S.saveT = 0; save(); }
     if ((S.sideT = (S.sideT || 0) + DT) > 0.5) { S.sideT = 0; drawSides(); }
+    // the Steward (6th Ascension): every 3 s, level the cheapest building if that leaves two thirds of the Resonance
+    if (C.unlocked(P, 'steward') && P.settings.steward !== false && (S.stewT = (S.stewT || 0) + DT) > 3) { S.stewT = 0;
+      const ch = P.restored.map(id => [id, C.levelCost(P, id, B)]).sort((a, b) => a[1] - b[1])[0]; if (ch && ch[1] * 3 <= P.res) levelUp(ch[0]); }
   }
 
   function hit(e, el) {
@@ -587,6 +590,7 @@
     return `<div class="cardhead"><h2>Perks</h2><span class="chip shards perkpts"><i class="star gold"></i><b>${P.perkPts}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
       + `<p class="small">Ascension ${P.ascensions}. Each Ascension pays 1 perk point, plus 1 for every 25 waves reached first.</p>`
       + (P.ascensions >= 1 ? `<p class="small">Constellation stars ${P.stars.length}/${C.STARS.length}${(() => { const nx = C.STARS.find(st => st.asc === P.ascensions && !P.stars.includes(st.id)); return nx ? ` · next: ${nx.name} at wave ${C.starWave(P, nx.k)}` : ''; })()}</p>` : '') + `<div class="perks">`
+      + (C.unlocked(P, 'steward') ? `<div class="stew"><span><b>Steward</b> levels your cheapest building by itself</span><button class="buy ${P.settings.steward !== false ? 'eq' : 'can'} steward">${P.settings.steward !== false ? 'On' : 'Off'}</button></div>` : '')
       + C.PERKS.map(k => { const n = P.perks[k.id] || 0, max = n >= k.max, c = C.perkCost(P, k.id);
         return `<div class="perkrow"><b>${k.name}<small>${n}/${k.max}</small></b><span>${k.line}</span>`
           + (max ? `<span class="qok">Max</span>` : `<button class="buy ${P.perkPts >= c ? 'can' : 'off'} perk" data-id="${k.id}"><i class="star gold"></i>${c}</button>`) + `</div>`; }).join('')
@@ -596,6 +600,7 @@
         : `<p class="small">Ascension 3 unlocks Relics.</p>`);
   }
   function wirePerks(body) {
+    body.querySelectorAll('.steward').forEach(b => (b.onclick = () => { P.settings.steward = P.settings.steward === false; A.play('claim', 0.3); save(); showCard('perks'); }));
     body.querySelectorAll('.relic').forEach(b => (b.onclick = () => { if (C.equipRelic(P, b.dataset.id)) { A.play('buy', 0.5); refresh(); save(); showCard('perks'); } }));
     body.querySelectorAll('.perk').forEach(b => (b.onclick = () => {
       if (C.buyPerk(P, b.dataset.id)) { A.play('feat', 0.5); refresh(); save(); showCard('perks'); }

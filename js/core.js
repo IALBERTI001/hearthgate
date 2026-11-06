@@ -31,7 +31,8 @@
     { at: 2, id: 'trials', name: 'Challenge Trials', line: 'Every 5th wave is a Trial: tougher enemies, Starshards if you win' },
     { at: 3, id: 'relics', name: 'Relics', line: 'Equip two Relics in the Watchtower' },
     { at: 4, id: 'earth', name: 'The Earth element', line: 'A fourth element: Earth stuns, and QUAKE shakes frozen enemies apart' },
-    { at: 5, id: 'ranks', name: 'Boss ranks', line: 'Bosses gain a rank each Ascension, with bigger rewards' }
+    { at: 5, id: 'ranks', name: 'Boss ranks', line: 'Bosses gain a rank each Ascension, with bigger rewards' },
+    { at: 6, id: 'steward', name: 'The Steward', line: 'A steward levels your cheapest building by itself (switch it in the Watchtower)' }
   ];
   // Constellations (Nov 6 2026): each of the first eight Ascension runs has its own constellation of five stars, lit at
   // fixed waves on the way to that run's Ascend wave. Every star is a named, lasting boon, so a later run keeps bringing
@@ -568,7 +569,7 @@
   function defaults() {
     return { v: 3, res: 0, wave: 1, bestWave: 1, runWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], stars: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
-      settings: { music: true, sfx: true, reduced: false, stats: false } };
+      settings: { music: true, sfx: true, reduced: false, stats: false, steward: true } };
   }
   const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(hi, Math.max(lo, v)) : d;
   const LEGACY = { b4: 'bakery', b5: 'market', b6: 'tavern', b7: 'granary', b8: 'library', b9: 'cottages', b10: 'watchtower' };
@@ -619,7 +620,7 @@
       out.daily.streak = Math.floor(num(p.daily.streak, 0, 1e6, 0));
       out.daily.claimedTotal = Math.floor(num(p.daily.claimedTotal, 0, 1e15, 0));
     }
-    if (p.settings && typeof p.settings === 'object') for (const k of ['music', 'sfx', 'reduced', 'stats']) {
+    if (p.settings && typeof p.settings === 'object') for (const k of ['music', 'sfx', 'reduced', 'stats', 'steward']) {
       if (typeof p.settings[k] === 'boolean') out.settings[k] = p.settings[k];
     }
     return out;
