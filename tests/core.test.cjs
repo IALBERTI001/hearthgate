@@ -217,3 +217,6 @@ console.log('eternal tests passed');
 { const p = C.defaults(); p.ascensions = 5; assert.ok(!C.unlocked(p, 'steward')); p.ascensions = 6; assert.ok(C.unlocked(p, 'steward'), 'the Steward at the 6th Ascension');
   p.settings.steward = false; assert.strictEqual(C.sanitize(p).settings.steward, false, 'the Steward switch survives a reload'); }
 console.log('steward tests passed');
+{ const p = C.defaults(); p.told = ['gold', 'tomorrow']; assert.deepStrictEqual(C.sanitize(JSON.parse(JSON.stringify(p))).told, ['gold', 'tomorrow'], 'one-time tips stay told after a reload');
+  p.restored = C.BUILDING_IDS.slice(); p.runWave = 40; assert.deepStrictEqual(C.ascend(p).told, ['gold', 'tomorrow']); }
+console.log('told tests passed');

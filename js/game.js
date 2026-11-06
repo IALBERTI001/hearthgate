@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06w';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06x';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -43,6 +43,7 @@
 
   const gateMax = () => C.gateMax(P, B);
   const has = id => P.restored.includes(id);
+  const firstTime = k => { if (P.told.includes(k)) return false; P.told.push(k); return true; };   // one-time tips, kept in the save
   const evIs = id => !!S.event && (S.event.id === id || (!!S.event.ids && S.event.ids.includes(id)));   // twin events carry two ids
   // the Earth element joins the towers from the 4th Ascension on (Nov 6 2026)
   const elements = () => { const e = P.restored.map(b => ELEMENT[b]).filter(Boolean); if (e.length && C.unlocked(P, 'earth')) e.push('earth'); return e; };
@@ -254,7 +255,7 @@
       quest('boss');
       pop(W / 2, 330, 'BOSS DOWN!', '#ffd56b', 1.8, 60); SDK.happytime(); A.play('tier_up', 0.6);
       if (P.shop.open) { const n = (C.SHARDS.boss + B.bossPlus) * (1 + B.bossShards); P.shop.shards += n; pop(W / 2, 400, `+${n} Starshards`, SHARD, 1.6, 40); }
-      if (P.wave === 10 && !P.tomorrowShown) { P.tomorrowShown = true; setTimeout(() => toast('Come back tomorrow: a daily Resonance reward waits'), 1900); }
+      if (P.wave === 10 && firstTime('tomorrow')) { setTimeout(() => toast('Come back tomorrow: a daily Resonance reward waits'), 1900); }
     }
     P.wave++; P.bestWave = Math.max(P.bestWave, P.wave);
     if (C.cityWhole(P) && P.runWave < C.ascendWave(P) && P.wave >= C.ascendWave(P)) setTimeout(() => toast('Wave ' + P.wave + ' reached: you can Ascend!'), 1200);
@@ -309,6 +310,9 @@
     if (P.res < c) return refuse('up', c);
     const before = C.towerDamage(P, B), stage = C.stageOf(P.gateLevel);
     P.res -= c; P.gateLevel++; quest('upgrade'); refresh(); S.gateHp = gateMax(); S.upsSinceRestore = (S.upsSinceRestore || 0) + 1;
+    // after a run of quick taps, once ever: hold the button instead
+    S.tapRun = S.t - (S.lastTapT || -9) < 1.2 ? (S.tapRun || 0) + 1 : 1; S.lastTapT = S.t;
+    if (S.tapRun >= 5 && !P.firstSession && !holdFired && firstTime('hold')) setTimeout(() => toast('Tip: hold Upgrade to keep buying'), 600);
     if (C.stageOf(P.gateLevel) > stage) { toast(`Gate stage ${C.stageOf(P.gateLevel)}! The towers grow.`); A.play('tier_up', 0.6); TOWERS.forEach(t => (t.flash = 1.5)); }
     else { pop(GATE_X, WALL_FRONT - 240, `Damage ${rfmt(before)} -> ${rfmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach(t => (t.flash = 1.2)); A.play('tier_up', 0.25); }
     save(); ui();
@@ -431,6 +435,17 @@
     cx.font = '22px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineWidth = 4; cx.strokeStyle = '#1a0f15';
     const t = C.fmt(Math.max(0, e.hp)); cx.strokeText(t, e.x, e.y - e.size - 22); cx.fillStyle = '#fff4dc'; cx.fillText(t, e.x, e.y - e.size - 22);
   }
+  // hold to repeat (Nov 6 2026): keep a finger on Upgrade, or on a card's Level up, and it buys again every 0.12 s
+  // after a short pause, while it can; a plain tap still buys once
+  let holdFired = false;
+  root.addEventListener('pointerup', () => { clearTimeout(S.lvHold); clearInterval(S.lvRep); });
+  root.addEventListener('pointercancel', () => { clearTimeout(S.lvHold); clearInterval(S.lvRep); });
+  function holdRepeat(btn, act) {
+    let t0 = null, iv = null;
+    const stop = () => { clearTimeout(t0); clearInterval(iv); t0 = iv = null; };
+    btn.addEventListener('pointerdown', () => { stop(); holdFired = false; t0 = setTimeout(() => { iv = setInterval(() => { if (act()) holdFired = true; else stop(); }, 120); }, 420); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
+  }
   function toggleStats() { A.unlock(); P.settings.stats = !P.settings.stats; el('stats').classList.toggle('on', P.settings.stats); el('stage').classList.toggle('stats-on', P.settings.stats); A.play('claim', 0.25); save(); }
 
   // ---------- the 30-second beats (Nov 6 2026): Golden Wisp, Cheer, villagers, boss ranks, crowns ----------
@@ -449,7 +464,7 @@
       S.goldT = (30 + Math.random() * 30) * (has('bakery') ? 0.5 : 1);
       const fromLeft = Math.random() < 0.5;
       S.gold = { x: fromLeft ? -40 : W + 40, y0: 330 + Math.random() * 300, y: 0, vx: (fromLeft ? 1 : -1) * (95 + Math.random() * 30), t: 0, life: 9 };
-      if (!P.goldSeen) { P.goldSeen = true; toast('A Golden Wisp! Tap it before it flies away'); }
+      if (firstTime('gold')) { toast('A Golden Wisp! Tap it before it flies away'); }
     }
   }
   function tapGold(x, y) {
@@ -705,7 +720,7 @@
   function nextCard() { const c = cardQueue.shift(); if (c) showCard(c[0], c[1]); }
   const hours = s => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.max(1, Math.floor(s / 60))} min`;
   function showCard(kind, data) {
-    const card = el('card'), body = card.querySelector('.body'); S.card = kind; card.className = 'on ' + kind;
+    const card = el('card'), body = card.querySelector('.body'); S.card = kind; card.className = 'on ' + kind; body.onpointerdown = null;
     SDK.gameplay(false);   // cards are menus: the fight holds still and CrazyGames hears gameplayStop
     el('toast').classList.remove('show'); toastT = 0;
     const btn = (id, label, cls = '') => `<button id="${id}" class="cbtn ${cls}">${label}</button>`;
@@ -754,7 +769,11 @@
     if (kind === 'perks') { on('c-no', close); wirePerks(body); }
     if (kind === 'shop') wireShop(body, () => showCard('shop'));
     if (kind === 'building') {
+      // hold Level up to keep levelling: the card redraws under the finger, so the hold lives on the card body
+      body.onpointerdown = ev => { if (!ev.target.closest('#c-ok')) return; clearTimeout(S.lvHold); clearInterval(S.lvRep); holdFired = false;
+        S.lvHold = setTimeout(() => { S.lvRep = setInterval(() => { if (S.card === 'building' && levelUp(data)) { holdFired = true; showCard('building', data); } else clearInterval(S.lvRep); }, 120); }, 420); };
       on('c-ok', () => {
+        if (holdFired) { holdFired = false; return; }
         if (levelUp(data)) return showCard('building', data);
         const b = body.querySelector('#c-ok'), c = C.levelCost(P, data, B); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
         body.querySelector('.wait').textContent = `About ${Math.max(1, Math.ceil((c - P.res) / (C.fightRate(P, B) * 1.6 + RATE)))}s of fighting`;
@@ -1244,7 +1263,8 @@
 
   // ---------- boot ----------
   function bind() {
-    el('up').addEventListener('click', upgrade); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('stats').addEventListener('click', toggleStats); el('stage').classList.toggle('stats-on', !!P.settings.stats); el('stats').classList.toggle('on', !!P.settings.stats); el('stats').classList.toggle('on', P.settings.stats); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
+    el('up').addEventListener('click', () => { if (!holdFired) upgrade(); holdFired = false; });
+    holdRepeat(el('up'), () => { if (S.card || C.pendingFork(P) || P.res < C.upgradeCost(P.gateLevel, B)) return false; upgrade(); return true; }); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('stats').addEventListener('click', toggleStats); el('stage').classList.toggle('stats-on', !!P.settings.stats); el('stats').classList.toggle('on', !!P.settings.stats); el('stats').classList.toggle('on', P.settings.stats); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
     el('shop').addEventListener('click', () => { if (S.card === 'shop') { const x = el('card').querySelector('#c-no'); if (x) x.click(); } else openShopCard(); });
     el('pause').addEventListener('click', () => {
       A.unlock();

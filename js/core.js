@@ -409,7 +409,7 @@
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
     q.settings = Object.assign({}, p.settings); q.grown = p.grown;
     q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.stats = Object.assign({}, p.stats); q.feats = p.feats.slice(); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;
-    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p); q.relics = p.relics.slice(); q.stars = (p.stars || []).slice(); q.seenRoles = p.seenRoles.slice(); q.seenEvents = p.seenEvents.slice();
+    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p); q.relics = p.relics.slice(); q.stars = (p.stars || []).slice(); q.told = (p.told || []).slice(); q.seenRoles = p.seenRoles.slice(); q.seenEvents = p.seenEvents.slice();
     const st = (q.perks.start || 0) * 5; if (st) { q.wave = 1 + st; q.gateLevel = 1 + st; }   // Head Start   // looks and Starshards stay; Ascending pays
     return q;
   }
@@ -567,7 +567,7 @@
 
   // ---------- save profile ----------
   function defaults() {
-    return { v: 3, res: 0, wave: 1, bestWave: 1, runWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], stars: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, runWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], stars: [], told: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false, stats: false, steward: true } };
   }
@@ -604,6 +604,7 @@
     if (p.perks && typeof p.perks === 'object') for (const k of PERKS) { const n = Math.floor(num(p.perks[k.id], 0, k.max, 0)); if (n) out.perks[k.id] = n; }
     out.perkPts = Math.floor(num(p.perkPts, 0, 1e6, 0));
     if (p.perks === undefined && out.ascensions > 0) out.perkPts = out.ascensions * 2;   // saves from before perks: points for the Ascensions already made
+    if (Array.isArray(p.told)) out.told = [...new Set(p.told.filter(k => typeof k === 'string' && k.length < 24))].slice(0, 50);   // one-time tips already shown
     if (Array.isArray(p.stars)) out.stars = [...new Set(p.stars.filter(id => STARS.some(x => x.id === id)))];
     if (Array.isArray(p.relics)) out.relics = [...new Set(p.relics.filter(id => RELICS.some(r => r.id === id)))].slice(0, 2);
     if (Array.isArray(p.seenEvents)) out.seenEvents = [...new Set(p.seenEvents.filter(id => evById(id) || twinOf(id)))];
