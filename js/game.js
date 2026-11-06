@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06v';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06w';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -1118,10 +1118,12 @@
   // ---------- DOM UI ----------
   const el = id => document.getElementById(id);
   let toastT = 0;
-  function toast(text) { const t = el('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.8; }
+  // a toast raised while a card is open waits for the card to close (review: its edges showed around the card)
+  function toast(text) { if (S.card) { S.toastQ = text; return; } const t = el('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.8; }
   // set markup only when it changes: ui() runs every frame
   const html = (node, h) => { if (node._h !== h) { node._h = h; node.innerHTML = h; } };
   function ui() {
+    if (S.toastQ && !S.card) { const q = S.toastQ; S.toastQ = null; toast(q); }
     el('wave').textContent = `Wave ${C.fmt(P.wave)}`;
     document.documentElement.classList.toggle('calm', P.settings.reduced);   // the in-game Reduced motion switch stills CSS motion too
     el('res').textContent = C.fmt(P.res);
