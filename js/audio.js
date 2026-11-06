@@ -4,7 +4,8 @@
 (function (root) {
   'use strict';
   const SFX = ['fire_launch_0', 'ice_launch_0', 'lightning_launch_0', 'fire_contact_0', 'ice_contact_0', 'lightning_contact_0',
-    'shatter_combo', 'freeze_combo', 'conduction_combo', 'tier_up', 'golem_death', 'ascension'];
+    'shatter_combo', 'freeze_combo', 'conduction_combo', 'tier_up', 'golem_death', 'ascension',
+    'buy', 'feat', 'surge', 'claim', 'boss_horn', 'level_up'];   // the last six are made in code (tools/make_sfx.py)
   const st = { music: true, sfx: true, muted: false, unlocked: false };
   let ctx = null, gain = null, buffers = {}, last = {}, track = null;
   function unlock() {

@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06a';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06b';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -57,7 +57,7 @@
     // the first wave of each session (after the first) names today's Omen
     const om = !S.omenTold && P.omen && C.OMENS.find(o => o.id === P.omen); if (om) S.omenTold = true;
     S.wavePop = { n, cheer: om ? `Today: ${om.name}! ${om.line}` : cheer, big: boss, t: 0, roles: mix.map(([r]) => r) };
-    if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('golem_death', 0.35); }   // a boss wave is an event: red edges, a rumble
+    if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('boss_horn', 0.6); }   // a boss wave is an event: red edges, a rumble
     S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax();
     // a shuffled queue, so runners and armoured arrive among the slimes rather than in blocks; the boss comes last
     const q = []; for (const [role, c] of mix) for (let i = 0; i < c; i++) q.push(role);
@@ -270,7 +270,7 @@
     const sp = CITY.spots[id], x = sx(sp[0]), y = sy(sp[1]);
     burst({ x, y: y + 20, size: 40 }, RES, 14, 150);
     if (C.MILESTONES.includes(L)) { pop(x, y - 40, `Level ${L}: x2!`, RES, 1.4, 44); A.play('tier_up', 0.55); S.reveal = { b: id, t: 0 }; }
-    else { pop(x, y - 30, `Level ${L}`, RES, 0.9, 34); A.play('tier_up', 0.22); }
+    else { pop(x, y - 30, `Level ${L}`, RES, 0.9, 34); A.play('level_up', 0.5); }
     save(); return true;
   }
 
@@ -291,14 +291,14 @@
     if (quiet) return;   // at load: never save before the return cards, a save stamps lastSeen and would erase offline earnings
     save(); if (P.firstSession) return;
     toast(got.length === 1 ? `Feat: ${got[0].name} · +${pay} Starshards` : `${got.length} Feats earned · +${pay} Starshards`);
-    S.medal = { tier: Math.max(...got.map(f => f.tier)), name: got.length === 1 ? got[0].name : `${got.length} Feats`, t: 0 }; A.play('tier_up', 0.45);
+    S.medal = { tier: Math.max(...got.map(f => f.tier)), name: got.length === 1 ? got[0].name : `${got.length} Feats`, t: 0 }; A.play('feat', 0.6);
   }
   const surgeX = () => C.surgeOn(P, Date.now()) ? 2 : 1;
   function adDay() { const d = today(); if (P.surge.adDay !== d) { P.surge.adDay = d; P.surge.ads = 0; P.surge.shardAds = 0; } }
   // Basic Launch: free every 15 minutes. Full Launch: a rewarded ad, any time one is not running, 8 a day.
   function surgeTap() {
     A.unlock(); const now = Date.now(); if (C.surgeOn(P, now) || S.card) return;
-    const go = () => { C.startSurge(P, Date.now()); quest('surge'); A.play('tier_up', 0.6); toast('Surge! Double Resonance for 3 minutes'); SDK.happytime(); save(); };
+    const go = () => { C.startSurge(P, Date.now()); quest('surge'); A.play('surge', 0.6); toast('Surge! Double Resonance for 3 minutes'); SDK.happytime(); save(); };
     if (SDK.rewardsOn) { adDay(); if (P.surge.ads >= C.SURGE_ADS_PER_DAY) return toast('No more Surges today'); S.paused = true;
       SDK.rewarded(adHooks).then(ok => { S.paused = false; if (ok) { P.surge.ads++; go(); } }); return; }
     if (C.surgeReadyFree(P, now)) go(); else toast(`The next Surge charges in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`);
@@ -329,9 +329,9 @@
   function wireQuests(body) {
     body.querySelectorAll('.qtab').forEach(b => (b.onclick = () => { S.qTab = b.dataset.q; A.play('tier_up', 0.08); showCard('quests'); }));
     body.querySelectorAll('.qclaim').forEach(b => (b.onclick = () => { const n = C.questClaim(P, +b.dataset.i);
-      if (n) { A.play('tier_up', 0.4); pop(W / 2, 500, `+${n} Starshards`, SHARD, 1.2, 40); save(); showCard('quests'); } else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } }));
+      if (n) { A.play('claim', 0.6); pop(W / 2, 500, `+${n} Starshards`, SHARD, 1.2, 40); save(); showCard('quests'); } else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } }));
     const bb = body.querySelector('.qbonus');
-    if (bb) bb.onclick = () => { const n = C.questBonus(P); if (n) { A.play('tier_up', 0.6); save(); showCard('quests'); } else { bb.classList.remove('shake'); void bb.offsetWidth; bb.classList.add('shake'); } };
+    if (bb) bb.onclick = () => { const n = C.questBonus(P); if (n) { A.play('feat', 0.6); save(); showCard('quests'); } else { bb.classList.remove('shake'); void bb.offsetWidth; bb.classList.add('shake'); } };
   }
 
 
@@ -346,7 +346,7 @@
   }
   function wirePerks(body) {
     body.querySelectorAll('.perk').forEach(b => (b.onclick = () => {
-      if (C.buyPerk(P, b.dataset.id)) { A.play('tier_up', 0.55); refresh(); save(); showCard('perks'); }
+      if (C.buyPerk(P, b.dataset.id)) { A.play('feat', 0.5); refresh(); save(); showCard('perks'); }
       else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
     }));
   }
@@ -387,7 +387,7 @@
     body.querySelectorAll('.buy').forEach(b => (b.onclick = () => {
       A.unlock(); const it = C.shopItem(b.dataset.id); S.shopSel = it.id;
       if (P.shop.owned.includes(it.id)) { C.equip(P, it.id); A.play('tier_up', 0.15); }
-      else if (C.buy(P, it.id)) { A.play('tier_up', 0.55); toast(`${it.name} unlocked!`); }
+      else if (C.buy(P, it.id)) { A.play('buy', 0.6); toast(`${it.name} unlocked!`); }
       else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); b.textContent = `${it.price - P.shop.shards} more`; return; }
       applyLooks(); save(); rerender();
     }));
@@ -397,7 +397,7 @@
     const tr = body.querySelector('#c-trade');
     if (tr) tr.onclick = () => {
       A.unlock();
-      if (C.trade(P, B)) { A.play('tier_up', 0.3); save(); rerender(); }
+      if (C.trade(P, B)) { A.play('buy', 0.4); save(); rerender(); }
       else { tr.classList.remove('shake'); void tr.offsetWidth; tr.classList.add('shake'); }
     };
     previews = [...body.querySelectorAll('.item canvas')].map(c => ({ c, id: c.parentNode.dataset.id }));
@@ -517,7 +517,23 @@
 
   // The painting's top edge fades into the meadow so field and city are one ground. Each restored building is cut once
   // from the restored painting with a soft edge and laid over the ruined one when it comes back.
+  // ---------- the cached ground layer ----------
+  let ground = null, groundKey = '', groundVer = 0;
+  const GROUND_H = () => CITY_Y + CITY_H;
+  function groundLayer() {
+    const reveal = S.reveal && S.reveal.t < 0.9 ? S.reveal.b : '';
+    const parts = (P.restored.length >= 5 ? P.restored.concat('plaza') : P.restored).filter(id => id !== reveal);
+    const key = [groundVer, k, H, parts.join(',')].join('|'); if (ground && key === groundKey) return ground;
+    const c = ground && ground.width === Math.round(W * k) && ground.height === Math.round(GROUND_H() * k) ? ground : document.createElement('canvas');
+    c.width = Math.round(W * k); c.height = Math.round(GROUND_H() * k); const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, 0, 0);
+    if (img.meadow) g.drawImage(img.meadow, 0, 0, W, CITY_Y + 30); else { g.fillStyle = '#6f9a3c'; g.fillRect(0, 0, W, CITY_Y + 30); }
+    if (img.forest) { const f = img.forest, fw = f.width * 1.5, fh = f.height * 1.5; g.drawImage(f, (W - fw) / 2, -14, fw, fh); g.drawImage(f, (W - fw) / 2 + 60, 40, fw, fh * 0.9); }
+    if (cityRuined) g.drawImage(cityRuined, 0, CITY_Y);
+    for (const id of parts) if (cityRestored[id]) g.drawImage(cityRestored[id], 0, CITY_Y);
+    ground = c; groundKey = key; return c;
+  }
   function prepareCity() {
+    groundVer++;
     if (!img.ruined) return;
     const c = document.createElement('canvas'); c.width = W; c.height = CITY_H; const g = c.getContext('2d');
     g.drawImage(img.ruined, 0, 0, W, CITY_H);
@@ -732,17 +748,10 @@
   function render() {
     const sh = S.shake > 0 && !reduced() ? (Math.random() - 0.5) * 10 * (S.shake / 0.14) : 0;
     cx.setTransform(k, 0, 0, k, sh * k, sh * 0.6 * k);
-    // ground: the Outer Seal meadow, with the treeline at the very top behind everything that walks
-    if (img.meadow) cx.drawImage(img.meadow, 0, 0, W, CITY_Y + 30); else { cx.fillStyle = '#6f9a3c'; cx.fillRect(0, 0, W, CITY_Y + 30); }
-    // the wilderness: a deep treeline across the top that the waves walk out of
-    if (img.forest) { const f = img.forest, fw = f.width * 1.5, fh = f.height * 1.5; cx.drawImage(f, (W - fw) / 2, -14, fw, fh); cx.drawImage(f, (W - fw) / 2 + 60, 40, fw, fh * 0.9); }
-    // the city: the ruined painting, restored buildings over it as they come back
-    if (cityRuined) cx.drawImage(cityRuined, 0, CITY_Y);
-    // the plaza and its fountain come back to life once half the city stands again
-    for (const id of P.restored.length >= 5 ? P.restored.concat('plaza') : P.restored) {
-      const part = cityRestored[id]; if (!part) continue;
-      cx.save(); cx.globalAlpha = S.reveal && S.reveal.b === id ? Math.min(1, S.reveal.t / 0.9) : 1; cx.drawImage(part, 0, CITY_Y); cx.restore();
-    }
+    // the ground (meadow, treeline, the city and every restored building) comes from one cached canvas; only a building
+    // that is fading in right now is drawn on its own. Eleven full-band draws a frame became one (Nov 6 2026, perf pass).
+    cx.drawImage(groundLayer(), 0, 0, W, GROUND_H());
+    if (S.reveal) { const part = cityRestored[S.reveal.b]; if (part) { cx.save(); cx.globalAlpha = Math.min(1, S.reveal.t / 0.9); cx.drawImage(part, 0, CITY_Y); cx.restore(); } }
     if (S.reveal && !reduced()) { const s = CITY.spots[S.reveal.b]; if (s && S.reveal.t < 1.2) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(sx(s[0]), sy(s[1]), 95, 'rgba(255,220,140,', 0.5 * (1 - S.reveal.t / 1.2)); cx.restore(); } }
     // the city's Resonance: the fountain flares as wisps land, motes rise from every restored building
     cx.save();
