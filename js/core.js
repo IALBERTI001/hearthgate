@@ -43,7 +43,7 @@
   ];
   const STARS = CONSTELLATIONS.flatMap((c, i) => STAR_KINDS[i % 2].map(([part, key, v, what], k) =>
     ({ id: `${c.toLowerCase()}${k}`, asc: i + 1, k, name: `${c}'s ${part}`, line: `+${Math.round(v * 100)}% ${what}`, bonus: { [key]: v } })));
-  const starWave = (p, k) => Math.round((30 + 10 * p.ascensions) * (k + 1) / 6);   // five stars spread before the Ascend wave
+  const starWave = (p, k) => Math.round(ascendWave(p) * (k + 1) / 6);   // five stars spread before the Ascend wave
   const starsDue = p => STARS.filter(st => st.asc === p.ascensions && !p.stars.includes(st.id) && Math.max(p.runWave || 1, p.wave) >= starWave(p, st.k));
   const unlocked = (p, id) => { const u = ASCEND_UNLOCKS.find(x => x.id === id); return !!u && p.ascensions >= u.at; };
   const isTrial = (p, w) => unlocked(p, 'trials') && w % 5 === 0 && !isBoss(w);
@@ -317,7 +317,8 @@
     { id: 'assault', name: 'Grand Assault', line: 'Every kind of enemy at once', asc: 4, from: 63 },
     { id: 'laststand', name: 'Last Stand', line: 'The gate starts at half: every kill pays triple', asc: 3, from: 52 }
   ];
-  const eventOpen = (p, e, w) => (!e.asc || p.ascensions >= e.asc) && w >= e.from;   // Ascension events spread across the new run
+  const squeeze = (p, a, from) => p.ascensions === a ? Math.max(6, Math.round(from * ascendWave(p) / (30 + 10 * a))) : from;   // schedules written for 30 + 10 per Ascension, fitted to the real run
+  const eventOpen = (p, e, w) => (!e.asc || p.ascensions >= e.asc) && w >= (e.asc ? squeeze(p, e.asc, e.from) : e.from);   // Ascension events spread across the new run
   // Twin events (5th Ascension on): two known twists at once, five new pairs every run, placed between the stars
   const TWIN_POOL = ['thunder', 'blizzard', 'inferno', 'eclipse', 'harvest', 'frenzy', 'hail', 'jackpot', 'winter', 'meteor', 'embers', 'stormfront', 'echo', 'giants', 'rush', 'aurora', 'goldrush', 'tremor', 'golden', 'horde', 'feast', 'gale'];
   const evById = id => EVENTS.find(e => e.id === id);
@@ -394,7 +395,7 @@
   // Each Ascension asks for a deeper run (Nov 6 2026): the city whole AND wave 30, 40, 50 ... reached in this run. Without it
   // the x1.5 per Ascension made every loop shorter (the 6th Ascension took 5 minutes at wave 15) and the new enemies and
   // events placed later in a run were never met.
-  const ascendWave = p => Math.min(120, 30 + 10 * p.ascensions);
+  const ascendWave = p => Math.min(90, 30 + 5 * p.ascensions);
   const cityWhole = p => p.restored.length >= BUILDINGS.length;
   const canAscend = p => cityWhole(p) && Math.max(p.runWave || 1, p.wave) >= ascendWave(p);
   function ascend(p) {

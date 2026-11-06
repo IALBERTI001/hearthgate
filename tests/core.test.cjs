@@ -26,7 +26,7 @@ p.restored = ['forge', 'frostSpire', 'stormBell'];
 const offer = C.restoreOffer(p); assert.strictEqual(offer.length, 2); assert.deepStrictEqual(C.restoreOffer(p), offer);
 assert.ok(offer.every(id => !p.restored.includes(id)));
 p.restored = C.BUILDING_IDS.slice(); assert.deepStrictEqual(C.restoreOffer(p), []); assert.ok(C.cityWhole(p) && !C.canAscend(p), 'a whole city at wave 1 cannot Ascend yet');
-p.runWave = 30; assert.ok(C.canAscend(p)); p.ascensions = 1; assert.ok(!C.canAscend(p), 'the 2nd Ascension asks for wave 40'); p.runWave = 40; assert.ok(C.canAscend(p)); p.ascensions = 0;
+p.runWave = 30; assert.ok(C.canAscend(p)); p.ascensions = 1; assert.ok(!C.canAscend(p), 'the 2nd Ascension asks for wave 35'); p.runWave = 35; assert.ok(C.canAscend(p)); p.ascensions = 0;
 assert.strictEqual(C.sanitize({ wave: 37, restored: [] }).runWave, 37, 'old saves count their current wave');
 assert.ok(C.restoreCost(0) + C.restoreCost(1) <= 45 * C.killRes(1, false, C.bonuses(C.defaults())), 'first two restores within about 45 early kills, so SHATTER lands inside 60 s');
 for (let i = 1; i < 10; i++) assert.ok(C.restoreCost(i) > C.restoreCost(i - 1));
