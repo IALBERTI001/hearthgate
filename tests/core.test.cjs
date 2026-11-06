@@ -140,4 +140,15 @@ const sg = C.defaults(), t0 = 1e12;
 assert.ok(C.surgeReadyFree(sg, t0), 'the first Surge is free'); C.startSurge(sg, t0);
 assert.ok(C.surgeOn(sg, t0 + C.SURGE_MS - 1)); assert.ok(!C.surgeOn(sg, t0 + C.SURGE_MS));
 assert.ok(!C.surgeReadyFree(sg, t0 + C.SURGE_MS + 1), 'it charges after it ends'); assert.ok(C.surgeReadyFree(sg, t0 + C.SURGE_MS + C.SURGE_COOLDOWN_MS));
+// Feats (Nov 5 2026): earned once, paid once, kept through Ascension.
+assert.strictEqual(new Set(C.FEATS.map(f => f.id)).size, C.FEATS.length, 'feat ids are unique');
+const fp = C.defaults(); assert.deepStrictEqual(C.featsEarned(fp), [], 'a fresh save has none');
+fp.bestWave = 26; fp.stats.kills = 100; const got = C.featsEarned(fp).map(f => f.id);
+assert.deepStrictEqual(got.sort(), ['kills100', 'wave10', 'wave25']); assert.strictEqual(fp.shop.shards, 3 * C.FEAT_PAY[1]);
+assert.deepStrictEqual(C.featsEarned(fp), [], 'never paid twice');
+const fa = C.ascend(Object.assign(fp, { restored: C.BUILDING_IDS.slice() }));
+assert.ok(fa.feats.includes('wave25') && fa.stats.kills === 100, 'Feats and lifetime stats survive Ascension');
+assert.deepStrictEqual(C.sanitize({ feats: ['wave10', 'nope', 'wave10'], stats: { kills: -3, bosses: 2.7 } }).feats, ['wave10']);
+assert.strictEqual(C.sanitize({ stats: { kills: -3 } }).stats.kills, 0);
+const qq = C.defaults(); qq.shop.open = true; C.questsFor(qq, 'd'); C.questTick(qq, qq.quests.list[0].id, 1e6); C.questClaim(qq, 0); assert.strictEqual(qq.stats.quests, 1, 'claimed quests count toward Feats');
 console.log('core tests passed');

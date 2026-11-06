@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-05d';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-05e';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -53,6 +53,7 @@
     S.cheerNext = null;
     const mix = C.waveMix(n);
     S.wavePop = { n, cheer, big: boss, t: 0, roles: mix.map(([r]) => r) };
+    if (boss) { S.bossWarn = 0; S.shake = 0.35; A.play('golem_death', 0.35); }   // a boss wave is an event: red edges, a rumble
     S.gateHp = S.gateHp > 0 ? Math.min(S.gateHp, gateMax()) : gateMax();
     // a shuffled queue, so runners and armoured arrive among the slimes rather than in blocks; the boss comes last
     const q = []; for (const [role, c] of mix) for (let i = 0; i < c; i++) q.push(role);
@@ -73,6 +74,9 @@
   // ---------- simulation ----------
   const TOWERS = PLATFORMS.map((p, i) => ({ x: p.x, y: p.y, cd: 0.2 + i * 0.13, recoil: 0, flash: 0, n: i }));
   function step() {
+    if ((S.featT = (S.featT || 0) + DT) > 0.5) { S.featT = 0; checkFeats(); }
+    if (S.bossWarn !== undefined && (S.bossWarn += DT) > 2.6) S.bossWarn = undefined;
+    if (S.medal && (S.medal.t += DT) > 2.4) S.medal = null;
     S.t += DT; S.sessionT += DT; if (S.growTip) S.growTipT += DT; if (S.flash && (S.flash.t += DT) > 0.18) S.flash = null; if (S.wavePop) S.wavePop.t += DT;
     S.gateHit = Math.max(0, S.gateHit - DT * 4); S.shake = Math.max(0, S.shake - DT);
     for (const r of S.rings) r.t += DT; S.rings = S.rings.filter(r => r.t < 0.5);
@@ -273,7 +277,18 @@
   // ---------- daily quests and the Resonance Surge ----------
   const today = () => C.dayKey(new Date());
   // quests start with the Shop (their reward is Starshards); a new day brings three new ones
-  function quest(id, n = 1) { if (P.shop.open) { C.questsFor(P, today()); C.questTick(P, id, n); } }
+  const STAT_OF = { kills: 'kills', boss: 'bosses', combo: 'combos', shatter: 'shatter', upgrade: 'upgrades', level: 'levels', surge: 'surges' };
+  // every counted event feeds the lifetime stats (Feats) and, once the Shop is open, today's quests
+  function quest(id, n = 1) { if (STAT_OF[id]) P.stats[STAT_OF[id]] += n; if (P.shop.open) { C.questsFor(P, today()); C.questTick(P, id, n); } }
+  // Feats are checked twice a second; during the first session they are earned quietly, so the opening keeps one voice
+  function checkFeats(quiet) {
+    const got = C.featsEarned(P); if (!got.length) return;
+    const pay = got.reduce((a, f) => a + C.FEAT_PAY[f.tier], 0);
+    if (quiet) return;   // at load: never save before the return cards, a save stamps lastSeen and would erase offline earnings
+    save(); if (P.firstSession) return;
+    toast(got.length === 1 ? `Feat: ${got[0].name} · +${pay} Starshards` : `${got.length} Feats earned · +${pay} Starshards`);
+    S.medal = { tier: Math.max(...got.map(f => f.tier)), name: got.length === 1 ? got[0].name : `${got.length} Feats`, t: 0 }; A.play('tier_up', 0.45);
+  }
   const surgeX = () => C.surgeOn(P, Date.now()) ? 2 : 1;
   function adDay() { const d = today(); if (P.surge.adDay !== d) { P.surge.adDay = d; P.surge.ads = 0; P.surge.shardAds = 0; } }
   // Basic Launch: free every 15 minutes. Full Launch: a rewarded ad, any time one is not running, 8 a day.
@@ -285,9 +300,19 @@
     if (C.surgeReadyFree(P, now)) go(); else toast(`The next Surge charges in ${mmss(P.surge.until + C.SURGE_COOLDOWN_MS - now)}`);
   }
   const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+  const qTabs = on => `<div class="tabs">${[['daily', 'Daily quests'], ['feats', `Feats ${P.feats.length}/${C.FEATS.length}`]].map(([k, n]) => `<button class="tab qtab${k === on ? ' on' : ''}" data-q="${k}">${n}</button>`).join('')}</div>`;
+  function featsHtml() {
+    const rows = C.FEATS.map(f => ({ f, done: P.feats.includes(f.id), n: C.featProgress(P, f) }))
+      .sort((a, b) => (a.done - b.done) || (b.n / b.f.need - a.n / a.f.need));   // closest unfinished first, finished last
+    return `<h2>Feats</h2>${qTabs('feats')}<div class="feats">` + rows.map(({ f, done, n }) => `<div class="feat${done ? ' done' : ''}"><i class="medal t${f.tier}"></i>`
+      + `<div class="ft"><b>${f.name}</b><span>${f.text}</span>${done ? '' : `<div class="qbar"><i style="width:${Math.round(n / f.need * 100)}%"></i></div>`}</div>`
+      + `<span class="fr">${done ? 'Done' : `${C.fmt(n)}/${C.fmt(f.need)}`}<br><i class="star"></i>${C.FEAT_PAY[f.tier]}</span></div>`).join('')
+      + `</div><button id="c-no" class="cbtn quiet">Close</button>`;
+  }
   function questsHtml() {
+    if (S.qTab === 'feats') return featsHtml();
     const qs = C.questsFor(P, today()), all = qs.list.every(q => q.claimed);
-    return `<span class="eyebrow">Daily quests · new ones tomorrow</span><h2>Quests</h2><div class="quests">`
+    return `<h2>Quests</h2>${qTabs('daily')}<p class="small">Three new quests every day</p><div class="quests">`
       + qs.list.map((q, i) => `<div class="quest${q.claimed ? ' done' : ''}"><div class="qt"><b>${C.questText(q)}</b><span>${Math.min(q.n, q.need)}/${q.need}</span></div>`
         + `<div class="qbar"><i style="width:${Math.round(q.n / q.need * 100)}%"></i></div>`
         + (q.claimed ? `<span class="qok">Claimed</span>` : `<button class="buy ${q.n >= q.need ? 'can' : 'off'} qclaim" data-i="${i}"><i class="star"></i>${C.QUEST_REWARD}</button>`) + `</div>`).join('')
@@ -296,6 +321,7 @@
       + `<p class="small">Spend Starshards in the Shop.</p><button id="c-no" class="cbtn quiet">Close</button>`;
   }
   function wireQuests(body) {
+    body.querySelectorAll('.qtab').forEach(b => (b.onclick = () => { S.qTab = b.dataset.q; A.play('tier_up', 0.08); showCard('quests'); }));
     body.querySelectorAll('.qclaim').forEach(b => (b.onclick = () => { const n = C.questClaim(P, +b.dataset.i);
       if (n) { A.play('tier_up', 0.4); pop(W / 2, 500, `+${n} Starshards`, SHARD, 1.2, 40); save(); showCard('quests'); } else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } }));
     const bb = body.querySelector('.qbonus');
@@ -597,6 +623,33 @@
     }
   }
 
+  // The boss's own health bar across the top of the field, and red pulsing edges while it arrives.
+  function drawBossBar() {
+    if (S.bossWarn !== undefined && !reduced()) {
+      const a = 0.35 * Math.abs(Math.sin(S.bossWarn * 5)) * (1 - S.bossWarn / 2.6);
+      const g = cx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75); g.addColorStop(0, 'rgba(200,20,30,0)'); g.addColorStop(1, `rgba(200,20,30,${a})`);
+      cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+    }
+    const b = S.enemies.find(e => e.boss && !e.dying); if (!b || S.card) return;
+    const x = 80, y = 196, w = W - 160, f = Math.max(0, b.hp / b.max);
+    cx.save(); cx.fillStyle = 'rgba(42,26,34,.88)'; cx.strokeStyle = '#c9a24a'; cx.lineWidth = 3;
+    cx.beginPath(); cx.roundRect(x - 6, y - 6, w + 12, 34, 17); cx.fill(); cx.stroke();
+    const g2 = cx.createLinearGradient(x, 0, x + w, 0); g2.addColorStop(0, '#ff3a3a'); g2.addColorStop(1, '#ff9a3a');
+    cx.fillStyle = g2; cx.beginPath(); cx.roundRect(x, y, Math.max(12, w * f), 22, 11); cx.fill();
+    cx.font = '30px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.lineWidth = 6; cx.strokeStyle = '#2a1a22';
+    const label = `BOSS · ${Math.ceil(f * 100)}%`; cx.strokeText(label, W / 2, y + 22); cx.fillStyle = '#fff4dc'; cx.fillText(label, W / 2, y + 22);
+    cx.restore();
+  }
+  // A medal drops in under the counters when a Feat is earned: bronze, silver or gold.
+  function drawMedal() {
+    const m = S.medal; if (!m || S.card) return;
+    const u = Math.min(1, m.t / 0.35), out = m.t > 2 ? (m.t - 2) / 0.4 : 0, y = 260 - (1 - u) * 60, col = ['', '#d08a4a', '#dfe6ee', '#ffd56b'][m.tier];
+    cx.save(); cx.globalAlpha = 1 - out; cx.translate(W / 2, y); cx.scale(0.6 + 0.4 * u, 0.6 + 0.4 * u);
+    glow(0, 0, 70, m.tier === 3 ? 'rgba(255,213,107,' : 'rgba(255,255,255,', 0.45);
+    cx.fillStyle = col; cx.strokeStyle = '#2a1a22'; cx.lineWidth = 5; cx.beginPath(); cx.arc(0, 0, 34, 0, 7); cx.fill(); cx.stroke();
+    cx.fillStyle = '#2a1a22'; L.star(cx, 0, 0, 20, 8, 5); cx.restore();
+  }
+
   function drawGateBar() {
     const hp = Math.max(0, S.gateHp / gateMax()), bw = 120, by = sy(CITY.gateBar);
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(GATE_X - bw / 2 - 3, by - 3, bw + 6, 15);
@@ -657,6 +710,7 @@
     for (const e of S.enemies.slice().sort((a, b) => a.y - b.y)) drawEnemy(e);
     if (img.wall) cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H);   // the wall is nearer the camera than anyone outside it
     drawGateBar();
+    drawBossBar(); drawMedal();
     drawTowers();
     for (const s of S.shots) drawShot(s);
     for (const h of S.hits) L.drawHit(cx, h);
@@ -697,7 +751,7 @@
     el('res').textContent = C.fmt(P.res);
     el('unit').hidden = !P.firstSession;   // after the opening the crystal says it, and the top bar has room for the Shop
     el('city').textContent = `City ${P.restored.length}/10`;
-    el('combos').textContent = `Combos ${P.combos.length}/3`;
+    el('combos').textContent = P.combos.length < 3 ? `Combos ${P.combos.length}/3` : `Feats ${P.feats.length}/${C.FEATS.length}`;   // a collection to finish, always in view
     el('shop').hidden = !P.shop.open; el('shop').classList.toggle('news', C.shopNews(P));
     if (P.shop.open) C.questsFor(P, today());
     el('quests').hidden = !P.shop.open; el('quests').classList.toggle('news', P.shop.open && C.questClaimable(P));
@@ -804,5 +858,5 @@
     loadImg('meadow', 'assets/ground/meadow.webp'), loadImg('wall', 'assets/city/city-wall.webp'), loadImg('forest', 'assets/kit/forest-edge-top.webp'),
     loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
     ...['fire', 'frost', 'storm'].flatMap(e => [1, 2, 3].map(t => loadImg(e + t, T(`${e}-${t}`))))])
-    .then(() => { outline(); for (const n of GROUND.concat(['fire', 'frost', 'storm'].flatMap(e => [e + 1, e + 2, e + 3]))) orig[n] = img[n]; applyLooks(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); returnCards(); openShop(); /* after the return cards: opening saves, which stamps lastSeen */ requestAnimationFrame(frame); });
+    .then(() => { outline(); for (const n of GROUND.concat(['fire', 'frost', 'storm'].flatMap(e => [e + 1, e + 2, e + 3]))) orig[n] = img[n]; applyLooks(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); checkFeats(true); returnCards(); openShop(); /* after the return cards: opening saves, which stamps lastSeen */ requestAnimationFrame(frame); });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

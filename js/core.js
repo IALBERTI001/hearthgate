@@ -166,7 +166,7 @@
     q.ascensions = p.ascensions + 1; q.bestWave = p.bestWave; q.combos = p.combos.slice();
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
     q.settings = Object.assign({}, p.settings); q.grown = p.grown;
-    q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;   // looks and Starshards stay; Ascending pays
+    q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.stats = Object.assign({}, p.stats); q.feats = p.feats.slice(); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;   // looks and Starshards stay; Ascending pays
     return q;
   }
 
@@ -236,6 +236,47 @@
   }
 
 
+
+  // ---------- Feats (Nov 5 2026): a long collection, shown as N of total, each paying Starshards once ----------
+  // Counted from lifetime stats that survive Ascension. Tier 1 bronze, 2 silver, 3 gold; gold pays more.
+  const STATS = ['kills', 'bosses', 'combos', 'shatter', 'upgrades', 'levels', 'surges', 'quests'];
+  const FEATS = [];
+  const feat = (id, name, tier, text, get, need) => FEATS.push({ id, name, tier, text, get, need });
+  [[10, 'Holdfast', 1], [25, 'Stalwart', 1], [50, 'Bulwark', 2], [100, 'Unbroken', 2], [200, 'Everwall', 3]]
+    .forEach(([n, nm, t]) => feat('wave' + n, nm, t, `Reach wave ${n}`, p => p.bestWave, n));
+  [[100, 'First Blood', 1], [1000, 'Monster Bane', 1], [10000, 'Horde Breaker', 2], [100000, 'Legend of the Gate', 3]]
+    .forEach(([n, nm, t]) => feat('kills' + n, nm, t, `Defeat ${fmt(n)} enemies`, p => p.stats.kills, n));
+  [[1, 'Giant Slayer', 1], [5, 'Boss Hunter', 2], [25, 'Kingbreaker', 3]]
+    .forEach(([n, nm, t]) => feat('boss' + n, nm, t, n === 1 ? 'Defeat a boss' : `Defeat ${n} bosses`, p => p.stats.bosses, n));
+  [[10, 'Cracked Ice', 1], [100, 'Shatterer', 2], [1000, 'Glass Storm', 3]]
+    .forEach(([n, nm, t]) => feat('shatter' + n, nm, t, `Trigger SHATTER ${fmt(n)} times`, p => p.stats.shatter, n));
+  feat('allcombos', 'Elementalist', 2, 'Discover all three combos', p => p.combos.length, 3);
+  [[500, 'Chain Reaction', 1], [5000, 'Combo Master', 2]]
+    .forEach(([n, nm, t]) => feat('combos' + n, nm, t, `Land ${fmt(n)} combos`, p => p.stats.combos, n));
+  [[5, 'Rebuilder', 1], [10, 'Hearth Restored', 2]]
+    .forEach(([n, nm, t]) => feat('city' + n, nm, t, `Restore ${n} buildings in one city`, p => p.restored.length, n));
+  [[1, 'Reborn', 2], [3, 'Thrice Risen', 2], [10, 'Eternal City', 3]]
+    .forEach(([n, nm, t]) => feat('ascend' + n, nm, t, n === 1 ? 'Ascend once' : `Ascend ${n} times`, p => p.ascensions, n));
+  [[25, 'Iron Gate', 1], [50, 'Steel Gate', 2], [100, 'Starforged Gate', 3]]
+    .forEach(([n, nm, t]) => feat('gate' + n, nm, t, `Upgrade the gate to level ${n}`, p => p.gateLevel, n));
+  [[10, 'Humming Halls', 1], [25, 'Resonant', 2], [50, 'Heart of the City', 3]]
+    .forEach(([n, nm, t]) => feat('blvl' + n, nm, t, `Get one building to level ${n}`, p => Math.max(0, ...p.restored.map(id => p.levels[id] || 1)), n));
+  [[3, 'New Look', 1], [10, 'Collector', 2], [SHOP.length, 'Grand Wardrobe', 3]]
+    .forEach(([n, nm, t]) => feat('looks' + n, nm, t, n === SHOP.length ? 'Own every look' : `Own ${n} looks`, p => p.shop.owned.filter(id => shopItem(id).price).length, n));
+  [[10, 'Errand Runner', 1], [50, 'Questkeeper', 2]]
+    .forEach(([n, nm, t]) => feat('quests' + n, nm, t, `Finish ${n} daily quests`, p => p.stats.quests, n));
+  [[5, 'Surge Rider', 1], [25, 'Storm of Light', 2]]
+    .forEach(([n, nm, t]) => feat('surges' + n, nm, t, `Start ${n} Surges`, p => p.stats.surges, n));
+  feat('streak7', 'Faithful', 2, 'Claim the daily reward 7 days in a row', p => p.daily.streak, 7);
+  const FEAT_PAY = [0, 2, 4, 8];
+  const featProgress = (p, f) => Math.min(f.need, Math.max(0, f.get(p) || 0));
+  // newly earned Feats: marked, paid, and returned so the game can celebrate each one
+  function featsEarned(p) {
+    const out = [];
+    for (const f of FEATS) if (!p.feats.includes(f.id) && featProgress(p, f) >= f.need) { p.feats.push(f.id); p.shop.shards += FEAT_PAY[f.tier]; out.push(f); }
+    return out;
+  }
+
   // ---------- daily quests (Nov 5 2026): three goals a day, each pays Starshards, all three pay a bonus ----------
   // Picked from the pool by the day, so a reload never rerolls them; a goal only appears once it can be done.
   const QUESTS = [
@@ -261,7 +302,7 @@
   const questClaimable = p => p.quests.list.some(q => q.n >= q.need && !q.claimed) || (!p.quests.bonus && p.quests.list.length && p.quests.list.every(q => q.claimed));
   function questClaim(p, i) {
     const q = p.quests.list[i]; if (!q || q.claimed || q.n < q.need) return 0;
-    q.claimed = true; p.shop.shards += QUEST_REWARD; return QUEST_REWARD;
+    q.claimed = true; p.stats.quests++; p.shop.shards += QUEST_REWARD; return QUEST_REWARD;
   }
   function questBonus(p) { if (p.quests.bonus || !p.quests.list.length || !p.quests.list.every(q => q.claimed)) return 0; p.quests.bonus = true; p.shop.shards += QUEST_BONUS; return QUEST_BONUS; }
 
@@ -275,7 +316,7 @@
 
   // ---------- save profile ----------
   function defaults() {
-    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false } };
   }
@@ -307,6 +348,8 @@
         .map(q => { const need = QUESTS.find(x => x.id === q.id).need; return { id: q.id, need, n: Math.floor(num(q.n, 0, need, 0)), claimed: q.claimed === true }; });
       out.quests = { day: p.quests.day, list, bonus: p.quests.bonus === true };
     }
+    if (p.stats && typeof p.stats === 'object') for (const k of STATS) out.stats[k] = Math.floor(num(p.stats[k], 0, 1e15, 0));
+    if (Array.isArray(p.feats)) out.feats = [...new Set(p.feats.filter(id => FEATS.some(f => f.id === id)))];
     if (p.surge && typeof p.surge === 'object') out.surge = { until: num(p.surge.until, 0, 1e15, 0), adDay: typeof p.surge.adDay === 'string' ? p.surge.adDay : '',
       ads: Math.floor(num(p.surge.ads, 0, 99, 0)), shardAds: Math.floor(num(p.surge.shardAds, 0, 99, 0)) };
     out.combos = Array.isArray(p.combos) ? [...new Set(p.combos.filter(c => COMBOS.includes(c)))] : [];
@@ -334,7 +377,7 @@
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, canAscend, ascend, defaults, sanitize,
-    CITY, cityToBand, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
+    CITY, cityToBand, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
     SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
