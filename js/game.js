@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07y';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07z';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -118,6 +118,7 @@
         S.enemies.filter(o => !o.dying && Math.hypot(o.x - tg.x, o.y - tg.y) < 100).forEach(o => { o.hp -= C.towerDamage(P, B) * 6; o.flash = 1; o.burn = 2; }); } }
     for (const t of TOWERS) {
       t.recoil = Math.max(0, t.recoil - DT * 6); t.flash = Math.max(0, t.flash - DT * 5);
+      if (t.bumpAt && S.t >= t.bumpAt) { t.bumpAt = 0; t.recoil = 1; if (!reduced()) for (let i = 0; i < 5; i++) S.fx.push({ x: t.x + (Math.random() - 0.5) * 30, y: t.y - 30 - Math.random() * 30, vx: (Math.random() - 0.5) * 60, vy: -60 - Math.random() * 50, t: 0, life: 0.45, r: 2.4, col: '#ffe08a', g: 140 }); }   // an Upgrade runs along the wall, tower by tower (outside review, Nov 7)
       if ((t.cd -= DT) > 0) continue;
       // each tower takes one of the two enemies nearest the gate
       const live = S.enemies.filter(e => !e.dying && e.y > RANGE_Y).sort((a, b) => b.y - a.y);
@@ -155,7 +156,8 @@
       } else if (RR.thief) { const amt = Math.min(P.res * 0.5, (C.fightRate(P, B) * 1.6 + RATE) * 6); P.res -= amt; e.dying = DT; S.thefts = (S.thefts || 0) + 1;
         pop(e.x, WALL_FRONT - 90, `Stolen -${C.fmt(amt)}`, '#ff8a6a', 1.3, 36); continue; }
       else if (RR.bomb) { S.gateHp -= C.enemyBite(P.wave, e.role) * 10; S.gateHit = 1; S.shake = 0.3; e.dying = DT; burst(e, '#ff9a3a', 26, 280); pop(e.x, WALL_FRONT - 90, 'BOOM!', '#ff9a3a', 1.1, 44); continue; }
-      else { S.gateHp -= C.enemyBite(P.wave, e.role) * DT * (RR.bite || 1); S.gateHit = 1; }
+      else { S.gateHp -= C.enemyBite(P.wave, e.role) * DT * (RR.bite || 1); S.gateHit = 1; if (S.gateHp < gateMax() * 0.6 && P.wave > 2) guideSay('gate');   // the first real scare gets a word from the Magister, once
+        if (!reduced() && Math.random() < DT * 3.5) for (let i = 0; i < 2; i++) S.fx.push({ dust: true, x: e.x + (Math.random() - 0.5) * 24, y: WALL_FRONT - 6 - Math.random() * 16, vx: (Math.random() - 0.5) * 50, vy: -50 - Math.random() * 40, g: 300, t: 0, life: 0.55, r: 2.6, col: '#c2ad8e' }); }   // grit flies where they bite the gate (detail pass, Nov 7)
       if (e.hp <= 0) kill(e);
     }
     S.enemies = S.enemies.filter(e => !e.dying || e.dying < 0.45);
@@ -229,7 +231,10 @@
     const quiet = P.combos.includes(id) && S.lastShout && S.lastShout.w === word && S.t - S.lastShout.t < 2;
     if (!quiet) S.lastShout = { w: word, t: S.t };
     S.pops = S.pops.filter(p => !p.combo);
-    S.pops.push({ x: Math.max(200, Math.min(520, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: quiet ? 0.8 : 1.4, size: quiet ? 40 : 58, combo: true, hold: 0.75 });
+    let cy = (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80;
+    const news = S.pops.find(q => q.text && q.size >= 40 && q.x === W / 2 && q.t < q.life * 0.7 && Math.abs(q.y - q.t * 40 - cy) < 70);   // an announcement (Cheer, Boss down, Trial won) keeps its line
+    if (news) cy = news.y - news.t * 40 + 80;
+    S.pops.push({ x: Math.max(200, Math.min(520, e.x)), y: cy, text: word, col, t: 0, life: quiet ? 0.8 : 1.4, size: quiet ? 40 : 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
     if ((S.event && (evIs('aurora') || evIs('starstorm'))) && P.shop.open && (S.auroraN || 0) < 8 && Math.random() < 0.35) { S.auroraN = (S.auroraN || 0) + 1; P.shop.shards += 1; pop(e.x, e.y - e.size - 40, '+1 Starshard', SHARD, 1.1, 32); }
     if (id === 'shatter' && S.t - (S.lastFlash || -9) > 1.2) { S.flash = { col, t: 0 }; S.lastFlash = S.t; }   // the signature combo lights the screen
@@ -305,7 +310,7 @@
   function pop(x, y, text, col, life, size) {
     y = Math.max(FIELD_TOP - 20 + size, y);
     const half = String(text).length * size * 0.29; x = Math.max(half + 12, Math.min(W - half - 12, x));   // words stay on screen (a flurry caught at the edge cut its shout)
-    for (let k = 0; k < 4; k++) { const hit = S.pops.find(q => q.text && !q.combo && q.t < 0.35 && Math.abs(q.x - x) < 60 && Math.abs(q.y - q.t * 40 - y) < size * 0.9); if (!hit) break; y -= size * 0.95; }
+    for (let k = 0; k < 5; k++) { const hit = S.pops.find(q => q.text && !q.combo && q.t < q.life * (q.hold || 0.55) && Math.abs(q.x - x) < half + String(q.text).length * q.size * 0.29 && Math.abs(q.y - q.t * 40 - y) < (size + q.size) * 0.48); if (!hit) break; y = hit.y - hit.t * 40 - (size + hit.size) * 0.5; }   // whole widths and the whole readable time (owner-level detail pass, Nov 7: "1.1K" sat on "1.06K")
     const small = S.pops.filter(q => q.text && !q.combo && q.size <= 40); if (size <= 40 && small.length >= 8) S.pops.splice(S.pops.indexOf(small[0]), 1);
     const big = S.pops.filter(q => q.text && !q.combo && q.size > 40 && q.size < 60 && q.life < 1.2); if (size > 40 && size < 60 && life < 1.2 && big.length >= 2) S.pops.splice(S.pops.indexOf(big[0]), 1);   // at most two big hit numbers at once (review: a column of 26.8M)
     const p = { x, y, text, col, t: 0, life, size }; S.pops.push(p); return p;
@@ -331,8 +336,8 @@
     S.tapRun = S.t - (S.lastTapT || -9) < 1.2 ? (S.tapRun || 0) + 1 : 1; S.lastTapT = S.t;
     if (S.tapRun >= 5 && !P.firstSession && !holdFired && firstTime('hold')) setTimeout(() => toast('Tip: hold Upgrade to keep buying'), 600);
     if (C.stageOf(P.gateLevel) > stage) { toast(`Gate stage ${C.stageOf(P.gateLevel)}! The towers grow.`); A.play('tier_up', 0.6); TOWERS.forEach(t => (t.flash = 1.5)); }
-    else { pop(GATE_X, WALL_FRONT - 240, `Damage ${rfmt(before)} -> ${rfmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach(t => (t.flash = 1.2)); A.play('tier_up', 0.25); }
-    save(); ui();
+    else { pop(GATE_X, WALL_FRONT - 240, `Damage ${rfmt(before)} -> ${rfmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach((t, i) => { t.flash = 1.2; t.bumpAt = S.t + 0.04 + i * 0.07; }); A.play('tier_up', 0.25); }
+    chimneyPuff('forge', 4); save(); ui();
   }
   function restore() {
     A.unlock();
@@ -359,7 +364,7 @@
   function refuse(id, cost) {
     const b = el(id); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
     const rate = C.fightRate(P, B) * 1.6 + RATE;
-    b.querySelector('.wait').textContent = `~${Math.max(1, Math.ceil((cost - P.res) / rate))}s`;
+    b.querySelector('.wait').textContent = `in ${Math.max(1, Math.ceil((cost - P.res) / rate))}s`;   // read as a time, not a minus (outside review, Nov 7)
   }
 
   // ---------- the city: tap a restored building to level it up (more Resonance every second) ----------
@@ -368,7 +373,7 @@
     const c = C.levelCost(P, id, B); if (P.res < c) return false;
     const L = C.levelOf(P, id) + 1; P.res -= c; P.levels[id] = L; P.grown = true; quest('level'); refresh();
     const sp = CITY.spots[id], x = sx(sp[0]), y = sy(sp[1]);
-    burst({ x, y: y + 20, size: 40 }, RES, 14, 150);
+    burst({ x, y: y + 20, size: 40 }, RES, 14, 150); chimneyPuff(id, quiet ? 1 : 3);
     if (C.MILESTONES.includes(L)) { pop(x, y - 40, `Level ${L}: x2!`, RES, 1.4, 44); A.play('tier_up', 0.55); S.reveal = { b: id, t: 0 }; }
     else if (!quiet) { pop(x, y - 30, `Level ${L}`, RES, 0.9, 34); A.play('level_up', 0.5); }
     save(); return true;
@@ -476,12 +481,18 @@
     tickFolk(); tickMend(); tickSmoke();
     if (P.restored.length < 3) return;
     if (S.event && (evIs('harvest') || evIs('goldrush')) && !S.gold && S.goldT > 6) S.goldT = 6;
-    if (S.gold) { const g = S.gold; g.t += DT; g.x += g.vx * DT; g.y = g.y0 + Math.sin(g.t * 2.4) * 26; if (g.t > g.life || g.x < -60 || g.x > W + 60) S.gold = null; return; }
+    if (S.gold) { const g = S.gold;
+      if (g.rise > 0) { g.rise = Math.max(0, g.rise - DT); const u = 1 - g.rise / 1.6, e = u * u * (3 - 2 * u); g.x = g.bx + g.vx * 0.5 * u; g.y = g.by + (g.y0 - g.by) * e - Math.sin(u * Math.PI) * 40; return; }
+      g.t += DT; g.x += g.vx * DT; g.y = g.y0 + Math.sin(g.t * 2.4) * 26; if (g.t > g.life || g.x < -60 || g.x > W + 60) S.gold = null; return; }
     if (S.goldT === undefined) S.goldT = 8;
     if ((S.goldT -= DT) <= 0) {
       S.goldT = (30 + Math.random() * 30) * (has('bakery') ? 0.5 : 1);
       const fromLeft = Math.random() < 0.5;
       S.gold = { x: fromLeft ? -40 : W + 40, y0: 330 + Math.random() * 300, y: 0, vx: (fromLeft ? 1 : -1) * (95 + Math.random() * 30), t: 0, life: 9 };
+      if (has('bakery') && Math.random() < 0.6) {   // the Bakery's wisps rise out of its chimney, puff and all, then cross the field (detail pass, Nov 7)
+        const [dx, dy] = CHIMNEYS.bakery[0], sp = CITY.spots.bakery, g = S.gold; g.bx = sx(sp[0] + dx); g.by = sy(sp[1] + dy); g.x = g.bx; g.y = g.by; g.rise = 1.6;
+        g.vx = Math.abs(g.vx) * (g.bx < W / 2 ? 1 : -1); g.y0 = 330 + Math.random() * 200; smokeT.puffbakery = -9; chimneyPuff('bakery', 4);
+      }
       if (firstTime('gold')) { toast('A Golden Wisp! Tap it before it flies away'); }
     }
   }
@@ -623,6 +634,7 @@
     fell: [['smile', 'We fell back a few waves, but nothing is lost. Upgrade, and push again!']],
     whole: [['proud', 'The whole city stands again! Hold out to wave {aw} and we can Ascend.']],
     ascend: [['proud', 'The time has come! Ascend, and we rebuild the city better than ever.'], ['smile', 'Our Resonance will flow faster, forever. Tap Ascend!']],
+    gate: [['worry', 'They are at our gate! Tap Upgrade, quick: stronger towers drive them back!', 'towers']],
     surge: [['smile', 'The fountain brims with power! Tap it, and all Resonance pays double for three minutes.', 'fountain']]
   };
   const G = { q: [], cur: null, el: null, nodes: [] };
@@ -772,6 +784,16 @@
         S.fx.push({ dust: true, smoke: true, x: sx(sp[0] + dx) + (Math.random() - 0.5) * 2, y: sy(sp[1] + dy), vx: 5 + Math.random() * 5, vy: -13 - Math.random() * 6, t: 0, life: 2.4 + Math.random() * 0.6, r: id === 'forge' ? 4.6 : 3.6, col: '#ece8e2' });
       });
     }
+  }
+  // a building at work puffs harder: the Forge on every Upgrade (it forges the towers' power), any chimney on a level-up
+  function chimneyPuff(id, n) {
+    if (reduced() || !CHIMNEYS[id] || !P.restored.includes(id) || S.t - (smokeT['puff' + id] || -9) < 0.35) return; smokeT['puff' + id] = S.t;
+    const sp = CITY.spots[id];
+    CHIMNEYS[id].forEach(([dx, dy]) => {
+      const x = sx(sp[0] + dx), y = sy(sp[1] + dy);
+      for (let i = 0; i < n; i++) S.fx.push({ dust: true, smoke: true, x: x + (Math.random() - 0.5) * 6, y: y - i * 5, vx: (Math.random() - 0.3) * 14, vy: -22 - Math.random() * 14, t: 0, life: 1.6 + Math.random() * 0.6, r: 7 + Math.random() * 2.5, col: '#ece8e2', puff: true });
+      if (id === 'forge') for (let i = 0; i < 6; i++) S.fx.push({ x, y, vx: (Math.random() - 0.5) * 70, vy: -50 - Math.random() * 60, t: 0, life: 0.5 + Math.random() * 0.3, r: 2.6, col: '#ffb35a', g: 120 });
+    });
   }
   // the Tavern's cheer: whoever is free hurries over to it and hops along
   function folkToTavern() {
@@ -1438,7 +1460,10 @@
     // the ground (meadow, treeline, the city and every restored building) comes from one cached canvas; only a building
     // that is fading in right now is drawn on its own. Eleven full-band draws a frame became one (Nov 6 2026, perf pass).
     cx.drawImage(groundLayer(), 0, 0, W, GROUND_H());
-    if (S.reveal) { const part = cityRestored[S.reveal.b] && (P.ascensions >= 2 && S.reveal.b !== 'plaza' ? gilded(S.reveal.b) : cityRestored[S.reveal.b]); if (part) { cx.save(); cx.globalAlpha = Math.min(1, S.reveal.t / 0.9); cx.drawImage(part, 0, CITY_Y); cx.restore(); } }
+    if (S.reveal) { const part = cityRestored[S.reveal.b] && (P.ascensions >= 2 && S.reveal.b !== 'plaza' ? gilded(S.reveal.b) : cityRestored[S.reveal.b]); if (part) { cx.save(); cx.globalAlpha = Math.min(1, S.reveal.t / 0.9);
+      const sp = S.reveal.b !== 'plaza' && CITY.spots[S.reveal.b], u = Math.min(1, S.reveal.t / 0.9);
+      if (sp && !reduced()) { const ax = sx(sp[0]), ay = sy(sp[1]) + sp[3] * K * 0.4, sc = Math.sin(u * Math.PI); cx.translate(ax, ay); cx.scale(1 - 0.03 * sc, 1 + 0.07 * sc); cx.translate(-ax, -ay); }   // the building rises out of its ruin with a little stretch and settles (outside review, Nov 7)
+      cx.drawImage(part, 0, CITY_Y); cx.restore(); } }
     if (S.reveal && !reduced()) { const s = CITY.spots[S.reveal.b]; if (s && S.reveal.t < 1.2) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(sx(s[0]), sy(s[1]), 95, 'rgba(255,220,140,', 0.5 * (1 - S.reveal.t / 1.2)); cx.restore(); } }
     // the city's Resonance: the fountain flares as wisps land, motes rise from every restored building
     cx.save();
@@ -1467,7 +1492,7 @@
       if (p.smoke) {   // soft puffs: a feathered disc that swells, drifts and thins out
         const f = p.t / p.life, r = p.r * (1 + p.t * 1.5), g = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
         g.addColorStop(0, 'rgba(244,241,236,1)'); g.addColorStop(0.55, 'rgba(236,232,226,.7)'); g.addColorStop(1, 'rgba(236,232,226,0)');
-        cx.globalAlpha = 0.75 * Math.min(1, p.t * 4) * (1 - f); cx.fillStyle = g; cx.beginPath(); cx.arc(p.x, p.y, r, 0, 7); cx.fill(); continue;
+        cx.globalAlpha = (p.puff ? 0.9 : 0.75 * Math.min(1, p.t * 4)) * (1 - f); cx.fillStyle = g; cx.beginPath(); cx.arc(p.x, p.y, r, 0, 7); cx.fill(); continue;
       }
       cx.globalAlpha = 0.6 * (1 - p.t / p.life); cx.fillStyle = p.col; cx.beginPath(); cx.arc(p.x, p.y, p.r * (1 + p.t * 2), 0, 7); cx.fill();
     }
@@ -1486,6 +1511,8 @@
       const hold = p.hold || 0.55;   // solid while it is read, then fades (outside review: numbers were half-transparent from the start)
       cx.globalAlpha = p.t < p.life * hold ? 1 : 1 - (p.t - p.life * hold) / (p.life * (1 - hold));
       const grow = p.combo ? Math.min(1, 0.6 + p.t * 4) : 1; cx.font = `${Math.round(p.size * grow)}px "HG Display", sans-serif`;
+      if (p.fitW === undefined) { cx.font = `${p.size}px "HG Display", sans-serif`; const tw = cx.measureText(p.text).width + (p.combo ? 20 : 12); p.fitW = tw > W - 24 ? (W - 24) / tw : 1; p.x = Math.max(tw * p.fitW / 2 + 12, Math.min(W - tw * p.fitW / 2 - 12, p.x)); cx.font = `${Math.round(p.size * grow * p.fitW)}px "HG Display", sans-serif`; }
+      else if (p.fitW < 1) cx.font = `${Math.round(p.size * grow * p.fitW)}px "HG Display", sans-serif`;   // a long line shrinks to the stage, measured once (detail pass, Nov 7: the Cheer line ran off both sides on desktop)
       const py = Math.max(FIELD_TOP - 6 + p.size * 0.5, p.y - (p.combo ? p.t * 18 : p.t * 40));   // never up into the boss bar and HUD (owner's screenshot)
       cx.lineWidth = p.combo ? 10 : 6; cx.strokeStyle = '#2a1a22'; cx.strokeText(p.text, p.x, py); cx.fillStyle = p.col; cx.fillText(p.text, p.x, py);
       cx.globalAlpha = 1;
@@ -1529,7 +1556,7 @@
     if (fountainState() === 'ready' && !S.card && firstTime('fountainSurge')) { guideSay('surge'); S.pointAt = { id: 'fountain', t: 0 }; }
     if (P.firstSession && S.sessionT > 1.2) guideSay('intro');
 
-    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `Resonance +${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`;   // the word stays with its rate (outside review) el('stage').classList.toggle('surging', surgeX() > 1);
+    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `Resonance +${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`; el('stage').classList.toggle('surging', surgeX() > 1);   // the word stays with its rate (outside review)
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
     if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the Watchtower'); S.pointAt = { id: 'watchtower', t: 0 }; }
     if (P.shop.open && C.questClaimable(P) && !S.questTold && !S.card) { S.questTold = true; toast('Quest done! Collect it at the Library'); S.pointAt = { id: 'library', t: 0 }; }

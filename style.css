@@ -59,7 +59,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   font-family: 'HG Display', sans-serif; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   box-shadow: 0 5px 0 #1a0f15; transition: transform .08s; }
 .big:active { transform: translateY(3px); box-shadow: 0 2px 0 #1a0f15; }
-.big .fill { position: absolute; left: 0; bottom: 0; top: 0; width: 0; background: rgba(201, 162, 74, .28); transition: width .2s; }
+.big .fill { position: absolute; left: 0; bottom: 0; top: 0; width: 0; background: linear-gradient(90deg, rgba(201, 162, 74, .28) calc(100% - 18px), rgba(201, 162, 74, 0)); transition: width .2s; }
 .big.ready { background: #6a3a5f; border-color: var(--gold); animation: ready 1.4s ease-in-out infinite alternate; }
 .big.ready .label { color: #fff8e6; }
 @keyframes ready { from { box-shadow: 0 5px 0 #1a0f15, 0 0 0 3px rgba(255, 213, 107, .25); } to { box-shadow: 0 5px 0 #1a0f15, 0 0 0 7px rgba(255, 213, 107, .5), 0 0 26px rgba(255, 213, 107, .45); } }
