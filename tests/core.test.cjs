@@ -120,9 +120,8 @@ assert.strictEqual(bad2.equip.fire, 'fire-classic', 'an unowned look falls back 
 assert.deepStrictEqual(C.sanitize({}).shop.equip, C.defaults().shop.equip, 'old saves get the default looks');
 const asc = C.ascend(Object.assign(C.defaults(), { restored: C.BUILDING_IDS.slice(), shop: { open: true, shards: 4, owned: C.defaults().shop.owned.concat('wisp-gold'), equip: Object.assign(C.defaults().shop.equip, { wisp: 'wisp-gold' }), seen: [] } }));
 assert.strictEqual(asc.shop.shards, 4 + C.SHARDS.ascend, 'Ascending pays Starshards'); assert.strictEqual(asc.shop.equip.wisp, 'wisp-gold', 'looks survive Ascension');
-const tp = C.defaults(); tp.wave = 30; const tb = C.bonuses(tp), tc = C.exchangeCost(tp, tb);
-tp.wave = 5; assert.ok(C.exchangeCost(tp, C.bonuses(tp)) < tc, 'the trade price follows income'); tp.wave = 30;
-tp.res = tc - 1; assert.strictEqual(C.trade(tp, tb), false); tp.res = tc; assert.ok(C.trade(tp, tb)); assert.strictEqual(tp.res, 0); assert.strictEqual(tp.shop.shards, 1);
+// Starshards cannot be bought with Resonance (owner, Nov 7 2026)
+assert.strictEqual(C.trade, undefined); assert.strictEqual(C.exchangeCost, undefined);
 // Daily quests and the Surge (Nov 5 2026).
 const qp = C.defaults(); qp.shop.open = true;
 const qa = C.questsFor(qp, '2026-11-05');

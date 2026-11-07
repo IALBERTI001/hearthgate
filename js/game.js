@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07u';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07v';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -913,10 +913,8 @@
     for (const i of C.SHOP) if (i.price <= P.shop.shards && !P.shop.seen.includes(i.id)) P.shop.seen.push(i.id);   // the dot clears
     showCard('shop');
   }
-  // what a trade costs in time, at the income the player actually has now (fight and city together)
-  const tradeMins = tc => { const m = tc / (C.fightRate(P, B) * 1.6) / 60; return m < 1.5 ? '1 minute' : `${Math.round(m)} minutes`; };
   function shopHtml() {
-    const tab = S.shopTab || 'tower', sh = P.shop, tc = C.exchangeCost(P, B), items = C.SHOP.filter(i => i.cat === tab);
+    const tab = S.shopTab || 'tower', sh = P.shop, items = C.SHOP.filter(i => i.cat === tab);
     S.shopNew = (S.shopNew || []).filter(id => C.shopItem(id).cat !== tab);   // a tab once opened is no longer new
     const sel = C.shopItem(S.shopSel) && C.shopItem(S.shopSel).cat === tab ? C.shopItem(S.shopSel) : C.shopItem(sh.equip[C.slotOf(items[0])]);
     const tile = it => {
@@ -927,9 +925,9 @@
     };
     return `<div class="shophead"><h2>Shop</h2><span class="chip shards"><i class="star"></i><b>${sh.shards}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
 
-      + `<div class="trade">${SDK.rewardsOn ? '' : `<span>Trade about<br>${tradeMins(tc)} of kills</span>`}`
-      + `<button id="c-trade" class="cbtn ${P.res >= tc ? 'gold' : 'off'}">Trade <i class="gem"></i>${C.fmt(tc)}<span class="to"></span><i class="star"></i>1</button>`
-      // Full Launch only: an ad for Starshards, side by side with the trade so the panel keeps its height
+      // no Resonance-for-Starshards trade (owner, Nov 7 2026: "starts should not be able to be gotten with resonance... the
+      // incentive to watch an ad to get starts to buy something would go away"): shards are earned, or (Full Launch) watched for
+      + `<div class="trade"><span>Earned from bosses, combos,<br>quests and daily rewards</span>`
       + (SDK.rewardsOn ? (adDay(), `<button id="c-shardad" class="cbtn ${P.surge.shardAds < C.SHARD_ADS_PER_DAY ? 'gold' : 'off'}"><span class="play"></span>+${C.SHARD_AD}<i class="star"></i><span class="small">${C.SHARD_ADS_PER_DAY - P.surge.shardAds} left</span></button>`) : '') + `</div>`
       + (SDK.rewardsOn || P.firstSession ? '' : (() => { const now = Date.now(), on = C.surgeOn(P, now), free = C.surgeReadyFree(P, now);
           const note = on ? `Surge running<br>${mmss(P.surge.until - now)} left` : free ? 'The fountain is full:<br>tap it in the city' : `Fountain refills<br>in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`;
@@ -953,12 +951,6 @@
       SDK.rewarded(adHooks).then(ok => { if (ok) { P.surge.shardAds++; P.shop.shards += C.SHARD_AD; A.play('tier_up', 0.5); save(); } rerender(); }); };
     const rf = body.querySelector('#c-refill');
     if (rf) rf.onclick = () => { A.unlock(); if (C.refillSurge(P, Date.now())) { const x = body.querySelector('#c-no'); if (x) x.click(); surgeFx(); } else { rf.classList.remove('shake'); void rf.offsetWidth; rf.classList.add('shake'); } };
-    const tr = body.querySelector('#c-trade');
-    if (tr) tr.onclick = () => {
-      A.unlock();
-      if (C.trade(P, B)) { A.play('buy', 0.4); save(); rerender(); }
-      else { tr.classList.remove('shake'); void tr.offsetWidth; tr.classList.add('shake'); }
-    };
     previews = [...body.querySelectorAll('.item canvas')].map(c => ({ c, id: c.parentNode.dataset.id }));
     drawPreviews(performance.now() / 1000);
   }

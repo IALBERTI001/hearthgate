@@ -448,8 +448,8 @@
 
   // ---------- the Shop: looks bought with Starshards (Nov 5 2026) ----------
   // Cosmetic only: nothing here changes a number in the fight. Starshards come from milestones (the shop opening, bosses,
-  // new combos, daily rewards, Ascension) or from trading Resonance at a price that follows the player's own income,
-  // so a trade always costs about a minute of fighting whatever the stage.
+  // new combos, daily rewards, quests, Feats, Ascension) and, in the Full Launch build, rewarded ads. Never from
+  // Resonance (owner, Nov 7 2026), so an ad for Starshards keeps its pull.
   const SHOP = [
     { id: 'fire-classic', cat: 'tower', el: 'fire', name: 'Forge Fire', line: 'The first flame', price: 0 },
     { id: 'fire-obsidian', cat: 'tower', el: 'fire', name: 'Obsidian', line: 'Black glass and magma', price: 20 },
@@ -485,7 +485,6 @@
   const FREE = SHOP.filter(i => !i.price).map(i => i.id);
   const SHARDS = { welcome: 10, boss: 3, combo: 2, daily: 3, daily7: 10, ascend: 15 };
   const SHOP_OPENS = 11;   // the shop opens once the first boss (wave 10) falls
-  const exchangeCost = (p, b) => Math.max(30, Math.ceil(fightRate(p, b) * 1.6 * 60));   // about a minute of fighting
   function shopDefaults() {
     const equip = {}; for (const i of SHOP) if (!i.price) equip[slotOf(i)] = i.id;
     return { open: false, shards: 0, owned: FREE.slice(), equip, seen: [] };
@@ -495,7 +494,6 @@
     p.shop.shards -= it.price; p.shop.owned.push(id); p.shop.equip[slotOf(it)] = id; return true;
   }
   function equip(p, id) { const it = shopItem(id); if (!it || !p.shop.owned.includes(id)) return false; p.shop.equip[slotOf(it)] = id; return true; }
-  function trade(p, b) { const c = exchangeCost(p, b); if (p.res < c) return false; p.res -= c; p.shop.shards += 1; return true; }
   // something new the player can afford: drives the dot on the shop button
   const shopNews = p => p.shop.open && SHOP.some(i => !p.shop.owned.includes(i.id) && i.price <= p.shop.shards && !p.shop.seen.includes(i.id));
   function sanitizeShop(s) {
@@ -680,6 +678,6 @@
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, ETERNAL_AT, canAscend, cityWhole, ascendWave, ascend, defaults, sanitize,
     CITY, cityToBand, BESTIARY, BUTTERFLIES, flyOpen, flyPick, twinsFor, twinOf, STARS, starWave, starsDue, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
-    SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, REFILL_SHARDS, canRefill, refillSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
+    SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, REFILL_SHARDS, canRefill, refillSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, buy, equip, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
