@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07z';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07z2';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -175,7 +175,8 @@
       w.t += DT; const u = Math.min(1, Math.pow(w.t / w.dur, 1.7)), v = 1 - u;
       w.x = v * v * w.x0 + 2 * v * u * w.cx + u * u * PLAZA.x; w.y = v * v * w.y0 + 2 * v * u * w.cy + u * u * PLAZA.y;
       w.trail.push([w.x, w.y]); if (w.trail.length > 10) w.trail.shift();
-      if (u >= 1) { w.done = true; P.res += w.amt; S.plazaGlow = 1; }
+      if (u >= 1) { w.done = true; P.res += w.amt; S.plazaGlow = 1;
+        if (!reduced() && S.t - (S.splashT || 0) > 0.14 && S.fx.length < 260) { S.splashT = S.t; for (let i = 0; i < 3; i++) S.fx.push({ x: PLAZA.x + (Math.random() - 0.5) * 16, y: PLAZA.y - 22, vx: (Math.random() - 0.5) * 80, vy: -80 - Math.random() * 60, t: 0, life: 0.5, r: 2.2, col: '#bfeaff', g: 320 }); } }   // the fountain splashes as each wisp lands (outside review, Nov 7)
     }
     S.wisps = S.wisps.filter(w => !w.done);
     if (S.gateHp <= 0) gateBroken();
@@ -695,7 +696,7 @@
   // runs every frame (real time, not game time: the guide talks while the fight runs, and also while a card is open)
   function tickGuide(dt) {
     if (!G.cur) {
-      if (!G.q.length || S.card || !imgReady.magister) return;
+      if (!G.q.length || S.card || !imgReady.magister || (S.wavePop && S.wavePop.t < 2.2)) return;   // he waits for the wave banner and its enemy cards to clear (detail pass, Nov 7: his panel sat on them)
       G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine();
       if (!P.settings.stats) el('toast').style.bottom = (H - WALL_FRONT + 70 + 260) + 'px';   // a toast steps up above the panel while he talks
       return;
@@ -1012,7 +1013,7 @@
       + (SDK.rewardsOn ? (adDay(), `<button id="c-shardad" class="cbtn ${P.surge.shardAds < C.SHARD_ADS_PER_DAY ? 'gold' : 'off'}"><span class="play"></span>+${C.SHARD_AD}<i class="star"></i><span class="small">${C.SHARD_ADS_PER_DAY - P.surge.shardAds} left</span></button>`) : '') + `</div>`
       + (SDK.rewardsOn || P.firstSession ? '' : (() => { const now = Date.now(), on = C.surgeOn(P, now), free = C.surgeReadyFree(P, now);
           const note = on ? `Surge running<br>${mmss(P.surge.until - now)} left` : free ? 'The fountain is full:<br>tap it in the city' : `Fountain refills<br>in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`;
-          return `<div class="trade"><span>${note}</span><button id="c-refill" class="cbtn ${C.canRefill(P, now) ? 'gold' : 'off'}">Surge now <i class="star"></i>${C.REFILL_SHARDS}</button></div>`; })())
+          return `<div class="trade"><span>${free ? 'The fountain is full' : note}</span>${free ? '<button id="c-surgego" class="cbtn gold">Start Surge</button>' : `<button id="c-refill" class="cbtn ${C.canRefill(P, now) ? 'gold' : 'off'}">Surge now <i class="star"></i>${C.REFILL_SHARDS}</button>`}</div>`; })())   // a full fountain starts from here for free, never sells a refill (detail pass, Nov 7)
       + `<div class="tabs">${TABS.map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}${k !== tab && C.SHOP.some(i => i.cat === k && (S.shopNew || []).includes(i.id) && !sh.owned.includes(i.id)) ? ' news' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>`
       + `<div class="grid">${items.map(tile).join('')}</div>`
       + `<p class="detail"><b>${sel.name}</b> · ${sel.line}</p>`;
@@ -1030,6 +1031,7 @@
     const sa = body.querySelector('#c-shardad');
     if (sa) sa.onclick = () => { adDay(); if (P.surge.shardAds >= C.SHARD_ADS_PER_DAY) return;
       SDK.rewarded(adHooks).then(ok => { if (ok) { P.surge.shardAds++; P.shop.shards += C.SHARD_AD; A.play('tier_up', 0.5); save(); } rerender(); }); };
+    const sg = body.querySelector('#c-surgego'); if (sg) sg.onclick = () => { const x = body.querySelector('#c-no'); if (x) x.click(); surgeTap(); };
     const rf = body.querySelector('#c-refill');
     if (rf) rf.onclick = () => { A.unlock(); if (C.refillSurge(P, Date.now())) { const x = body.querySelector('#c-no'); if (x) x.click(); surgeFx(); } else { rf.classList.remove('shake'); void rf.offsetWidth; rf.classList.add('shake'); } };
     previews = [...body.querySelectorAll('.item canvas')].map(c => ({ c, id: c.parentNode.dataset.id }));
@@ -1085,7 +1087,7 @@
     el('toast').classList.remove('show'); toastT = 0;
     const btn = (id, label, cls = '') => `<button id="${id}" class="cbtn ${cls}">${label}</button>`;
     let html = '';
-    if (kind === 'daily') html = `<span class="eyebrow">Day ${data.day} reward</span><h2>+${C.fmt(data.amount)} Resonance</h2><p>${data.big ? 'Day 7 bonus: five times the reward!' : 'Day 7 pays five times as much.'}</p>${P.shop.open ? `<p class="small">and ${data.big ? C.SHARDS.daily7 : C.SHARDS.daily} Starshards for the Shop</p>` : ''}${btn('c-ok', 'Claim')}`;
+    if (kind === 'daily') html = `<span class="eyebrow">Day ${data.day} reward</span><h2>+${C.fmt(data.amount)} Resonance</h2>${P.shop.open ? `<p>and ${data.big ? C.SHARDS.daily7 : C.SHARDS.daily} Starshards for the Shop</p>` : ''}<p class="small">${data.big ? 'Day 7 bonus: five times the reward!' : 'Day 7 pays five times as much.'}</p>${btn('c-ok', 'Claim')}`;
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
     if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
@@ -1441,7 +1443,7 @@
     // what is coming: a portrait per new or special enemy role, named in its counter element's colour (approved fix 3)
     // at most four portraits: the boss and the newest kinds first, so a crowded wave never runs off the stage
     const order = r => C.isBossRole(r) ? 99 : C.ASC_ROLES[r] ? 50 + C.ASC_ROLES[r][0] : C.VARIANT_FROM[r] ? C.VARIANT_FROM[r] / 2 : 1;
-    const roles = w.roles.filter(r => r !== 'slime').sort((a, b) => order(b) - order(a)).slice(0, 4), n = roles.length, gap = 156;
+    const roles = G.cur ? [] : w.roles.filter(r => r !== 'slime').sort((a, b) => order(b) - order(a)).slice(0, 4), n = roles.length, gap = 156;   // while the Magister talks the enemy cards stay away from his panel
     roles.forEach((r, i) => {
       const R = C.ROLES[r], im = img[R.sheet], x = (i - (n - 1) / 2) * gap;
       cx.globalAlpha = fade * Math.max(0, Math.min(1, (age - 0.3) / 0.25));
@@ -1594,9 +1596,12 @@
       const id = P.restored.find(b => P.res >= C.levelCost(P, b, B));
       if (id && (S.growTipT || 0) < 20) { spot = CITY.spots[id]; target = 'bld'; if (!S.growTip) { S.growTip = true; S.growTipT = 0; toast('Tap a building to grow its Resonance'); } }
     }
-    const hand = el('hand'); hand.className = target ? 'on ' + target : '';
-    hand.style.left = spot ? ((spot.hx !== undefined ? spot.hx : sx(spot[0])) - 48) + 'px' : '';
-    hand.style.top = spot ? ((spot.hy !== undefined ? spot.hy + 40 : sy(spot[1]) + 6)) + 'px' : '';   // finger up, from under the building or badge
+    const hand = el('hand');
+    const hx = spot ? Math.max(0, Math.min(W - 96, (spot.hx !== undefined ? spot.hx : sx(spot[0])) - 48)) : 0, hy0 = spot ? (spot.hy !== undefined ? spot.hy : sy(spot[1]) - 34) : 0;
+    const fromTop = !!spot && hy0 + 40 + 112 > H - 168;   // under the target it would hide behind the button bar (outside review, Nov 7)
+    hand.className = target ? 'on ' + target + (fromTop ? ' from-top' : '') : '';
+    hand.style.left = spot ? hx + 'px' : '';
+    hand.style.top = spot ? (fromTop ? hy0 - 40 - 112 : hy0 + 40) + 'px' : '';   // finger up from under the building or badge, or down from above it
   }
 
   // ---------- loop (never pauses on tab switch; only the player pauses) ----------

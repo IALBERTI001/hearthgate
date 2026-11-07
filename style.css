@@ -86,6 +86,7 @@ i.gem { display: inline-block; vertical-align: -4px; }   /* inline in card butto
 #hand.up { left: 132px; bottom: 178px; }
 #hand.re { left: 492px; bottom: 178px; }
 #hand.bld { bottom: auto; transform: none; animation-name: tapup; }
+#hand.bld.from-top { transform: rotate(180deg); animation-name: tap; }   /* a target near the buttons is pointed at from above, never cut off by the bar */
 @keyframes tapup { to { transform: translateY(-16px); } }
 @keyframes tap { to { transform: rotate(180deg) translateY(-16px); } }
 
