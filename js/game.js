@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07l';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07m';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -118,7 +118,7 @@
       // each tower takes one of the two enemies nearest the gate
       const live = S.enemies.filter(e => !e.dying && e.y > RANGE_Y).sort((a, b) => b.y - a.y);
       if (!live.length) continue;
-      const tgt = live[Math.min(live.length - 1, t.n % 2)];
+      const tgt = live[P.firstSession ? 0 : Math.min(live.length - 1, t.n % 2)];   // in the opening every tower focuses the front enemy, so Frost then Fire meet and the first SHATTER comes on time
       t.cd = interval * (t.gate && B.beacon ? 0.5 : 1); t.recoil = 1; t.flash = 1; t.shots = (t.shots || 0) + 1;
       const el = els.length ? els[(t.shots + t.n) % els.length] : 'none';
       S.shots.push({ x: t.x, y: t.beacon ? t.y : t.y - 70, tx: tgt, el, sp: t.beacon ? 1000 : 820, trail: [] });
