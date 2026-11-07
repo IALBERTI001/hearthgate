@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07q';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07r';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -248,9 +248,12 @@
   }
   function wisp(e, amt) {
     if (S.wisps.length > 40) { P.res += amt; S.plazaGlow = 1; return; }   // a huge swarm: pay at once rather than flood the sky
-    const x0 = e.x, y0 = e.y - e.size * 0.5, side = x0 < PLAZA.x ? -1 : 1;
-    S.wisps.push({ x0, y0, x: x0, y: y0, cx: (x0 + PLAZA.x) / 2 + side * (50 + Math.random() * 90), cy: Math.min(y0, WALL_FRONT) - 70 - Math.random() * 60,
-      t: 0, dur: 0.75 + Math.random() * 0.25, amt, trail: [] });
+    const x0 = e.x, y0 = e.y - e.size * 0.5, side = x0 < PLAZA.x ? -1 : 1, surge = surgeX() > 1;
+    // in a Surge every kill sends two wisps, haloed rose: double Resonance you can see coming in (owner, Nov 6 2026:
+    // "I don't really know what the surge is doing")
+    for (let k = 0, n = surge ? 2 : 1; k < n; k++)
+      S.wisps.push({ x0, y0, x: x0, y: y0, cx: (x0 + PLAZA.x) / 2 + side * (50 + Math.random() * 90) * (k ? -0.6 : 1), cy: Math.min(y0, WALL_FRONT) - 70 - Math.random() * 60,
+        t: 0, dur: 0.75 + Math.random() * 0.25 + k * 0.12, amt: amt / n, trail: [], surge });
   }
   // what is still in the air is paid before the page hides or the game saves for good
   function flushWisps() { for (const w of S.wisps) P.res += w.amt; S.wisps = []; }
@@ -678,13 +681,21 @@
   const surgeX = () => C.surgeOn(P, Date.now()) || (S.goldSurge || 0) > Date.now() ? 2 : 1;
   function adDay() { const d = today(); if (P.surge.adDay !== d) { P.surge.adDay = d; P.surge.ads = 0; P.surge.shardAds = 0; } }
   // Basic Launch: free every 15 minutes. Full Launch: a rewarded ad, any time one is not running, 8 a day.
+  // the fountain erupts: shared by a free Surge, an ad Surge and a Starshard refill
+  function surgeFx() {
+    quest('surge'); A.play('surge', 0.6); S.pointAt = null;
+    pop(PLAZA.x, PLAZA.y - 96, 'SURGE! x2', '#ffb8f0', 1.6, 52); if (firstTime('surgeWhat')) toast('Surge: everything pays double for 3 minutes');
+    burst({ x: PLAZA.x, y: PLAZA.y - 10, size: 50 }, RES, 30, 260); SDK.happytime(); save();
+  }
   function surgeTap() {
     A.unlock(); const now = Date.now(); if (C.surgeOn(P, now) || S.card) return;
-    const go = () => { C.startSurge(P, Date.now()); quest('surge'); A.play('surge', 0.6); S.pointAt = null; S.surgeBurst = 0;
-      pop(PLAZA.x, PLAZA.y - 96, 'SURGE! x2', '#ffb8f0', 1.6, 52); burst({ x: PLAZA.x, y: PLAZA.y - 10, size: 50 }, RES, 30, 260); SDK.happytime(); save(); };
+    const go = () => { C.startSurge(P, Date.now()); surgeFx(); };
     if (SDK.rewardsOn) { adDay(); if (P.surge.ads >= C.SURGE_ADS_PER_DAY) return toast('No more Surges today'); S.paused = true;
       SDK.rewarded(adHooks).then(ok => { S.paused = false; if (ok) { P.surge.ads++; go(); } }); return; }
-    if (C.surgeReadyFree(P, now)) go(); else pop(PLAZA.x, PLAZA.y - 70, `Refills in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`, '#f3e2c0', 1.2, 30);
+    if (C.surgeReadyFree(P, now)) return go();
+    if (C.canRefill(P, now) && S.refillAsk && S.t - S.refillAsk < 3) { S.refillAsk = 0; C.refillSurge(P, now); return surgeFx(); }
+    pop(PLAZA.x, PLAZA.y - 70, `Refills in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`, '#f3e2c0', 1.2, 30);
+    if (C.canRefill(P, now)) { S.refillAsk = S.t; pop(PLAZA.x, PLAZA.y - 36, `Tap again: Surge now for ${C.REFILL_SHARDS} Starshards`, '#ffd0f4', 1.6, 26); }
   }
   // ---------- the Surge lives in the fountain (owner, Nov 6 2026: "as part of the center fountain's power up move...
   // a surge of power from the fountain causing 2x more resonance"). Charging: the fountain looks as it always does.
@@ -824,10 +835,13 @@
     };
     return `<div class="shophead"><h2>Shop</h2><span class="chip shards"><i class="star"></i><b>${sh.shards}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
 
-      + `<div class="trade">${SDK.rewardsOn ? '' : `<span>or trade about<br>${tradeMins(tc)} of kills</span>`}`
+      + `<div class="trade">${SDK.rewardsOn ? '' : `<span>Trade about<br>${tradeMins(tc)} of kills</span>`}`
       + `<button id="c-trade" class="cbtn ${P.res >= tc ? 'gold' : 'off'}">Trade <i class="gem"></i>${C.fmt(tc)}<span class="to"></span><i class="star"></i>1</button>`
       // Full Launch only: an ad for Starshards, side by side with the trade so the panel keeps its height
       + (SDK.rewardsOn ? (adDay(), `<button id="c-shardad" class="cbtn ${P.surge.shardAds < C.SHARD_ADS_PER_DAY ? 'gold' : 'off'}"><span class="play"></span>+${C.SHARD_AD}<i class="star"></i><span class="small">${C.SHARD_ADS_PER_DAY - P.surge.shardAds} left</span></button>`) : '') + `</div>`
+      + (SDK.rewardsOn || P.firstSession ? '' : (() => { const now = Date.now(), on = C.surgeOn(P, now), free = C.surgeReadyFree(P, now);
+          const note = on ? `Surge running<br>${mmss(P.surge.until - now)} left` : free ? 'The fountain is full:<br>tap it in the city' : `Fountain refills<br>in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`;
+          return `<div class="trade"><span>${note}</span><button id="c-refill" class="cbtn ${C.canRefill(P, now) ? 'gold' : 'off'}">Surge now <i class="star"></i>${C.REFILL_SHARDS}</button></div>`; })())
       + `<div class="tabs">${TABS.map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}${k !== tab && C.SHOP.some(i => i.cat === k && (S.shopNew || []).includes(i.id) && !sh.owned.includes(i.id)) ? ' news' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>`
       + `<div class="grid">${items.map(tile).join('')}</div>`
       + `<p class="detail"><b>${sel.name}</b> · ${sel.line}</p>`;
@@ -845,6 +859,8 @@
     const sa = body.querySelector('#c-shardad');
     if (sa) sa.onclick = () => { adDay(); if (P.surge.shardAds >= C.SHARD_ADS_PER_DAY) return;
       SDK.rewarded(adHooks).then(ok => { if (ok) { P.surge.shardAds++; P.shop.shards += C.SHARD_AD; A.play('tier_up', 0.5); save(); } rerender(); }); };
+    const rf = body.querySelector('#c-refill');
+    if (rf) rf.onclick = () => { A.unlock(); if (C.refillSurge(P, Date.now())) { const x = body.querySelector('#c-no'); if (x) x.click(); surgeFx(); } else { rf.classList.remove('shake'); void rf.offsetWidth; rf.classList.add('shake'); } };
     const tr = body.querySelector('#c-trade');
     if (tr) tr.onclick = () => {
       A.unlock();
@@ -1155,6 +1171,7 @@
   function drawWisps() {
     cx.save();   // normal blending: added light washes out to white on the bright meadow, pink must stay pink
     for (const w of S.wisps) {
+      if (w.surge && !w.done) glow(w.x, w.y, 22, 'rgba(255,120,220,', 0.55);
       drawWisp(cx, w, L.WISP[P.shop.equip.wisp] || L.WISP['wisp-rose']);
     }
     cx.restore();
@@ -1355,7 +1372,7 @@
     if (P.shop.open) C.questsFor(P, today());
     el('quests').hidden = true;   // quests and Feats live in the Library
     if (fountainState() === 'ready' && !S.card && firstTime('fountainSurge')) { toast('The fountain brims with power: tap it!'); S.pointAt = { id: 'fountain', t: 0 }; }
-    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `+${rfmt(RATE)}/s`;
+    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `+${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`; el('stage').classList.toggle('surging', surgeX() > 1);
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
     if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the Watchtower'); S.pointAt = { id: 'watchtower', t: 0 }; }
     if (P.shop.open && C.questClaimable(P) && !S.questTold && !S.card) { S.questTold = true; toast('Quest done! Collect it at the Library'); S.pointAt = { id: 'library', t: 0 }; }

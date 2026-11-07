@@ -234,3 +234,10 @@ console.log('crown sink tests passed');
   p.flies = ['sun', 'gold', 'nope']; assert.deepStrictEqual(C.sanitize(p).flies, ['sun', 'gold']); p.restored = C.BUILDING_IDS.slice(); p.runWave = 40; assert.deepStrictEqual(C.ascend(p).flies, ['sun', 'gold', 'nope'].slice(0, 3));
   let gold = 0; for (let i = 0; i < 3000; i++) if (C.flyPick(p, Math.random).rare) gold++; assert.ok(gold > 40 && gold < 200, 'Golden Monarch about 1 in 30'); }
 console.log('butterfly tests passed');
+// Starshard refill of the fountain (Nov 6 2026): only while it charges, costs 25, starts the Surge at once
+{ const p = C.defaults(), now = 10e9; p.shop.shards = 100;
+  assert.ok(!C.canRefill(p, now), 'a full fountain needs no refill'); C.startSurge(p, now);
+  assert.ok(!C.refillSurge(p, now + 1000), 'no refill while a Surge runs');
+  const later = now + C.SURGE_MS + 60e3; assert.ok(C.refillSurge(p, later)); assert.strictEqual(p.shop.shards, 75); assert.ok(C.surgeOn(p, later + 1000));
+  p.shop.shards = 10; assert.ok(!C.refillSurge(p, later + C.SURGE_MS + 60e3), 'not without the shards'); }
+console.log('surge refill tests passed');

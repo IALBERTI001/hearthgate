@@ -599,6 +599,11 @@
   const surgeCooldown = p => SURGE_COOLDOWN_MS - ((p.perks && p.perks.surge) || 0) * 3 * 60e3;
   const surgeReadyFree = (p, now) => !surgeOn(p, now) && now >= p.surge.until + surgeCooldown(p);
   function startSurge(p, now) { p.surge.until = now + SURGE_MS; }
+  // a Starshard sink while the shop has few looks (owner, Nov 6 2026: "what do I do with the excess... the surge is a
+  // good option"): a charging fountain can be refilled at once for Starshards
+  const REFILL_SHARDS = 25;
+  const canRefill = (p, now) => !surgeOn(p, now) && !surgeReadyFree(p, now) && p.shop.shards >= REFILL_SHARDS;
+  function refillSurge(p, now) { if (!canRefill(p, now)) return false; p.shop.shards -= REFILL_SHARDS; startSurge(p, now); return true; }
 
   // ---------- save profile ----------
   function defaults() {
@@ -675,6 +680,6 @@
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, ETERNAL_AT, canAscend, cityWhole, ascendWave, ascend, defaults, sanitize,
     CITY, cityToBand, BESTIARY, BUTTERFLIES, flyOpen, flyPick, twinsFor, twinOf, STARS, starWave, starsDue, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
-    SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
+    SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, REFILL_SHARDS, canRefill, refillSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -347,3 +347,7 @@ svg.wing { flex: none; width: 84px; height: 70px; }
 #card .tabs .qtab { font-size: 26px; padding-left: 4px; padding-right: 4px; white-space: nowrap; }
 .perks div.maxed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 4px 2px; }
 .perks div.maxed span { padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, .22); border: 2px solid rgba(201, 162, 74, .35); font: 600 22px/1.2 'HG Text', sans-serif; color: #d9c6a6; }
+
+/* while a Surge runs the Resonance number glows rose (owner, Nov 6 2026: "I don't really know what the surge is doing") */
+#stage.surging .stat.res .num { color: #ffd6f6; }
+#stage.surging .stat.res .gem { filter: drop-shadow(0 0 8px rgba(255, 120, 220, .9)); }
