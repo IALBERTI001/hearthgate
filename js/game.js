@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-06z';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07a';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -177,7 +177,7 @@
     if ((S.sideT = (S.sideT || 0) + DT) > 0.5) { S.sideT = 0; drawSides(); }
     // the Steward (6th Ascension): every 3 s, level the cheapest building if that leaves two thirds of the Resonance
     if (C.unlocked(P, 'steward') && P.settings.steward !== false && (S.stewT = (S.stewT || 0) + DT) > 3) { S.stewT = 0;
-      const ch = P.restored.map(id => [id, C.levelCost(P, id, B)]).sort((a, b) => a[1] - b[1])[0]; if (ch && ch[1] * 3 <= P.res) levelUp(ch[0]); }
+      const ch = P.restored.map(id => [id, C.levelCost(P, id, B)]).sort((a, b) => a[1] - b[1])[0]; if (ch && ch[1] * 3 <= P.res) levelUp(ch[0], true); }
   }
 
   function hit(e, el) {
@@ -348,14 +348,14 @@
   }
 
   // ---------- the city: tap a restored building to level it up (more Resonance every second) ----------
-  function levelUp(id) {
+  function levelUp(id, quiet) {   // quiet: the Steward's levels, no chime every 3 s
     if (!P.restored.includes(id)) return false;
     const c = C.levelCost(P, id, B); if (P.res < c) return false;
     const L = C.levelOf(P, id) + 1; P.res -= c; P.levels[id] = L; P.grown = true; quest('level'); refresh();
     const sp = CITY.spots[id], x = sx(sp[0]), y = sy(sp[1]);
     burst({ x, y: y + 20, size: 40 }, RES, 14, 150);
     if (C.MILESTONES.includes(L)) { pop(x, y - 40, `Level ${L}: x2!`, RES, 1.4, 44); A.play('tier_up', 0.55); S.reveal = { b: id, t: 0 }; }
-    else { pop(x, y - 30, `Level ${L}`, RES, 0.9, 34); A.play('level_up', 0.5); }
+    else if (!quiet) { pop(x, y - 30, `Level ${L}`, RES, 0.9, 34); A.play('level_up', 0.5); }
     save(); return true;
   }
 
@@ -1260,7 +1260,9 @@
       + `<h4>Collections</h4><div class="sgrid"><span>Feats<b>${P.feats.length}/${C.FEATS.length}</b></span><span>Combos<b>${P.combos.length}/${comboTotal()}</b></span>`
       + `<span>Enemies met<b>${(P.seenRoles || []).length}</b></span><span>Ascension<b>${P.ascensions}/${C.ETERNAL_AT}</b></span>${P.ascensions >= 1 ? `<span>Stars<b>${P.stars.length}/${C.STARS.length}</b></span>` : ''}</div>`);
   }
-  if (sides[0]) sides[0].addEventListener('click', ev => { const b = ev.target.closest('[data-lv]'); if (!b || S.card) return; A.unlock(); if (levelUp(b.dataset.lv)) drawSides(); else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } });
+  if (sides[0]) sides[0].addEventListener('pointerdown', ev => { const b = ev.target.closest('[data-lv]'); if (!b || S.card) return; const id = b.dataset.lv; clearTimeout(S.lvHold); clearInterval(S.lvRep); holdFired = false;
+    S.lvHold = setTimeout(() => { S.lvRep = setInterval(() => { if (!S.card && levelUp(id)) { holdFired = true; drawSides(); } else clearInterval(S.lvRep); }, 120); }, 420); });   // hold to keep levelling, as on the card
+  if (sides[0]) sides[0].addEventListener('click', ev => { const b = ev.target.closest('[data-lv]'); if (!b || S.card) return; if (holdFired) { holdFired = false; return; } A.unlock(); if (levelUp(b.dataset.lv)) drawSides(); else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } });
   root.addEventListener('resize', fit);
 
   // ---------- boot ----------
