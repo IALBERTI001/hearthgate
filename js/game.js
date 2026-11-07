@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07s';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07t';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -344,7 +344,7 @@
     const c = C.restoreCost(P.restored.length); if (P.res < c) return;
     P.res -= c; P.restored.push(id); refresh(); S.upsSinceRestore = 0;
     const b = C.byId(id), r2 = P.ascensions >= 1 && C.RANK2[id];
-    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id); if (P.restored.length === 1) guideSay('restored');
+    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id); guideSay(id);   // a tower building says what it gave the towers (outside review, Nov 7 2026: Restore said what it cost, never what it did)
     if (r2) { S.rank2 = (S.rank2 || []).concat(id); pop(sx(CITY.spots[id][0]), sy(CITY.spots[id][1]) - 50, r2.name + '!', '#ffd56b', 1.8, 40); }
     A.play('tier_up', 0.55); SDK.happytime();
     if (P.restored.length === 5) setTimeout(() => { toast('The fountain flows again!'); S.reveal = { b: 'plaza', t: 0 }; }, 2900);
@@ -606,8 +606,10 @@
   // finishes the line or moves on. Each moment plays once (saved in P.told).
   const GUIDE = {
     intro: [['worry', 'Monsters from the forest are back to finish off our city!'], ['smile', 'Our four towers on the wall hold them back. Tap Upgrade to make them hit harder!', 'towers']],
-    restore: [['smile', 'Every fallen monster sends Resonance to our fountain. Spend it: tap Restore to rebuild a home!', 'fountain']],
-    restored: [['proud', 'Wonderful! Each rebuilt home earns Resonance by itself, even while you rest.']],
+    restore: [['smile', 'Every fallen monster sends Resonance to our fountain. Spend it: tap Restore to rebuild the Forge!', 'fountain']],
+    forge: [['proud', 'The Forge is back: our towers shoot fire now!', 'towers'], ['smile', 'And every rebuilt building earns Resonance by itself, even while you rest.']],
+    frostSpire: [['proud', 'Frost! Our towers slow them now. Burn a frozen monster and it will SHATTER!', 'towers']],
+    stormBell: [['proud', 'The Storm Bell rings! Lightning jumps from monster to monster.', 'towers']],
     boss: [['worry', 'A great beast is coming! Keep the towers strong. The gate must hold!']],
     fell: [['smile', 'We fell back a few waves, but nothing is lost. Upgrade, and push again!']],
     whole: [['proud', 'The whole city stands again! Hold out to wave {aw} and we can Ascend.']],
@@ -643,6 +645,7 @@
     const d = document.createElement('div'); d.id = 'guide'; d.setAttribute('role', 'status');
     d.innerHTML = '<div class="por"><canvas width="244" height="240"></canvas></div><div class="bub"><b>Magister Bram</b><p></p></div>';
     d.addEventListener('pointerdown', ev => { ev.stopPropagation(); guideTap(); });
+    d.style.bottom = (H - WALL_FRONT + 70) + 'px';   // on the grass above the wall: never over the fountain, the buildings or the hand
     el('stage').appendChild(d); G.el = d; return d;
   }
   // the portrait: the painted bust, with a soft-edged open-mouth patch laid over it while a syllable sounds
