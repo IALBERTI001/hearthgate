@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07n';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07o';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -75,7 +75,7 @@
   }
   function spawn(role, at) {
     const R = C.ROLES[role], hp = C.enemyHp(P.wave, role) * (S.trial ? 1.6 : 1) * (S.event && evIs('bloodmoon') ? 1.5 : 1) * (C.isBossRole(role) ? 1 + 0.5 * bossRank() : 1) * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 2 : 1);
-    if (!P.seenRoles.includes(role)) { P.seenRoles.push(role); if (R.tip) setTimeout(() => toast(`New: ${R.label}! ${R.tip}`), 400); }   // every kind goes in the Bestiary; only the special ones get a toast
+    if (!P.seenRoles.includes(role)) { P.seenRoles.push(role); if (R.tip) setTimeout(() => toast(`New · ${R.tip}`), 400); }   // every kind goes in the Bestiary; only the special ones get a toast
     // enemies step out of the long grass below the HUD with a puff of dust, never from under the top panel
     const lead = (S.packN || 0) % 3 === 0 || C.isBossRole(role) || role === 'swarm';
     let x0 = lead ? (S.packX = 80 + Math.random() * 560) : Math.max(70, Math.min(650, S.packX + (Math.random() - 0.5) * 140)), y0 = FIELD_TOP + (R.size > 150 ? 70 : 0) + Math.random() * 40;
@@ -408,19 +408,20 @@
     const tries = [[0, 0], [0, h + 6], [0, -(h + 6)], [w * 0.6, 0], [-w * 0.6, 0], [0, 2 * (h + 6)]];
     for (const [dx, dy] of tries) { const r = [Math.max(6, Math.min(W - 6 - w, x0 + dx)), y - h / 2 + dy, w, h]; if (!tagRects.some(o => hits(r, o))) { x0 = r[0]; y = r[1] + h / 2; break; } }
     tagRects.push([x0, y - h / 2, w, h]);
-    cx.fillStyle = 'rgba(24,12,20,.82)'; cx.strokeStyle = col; cx.lineWidth = 2;
+    // one quiet style for every label (clean-presentation review, Nov 6 2026); a tower's element is only a small dot
+    cx.fillStyle = 'rgba(24,12,20,.82)'; cx.strokeStyle = 'rgba(201,164,106,.75)'; cx.lineWidth = 2;
     cx.beginPath(); cx.roundRect(x0, y - h / 2, w, h, 10); cx.fill(); cx.stroke();
     cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    lines.forEach((l, i) => { cx.fillStyle = i ? '#f1e3c8' : col; cx.fillText(l, x0 + w / 2, y - h / 2 + 17 + i * 27); });
+    lines.forEach((l, i) => { cx.fillStyle = i ? '#f1e3c8' : '#ffe2a8'; cx.fillText(l, x0 + w / 2, y - h / 2 + 17 + i * 27); });
+    if (col) { cx.fillStyle = col; cx.beginPath(); cx.arc(x0 + 2, y - h / 2 + 2, 6, 0, Math.PI * 2); cx.fill(); cx.strokeStyle = '#1a0f15'; cx.stroke(); }
   }
   function drawStats() {
     if (!P.settings.stats || S.card || root.__storeCapture) return;
     cx.save(); tagRects = [];
     cx.fillStyle = 'rgba(20,10,18,.45)'; cx.fillRect(0, CITY_Y - 40, W, CITY_H + 40);   // dim the town so the numbers read
     const bld = () => { for (const id of C.BUILDING_IDS) {
-      const sp = CITY.spots[id], x = sx(sp[0]), y = sy(sp[1]) + 8, b = C.byId(id);
-      if (P.restored.includes(id)) tag(x, y, [`Lv ${C.levelOf(P, id)}`, `+${rfmt(C.buildingRate(P, id, B) * surgeX())}/s`], '#ff9ce8');
-      else { cx.globalAlpha = 0.7; tag(x, y, [b.name], '#a99a86'); cx.globalAlpha = 1; }
+      const sp = CITY.spots[id], x = sx(sp[0]), y = sy(sp[1]) + 8;
+      if (P.restored.includes(id)) tag(x, y, [`Lv ${C.levelOf(P, id)}`, `+${rfmt(C.buildingRate(P, id, B) * surgeX())}/s`]);   // ruins carry no label: only numbers here
     } };
     // towers: damage per hit for the element each tower is firing now, and shots a second
     const els = elements(), dmg = C.towerDamage(P, B), rate = 1 / C.fireInterval(B);
@@ -429,10 +430,10 @@
       tag(t.x, t.beacon ? t.y - 46 : t.y - 118, [`hit ${rfmt(dmg * (1 + (B[e] || 0)))}`, `${rate.toFixed(1)}/s`], COLOR[e]);
     });
     // the gate
-    tag(GATE_X, WALL_FRONT + 58, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`], '#7bd15a');   // over the arch, clear of the tower labels
+    tag(GATE_X, WALL_FRONT + 58, [`Gate ${C.fmt(Math.max(0, S.gateHp))}/${C.fmt(gateMax())}`]);   // over the arch, clear of the tower labels
     // totals in one line under the counters
     const fight = C.fightRate(P, B) * surgeX();
-    tag(W / 2, 175, [`City +${rfmt(RATE * surgeX())}/s · fight about +${rfmt(fight)}/s · base hit ${rfmt(dmg)}`], '#ffd56b');
+    tag(W / 2, 175, [`City +${rfmt(RATE * surgeX())}/s · fight about +${rfmt(fight)}/s · base hit ${rfmt(dmg)}`]);
     bld(); S.tagRects = tagRects;   // kept for tools/qa/overlay-check.cjs
     cx.restore();
   }
@@ -1205,7 +1206,7 @@
   const html = (node, h) => { if (node._h !== h) { node._h = h; node.innerHTML = h; } };
   function ui() {
     if (S.toastQ && !S.card) { const q = S.toastQ; S.toastQ = null; toast(q); }
-    el('wave').textContent = `Wave ${C.fmt(P.wave)}`;
+    html(el('wave'), `<span class="wl">Wave</span>${C.fmt(P.wave)}`);   // the word smaller than the number, so three-digit waves fit on a phone
     document.documentElement.classList.toggle('calm', P.settings.reduced);   // the in-game Reduced motion switch stills CSS motion too
     el('res').textContent = C.fmt(P.res);
     el('unit').hidden = !P.firstSession;   // after the opening the crystal says it, and the top bar has room for the Shop
@@ -1223,7 +1224,7 @@
         : `<b>Surge</b><span>${mmss(P.surge.until + C.surgeCooldown(P) - now)}</span>`);
       if (ready && !S.surgeTold) { S.surgeTold = true; toast('Surge ready: tap Surge for double Resonance'); }
     }
-    el('rate').hidden = RATE <= 0; el('rateN').textContent = `+${rfmt(RATE)}/s`;
+    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `+${rfmt(RATE)}/s`;
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
     if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the Watchtower'); S.pointAt = { id: 'watchtower', t: 0 }; }
     if (P.shop.open && C.questClaimable(P) && !S.questTold && !S.card) { S.questTold = true; toast('Quest done! Collect it at the Library'); S.pointAt = { id: 'library', t: 0 }; }

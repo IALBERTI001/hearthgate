@@ -217,7 +217,7 @@
     mender: { sheet: 'slime', hp: 1.2, speed: 42, size: 64, label: 'Menders', weak: 'fire', heal: 0.05, tint: 'mend', tip: 'Menders heal their friends: burning stops them' },
     sprinter: { sheet: 'beetle', hp: 0.8, speed: 128, size: 56, label: 'Sprinters', weak: 'frost', tint: 'pale', tip: 'Sprinters dash for the gate: Frost slows them' },
     bulwark: { sheet: 'golem', hp: 6, speed: 26, size: 86, label: 'Bulwarks', comboWeak: 2, tint: 'stone', tip: 'Bulwarks shrug off hits: combos crack them for double' },
-    ironhide: { sheet: 'golem', hp: 3.4, speed: 32, size: 80, label: 'Ironhide', weak: 'storm', armour: 0.5, shield: true, tint: 'shield', tip: 'Ironhide: break the shield with Storm, then burn the armour' },
+    ironhide: { sheet: 'golem', hp: 3.4, speed: 32, size: 80, label: 'Ironhide', weak: 'storm', armour: 0.5, shield: true, tint: 'shield', tip: 'Ironhides carry a shield and armour: Storm breaks the shield, Fire burns the armour' },
     // Ascension enemies (Nov 6 2026): each later loop meets new kinds, with a counter to learn
     phantom: { sheet: 'beetle', hp: 1.2, speed: 66, size: 62, label: 'Phantoms', weak: 'storm', blink: true, tint: 'ghost', tip: 'Phantoms fade in and out: hits land only when they show' },
     thief: { sheet: 'beetle', hp: 1, speed: 110, size: 54, label: 'Thieves', weak: 'frost', thief: true, tint: 'thief', tip: 'Thieves grab Resonance at the gate: stop them first' },
