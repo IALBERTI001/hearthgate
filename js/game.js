@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07t';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07u';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -618,6 +618,7 @@
   };
   const G = { q: [], cur: null, el: null, nodes: [] };
   function guideSay(id, vars) {
+    if (P.ascensions > 0) return;   // he teaches the first run; a player who has Ascended already knows it all (owner, Nov 7 2026)
     if (!GUIDE[id] || (P.told || []).includes('g_' + id) || G.q.some(b => b.id === id) || (G.cur && G.cur.id === id)) return;
     P.told = (P.told || []).concat('g_' + id); save();
     G.q.push({ id, lines: GUIDE[id].map(([face, text, focus]) => ({ face, focus, text: text.replace(/\{(\w+)\}/g, (_, k) => vars && vars[k] !== undefined ? vars[k] : '') })) });
