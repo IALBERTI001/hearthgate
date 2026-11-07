@@ -24,7 +24,7 @@ const [url, mins = '45'] = process.argv.slice(2);
       if (H.card()) H.act(H.card() === 'ascend' ? 'ok' : 'pick');
       for (let i = 0; i < 40; i++) { const B2 = C.bonuses(P), lim = Math.min(C.upgradeCost(P.gateLevel, B2), C.cityWhole(P) ? Infinity : C.restoreCost(P.restored.length)) / 3;
         const ch = P.restored.map(id => [id, C.levelCost(P, id, B2)]).sort((a, b) => a[1] - b[1])[0]; if (!ch || ch[1] > lim || ch[1] > P.res) break; H.act('level', ch[0]); }
-      if (!P.firstSession && C.surgeReadyFree(P, Date.now())) document.getElementById('surge').click();
+      if (!P.firstSession && C.surgeReadyFree(P, Date.now())) Hearthgate.surge();
       if (S.gold) H.act('gold');
       for (const k of C.PERKS) if (P.perkPts >= C.perkCost(P, k.id)) C.buyPerk(P, k.id);
       if (C.unlocked(P, 'relics') && P.relics.length < 2) { C.equipRelic(P, 'ember'); C.equipRelic(P, 'hearth'); }

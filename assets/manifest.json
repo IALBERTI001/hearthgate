@@ -173,5 +173,75 @@
   "pad": 8,
   "anchor": "bottom-center",
   "source": "warden art/kits/outer/forest_edge_top.png"
+ },
+ "city/folk-builder.webp": {
+  "subject": "villager builder",
+  "frames": 1,
+  "cell": [
+   93,
+   112
+  ],
+  "anchor": "bottom-center",
+  "source": "ChatGPT image generation, Nov 6 2026, art/prompts/villagers_v1.md; split by outline in the page, magenta keyed"
+ },
+ "city/folk-builderwork.webp": {
+  "subject": "villager builderwork",
+  "frames": 1,
+  "cell": [
+   79,
+   112
+  ],
+  "anchor": "bottom-center",
+  "source": "ChatGPT image generation, Nov 6 2026, art/prompts/villagers_v1.md; split by outline in the page, magenta keyed"
+ },
+ "city/folk-baker.webp": {
+  "subject": "villager baker",
+  "frames": 1,
+  "cell": [
+   83,
+   112
+  ],
+  "anchor": "bottom-center",
+  "source": "ChatGPT image generation, Nov 6 2026, art/prompts/villagers_v1.md; split by outline in the page, magenta keyed"
+ },
+ "city/folk-farmer.webp": {
+  "subject": "villager farmer",
+  "frames": 1,
+  "cell": [
+   84,
+   112
+  ],
+  "anchor": "bottom-center",
+  "source": "ChatGPT image generation, Nov 6 2026, art/prompts/villagers_v1.md; split by outline in the page, magenta keyed"
+ },
+ "city/folk-lamp.webp": {
+  "subject": "villager lamp",
+  "frames": 1,
+  "cell": [
+   82,
+   112
+  ],
+  "anchor": "bottom-center",
+  "source": "ChatGPT image generation, Nov 6 2026, art/prompts/villagers_v1.md; split by outline in the page, magenta keyed"
+ },
+ "city/folk-child.webp": {
+  "subject": "villager child",
+  "frames": 1,
+  "cell": [
+   80,
+   112
+  ],
+  "anchor": "bottom-center",
+  "source": "ChatGPT image generation, Nov 6 2026, art/prompts/villagers_v1.md; split by outline in the page, magenta keyed"
+ },
+ "city/folk-merchant.webp": {
+  "subject": "villager merchant",
+  "frames": 1,
+  "cell": [
+   91,
+   112
+  ],
+  "anchor": "bottom-center",
+  "source": "ChatGPT image generation, Nov 6 2026, art/prompts/villagers_v1.md; split by outline in the page, magenta keyed"
  }
 }

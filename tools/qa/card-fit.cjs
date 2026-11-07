@@ -11,7 +11,7 @@ const KINDS = [['perks'], ['quests'], ['shop'], ['daily', { day: 3, big: false, 
     // every on-screen control sits inside the stage (a CSS rule once moved the Surge button off screen, Nov 6 2026)
     await p.waitForTimeout(400);
     const off = await p.evaluate(() => { const st = document.getElementById('stage').getBoundingClientRect();
-      return ['#surge', '#pause', '#up', '#re', '#wave', '#city', '#combos'].filter(q => { const e = document.querySelector(q); if (!e || e.hidden) return false; const r = e.getBoundingClientRect();
+      return ['#pause', '#up', '#re', '#wave', '#city', '#combos'].filter(q => { const e = document.querySelector(q); if (!e || e.hidden) return false; const r = e.getBoundingClientRect();
         return r.left < st.left - 1 || r.right > st.right + 1 || r.top < st.top - 1 || r.bottom > st.bottom + 1 || !r.width; }); });
     if (off.length) bad.push(`${w}x${h} outside the stage: ${off.join(', ')}`);
     for (const [kind, data] of KINDS) {

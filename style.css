@@ -15,24 +15,36 @@ button { font-family: inherit; }
 [hidden] { display: none !important; }
 button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 
-/* HUD: wave, Resonance, Ascension stars, pause; the two counters under it */
+/* HUD (polish pass, owner Nov 6 2026: "containers for data is cute, but sometimes just having the numbers might look better"):
+   wave and Resonance are plain numbers with an ink outline over a soft shade; only things you press are buttons.
+   Three columns that cannot push each other: a number that grows too wide is shrunk to fit by fitText() in game.js. */
+#hud { position: absolute; left: 16px; right: 16px; top: 12px; z-index: 1; display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; align-items: start; gap: 8px; pointer-events: none; }
+#hud::before { content: ''; position: absolute; left: -16px; right: -16px; top: -12px; height: 210px; z-index: -1; pointer-events: none;
+  background: linear-gradient(rgba(20, 10, 16, .62), rgba(20, 10, 16, .3) 55%, rgba(20, 10, 16, 0)); }
+#hud > * { pointer-events: auto; }
+.stat { font: 50px/1 'HG Display', sans-serif; color: var(--ink); white-space: nowrap;
+  text-shadow: 0 0 3px #22121b, 3px 0 0 #22121b, -3px 0 0 #22121b, 0 3px 0 #22121b, 0 -3px 0 #22121b, 2px 2px 0 #22121b, -2px 2px 0 #22121b, 2px -2px 0 #22121b, -2px -2px 0 #22121b, 0 6px 2px rgba(0, 0, 0, .45); }
+#wave { display: flex; flex-direction: column; align-items: flex-start; padding-left: 6px; }
+.stat .lbl { font-size: 24px; letter-spacing: 3px; text-transform: uppercase; color: #e8cf98; margin-bottom: 2px; }
+.stat.res { display: flex; flex-direction: column; align-items: center; min-width: 0; padding-top: 4px; }
+.stat.res .num { display: flex; align-items: center; gap: 10px; font-size: 56px; }
+.stat.res .gem { width: 30px; height: 30px; margin: 0; }
+.stat .sub { font-size: 28px; color: #e8cf98; margin-top: 4px; }
+.stat .sub.rate { color: #ffc6ef; }
+.stat.sm { font-size: 30px; color: #f3e2c0; }
+#hud .btns { display: flex; gap: 10px; align-items: center; padding-top: 2px; }
+#hud .btns .icon { margin-left: 0 !important; }
+#counters { position: absolute; left: 22px; top: 126px; right: 22px; z-index: 1; display: flex; justify-content: space-between; pointer-events: none; }
 .chip { white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; font: 38px/1 'HG Display', sans-serif;
   background: rgba(42, 26, 34, .84); border: 3px solid var(--brass); box-shadow: 0 3px 0 rgba(0, 0, 0, .25); }
-#hud { position: absolute; left: 16px; right: 16px; top: 16px; display: flex; gap: 6px; align-items: center; }
 .unit { font-size: 32px; color: #e8cf98; }
 /* Resonance: a rose crystal, the city's magic */
 .gem { flex: none; width: 24px; height: 24px; margin: 0 4px; transform: rotate(45deg); border-radius: 4px; border: 3px solid #5a1748;
   background: linear-gradient(135deg, #fff0fb, #ff8ae6 45%, #b02a8f); box-shadow: 0 0 12px rgba(255, 110, 220, .7); }
-#hud .rate { font-size: 26px; color: #ffbdee; }
-#wave .wl { font-size: 28px; color: #e8cf98; margin-right: 6px; }
-#hud .gem { margin: 0 2px; }   /* income per second rides in the Resonance pill */
 #stars { color: var(--gold); padding: 8px 12px; gap: 4px; }
-#hud .chip { font-size: 36px; min-width: 0; flex-shrink: 1; overflow: hidden; padding: 8px 12px; gap: 4px; }   /* the buttons never get pushed off */
 .icon { margin-left: auto; flex: none; width: 62px; height: 62px; border-radius: 50%; border: 3px solid var(--brass); background: var(--plum);
   color: var(--ink); font: 30px/1 'HG Display', sans-serif; cursor: pointer; box-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
 .icon.on { background: var(--brass); color: var(--plum-dark); }
-#counters { position: absolute; left: 16px; top: 104px; right: 16px; display: flex; justify-content: space-between; pointer-events: none; }
-#counters .chip { font-size: 34px; }
 
 /* notices sit over the city, never over the fight */
 #toast { position: absolute; left: 50%; bottom: 680px; transform: translate(-50%, 20px); max-width: 680px; width: max-content; padding: 14px 26px; border-radius: 16px;

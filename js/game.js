@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07p';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07q';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -39,6 +39,7 @@
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
     act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'gold' && S.gold) tapGold(S.gold.x, S.gold.y); if (what === 'fly') { const f = FLY.find(q => q.kind && !q.gone && q.a > 0.5); if (f) { const [x, y] = flyPos(f); tapFly(x, y); } else if (FLURRY.list.length) { const [x, y] = flurryPos(FLURRY.list.find(b => b.x > 20 && b.x < W - 20) || FLURRY.list[0]); tapFly(x, y); } } if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
     card: () => S.card,
+    surge: () => surgeTap(),
     flurry: () => FLURRY
   });
 
@@ -340,7 +341,7 @@
     const c = C.restoreCost(P.restored.length); if (P.res < c) return;
     P.res -= c; P.restored.push(id); refresh(); S.upsSinceRestore = 0;
     const b = C.byId(id), r2 = P.ascensions >= 1 && C.RANK2[id];
-    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 };
+    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id);
     if (r2) { S.rank2 = (S.rank2 || []).concat(id); pop(sx(CITY.spots[id][0]), sy(CITY.spots[id][1]) - 50, r2.name + '!', '#ffd56b', 1.8, 40); }
     A.play('tier_up', 0.55); SDK.happytime();
     if (P.restored.length === 5) setTimeout(() => { toast('The fountain flows again!'); S.reveal = { b: 'plaza', t: 0 }; }, 2900);
@@ -464,7 +465,7 @@
   // a Golden Wisp crosses the field every 30 to 60 s once three buildings stand (every 15 to 30 s with the Bakery)
   function tickExtras() {
     if (S.cheerT > 0 && (S.cheerT -= DT) <= 0) { S.cheerT = 0; S.cheer = 0; }
-    if (S.villagers) { S.villagers.t += DT; if (S.villagers.t > 2.6) S.villagers = null; }
+    tickFolk();
     if (P.restored.length < 3) return;
     if (S.event && (evIs('harvest') || evIs('goldrush')) && !S.gold && S.goldT > 6) S.goldT = 6;
     if (S.gold) { const g = S.gold; g.t += DT; g.x += g.vx * DT; g.y = g.y0 + Math.sin(g.t * 2.4) * 26; if (g.t > g.life || g.x < -60 || g.x > W + 60) S.gold = null; return; }
@@ -593,17 +594,69 @@
   // the Cottages: three villagers walk to the gate and mend it after every wave
   function repairGate() {
     const add = Math.min(gateMax() - S.gateHp, gateMax() * 0.35 * (1 + B.repairX)); S.gateHp += add; S.repairs = (S.repairs || 0) + 1;
-    S.villagers = { t: 0 }; pop(GATE_X, WALL_FRONT - 110, `Repaired +${C.fmt(add)}`, '#7bd15a', 1.4, 34);
+    folkMend(); pop(GATE_X, WALL_FRONT - 110, `Repaired +${C.fmt(add)}`, '#7bd15a', 1.4, 34);
   }
-  function drawVillagers() {
-    const v = S.villagers; if (!v || root.__storeCapture) return;
-    const sp = CITY.spots.cottages, x0 = sx(sp[0]), y0 = sy(sp[1]), x1 = GATE_X, y1 = WALL_FRONT + 60, u = Math.min(1, v.t / 1.6);
-    for (let k = 0; k < 3; k++) {
-      const uu = Math.max(0, Math.min(1, u - k * 0.08)), x = x0 + (x1 - x0) * uu + (k - 1) * 16, y = y0 + (y1 - y0) * uu - Math.abs(Math.sin(v.t * 10 + k)) * 4;
-      cx.save(); cx.fillStyle = ['#c0603a', '#3a6fc0', '#4a9a4a'][k]; cx.strokeStyle = '#2a1a22'; cx.lineWidth = 2;
-      cx.beginPath(); cx.roundRect(x - 6, y - 14, 12, 14, 4); cx.fill(); cx.stroke();
-      cx.fillStyle = '#f2c79a'; cx.beginPath(); cx.arc(x, y - 19, 6, 0, 7); cx.fill(); cx.stroke(); cx.restore();
-      if (uu >= 1 && Math.random() < 0.3) S.fx.push({ x: x1 + (Math.random() - 0.5) * 60, y: y1 - 20, vx: (Math.random() - 0.5) * 80, vy: -80, g: 260, t: 0, life: 0.4, col: '#ffe08a', r: 2.5 });
+  // ---------- villagers (owner, Nov 6 2026: "an animation of villagers around moving and building things"; game-polish
+  // rules 9-11). Painted townsfolk walk the spoke paths between the plaza and the restored buildings, stop and loiter, run
+  // to build what you restore, mend the gate after a wave, and hop with a heart when tapped. Sprites load after play starts.
+  const FOLK_KINDS = ['builder', 'baker', 'farmer', 'lamp', 'child', 'merchant'], FOLK = [];
+  const PL = CITY.spots.plaza;
+  const ringAt = a => [PLAZA.x + Math.cos(a) * PL[2] * K * 0.5, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * 0.5];
+  const angOf = (x, y) => Math.atan2((y - PLAZA.y - 8) / (PL[3] * K * 0.5), (x - PLAZA.x) / (PL[2] * K * 0.5));
+  const frontOf = id => { const s = CITY.spots[id], bx = sx(s[0]), by = sy(s[1]); return [bx + (PLAZA.x - bx) * 0.36, by + (PLAZA.y - by) * 0.36 + 18]; };
+  function routeTo(f, to) {   // along the spoke to the ring, round the ring, out the other spoke
+    const a0 = angOf(f.x, f.y), a1 = angOf(to[0], to[1]); let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    const pts = [ringAt(a0)]; for (let k = 1, n = Math.ceil(Math.abs(d) / 0.3); k <= n; k++) pts.push(ringAt(a0 + d * k / n)); pts.push(to); f.pts = pts; f.i = 0;
+  }
+  function folkCount() { return Math.min(FOLK_KINDS.length, 2 + Math.floor(P.restored.length * 0.45)); }
+  function tickFolk() {
+    if (!img.folk_builder) return;
+    while (FOLK.length < folkCount()) { const kind = FOLK_KINDS[FOLK.length], [x, y] = ringAt(Math.random() * 6.28); FOLK.push({ kind, x, y, pts: [], i: 0, wait: Math.random() * 3, dir: 1, t: Math.random() * 9, hop: 0, tapT: 0, speed: kind === 'child' ? 40 : 24 + Math.random() * 6 }); }
+    for (const f of FOLK) {
+      f.t += DT; f.hop = Math.max(0, f.hop - DT); f.tapT = Math.max(0, f.tapT - DT);
+      if (f.work > 0) { f.work -= DT; if (!reduced() && Math.random() < DT * 3) S.fx.push({ dust: true, x: f.x + f.dir * 14, y: f.y - 2, vx: (Math.random() - 0.5) * 30, vy: -20, t: 0, life: 0.6, col: '#d8c3a0', r: 3 }); continue; }
+      if (f.i < f.pts.length) {
+        const [tx, ty] = f.pts[f.i], dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy), step = f.speed * DT;
+        if (Math.abs(dx) > 0.5) f.dir = dx > 0 ? 1 : -1;
+        if (d <= step) { f.x = tx; f.y = ty; f.i++; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.job = null; } else f.wait = 2 + Math.random() * 5; } }
+        else { f.x += dx / d * step; f.y += dy / d * step; }
+      } else if ((f.wait -= DT) <= 0) {
+        const homes = P.restored.filter(id => CITY.spots[id] && id !== 'plaza');
+        routeTo(f, homes.length && Math.random() < 0.75 ? frontOf(homes[Math.floor(Math.random() * homes.length)]) : ringAt(Math.random() * 6.28));
+      }
+    }
+  }
+  // the world answers: a restore sends the builder to work on it and makes everyone else hop
+  function folkBuild(id) {
+    const b = FOLK.find(f => f.kind === 'builder'); if (!b || !CITY.spots[id]) return;
+    b.work = 0; routeTo(b, frontOf(id)); b.job = { work: 5 }; b.speed = 46;
+    for (const f of FOLK) if (f !== b) f.hop = 0.7;
+    setTimeout(() => { b.speed = 26; }, 9000);
+  }
+  // after a wave, the nearest three walk up the road and mend the gate
+  function folkMend() {
+    const gate = [GATE_X + (Math.random() - 0.5) * 30, WALL_FRONT + 66];
+    FOLK.slice().sort((a, b) => Math.hypot(a.x - gate[0], a.y - gate[1]) - Math.hypot(b.x - gate[0], b.y - gate[1])).slice(0, 3)
+      .forEach((f, k) => { f.work = 0; f.pts = [ringAt(-Math.PI / 2), [gate[0] + (k - 1) * 22, gate[1]]]; f.i = 0; f.job = { work: 2.2 }; });
+  }
+  function tapFolk(x, y) {
+    for (const f of FOLK) { if (Math.hypot(x - f.x, y - (f.y - 16)) > 24) continue;
+      if (f.tapT > 0) return true;
+      f.tapT = 12; f.hop = 0.8; A.play('claim', 0.25); const amt = C.fightRate(P, B) * 1.6 * surgeX(); P.res += amt;
+      pop(f.x, f.y - 46, `♥ +${C.fmt(amt)}`, '#ffb8d8', 1.1, 28); burst({ x: f.x, y: f.y - 20, size: 12 }, '#ffb8d8', 8, 80); return true; }
+    return false;
+  }
+  function drawFolk() {
+    if (!img.folk_builder || root.__storeCapture) return;
+    for (const f of FOLK.slice().sort((a, b) => a.y - b.y)) {
+      const working = f.work > 0, im = img[working && f.kind === 'builder' ? 'folk_builderwork' : 'folk_' + f.kind]; if (!im) continue;
+      const walking = !working && f.i < f.pts.length, calm = reduced();
+      const h = (f.kind === 'child' ? 34 : 44) * (working && f.kind === 'builder' ? 0.9 : 1), w = h * im.width / im.height;
+      const lift = calm ? 0 : (walking ? Math.abs(Math.sin(f.t * 9)) * 3 : 0) + (f.hop > 0 ? Math.sin(f.hop / 0.7 * Math.PI) * 10 : 0);
+      cx.save(); cx.globalAlpha = 0.22; cx.fillStyle = '#1a0f15'; cx.beginPath(); cx.ellipse(f.x, f.y, w * 0.32, 4, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
+      cx.translate(f.x, f.y - lift); if (!calm && walking) cx.rotate(Math.sin(f.t * 9) * 0.05);
+      if (!calm && working) cx.scale(1, 1 - 0.06 * Math.abs(Math.sin(f.t * 10)));
+      cx.scale(f.dir, 1); cx.drawImage(im, -w / 2, -h, w, h); cx.restore();
     }
   }
 
@@ -627,10 +680,50 @@
   // Basic Launch: free every 15 minutes. Full Launch: a rewarded ad, any time one is not running, 8 a day.
   function surgeTap() {
     A.unlock(); const now = Date.now(); if (C.surgeOn(P, now) || S.card) return;
-    const go = () => { C.startSurge(P, Date.now()); quest('surge'); A.play('surge', 0.6); toast('Surge! Double Resonance for 3 minutes'); SDK.happytime(); save(); };
+    const go = () => { C.startSurge(P, Date.now()); quest('surge'); A.play('surge', 0.6); S.pointAt = null; S.surgeBurst = 0;
+      pop(PLAZA.x, PLAZA.y - 96, 'SURGE! x2', '#ffb8f0', 1.6, 52); burst({ x: PLAZA.x, y: PLAZA.y - 10, size: 50 }, RES, 30, 260); SDK.happytime(); save(); };
     if (SDK.rewardsOn) { adDay(); if (P.surge.ads >= C.SURGE_ADS_PER_DAY) return toast('No more Surges today'); S.paused = true;
       SDK.rewarded(adHooks).then(ok => { S.paused = false; if (ok) { P.surge.ads++; go(); } }); return; }
-    if (C.surgeReadyFree(P, now)) go(); else toast(`The next Surge charges in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`);
+    if (C.surgeReadyFree(P, now)) go(); else pop(PLAZA.x, PLAZA.y - 70, `Refills in ${mmss(P.surge.until + C.surgeCooldown(P) - now)}`, '#f3e2c0', 1.2, 30);
+  }
+  // ---------- the Surge lives in the fountain (owner, Nov 6 2026: "as part of the center fountain's power up move...
+  // a surge of power from the fountain causing 2x more resonance"). Charging: the fountain looks as it always does.
+  // Ready: its water glows rose, motes rise and one badge (the halls' style) floats over it. On: it sprays rose light
+  // and a plain countdown sits under the basin. Tap the fountain or press X.
+  const fountainState = () => { if (P.firstSession) return 'off'; const now = Date.now(); if (C.surgeOn(P, now)) return 'on'; return (SDK.rewardsOn || C.surgeReadyFree(P, now)) ? 'ready' : 'wait'; };
+  const FOUNT_BADGE = () => [PLAZA.x, PLAZA.y - 78];
+  function tapFountain(x, y) {
+    const st = fountainState(); if (st === 'off') return false;
+    const [bx, by] = FOUNT_BADGE(), near = Math.hypot(x - PLAZA.x, (y - PLAZA.y + 14) / 0.75) < 64 || (st === 'ready' && Math.hypot(x - bx, y - by) < 46);
+    if (!near) return false;
+    if (st === 'on') { pop(PLAZA.x, PLAZA.y - 70, `x2 for ${mmss(P.surge.until - Date.now())}`, '#ffb8f0', 1.1, 30); return true; }
+    surgeTap(); return true;
+  }
+  function drawFountain() {
+    const st = fountainState(); if (st === 'off' || st === 'wait' || root.__storeCapture) return;
+    const calm = reduced(), pulse = calm ? 1 : 0.75 + 0.25 * Math.sin(S.t * (st === 'on' ? 5 : 2.2));
+    cx.save(); cx.globalCompositeOperation = 'lighter';
+    cx.save(); cx.translate(PLAZA.x, PLAZA.y - 20); cx.scale(1, 0.45); glow(0, 0, st === 'on' ? 62 : 48, 'rgba(255,120,220,', (st === 'on' ? 0.75 : 0.5) * pulse); cx.restore();
+    if (!calm) {
+      if (st === 'on' && Math.random() < 0.7) S.fx.push({ x: PLAZA.x + (Math.random() - 0.5) * 14, y: PLAZA.y - 30, vx: (Math.random() - 0.5) * 90, vy: -170 - Math.random() * 90, g: 300, t: 0, life: 1.1, col: Math.random() < 0.5 ? '#ffc6f0' : '#fff0fb', r: 1.5 + Math.random() * 1.5 });
+      if (st === 'ready' && Math.random() < 0.08) S.fx.push({ x: PLAZA.x + (Math.random() - 0.5) * 50, y: PLAZA.y - 22, vx: (Math.random() - 0.5) * 8, vy: -30 - Math.random() * 20, t: 0, life: 1.4, col: '#ffc6f0', r: 1.4 + Math.random() });
+    }
+    cx.restore();
+    if (S.card) return;
+    if (st === 'ready') {
+      const [x, y0] = FOUNT_BADGE(), y = y0 + (calm ? 0 : Math.sin(S.t * 2.2) * 3), point = S.pointAt && S.pointAt.id === 'fountain';
+      cx.save();
+      if (point && !calm) glow(x, y, 60, 'rgba(111,242,255,', 0.35 + 0.25 * Math.sin(S.t * 6));
+      cx.fillStyle = '#4a2a4f'; cx.strokeStyle = '#ffd56b'; cx.lineWidth = 4; cx.beginPath(); cx.arc(x, y, 27, 0, 7); cx.fill(); cx.stroke();
+      if (SDK.rewardsOn) { cx.fillStyle = '#fff4dc'; cx.beginPath(); cx.moveTo(x - 7, y - 11); cx.lineTo(x + 11, y); cx.lineTo(x - 7, y + 11); cx.fill(); }
+      else { cx.translate(x, y); cx.rotate(Math.PI / 4); const g = cx.createLinearGradient(-11, -11, 11, 11); g.addColorStop(0, '#fff0fb'); g.addColorStop(0.45, '#ff8ae6'); g.addColorStop(1, '#b02a8f');
+        cx.fillStyle = g; cx.strokeStyle = '#5a1748'; cx.lineWidth = 3; cx.beginPath(); cx.roundRect(-11, -11, 22, 22, 4); cx.fill(); cx.stroke(); }
+      cx.restore();
+    } else {
+      cx.save(); cx.font = "30px 'HG Display', sans-serif"; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      const t = `x2 · ${mmss(P.surge.until - Date.now())}`, y = PLAZA.y + 58;
+      cx.lineJoin = 'round'; cx.lineWidth = 7; cx.strokeStyle = '#22121b'; cx.strokeText(t, PLAZA.x, y); cx.fillStyle = '#ffd0f4'; cx.fillText(t, PLAZA.x, y); cx.restore();
+    }
   }
   const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
   const qTabs = on => `<div class="tabs">${[['daily', 'Quests'], ['feats', `Feats ${P.feats.length}/${C.FEATS.length}`], ['beasts', `Beasts ${C.BESTIARY.filter(r => P.seenRoles.includes(r)).length}/${C.BESTIARY.length}`], ['garden', `Garden ${P.flies.length}/${C.BUTTERFLIES.length}`]].map(([k, n]) => `<button class="tab qtab${k === on ? ' on' : ''}" data-q="${k}">${n}</button>`).join('')}</div>`;
@@ -1198,13 +1291,13 @@
     }
     for (const m of S.motes) { const a = Math.sin(Math.PI * m.t / m.life); glow(m.x, m.y, m.r * 4, RES_GLOW, 0.35 * a); cx.globalAlpha = a; cx.fillStyle = '#fff0fb'; cx.beginPath(); cx.arc(m.x, m.y, m.r * 0.6, 0, 7); cx.fill(); cx.globalAlpha = 1; }
     cx.restore();
-    drawMarkers(); drawBadges(); drawCheer();
+    drawFolk(); drawMarkers(); drawBadges(); drawFountain(); drawCheer();
     drawButterflies();
     // the field, back to front
     for (const e of S.enemies.slice().sort((a, b) => a.y - b.y)) drawEnemy(e);
     if (img.wall) cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H);   // the wall is nearer the camera than anyone outside it
     drawGateBar();
-    drawVillagers(); drawGold();
+    drawGold();
     drawBossBar(); drawStats();
     drawTowers();
     for (const s of S.shots) drawShot(s);
@@ -1243,26 +1336,25 @@
   function toast(text) { if (S.card) { S.toastQ = text; return; } const t = el('toast'); t.textContent = text; t.classList.add('show'); toastT = 2.8; }
   // set markup only when it changes: ui() runs every frame
   const html = (node, h) => { if (node._h !== h) { node._h = h; node.innerHTML = h; } };
+  // a number never clips (owner's screenshot, Nov 6 2026: "wave is 202 but we see 20"): when its text changes it is set at
+  // full size and stepped down until it fits its column
+  function setFit(node, text, size, box = node) {
+    if (node._t === text) return; node._t = text; node.textContent = text; box.style.fontSize = size + 'px';
+    const room = box.parentElement.clientWidth; let fs = size;
+    while (box.scrollWidth > room + 1 && fs > 24) { fs -= 2; box.style.fontSize = fs + 'px'; }
+  }
   function ui() {
     if (S.toastQ && !S.card) { const q = S.toastQ; S.toastQ = null; toast(q); }
-    html(el('wave'), `<span class="wl">Wave</span>${C.fmt(P.wave)}`);   // the word smaller than the number, so three-digit waves fit on a phone
+    setFit(el('waveN'), C.fmt(P.wave), 50);
     document.documentElement.classList.toggle('calm', P.settings.reduced);   // the in-game Reduced motion switch stills CSS motion too
-    el('res').textContent = C.fmt(P.res);
+    setFit(el('res'), C.fmt(P.res), 56, el('res').parentElement);
     el('unit').hidden = !P.firstSession;   // after the opening the crystal says it, and the top bar has room for the Shop
-    el('city').textContent = `City ${P.restored.length}/10`;
+    el('city').textContent = `City ${P.restored.length}/10`; el('city').hidden = P.restored.length >= 10;   // a finished goal leaves the screen
     el('combos').textContent = P.combos.length < comboTotal() ? `Combos ${P.combos.length}/${comboTotal()}` : `Feats ${P.feats.length}/${C.FEATS.length}`;   // a collection to finish, always in view
     el('shop').hidden = true;   // the Shop lives in the Market now
     if (P.shop.open) C.questsFor(P, today());
     el('quests').hidden = true;   // quests and Feats live in the Library
-    // the Surge button: running (x2 and time left), ready (free, or an ad in Full Launch), or charging
-    const sb = el('surge'), now = Date.now(); sb.hidden = P.firstSession;
-    if (!sb.hidden) {
-      const on = C.surgeOn(P, now), ready = !on && (SDK.rewardsOn || C.surgeReadyFree(P, now));
-      sb.className = on ? 'on' : ready ? 'ready' : 'wait';
-      html(sb, on ? `<b>x2</b><span>${mmss(P.surge.until - now)}</span>` : ready ? `${SDK.rewardsOn ? '<span class="play"></span>' : ''}<b>Surge</b><span>x2</span>`
-        : `<b>Surge</b><span>${mmss(P.surge.until + C.surgeCooldown(P) - now)}</span>`);
-      if (ready && !S.surgeTold) { S.surgeTold = true; toast('Surge ready: tap Surge for double Resonance'); }
-    }
+    if (fountainState() === 'ready' && !S.card && firstTime('fountainSurge')) { toast('The fountain brims with power: tap it!'); S.pointAt = { id: 'fountain', t: 0 }; }
     el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `+${rfmt(RATE)}/s`;
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
     if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the Watchtower'); S.pointAt = { id: 'watchtower', t: 0 }; }
@@ -1292,7 +1384,7 @@
     }
     // after the opening: point once at a building that can grow, until the player has levelled one
     let spot = null;
-    if (S.pointAt && (S.pointAt.t += 1 / 60) < 10 && !S.card && !target) { const [bx, by] = badgeAt(S.pointAt.id); spot = { hx: bx, hy: by }; target = 'bld'; }
+    if (S.pointAt && (S.pointAt.t += 1 / 60) < 10 && !S.card && !target) { const [bx, by] = S.pointAt.id === 'fountain' ? FOUNT_BADGE() : badgeAt(S.pointAt.id); spot = { hx: bx, hy: by }; target = 'bld'; }
     if (!target && !P.firstSession && !P.grown && !S.card && P.restored.length >= C.FIXED_ORDER && (toastT <= 0 || S.growTip)) {
       const id = P.restored.find(b => P.res >= C.levelCost(P, b, B));
       if (id && (S.growTipT || 0) < 20) { spot = CITY.spots[id]; target = 'bld'; if (!S.growTip) { S.growTip = true; S.growTipT = 0; toast('Tap a building to grow its Resonance'); } }
@@ -1368,7 +1460,7 @@
   // ---------- boot ----------
   function bind() {
     el('up').addEventListener('click', () => { if (!holdFired) upgrade(); holdFired = false; });
-    holdRepeat(el('up'), () => { if (S.card || C.pendingFork(P) || P.res < C.upgradeCost(P.gateLevel, B)) return false; upgrade(); return true; }); el('re').addEventListener('click', restore); el('surge').addEventListener('click', surgeTap); el('stats').addEventListener('click', toggleStats); el('stage').classList.toggle('stats-on', !!P.settings.stats); el('stats').classList.toggle('on', !!P.settings.stats); el('stats').classList.toggle('on', P.settings.stats); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
+    holdRepeat(el('up'), () => { if (S.card || C.pendingFork(P) || P.res < C.upgradeCost(P.gateLevel, B)) return false; upgrade(); return true; }); el('re').addEventListener('click', restore); el('stats').addEventListener('click', toggleStats); el('stage').classList.toggle('stats-on', !!P.settings.stats); el('stats').classList.toggle('on', !!P.settings.stats); el('stats').classList.toggle('on', P.settings.stats); el('stars').addEventListener('click', () => { A.unlock(); if (!S.card && P.ascensions > 0) showCard('perks'); }); el('quests').addEventListener('click', () => { A.unlock(); if (!S.card && P.shop.open) showCard('quests'); });
     el('shop').addEventListener('click', () => { if (S.card === 'shop') { const x = el('card').querySelector('#c-no'); if (x) x.click(); } else openShopCard(); });
     el('pause').addEventListener('click', () => {
       A.unlock();
@@ -1385,7 +1477,7 @@
     // tap a restored building to level it up; a ruined one says what it will do once restored
     cv.addEventListener('click', ev => {
       if (S.card) return; const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H;
-      if (tapGold(x, y) || tapFly(x, y)) return;
+      if (tapGold(x, y) || tapFly(x, y) || tapFolk(x, y) || tapFountain(x, y)) return;
       for (const id in HALLS) { const [bx, by] = badgeAt(id); if (HALLS[id].ok() && Math.hypot(x - bx, y - by) < 46 && openHall(id)) return; }
       for (const id of C.BUILDING_IDS) { const s = CITY.spots[id]; const dx = (x - sx(s[0])) / (s[2] * K * 0.8), dy = (y - sy(s[1])) / (s[3] * K * 0.8);
         if (dx * dx + dy * dy < 1) { A.unlock(); if (P.restored.includes(id)) showCard('building', id); else if (!openHall(id)) { const b = C.byId(id); toast(`${b.name} (ruined). Restore it: ${b.line}`); } return; } }
@@ -1406,5 +1498,6 @@
     loadImg('meadow', 'assets/ground/meadow.webp'), loadImg('wall', 'assets/city/city-wall.webp'), loadImg('forest', 'assets/kit/forest-edge-top.webp'),
     loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
     ...['fire', 'frost', 'storm'].flatMap(e => [1, 2, 3].map(t => loadImg(e + t, T(`${e}-${t}`))))])
-    .then(() => { outline(); for (const n of GROUND.concat(['fire', 'frost', 'storm'].flatMap(e => [e + 1, e + 2, e + 3]))) orig[n] = img[n]; applyLooks(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); checkFeats(true); returnCards(); openShop(); /* after the return cards: opening saves, which stamps lastSeen */ requestAnimationFrame(frame); });
+    .then(() => { outline(); for (const n of GROUND.concat(['fire', 'frost', 'storm'].flatMap(e => [e + 1, e + 2, e + 3]))) orig[n] = img[n]; applyLooks(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); checkFeats(true); returnCards(); openShop(); /* after the return cards: opening saves, which stamps lastSeen */ requestAnimationFrame(frame);
+      ['builder', 'builderwork', 'baker', 'farmer', 'lamp', 'child', 'merchant'].forEach(k => loadImg('folk_' + k, `assets/city/folk-${k}.webp`)); });   // after play starts: they are not needed for the first frame
 })(typeof globalThis !== 'undefined' ? globalThis : this);
