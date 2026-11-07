@@ -23,7 +23,7 @@ const SCENES = {
       quests: { day: new Date().toISOString().slice(0, 10), list: [], bonus: false } }, sc));
   const p = await ctx.newPage(); await p.addInitScript(SHIM); await p.goto(url);
   for (let i = 0; i < 60 && await p.evaluate(() => !!document.getElementById('boot')); i++) { await p.waitForTimeout(60); await tick(p, 100); }
-  await p.addStyleTag({ content: '#toast{display:none!important} #hand{display:none!important}' });
+  await p.addStyleTag({ content: '#toast{display:none!important} #hand{display:none!important} #guide{display:none!important}' });
   await p.evaluate(() => { const H = Hearthgate; for (let k = 0; k < 4 && H.card(); k++) H.act('ok'); if (H.card()) H.act('close'); const { S } = H.state(); S.omenTold = true; S.enemies = []; S.spawnQ = []; });
   await tick(p, sc.preroll);   // the new wave has just begun: its banner holds most of the shot
   let n = +first;

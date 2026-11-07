@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07x';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07y';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -591,7 +591,7 @@
     cx.restore();
   }
   // the Tavern: combos fill the Cheer meter; full, the towers fire twice as fast for 6 s
-  function startCheer() { S.cheerT = S.cheerMax = B.cheerLong ? 10 : 6; S.cheersDone = (S.cheersDone || 0) + 1; pop(W / 2, 420, 'CHEER! Towers fire twice as fast', '#ffd56b', 1.8, 44); A.play('feat', 0.5); }
+  function startCheer() { folkToTavern(); S.cheerT = S.cheerMax = B.cheerLong ? 10 : 6; S.cheersDone = (S.cheersDone || 0) + 1; pop(W / 2, 420, 'CHEER! Towers fire twice as fast', '#ffd56b', 1.8, 44); A.play('feat', 0.5); }
   function drawCheer() {
     if (!has('tavern') || root.__storeCapture) return;
     const sp = CITY.spots.tavern, x = sx(sp[0]), y = sy(sp[1]) + sp[3] * K * 0.42, w = 92, f = S.cheerT > 0 ? S.cheerT / (S.cheerMax || 6) : S.cheer || 0;
@@ -706,6 +706,7 @@
   // rules 9-11). Painted townsfolk walk the spoke paths between the plaza and the restored buildings, stop and loiter, run
   // to build what you restore, mend the gate after a wave, and hop with a heart when tapped. Sprites load after play starts.
   const FOLK_KINDS = ['builder', 'baker', 'farmer', 'lamp', 'child', 'merchant'], FOLK = [];
+  const FOLK_HAUNTS = { baker: ['bakery', 'market'], farmer: ['granary', 'market'], merchant: ['market', 'tavern'], lamp: ['watchtower', 'library'], builder: [] };
   const PL = CITY.spots.plaza;
   const ringAt = a => [PLAZA.x + Math.cos(a) * PL[2] * K * 0.5, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * 0.5];
   const angOf = (x, y) => Math.atan2((y - PLAZA.y - 8) / (PL[3] * K * 0.5), (x - PLAZA.x) / (PL[2] * K * 0.5));
@@ -721,6 +722,7 @@
     for (const f of FOLK) {
       f.t += DT; f.hop = Math.max(0, f.hop - DT); f.tapT = Math.max(0, f.tapT - DT);
       if (f.hop2 && (f.hop2 -= DT) <= 0) { f.hop2 = 0; f.hop = 0.7; }
+      if (f.party > 0) { f.party -= DT; if (f.i >= f.pts.length && f.hop <= 0 && Math.random() < DT * 2.5) f.hop = 0.7; if (f.party <= 0) f.speed = f.kind === 'child' ? 40 : 26; }
       if (f.scared && f.i >= f.pts.length && f.work <= 0) { f.dir = f.x < PLAZA.x ? 1 : -1; continue; }   // huddled by the fountain, facing it
       if (f.work > 0) {
         f.work -= DT; if (f.work <= 0) { f.mending = false; f.speed = f.kind === 'child' ? 40 : 26; }
@@ -733,11 +735,13 @@
       if (f.i < f.pts.length) {
         const [tx, ty] = f.pts[f.i], dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy), step = f.speed * DT;
         if (Math.abs(dx) > 0.5) f.dir = dx > 0 ? 1 : -1;
-        if (d <= step) { f.x = tx; f.y = ty; f.i++; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.mending = !!f.job.mend; f.dir = f.mending ? (f.x < GATE_X ? 1 : -1) : f.dir; f.knockT = 0; f.job = null; } else f.wait = 2 + Math.random() * 5; } }
+        if (d <= step) { f.x = tx; f.y = ty; f.i++; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.mending = !!f.job.mend; f.dir = f.mending ? (f.x < GATE_X ? 1 : -1) : f.dir; f.knockT = 0; f.job = null; } else f.wait = f.party > 0 ? f.party : 2 + Math.random() * 5; } }
         else { f.x += dx / d * step; f.y += dy / d * step; }
       } else if ((f.wait -= DT) <= 0) {
         const homes = P.restored.filter(id => CITY.spots[id] && id !== 'plaza');
-        routeTo(f, homes.length && Math.random() < 0.75 ? frontOf(homes[Math.floor(Math.random() * homes.length)]) : ringAt(Math.random() * 6.28));
+        // each villager mostly keeps to their own trade's buildings; the child runs everywhere
+        const mine = (FOLK_HAUNTS[f.kind] || []).filter(id => homes.includes(id)), pool = mine.length && Math.random() < 0.7 ? mine : homes;
+        routeTo(f, pool.length && Math.random() < 0.8 ? frontOf(pool[Math.floor(Math.random() * pool.length)]) : ringAt(Math.random() * 6.28));
       }
     }
   }
@@ -759,7 +763,7 @@
   const CHIMNEYS = { forge: [[56, -104]], bakery: [[-30, -82]], cottages: [[-30, -74], [26, -72], [70, -80]] };
   const smokeT = {};
   function tickSmoke() {
-    if (reduced() || root.__storeCapture) return;
+    if (reduced()) return;
     for (const id in CHIMNEYS) {
       if (!P.restored.includes(id)) continue;
       CHIMNEYS[id].forEach(([dx, dy], k) => {
@@ -768,6 +772,11 @@
         S.fx.push({ dust: true, smoke: true, x: sx(sp[0] + dx) + (Math.random() - 0.5) * 2, y: sy(sp[1] + dy), vx: 5 + Math.random() * 5, vy: -13 - Math.random() * 6, t: 0, life: 2.4 + Math.random() * 0.6, r: id === 'forge' ? 4.6 : 3.6, col: '#ece8e2' });
       });
     }
+  }
+  // the Tavern's cheer: whoever is free hurries over to it and hops along
+  function folkToTavern() {
+    if (!CITY.spots.tavern) return; const [tx, ty] = frontOf('tavern');
+    FOLK.forEach((f, k) => { if (f.scared || f.mending || (f.job && f.job.mend)) return; f.work = 0; routeTo(f, [tx + (k - 2.5) * 16, ty + (k % 2) * 10]); f.speed = 55; f.party = 6; });
   }
   // a boss is coming: everyone hurries to the fountain and huddles there until it falls
   function folkHide() { FOLK.forEach((f, k) => { if (f.job && f.job.mend) return; f.work = 0; const a = Math.PI / 2 + (k - (FOLK.length - 1) / 2) * 0.5; routeTo(f, [PLAZA.x + Math.cos(a) * PL[2] * K * 0.7, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * 0.62]); f.speed = 62; f.scared = true; }); }
@@ -791,7 +800,7 @@
     return false;
   }
   function drawFolk() {
-    if (!img.folk_builder || root.__storeCapture) return;
+    if (!img.folk_builder) return;   // painted villagers belong in store captures too
     for (const f of FOLK.slice().sort((a, b) => a.y - b.y)) {
       const working = f.work > 0, im = img[working && f.kind === 'builder' ? 'folk_builderwork' : 'folk_' + f.kind]; if (!im) continue;
       const walking = !working && f.i < f.pts.length, calm = reduced();
