@@ -217,14 +217,14 @@
     mender: { sheet: 'slime', hp: 1.2, speed: 42, size: 64, label: 'Menders', weak: 'fire', heal: 0.05, tint: 'mend', tip: 'Menders heal their friends: burning stops them' },
     sprinter: { sheet: 'beetle', hp: 0.8, speed: 128, size: 56, label: 'Sprinters', weak: 'frost', tint: 'pale', tip: 'Sprinters dash for the gate: Frost slows them' },
     bulwark: { sheet: 'golem', hp: 6, speed: 26, size: 86, label: 'Bulwarks', comboWeak: 2, tint: 'stone', tip: 'Bulwarks shrug off hits: combos crack them for double' },
-    ironhide: { sheet: 'golem', hp: 3.4, speed: 32, size: 80, label: 'Ironhide', weak: 'storm', armour: 0.5, shield: true, tint: 'shield', tip: 'Ironhides carry a shield and armour: Storm breaks the shield, Fire burns the armour' },
+    ironhide: { sheet: 'golem', hp: 3.4, speed: 32, size: 80, label: 'Ironhide', weak: 'storm', armour: 0.5, shield: true, tint: 'shield', tip: 'Ironhides: Storm breaks the shield, then Fire burns the armour' },
     // Ascension enemies (Nov 6 2026): each later loop meets new kinds, with a counter to learn
     phantom: { sheet: 'beetle', hp: 1.2, speed: 66, size: 62, label: 'Phantoms', weak: 'storm', blink: true, tint: 'ghost', tip: 'Phantoms fade in and out: hits land only when they show' },
     thief: { sheet: 'beetle', hp: 1, speed: 110, size: 54, label: 'Thieves', weak: 'frost', thief: true, tint: 'thief', tip: 'Thieves grab Resonance at the gate: stop them first' },
     bomber: { sheet: 'slime', hp: 2, speed: 34, size: 78, label: 'Bombers', weak: 'fire', bomb: true, tint: 'bomb', tip: 'Bombers blow up: pop them in a crowd, never at the gate' },
     totem: { sheet: 'golem', hp: 4, speed: 24, size: 84, label: 'Totems', weak: 'fire', armour: 0.3, totem: 4, tint: 'totem', tip: 'Totems shield their friends: burn them down first' },
     leech: { sheet: 'slime', hp: 1.8, speed: 44, size: 70, label: 'Leeches', weak: 'fire', bite: 3, tint: 'leech', tip: 'Leeches drain the gate three times as fast: burn them first' },
-    knight: { sheet: 'golem', hp: 3, speed: 30, size: 80, label: 'Knights', weak: 'storm', shield: true, reshield: 5, tint: 'knight', tip: 'Knights raise their shield again every few seconds: keep Storm on them' },
+    knight: { sheet: 'golem', hp: 3, speed: 30, size: 80, label: 'Knights', weak: 'storm', shield: true, reshield: 5, tint: 'knight', tip: 'Knights raise their shield again: keep Storm on them' },
     hive: { sheet: 'beetle', hp: 3.5, speed: 26, size: 84, label: 'Hives', weak: 'storm', summon: 3, summonRole: 'swarm', tint: 'hive', tip: 'Hives keep releasing Swarm: Storm chains clear them' },
     // bosses rotate (waves 10, 20, 30, then again): each one fights differently
     boss: { sheet: 'golem', hp: 90, speed: 28, size: 190, label: 'Golem King', armour: 0.3, about: 'The first boss: armoured and huge' },

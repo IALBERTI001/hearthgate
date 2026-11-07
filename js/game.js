@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07o';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07p';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -37,8 +37,9 @@
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
   if (/[?&]qa\b/.test(location.search)) Object.assign(root.Hearthgate, {
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
-    act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'gold' && S.gold) tapGold(S.gold.x, S.gold.y); if (what === 'fly') { const f = FLY.find(q => q.kind && !q.gone && q.a > 0.5); if (f) { const [x, y] = flyPos(f); tapFly(x, y); } } if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
-    card: () => S.card
+    act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'gold' && S.gold) tapGold(S.gold.x, S.gold.y); if (what === 'fly') { const f = FLY.find(q => q.kind && !q.gone && q.a > 0.5); if (f) { const [x, y] = flyPos(f); tapFly(x, y); } else if (FLURRY.list.length) { const [x, y] = flurryPos(FLURRY.list.find(b => b.x > 20 && b.x < W - 20) || FLURRY.list[0]); tapFly(x, y); } } if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
+    card: () => S.card,
+    flurry: () => FLURRY
   });
 
   const gateMax = () => C.gateMax(P, B);
@@ -294,6 +295,7 @@
   // live at once (the oldest goes first). Final-review fix, Nov 6 2026: "4.82K" sat on "3.81K".
   function pop(x, y, text, col, life, size) {
     y = Math.max(FIELD_TOP - 20 + size, y);
+    const half = String(text).length * size * 0.29; x = Math.max(half + 12, Math.min(W - half - 12, x));   // words stay on screen (a flurry caught at the edge cut its shout)
     for (let k = 0; k < 4; k++) { const hit = S.pops.find(q => q.text && !q.combo && q.t < 0.35 && Math.abs(q.x - x) < 60 && Math.abs(q.y - q.t * 40 - y) < size * 0.9); if (!hit) break; y -= size * 0.95; }
     const small = S.pops.filter(q => q.text && !q.combo && q.size <= 40); if (size <= 40 && small.length >= 8) S.pops.splice(S.pops.indexOf(small[0]), 1);
     const big = S.pops.filter(q => q.text && !q.combo && q.size > 40 && q.size < 60 && q.life < 1.2); if (size > 40 && size < 60 && life < 1.2 && big.length >= 2) S.pops.splice(S.pops.indexOf(big[0]), 1);   // at most two big hit numbers at once (review: a column of 26.8M)
@@ -512,10 +514,30 @@
   function tickFlies() {   // in the simulation, so timers run the same with the screen off or in tests
     const busy = S.enemies.filter(e => !e.dying).length >= 4;
     for (const f of FLY) {
-      if (f.gone || !f.kind) { if ((f.wait -= DT) <= 0) { flySpawn(f); if (!P.firstSession && firstTime('flyTip')) setTimeout(() => toast('Butterflies! Tap one to catch it'), 800); } continue; }
+      if (f.gone || !f.kind) { if ((f.wait -= DT) <= 0) { flySpawn(f); if (!P.firstSession && !P.flies.length && firstTime('flyTip')) setTimeout(() => toast('Butterflies! Tap one to catch it'), 800); } continue; }
       f.a += ((busy ? 0 : 1) - f.a) * Math.min(1, DT * 2);
     }
+    tickFlurry(busy);
   }
+  // a flurry (owner, Nov 6 2026: "expand on the butterflies"): every few minutes on a quiet field, five of one kind drift
+  // across the meadow together. Each catch pays a little; catch all five before they leave and the city gets 20 s of income.
+  const FLURRY = { wait: 150 + Math.random() * 90, list: [], n: 0, got: 0 };
+  function tickFlurry(busy) {
+    const F = FLURRY;
+    if (!F.list.length) {
+      if (P.firstSession || !(P.flies || []).length || S.enemies.some(e => e.boss && !e.dying)) return;
+      if ((F.wait -= DT) > 0) return;
+      if (busy) { F.wait = 8; return; }
+      const pool = C.BUTTERFLIES.filter(k => !k.rare && C.flyOpen(P, k)), kind = pool[Math.floor(Math.random() * pool.length)], dir = Math.random() < 0.5 ? 1 : -1;
+      F.n = 5; F.got = 0; F.list = [0, 1, 2, 3, 4].map(i => ({ kind, x: dir > 0 ? -40 - i * 64 : W + 40 + i * 64, y: FIELD_TOP + 110 + Math.random() * 230, vx: dir * 72, ph: Math.random() * 6 }));
+      if (firstTime('flurryTip')) toast('A flurry! Catch all five');
+      return;
+    }
+    for (const b of F.list) b.x += b.vx * DT;
+    F.list = F.list.filter(b => !b.gone && b.x > -400 && b.x < W + 400 && !(b.vx > 0 ? b.x > W + 40 : b.x < -40));
+    if (!F.list.length) F.wait = 150 + Math.random() * 90;
+  }
+  const flurryPos = b => [b.x, b.y + Math.sin(S.t * 1.7 + b.ph) * 30 - (reduced() ? 0 : Math.abs(Math.sin(S.t * 9 + b.ph)) * 3)];
   function drawButterflies() {
     if (root.__storeCapture) return;
     for (const f of FLY) {
@@ -524,6 +546,7 @@
       if (k.rare) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(x, y, 26, 'rgba(255,214,107,', 0.5 * f.a); cx.restore(); }
       drawWing(x, y, k.col, k.rare ? 2.7 : 2.2, f.ph, 0.95 * f.a);
     }
+    for (const b of FLURRY.list) { const [x, y] = flurryPos(b); drawWing(x, y, b.kind.col, 2.2, b.ph, 0.95); }
     // the Garden: caught kinds circle the fountain, one of each, slowly
     const kinds = C.BUTTERFLIES.filter(k => (P.flies || []).includes(k.id));
     kinds.forEach((k, i) => { const a = S.t * 0.4 + i * Math.PI * 2 / kinds.length, r = 52 + (i % 2) * 14;
@@ -536,6 +559,16 @@
       quest('fly'); A.play('claim', 0.45); burst({ x: fx, y: fy + 10, size: 20 }, k.col, 14, 140);
       const amt = C.fightRate(P, B) * 1.6 * 2 * surgeX() * (k.rare ? 5 : 1); P.res += amt; pop(fx, fy - 18, `+${C.fmt(amt)}`, '#ffd56b', 1.1, 34);
       if (k.rare && P.shop.open) { P.shop.shards += 3; pop(fx, fy - 56, '+3 Starshards', SHARD, 1.3, 34); }
+      if (isNew) { P.flies.push(k.id); toast(`New butterfly: ${k.name} · Garden ${P.flies.length}/${C.BUTTERFLIES.length}`); }
+      save(); return true;
+    }
+    for (const b of FLURRY.list) {
+      const [fx, fy] = flurryPos(b); if (Math.hypot(x - fx, y - fy) > 40) continue;
+      const k = b.kind, isNew = !P.flies.includes(k.id); b.gone = true; FLURRY.got++;
+      quest('fly'); A.play('claim', 0.4); burst({ x: fx, y: fy + 10, size: 20 }, k.col, 12, 130);
+      const rate = C.fightRate(P, B) * 1.6 * surgeX();
+      if (FLURRY.got >= FLURRY.n) { const amt = rate * 20; P.res += amt; pop(fx, fy - 18, `FLURRY! +${C.fmt(amt)}`, '#ffd56b', 1.6, 44); A.play('feat', 0.4); }
+      else { P.res += rate; pop(fx, fy - 18, `${FLURRY.got}/${FLURRY.n}`, '#fff4dc', 0.9, 30); }
       if (isNew) { P.flies.push(k.id); toast(`New butterfly: ${k.name} · Garden ${P.flies.length}/${C.BUTTERFLIES.length}`); }
       save(); return true;
     }
@@ -554,8 +587,7 @@
     if (!has('tavern') || root.__storeCapture) return;
     const sp = CITY.spots.tavern, x = sx(sp[0]), y = sy(sp[1]) + sp[3] * K * 0.42, w = 92, f = S.cheerT > 0 ? S.cheerT / (S.cheerMax || 6) : S.cheer || 0;
     if (f <= 0) return;   // an empty meter read as a stray bar on the Tavern (fresh-eyes review): it shows once combos start filling it
-    cx.save(); cx.fillStyle = 'rgba(24,12,20,.8)'; cx.beginPath(); cx.roundRect(x - w / 2 - 3, y - 3, w + 6, 16, 8); cx.fill();
-    cx.fillStyle = S.cheerT > 0 ? '#ffd56b' : '#e59a3a'; cx.beginPath(); cx.roundRect(x - w / 2, y, Math.max(6, w * f), 10, 5); cx.fill(); cx.restore();
+    cx.save(); hpBar(x, y + 5, w, 10, f, S.cheerT > 0 ? '#ffd56b' : '#e59a3a', true); cx.restore();
     if (S.cheerT > 0 && !reduced()) for (const t of TOWERS) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - 40, 50, 'rgba(255,214,107,', 0.25); cx.restore(); }
   }
   // the Cottages: three villagers walk to the gate and mend it after every wave
@@ -1011,8 +1043,7 @@
     if ((evIs('fog') || evIs('blackout')) && e.y < WALL_FRONT - 330) return;   // in the mist: no bar either
     cx.save(); cx.globalAlpha = Math.min(1, (S.t - e.born) / 0.6) * (e.faded ? 0.3 : 1);   // the bar fades in with its enemy, never alone
     const bw = e.boss ? 120 : 44, by = e.y - e.size - 8;
-    cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(e.x - bw / 2 - 2, by - 2, bw + 4, 9);
-    cx.fillStyle = e.boss ? '#ff6a3a' : e.armour ? '#c8c2b4' : '#e5533d'; cx.fillRect(e.x - bw / 2, by, bw * Math.max(0, e.hp / e.max), 5);
+    hpBar(e.x, by + 2.5, bw, e.boss ? 8 : 5, Math.max(0, e.hp / e.max), e.boss ? '#ff6a3a' : e.armour ? '#c8c2b4' : '#e5533d', e.boss);
     drawEnemyHp(e);
     cx.restore();
   }
@@ -1097,10 +1128,18 @@
     cx.restore();
   }
 
+  // health bars (clean-presentation review, Nov 6 2026): rounded, with a light top edge; the gate's and a boss's get
+  // the brass rim the rest of the UI wears, small enemies keep a thin dark plate so they stay quiet
+  function hpBar(x, y, w, h, f, col, rim) {
+    const p = rim ? 3 : 2, r = (h + 2 * p) / 2;
+    cx.fillStyle = 'rgba(30,18,26,.88)'; cx.beginPath(); cx.roundRect(x - w / 2 - p, y - h / 2 - p, w + 2 * p, h + 2 * p, r); cx.fill();
+    if (rim) { cx.strokeStyle = '#c9a46a'; cx.lineWidth = 2; cx.stroke(); }
+    if (f > 0) { const fw = Math.max(h, w * f); cx.fillStyle = col; cx.beginPath(); cx.roundRect(x - w / 2, y - h / 2, fw, h, h / 2); cx.fill();
+      cx.fillStyle = 'rgba(255,255,255,.28)'; cx.fillRect(x - w / 2 + h / 2, y - h / 2 + 1, Math.max(0, fw - h), Math.max(1, h * 0.3)); }
+  }
   function drawGateBar() {
     const hp = Math.max(0, Math.min(1, S.gateHp / gateMax())), bw = 120, by = sy(CITY.gateBar);
-    cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(GATE_X - bw / 2 - 3, by - 3, bw + 6, 15);
-    cx.fillStyle = hp > 0.35 ? '#7bd15a' : '#e5533d'; cx.fillRect(GATE_X - bw / 2, by, bw * hp, 9);
+    hpBar(GATE_X, by + 4, bw, 10, hp, hp > 0.35 ? '#7bd15a' : '#e5533d', true);
     if (S.gateHit > 0) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(GATE_X, WALL_FRONT + 8, 60, 'rgba(255,90,60,', 0.25 * S.gateHit); cx.restore(); }
   }
 
