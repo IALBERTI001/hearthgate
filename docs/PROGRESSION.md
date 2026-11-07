@@ -24,9 +24,9 @@ The "30-second rule" (something new at least every 30 s in the first 5 minutes a
 | 6 | The Steward: levels the cheapest building by itself (On/Off in the Watchtower) |
 | 7 to 9 | Leeches, Knights and Hives; Blackout, Royal Hunt and Cataclysm |
 | 10 | The Eternal City: a finale card, a lasting light over the fountain; the game goes on |
-| 1 to 8 | One constellation of 5 stars each, 40 stars in all, every star a lasting boon |
+| 1 to 10 | One constellation of 5 stars each, 50 stars in all, every star a lasting boon |
 
 - **Measured.** The typical wait for something new is about 20 s in the first two runs and 30 to 60 s in runs 3 to 6. Ascensions come every 11 to 18 minutes.
-- **Collections:** Feats (41), the Bestiary (21 kinds of enemy, unmet ones as silhouettes), constellation stars (40), combos.
+- **Collections:** Feats (41), the Bestiary (24 kinds of enemy, unmet ones as silhouettes), constellation stars (50), combos.
 - **Ascension rule:** the whole city and wave 30 + 5 per Ascension (capped at 90).
 - **Measured (200-minute bot):** the Eternal City after about 2 h 47 min of steady play.

@@ -34,10 +34,10 @@
     { at: 5, id: 'ranks', name: 'Boss ranks', line: 'Bosses gain a rank each Ascension, with bigger rewards' },
     { at: 6, id: 'steward', name: 'The Steward', line: 'A steward levels your cheapest building by itself (switch it in the Watchtower)' }
   ];
-  // Constellations (Nov 6 2026): each of the first eight Ascension runs has its own constellation of five stars, lit at
+  // Constellations (Nov 6 2026): each of the first ten Ascension runs has its own constellation of five stars, lit at
   // fixed waves on the way to that run's Ascend wave. Every star is a named, lasting boon, so a later run keeps bringing
-  // new things to the very end, and the collection (N of 40) shows how far the climb goes.
-  const CONSTELLATIONS = ['Anvil', 'Lantern', 'Hound', 'Crown', 'Serpent', 'Harp', 'Tower', 'Phoenix'];
+  // new things to the very end, and the collection (N of 50) shows how far the climb goes.
+  const CONSTELLATIONS = ['Anvil', 'Lantern', 'Hound', 'Crown', 'Serpent', 'Harp', 'Tower', 'Phoenix', 'Owl', 'Dragon'];   // one per Ascension run up to the Eternal City
   const STAR_KINDS = [
     [['Eye', 'damage', 0.04, 'damage'], ['Heart', 'gateHp', 0.08, 'gate health'], ['Spark', 'fireRate', 0.03, 'fire rate'], ['Crown', 'res', 0.05, 'Resonance'], ['Tail', 'combo', 0.08, 'combo damage']],
     [['Ember', 'fire', 0.08, 'Fire damage'], ['Frost', 'frost', 0.08, 'Frost damage'], ['Bolt', 'storm', 0.08, 'Storm damage'], ['Hearth', 'city', 0.06, 'city output'], ['Wing', 'bossDmg', 0.1, 'boss damage']]
