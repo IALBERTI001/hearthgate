@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07i';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07j';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -944,15 +944,6 @@
     cx.restore();
     if (C.stageOf(P.gateLevel) >= 4) drawCrown(t.x, t.y - 22, C.stageOf(P.gateLevel), 4);
   }
-  let beamCache = null;
-  function beamSprite() {
-    if (beamCache) return beamCache;
-    const w = 120, h = 420, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'), im = g.createImageData(w, h);
-    for (let y = 0; y < h; y++) { const v = y / (h - 1), up = Math.pow(v, 1.6) * (1 - Math.pow(1 - v, 30));   // fades out toward the top, soft at the foot
-      for (let x = 0; x < w; x++) { const d = (x - w / 2) / (w / 2), core = Math.exp(-d * d * 60), halo = Math.exp(-d * d * 6) * 0.35, a = Math.min(1, (core + halo) * up);
-        const k = (y * w + x) * 4; im.data[k] = 255; im.data[k + 1] = 222 + 30 * core; im.data[k + 2] = 140 + 100 * core; im.data[k + 3] = Math.round(a * 200); } }
-    g.putImageData(im, 0, 0); return (beamCache = c);
-  }
   function drawEnemy(e) {
     const sh = img[e.sheet]; if (!sh) return;
     const fade = Math.min(1, (S.t - e.born) / 0.6), die = e.dying ? 1 - e.dying / 0.45 : 1;
@@ -1115,15 +1106,11 @@
     // the city's Resonance: the fountain flares as wisps land, motes rise from every restored building
     cx.save();
     if (S.plazaGlow > 0) glow(PLAZA.x, PLAZA.y, 80, RES_GLOW, 0.4 * S.plazaGlow);
-    if (P.ascensions >= C.ETERNAL_AT) {   // the Eternal City's light over the fountain, ruined or restored (owner, Nov 6 2026)
-      // a soft beam from a cached sprite (bright thin core, wide faint halo, fading upward), a gentle ring on the water and
-      // motes drifting up inside it; the owner said the first try read as "a box that is bright"
-      const pulse = reduced() ? 1 : 0.85 + 0.15 * Math.sin(S.t * 1.6), sway = reduced() ? 0 : Math.sin(S.t * 0.7) * 1.5;
-      cx.save(); cx.globalCompositeOperation = 'lighter';
-      cx.globalAlpha = 0.55 * pulse; cx.save(); cx.translate(PLAZA.x, PLAZA.y - 34); cx.scale(1, 0.38); glow(0, 0, 70, 'rgba(255,214,120,', 0.6); cx.restore();
-      cx.globalAlpha = pulse; const bm = beamSprite(); cx.drawImage(bm, PLAZA.x - bm.width / 2 + sway, PLAZA.y - 30 - bm.height, bm.width, bm.height);
-      cx.restore();
-      if (!reduced() && Math.random() < 0.3) S.fx.push({ x: PLAZA.x + (Math.random() - 0.5) * 22, y: PLAZA.y - 40, vx: (Math.random() - 0.5) * 8, vy: -70 - Math.random() * 60, t: 0, life: 2.2, col: '#fff1c2', r: 1.5 + Math.random() * 1.5 });
+    if (P.ascensions >= C.ETERNAL_AT) {   // the Eternal City: the fountain's water glows gold (owner, Nov 6 2026: drawn beams looked pasted in)
+      const pulse = reduced() ? 1 : 0.8 + 0.2 * Math.sin(S.t * 1.4);
+      cx.save(); cx.globalCompositeOperation = 'lighter'; cx.globalAlpha = 0.5 * pulse;
+      cx.translate(PLAZA.x, PLAZA.y - 22); cx.scale(1, 0.45); glow(0, 0, 46, 'rgba(255,205,110,', 0.7); cx.restore();
+      if (!reduced() && Math.random() < 0.12) S.fx.push({ x: PLAZA.x + (Math.random() - 0.5) * 40, y: PLAZA.y - 26, vx: (Math.random() - 0.5) * 10, vy: -25 - Math.random() * 20, t: 0, life: 1.1, col: '#ffe9a8', r: 1.2 + Math.random() });
     }
     for (const m of S.motes) { const a = Math.sin(Math.PI * m.t / m.life); glow(m.x, m.y, m.r * 4, RES_GLOW, 0.35 * a); cx.globalAlpha = a; cx.fillStyle = '#fff0fb'; cx.beginPath(); cx.arc(m.x, m.y, m.r * 0.6, 0, 7); cx.fill(); cx.globalAlpha = 1; }
     cx.restore();
