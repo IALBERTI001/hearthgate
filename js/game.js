@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07e';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07f';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -822,6 +822,9 @@
     const c = ground && ground.width === Math.round(W * k) && ground.height === Math.round(GROUND_H() * k) ? ground : document.createElement('canvas');
     c.width = Math.round(W * k); c.height = Math.round(GROUND_H() * k); const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, 0, 0);
     if (img.meadow) g.drawImage(img.meadow, 0, 0, W, CITY_Y + 30); else { g.fillStyle = '#6f9a3c'; g.fillRect(0, 0, W, CITY_Y + 30); }
+    // the battlefield grass is toned a little deeper and cooler, so slimes and beetles stand out from it (final review:
+    // green slimes melted into yellow-green grass); the city keeps its warm painting
+    g.save(); g.globalCompositeOperation = 'multiply'; g.fillStyle = 'rgb(214,222,200)'; g.fillRect(0, 0, W, CITY_Y + 30); g.restore();
     if (img.forest) { const f = img.forest, fw = f.width * 1.5, fh = f.height * 1.5; g.drawImage(f, (W - fw) / 2, -14, fw, fh); g.drawImage(f, (W - fw) / 2 + 60, 40, fw, fh * 0.9); }
     if (cityRuined) g.drawImage(cityRuined, 0, CITY_Y);
     for (const id of parts) if (cityRestored[id]) g.drawImage(gild && id !== 'plaza' ? gilded(id) : cityRestored[id], 0, CITY_Y);
@@ -1178,7 +1181,7 @@
     up.querySelector('.fill').style.width = fork ? '100%' : Math.min(100, P.res / uc * 100) + '%';
     up.classList.toggle('ready', !!fork || P.res >= uc);
     const re = el('re'), whole = C.cityWhole(P), asc = C.canAscend(P), n = P.restored.length, rc = whole ? 0 : C.restoreCost(n), aw = C.ascendWave(P), rw = Math.max(P.runWave || 1, P.wave);
-    re.classList.toggle('ascend', whole);
+    re.classList.toggle('ascend', asc); re.classList.toggle('waiting', whole && !asc);   // gold only when Ascend is really ready
     re.querySelector('.label').textContent = whole ? 'Ascend' : 'Restore';
     const offer = asc ? [] : C.restoreOffer(P);
     html(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `at wave ${aw} · now ${rw}` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${gem}${C.fmt(rc)}`);
