@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07a';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07b';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -631,6 +631,7 @@
   function openShopCard() {
     if (S.card || !P.shop.open) return;
     A.unlock(); el('shop').classList.remove('fresh');
+    S.shopNew = C.SHOP.filter(i => i.price <= P.shop.shards && !P.shop.owned.includes(i.id) && !P.shop.seen.includes(i.id)).map(i => i.id);   // tabs dot only what just became affordable
     for (const i of C.SHOP) if (i.price <= P.shop.shards && !P.shop.seen.includes(i.id)) P.shop.seen.push(i.id);   // the dot clears
     showCard('shop');
   }
@@ -638,6 +639,7 @@
   const tradeMins = tc => { const m = tc / (C.fightRate(P, B) * 1.6) / 60; return m < 1.5 ? '1 minute' : `${Math.round(m)} minutes`; };
   function shopHtml() {
     const tab = S.shopTab || 'tower', sh = P.shop, tc = C.exchangeCost(P, B), items = C.SHOP.filter(i => i.cat === tab);
+    S.shopNew = (S.shopNew || []).filter(id => C.shopItem(id).cat !== tab);   // a tab once opened is no longer new
     const sel = C.shopItem(S.shopSel) && C.shopItem(S.shopSel).cat === tab ? C.shopItem(S.shopSel) : C.shopItem(sh.equip[C.slotOf(items[0])]);
     const tile = it => {
       const own = sh.owned.includes(it.id), on = sh.equip[C.slotOf(it)] === it.id;
@@ -651,7 +653,7 @@
       + `<button id="c-trade" class="cbtn ${P.res >= tc ? 'gold' : 'off'}">Trade <i class="gem"></i>${C.fmt(tc)}<span class="to"></span><i class="star"></i>1</button>`
       // Full Launch only: an ad for Starshards, side by side with the trade so the panel keeps its height
       + (SDK.rewardsOn ? (adDay(), `<button id="c-shardad" class="cbtn ${P.surge.shardAds < C.SHARD_ADS_PER_DAY ? 'gold' : 'off'}"><span class="play"></span>+${C.SHARD_AD}<i class="star"></i><span class="small">${C.SHARD_ADS_PER_DAY - P.surge.shardAds} left</span></button>`) : '') + `</div>`
-      + `<div class="tabs">${TABS.map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}${C.SHOP.some(i => i.cat === k && !sh.owned.includes(i.id) && i.price <= sh.shards) ? ' news' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>`
+      + `<div class="tabs">${TABS.map(([k, n]) => `<button class="tab${k === tab ? ' on' : ''}${k !== tab && C.SHOP.some(i => i.cat === k && (S.shopNew || []).includes(i.id) && !sh.owned.includes(i.id)) ? ' news' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>`
       + `<div class="grid">${items.map(tile).join('')}</div>`
       + `<p class="detail"><b>${sel.name}</b> · ${sel.line}</p>`;
   }
