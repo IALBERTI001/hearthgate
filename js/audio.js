@@ -80,7 +80,18 @@
     }
     return nodes;
   }
+  // a soft wooden knock for villagers hammering (no sample: a short band-passed noise tap over a low thump)
+  function knock(vol = 0.25) {
+    if (!ctx || !st.sfx || st.muted) return; const t = ctx.currentTime, len = 0.07;
+    const nb = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * len), ctx.sampleRate), d = nb.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain(), o = ctx.createOscillator(), og = ctx.createGain();
+    n.buffer = nb; bp.type = 'bandpass'; bp.frequency.value = 900 + Math.random() * 500; bp.Q.value = 3; g.gain.value = vol * 1.6;
+    o.type = 'sine'; o.frequency.setValueAtTime(190 + Math.random() * 40, t); o.frequency.exponentialRampToValueAtTime(90, t + len);
+    og.gain.setValueAtTime(vol, t); og.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    n.connect(bp); bp.connect(g); g.connect(gain); o.connect(og); og.connect(gain); n.start(t); o.start(t); o.stop(t + len + 0.02);
+  }
   function hush(nodes) { for (const n of nodes || []) { try { n.stop(); } catch (e) { /* already stopped */ } } }
   function set(k, v) { st[k] = v; if (k === 'music' || k === 'muted') applyMusic(); if (ctx && k === 'muted') gain.gain.value = v ? 0 : 0.7; }
-  root.HGAudio = { unlock, play, set, boss, speak, hush, state: () => ({ mode, lastSong, boss: st.boss }) };
+  root.HGAudio = { unlock, play, set, boss, speak, hush, knock, state: () => ({ mode, lastSong, boss: st.boss }) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

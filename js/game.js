@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07v';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07w';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -40,6 +40,7 @@
     act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'gold' && S.gold) tapGold(S.gold.x, S.gold.y); if (what === 'fly') { const f = FLY.find(q => q.kind && !q.gone && q.a > 0.5); if (f) { const [x, y] = flyPos(f); tapFly(x, y); } else if (FLURRY.list.length) { const [x, y] = flurryPos(FLURRY.list.find(b => b.x > 20 && b.x < W - 20) || FLURRY.list[0]); tapFly(x, y); } } if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
     card: () => S.card,
     surge: () => surgeTap(),
+    spot: id => [sx(CITY.spots[id][0]), sy(CITY.spots[id][1]), K],
     flurry: () => FLURRY
   });
 
@@ -55,7 +56,7 @@
   const CHEERS = ['Keep it up!', 'Great job!', 'WOOOAHH!', 'Unstoppable!', 'Hold the line!', 'Nice work!', 'You got this!',
     'Crushing it!', 'On fire!', 'Legendary!', 'The city cheers you on!', 'Brick by brick!'];
   function startWave() {
-    const n = P.wave, boss = C.isBoss(n); S.trial = C.isTrial(P, n); S.auroraN = 0; if (boss) guideSay('boss');
+    const n = P.wave, boss = C.isBoss(n); S.trial = C.isTrial(P, n); S.auroraN = 0; if (boss) { guideSay('boss'); folkHide(); } else FOLK.forEach(f => { if (f.scared) { f.scared = false; f.wait = 0.5; f.speed = f.kind === 'child' ? 40 : 26; } });
     S.event = C.eventFor(P, n); const evNew = S.event && !P.seenEvents.includes(S.event.id); if (S.event && evNew) P.seenEvents.push(S.event.id);
     const cheer = S.cheerNext || (n === 1 ? ['Good luck!', 'How far will you go?'][Math.floor(Math.random() * 2)]
       : boss ? 'Boss incoming. Hold the gate!' : '');   // ordinary waves show just their number (review: "Crushing it!" was clutter)
@@ -258,7 +259,7 @@
   // what is still in the air is paid before the page hides or the game saves for good
   function flushWisps() { for (const w of S.wisps) P.res += w.amt; S.wisps = []; }
   function waveCleared() {
-    quest('waves');
+    quest('waves'); folkCheer(C.isBoss(P.wave));
     if (S.trial) { const n = 3 + Math.floor(P.wave / 20); if (P.shop.open) P.shop.shards += n; pop(W / 2, 380, `TRIAL WON! +${n} Starshards`, SHARD, 1.6, 44); A.play('feat', 0.5); S.trialsWon = (S.trialsWon || 0) + 1; }
     if (has('cottages') && S.gateHp < gateMax()) repairGate();
     if (B.harvest) { const amt = (C.fightRate(P, B) * 1.6 + RATE) * B.harvest * surgeX(); P.res += amt; pop(W / 2, WALL_FRONT + 120, `Harvest +${C.fmt(amt)}`, '#ffd56b', 1.1, 32); }
@@ -468,7 +469,7 @@
   // a Golden Wisp crosses the field every 30 to 60 s once three buildings stand (every 15 to 30 s with the Bakery)
   function tickExtras() {
     if (S.cheerT > 0 && (S.cheerT -= DT) <= 0) { S.cheerT = 0; S.cheer = 0; }
-    tickFolk();
+    tickFolk(); tickMend(); tickSmoke();
     if (P.restored.length < 3) return;
     if (S.event && (evIs('harvest') || evIs('goldrush')) && !S.gold && S.goldT > 6) S.goldT = 6;
     if (S.gold) { const g = S.gold; g.t += DT; g.x += g.vx * DT; g.y = g.y0 + Math.sin(g.t * 2.4) * 26; if (g.t > g.life || g.x < -60 || g.x > W + 60) S.gold = null; return; }
@@ -596,8 +597,12 @@
   }
   // the Cottages: three villagers walk to the gate and mend it after every wave
   function repairGate() {
-    const add = Math.min(gateMax() - S.gateHp, gateMax() * 0.35 * (1 + B.repairX)); S.gateHp += add; S.repairs = (S.repairs || 0) + 1;
-    folkMend(); pop(GATE_X, WALL_FRONT - 110, `Repaired +${C.fmt(add)}`, '#7bd15a', 1.4, 34);
+    const add = Math.min(gateMax() - S.gateHp, gateMax() * 0.35 * (1 + B.repairX)); S.repairs = (S.repairs || 0) + 1;
+    if (add <= 0) return;
+    // the gate is mended by hand (owner, Nov 7 2026: "the gate being worked on to repair it... attention to detail"): the
+    // nearest villagers walk up the road, hammer at the gate with sparks and knocks, and its health fills while they work
+    if (img.folk_builder && FOLK.length && !reduced()) { S.mend = { left: add, total: add, t: 0 }; folkMend(); return; }
+    S.gateHp += add; pop(GATE_X, WALL_FRONT - 110, `Repaired +${C.fmt(add)}`, '#7bd15a', 1.4, 34);
   }
   // ---------- the Magister: a guide who explains each step as it arrives (owner, Nov 7 2026, after a friend's phone
   // playtest: "it does not teach itself... what they upgrade and what ascends is not clear... a villager mayor or magician
@@ -669,13 +674,15 @@
   function guideNext() {
     const b = G.cur; A.hush(G.nodes);
     if (b && ++b.i < b.lines.length) return guideLine();
-    G.cur = null; if (G.el) G.el.classList.remove('in');
+    G.cur = null; if (G.el) G.el.classList.remove('in'); el('toast').style.bottom = '';
   }
   // runs every frame (real time, not game time: the guide talks while the fight runs, and also while a card is open)
   function tickGuide(dt) {
     if (!G.cur) {
       if (!G.q.length || S.card || !imgReady.magister) return;
-      G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine(); return;
+      G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine();
+      if (!P.settings.stats) el('toast').style.bottom = (H - WALL_FRONT + 70 + 260) + 'px';   // a toast steps up above the panel while he talks
+      return;
     }
     if (S.card) { G.cur.line.done = true; guideNext(); return; }   // a card took the screen: do not talk over it
     const l = G.cur.line; l.t += dt;
@@ -709,17 +716,32 @@
     while (FOLK.length < folkCount()) { const kind = FOLK_KINDS[FOLK.length], [x, y] = ringAt(Math.random() * 6.28); FOLK.push({ kind, x, y, pts: [], i: 0, wait: Math.random() * 3, dir: 1, t: Math.random() * 9, hop: 0, tapT: 0, speed: kind === 'child' ? 40 : 24 + Math.random() * 6 }); }
     for (const f of FOLK) {
       f.t += DT; f.hop = Math.max(0, f.hop - DT); f.tapT = Math.max(0, f.tapT - DT);
-      if (f.work > 0) { f.work -= DT; if (!reduced() && Math.random() < DT * 3) S.fx.push({ dust: true, x: f.x + f.dir * 14, y: f.y - 2, vx: (Math.random() - 0.5) * 30, vy: -20, t: 0, life: 0.6, col: '#d8c3a0', r: 3 }); continue; }
+      if (f.hop2 && (f.hop2 -= DT) <= 0) { f.hop2 = 0; f.hop = 0.7; }
+      if (f.scared && f.i >= f.pts.length && f.work <= 0) { f.dir = f.x < PLAZA.x ? 1 : -1; continue; }   // huddled by the fountain, facing it
+      if (f.work > 0) {
+        f.work -= DT; if (f.work <= 0) { f.mending = false; f.speed = f.kind === 'child' ? 40 : 26; }
+        if (f.mending) {   // a blow every ~0.4 s: a knock, a few sparks at the gate stones, and the gate fills a little
+          if ((f.knockT -= DT) <= 0) { f.knockT = 0.36 + Math.random() * 0.12; A.knock && A.knock(0.12);
+            for (let k = 0; k < 4; k++) S.fx.push({ x: f.x + f.dir * 16, y: f.y - 22, vx: f.dir * (20 + Math.random() * 60), vy: -60 - Math.random() * 80, g: 380, t: 0, life: 0.45, col: k % 2 ? '#ffe7a3' : '#fff6dc', r: 1.6 }); }
+        } else if (!reduced() && Math.random() < DT * 3) S.fx.push({ dust: true, x: f.x + f.dir * 14, y: f.y - 2, vx: (Math.random() - 0.5) * 30, vy: -20, t: 0, life: 0.6, col: '#d8c3a0', r: 3 });
+        continue;
+      }
       if (f.i < f.pts.length) {
         const [tx, ty] = f.pts[f.i], dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy), step = f.speed * DT;
         if (Math.abs(dx) > 0.5) f.dir = dx > 0 ? 1 : -1;
-        if (d <= step) { f.x = tx; f.y = ty; f.i++; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.job = null; } else f.wait = 2 + Math.random() * 5; } }
+        if (d <= step) { f.x = tx; f.y = ty; f.i++; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.mending = !!f.job.mend; f.dir = f.mending ? (f.x < GATE_X ? 1 : -1) : f.dir; f.knockT = 0; f.job = null; } else f.wait = 2 + Math.random() * 5; } }
         else { f.x += dx / d * step; f.y += dy / d * step; }
       } else if ((f.wait -= DT) <= 0) {
         const homes = P.restored.filter(id => CITY.spots[id] && id !== 'plaza');
         routeTo(f, homes.length && Math.random() < 0.75 ? frontOf(homes[Math.floor(Math.random() * homes.length)]) : ringAt(Math.random() * 6.28));
       }
     }
+  }
+  function tickMend() {
+    const m = S.mend; if (!m) return; m.t += DT;
+    const working = FOLK.filter(f => f.mending && f.work > 0).length;
+    if (working) { const amt = Math.min(m.left, m.total / 2.2 * DT * Math.min(1, working / 2)); S.gateHp = Math.min(gateMax(), S.gateHp + amt); m.left -= amt; }
+    if (m.left <= 1e-9 || m.t > 14) { S.gateHp = Math.min(gateMax(), S.gateHp + Math.max(0, m.left)); pop(GATE_X, WALL_FRONT - 110, `Repaired +${C.fmt(m.total)}`, '#7bd15a', 1.4, 34); S.mend = null; }
   }
   // the world answers: a restore sends the builder to work on it and makes everyone else hop
   function folkBuild(id) {
@@ -728,11 +750,34 @@
     for (const f of FOLK) if (f !== b) f.hop = 0.7;
     setTimeout(() => { b.speed = 26; }, 9000);
   }
+  // chimneys of working buildings breathe a little smoke (owner, Nov 7 2026: "attention to detail"); offsets are the
+  // chimney tops measured on the painting, in painting units from each building's centre
+  const CHIMNEYS = { forge: [[56, -104]], bakery: [[-30, -82]], cottages: [[-30, -74], [26, -72], [70, -80]] };
+  const smokeT = {};
+  function tickSmoke() {
+    if (reduced() || root.__storeCapture) return;
+    for (const id in CHIMNEYS) {
+      if (!P.restored.includes(id)) continue;
+      CHIMNEYS[id].forEach(([dx, dy], k) => {
+        const key = id + k; if ((smokeT[key] = (smokeT[key] || Math.random()) - DT) > 0) return; smokeT[key] = 0.55 + Math.random() * 0.5;
+        const sp = CITY.spots[id];
+        S.fx.push({ dust: true, smoke: true, x: sx(sp[0] + dx) + (Math.random() - 0.5) * 2, y: sy(sp[1] + dy), vx: 5 + Math.random() * 5, vy: -13 - Math.random() * 6, t: 0, life: 2.4 + Math.random() * 0.6, r: id === 'forge' ? 4.6 : 3.6, col: '#ece8e2' });
+      });
+    }
+  }
+  // a boss is coming: everyone hurries to the fountain and huddles there until it falls
+  function folkHide() { FOLK.forEach((f, k) => { if (f.job && f.job.mend) return; f.work = 0; const a = Math.PI / 2 + (k - (FOLK.length - 1) / 2) * 0.5; routeTo(f, [PLAZA.x + Math.cos(a) * PL[2] * K * 0.7, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * 0.62]); f.speed = 62; f.scared = true; }); }
+  // a wave won: a couple of villagers hop; a boss beaten: everyone cheers (two hops) and heads back out
+  function folkCheer(big) {
+    if (!FOLK.length) return;
+    if (big) FOLK.forEach((f, k) => { f.scared = false; f.wait = 1.4 + k * 0.15; f.speed = f.kind === 'child' ? 40 : 26; f.hop = 0.7; f.hop2 = 0.75 + k * 0.1; });
+    else for (let k = 0; k < 2; k++) FOLK[Math.floor(Math.random() * FOLK.length)].hop = 0.7;
+  }
   // after a wave, the nearest three walk up the road and mend the gate
   function folkMend() {
     const gate = [GATE_X + (Math.random() - 0.5) * 30, WALL_FRONT + 66];
     FOLK.slice().sort((a, b) => Math.hypot(a.x - gate[0], a.y - gate[1]) - Math.hypot(b.x - gate[0], b.y - gate[1])).slice(0, 3)
-      .forEach((f, k) => { f.work = 0; f.pts = [ringAt(-Math.PI / 2), [gate[0] + (k - 1) * 22, gate[1]]]; f.i = 0; f.job = { work: 2.2 }; });
+      .forEach((f, k) => { f.work = 0; f.pts = [ringAt(-Math.PI / 2), [gate[0] + (k - 1) * 30, gate[1]]]; f.i = 0; f.job = { work: 2.4, mend: true }; f.speed = 70; });
   }
   function tapFolk(x, y) {
     for (const f of FOLK) { if (Math.hypot(x - f.x, y - (f.y - 16)) > 24) continue;
@@ -751,6 +796,7 @@
       cx.save(); cx.globalAlpha = 0.22; cx.fillStyle = '#1a0f15'; cx.beginPath(); cx.ellipse(f.x, f.y, w * 0.32, 4, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
       cx.translate(f.x, f.y - lift); if (!calm && walking) cx.rotate(Math.sin(f.t * 9) * 0.05);
       if (!calm && working) cx.scale(1, 1 - 0.06 * Math.abs(Math.sin(f.t * 10)));
+      if (!calm && f.scared && !walking) cx.translate(Math.sin(f.t * 38) * 0.9, 0);   // a little shiver while the boss is out
       cx.scale(f.dir, 1); cx.drawImage(im, -w / 2, -h, w, h); cx.restore();
     }
   }
@@ -1404,7 +1450,14 @@
     for (const s of S.shots) drawShot(s);
     for (const h of S.hits) L.drawHit(cx, h);
     drawWisps();
-    for (const p of S.fx) if (p.dust) { cx.globalAlpha = 0.6 * (1 - p.t / p.life); cx.fillStyle = p.col; cx.beginPath(); cx.arc(p.x, p.y, p.r * (1 + p.t * 2), 0, 7); cx.fill(); }
+    for (const p of S.fx) if (p.dust) {
+      if (p.smoke) {   // soft puffs: a feathered disc that swells, drifts and thins out
+        const f = p.t / p.life, r = p.r * (1 + p.t * 1.5), g = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        g.addColorStop(0, 'rgba(244,241,236,1)'); g.addColorStop(0.55, 'rgba(236,232,226,.7)'); g.addColorStop(1, 'rgba(236,232,226,0)');
+        cx.globalAlpha = 0.75 * Math.min(1, p.t * 4) * (1 - f); cx.fillStyle = g; cx.beginPath(); cx.arc(p.x, p.y, r, 0, 7); cx.fill(); continue;
+      }
+      cx.globalAlpha = 0.6 * (1 - p.t / p.life); cx.fillStyle = p.col; cx.beginPath(); cx.arc(p.x, p.y, p.r * (1 + p.t * 2), 0, 7); cx.fill();
+    }
     cx.globalAlpha = 1;
     cx.save(); cx.globalCompositeOperation = 'lighter';
     for (const p of S.fx) if (!p.dust) { cx.globalAlpha = 1 - p.t / p.life; cx.fillStyle = p.col; cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 7); cx.fill(); }
