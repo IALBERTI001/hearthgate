@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07g';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07h';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -795,9 +795,9 @@
       const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions);
       toast(un ? `Ascension ${P.ascensions} unlocks ${un.name}! ${un.line}` : `Ascension ${P.ascensions}: Resonance and damage x${rfmt(Math.pow(C.ASCEND_MULT, P.ascensions))}`);
       if (un && un.id === 'relics') S.pointAt = { id: 'watchtower', t: 0 };
-      if (P.ascensions === C.ETERNAL_AT) { const show = () => (S.card ? setTimeout(show, 1000) : showCard('eternal')); setTimeout(show, 1600); }
+      if (P.ascensions >= C.ETERNAL_AT && firstTime('eternal')) { const show = () => (S.card ? setTimeout(show, 1000) : showCard('eternal')); setTimeout(show, 1600); }
     });
-    if (kind === 'eternal') { on('c-ok', close); S.flash = { col: '#ffe08a', t: 0 }; S.shake = 0.3; A.play('feat', 0.7); SDK.happytime(); burst({ x: W / 2, y: PLAZA.y, size: 60 }, '#ffe08a', 60, 340); }
+    if (kind === 'eternal') { if (!P.told.includes('eternal')) P.told.push('eternal'); on('c-ok', close); S.flash = { col: '#ffe08a', t: 0 }; S.shake = 0.3; A.play('feat', 0.7); SDK.happytime(); burst({ x: W / 2, y: PLAZA.y, size: 60 }, '#ffe08a', 60, 340); }
     if (kind === 'save') {
       on('c-ad', () => SDK.rewarded(adHooks).then(ok => { S.paused = false; close(); if (ok) { S.savedByAd = true; S.gateHp = gateMax(); toast('The gate is rebuilt!'); } else gateBroken(true); }));
       on('c-no', () => { S.paused = false; close(); gateBroken(true); });
@@ -1106,7 +1106,15 @@
     // the city's Resonance: the fountain flares as wisps land, motes rise from every restored building
     cx.save();
     if (S.plazaGlow > 0) glow(PLAZA.x, PLAZA.y, 80, RES_GLOW, 0.4 * S.plazaGlow);
-    if (P.ascensions >= C.ETERNAL_AT && P.restored.length >= 5) glow(PLAZA.x, PLAZA.y - 10, 120, 'rgba(255,224,138,', 0.22 + (reduced() ? 0 : 0.06 * Math.sin(S.t * 1.5)));   // the Eternal City's light
+    if (P.ascensions >= C.ETERNAL_AT) {   // the Eternal City's light over the fountain, ruined or restored (owner: "my fountain doesn't have anything")
+      const pulse = reduced() ? 0 : 0.08 * Math.sin(S.t * 1.5);
+      cx.save(); cx.globalCompositeOperation = 'lighter';
+      glow(PLAZA.x, PLAZA.y - 6, 160, 'rgba(255,214,110,', 0.45 + pulse);
+      const g = cx.createLinearGradient(0, PLAZA.y - 230, 0, PLAZA.y); g.addColorStop(0, 'rgba(255,230,150,0)'); g.addColorStop(1, `rgba(255,220,120,${0.55 + pulse})`);
+      cx.fillStyle = g; cx.beginPath(); cx.moveTo(PLAZA.x - 16, PLAZA.y); cx.lineTo(PLAZA.x - 6, PLAZA.y - 230); cx.lineTo(PLAZA.x + 6, PLAZA.y - 230); cx.lineTo(PLAZA.x + 16, PLAZA.y); cx.fill();
+      cx.restore();
+      if (!reduced() && Math.random() < 0.25) S.fx.push({ x: PLAZA.x + (Math.random() - 0.5) * 50, y: PLAZA.y - 10, vx: (Math.random() - 0.5) * 20, vy: -60 - Math.random() * 50, t: 0, life: 1.4, col: '#ffe28c', r: 2 + Math.random() * 2 });
+    }
     for (const m of S.motes) { const a = Math.sin(Math.PI * m.t / m.life); glow(m.x, m.y, m.r * 4, RES_GLOW, 0.35 * a); cx.globalAlpha = a; cx.fillStyle = '#fff0fb'; cx.beginPath(); cx.arc(m.x, m.y, m.r * 0.6, 0, 7); cx.fill(); cx.globalAlpha = 1; }
     cx.restore();
     drawMarkers(); drawBadges(); drawCheer();
@@ -1308,6 +1316,7 @@
     const now = Date.now(), d = C.dailyDue(P, now), off = C.offlineEarnings(P, B, now);
     if (d) cardQueue.push(['daily', d]);
     if (off.res > 0 && !P.firstSession) cardQueue.push(['offline', off]);
+    if (P.ascensions >= C.ETERNAL_AT && !P.told.includes('eternal')) cardQueue.push(['eternal']);   // saves that passed the 10th before the finale existed (owner, Nov 6)
     nextCard();
   }
   fit(); bind(); A.set('music', P.settings.music); A.set('sfx', P.settings.sfx); startWave();
