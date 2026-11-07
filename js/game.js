@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07m';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07n';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -56,7 +56,7 @@
     const n = P.wave, boss = C.isBoss(n); S.trial = C.isTrial(P, n); S.auroraN = 0;
     S.event = C.eventFor(P, n); const evNew = S.event && !P.seenEvents.includes(S.event.id); if (S.event && evNew) P.seenEvents.push(S.event.id);
     const cheer = S.cheerNext || (n === 1 ? ['Good luck!', 'How far will you go?'][Math.floor(Math.random() * 2)]
-      : boss ? 'Boss incoming. Hold the gate!' : n % 50 === 0 ? 'HALFWAY TO GLORY!' : CHEERS[(n * 7 + 3) % CHEERS.length]);
+      : boss ? 'Boss incoming. Hold the gate!' : '');   // ordinary waves show just their number (review: "Crushing it!" was clutter)
     S.cheerNext = null;
     const mix = C.eventMix(C.waveMix(n, P.ascensions), S.event);
     // the first wave of each session (after the first) names today's Omen
@@ -222,11 +222,11 @@
     // one combo word on screen at a time, so words never pile into each other
     // above the enemy, or below it near the treeline, so it never sits on the +N
     S.pops = S.pops.filter(p => !p.combo);
-    S.pops.push({ x: Math.max(150, Math.min(570, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
+    S.pops.push({ x: Math.max(200, Math.min(520, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
     if ((S.event && (evIs('aurora') || evIs('starstorm'))) && P.shop.open && (S.auroraN || 0) < 8 && Math.random() < 0.35) { S.auroraN = (S.auroraN || 0) + 1; P.shop.shards += 1; pop(e.x, e.y - e.size - 40, '+1 Starshard', SHARD, 1.1, 32); }
     if (id === 'shatter' && S.t - (S.lastFlash || -9) > 1.2) { S.flash = { col, t: 0 }; S.lastFlash = S.t; }   // the signature combo lights the screen
-    if (!P.combos.includes(id)) { P.combos.push(id); if (P.shop.open) P.shop.shards += C.SHARDS.combo; toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/${comboTotal()}`); save(); }
+    if (!P.combos.includes(id)) { P.combos.push(id); if (P.shop.open) P.shop.shards += C.SHARDS.combo; const cw = S.pops.find(q => q.combo); if (cw) S.pops.push({ x: cw.x, y: cw.y + 46, text: `New combo · ${P.combos.length}/${comboTotal()}`, col: '#fff4dc', t: 0, life: 1.6, size: 30, combo: true, hold: 0.75 }); save(); }
   }
   function kill(e) {
     e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX() * (e.boss ? 1 + bossRank() : 1) * (S.event && evIs('golden') ? 2 : S.event && evIs('bloodmoon') ? 3 : 1) * (evIs('royalhunt') && e.role === 'elite' ? 3 : 1) * ((S.event && evIs('giants')) ? 2 : (S.event && evIs('laststand')) ? 3 : 1); quest('kills');
@@ -240,7 +240,7 @@
       S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 150).forEach(o => { o.hp -= C.towerDamage(P, B) * 4; o.flash = 1; }); }
     if (R.chest || (S.event && evIs('jackpot') && S.kills % 5 === 0)) { const amt = C.fightRate(P, B) * 1.6 * 5 * surgeX() * (1 + B.chestX); P.res += amt; pop(e.x, e.y - e.size - 40, `Treasure! +${C.fmt(amt)}`, '#ffd56b', 1.3, 40);
       if (P.shop.open && Math.random() < 0.3) { P.shop.shards += 1; pop(e.x, e.y - e.size - 80, '+1 Starshard', SHARD, 1.3, 34); } A.play('buy', 0.45); }
-    wisp(e, gain); pop(e.x + 28, e.y - e.size * 0.2, '+' + C.fmt(gain), '#ff9ce8', 0.9, 34);
+    wisp(e, gain); if (e.boss || P.firstSession) pop(e.x + 28, e.y - e.size * 0.2, '+' + C.fmt(gain), '#ff9ce8', 0.9, 34);   // after the opening the wisp shows the payout; only bosses still pop a number
     burst(e, e.sheet === 'golem' ? '#b9b2a2' : e.sheet === 'beetle' ? '#ff9a4a' : '#8fe05a', e.boss ? 30 : 12, e.boss ? 260 : 160);
     if (e.boss || e.role === 'armoured' || e.role === 'ironhide') A.play('golem_death', 0.5);
   }
@@ -490,11 +490,23 @@
   function flySpawn(f) { f.kind = C.flyPick(P, Math.random); f.bx = 110 + Math.random() * 500; f.by = FIELD_TOP + 90 + Math.random() * 260; f.ph = Math.random() * 6; f.gone = false; f.a = 0; }
   function flyPos(f) { const calm = reduced(), t = S.t * 0.35 + f.ph;
     return [f.bx + Math.sin(t) * 80 + Math.sin(t * 2.3) * 26, f.by + Math.sin(t * 1.7) * 44 - (calm ? 0 : Math.abs(Math.sin(S.t * 9 + f.ph)) * 3)]; }
+  // a butterfly: pointed forewings and round hindwings, a soft darker rim and a pale spot, a thin outline (review, Nov 6
+  // 2026: the first version was two flat circles with a thick outline, "like buttons")
   function drawWing(x, y, col, sc, ph, a) {
-    const flap = reduced() ? 0.6 : 0.25 + 0.75 * Math.abs(Math.sin(S.t * 14 + ph));
-    cx.save(); cx.globalAlpha = a; cx.translate(x, y); cx.scale(sc, sc); cx.fillStyle = col; cx.strokeStyle = 'rgba(40,24,30,.75)'; cx.lineWidth = 1.2;
-    for (const sd of [-1, 1]) { cx.beginPath(); cx.ellipse(sd * 5 * flap, -2, 5.5 * flap, 4.5, sd * 0.5, 0, 7); cx.fill(); cx.stroke(); cx.beginPath(); cx.ellipse(sd * 3.6 * flap, 3.5, 3.6 * flap, 3, -sd * 0.4, 0, 7); cx.fill(); cx.stroke(); }
-    cx.fillStyle = '#3a2430'; cx.fillRect(-1, -4, 2, 9); cx.restore();
+    const flap = reduced() ? 0.7 : 0.3 + 0.7 * Math.abs(Math.sin(S.t * 13 + ph));
+    cx.save(); cx.globalAlpha = a; cx.translate(x, y); cx.scale(sc, sc); cx.lineWidth = 0.7; cx.strokeStyle = 'rgba(50,30,36,.55)';
+    for (const sd of [-1, 1]) {
+      cx.save(); cx.scale(sd * flap, 1);
+      const g = cx.createRadialGradient(2, -1, 0.5, 4, -1, 8); g.addColorStop(0, '#ffffff'); g.addColorStop(0.35, col); g.addColorStop(1, 'rgba(60,36,40,.85)');
+      cx.fillStyle = g;
+      cx.beginPath(); cx.moveTo(0.6, -1); cx.bezierCurveTo(3, -9, 10, -9, 9.5, -4); cx.bezierCurveTo(9, -1, 5, 0.5, 0.6, 0.5); cx.closePath(); cx.fill(); cx.stroke();
+      cx.beginPath(); cx.moveTo(0.6, 0.6); cx.bezierCurveTo(6, 0.5, 8, 5, 5.5, 7); cx.bezierCurveTo(3.5, 8.5, 1, 5, 0.6, 2.5); cx.closePath(); cx.fill(); cx.stroke();
+      cx.fillStyle = 'rgba(255,255,255,.75)'; cx.beginPath(); cx.arc(6.2, -4.6, 0.9, 0, 7); cx.fill();
+      cx.restore();
+    }
+    cx.fillStyle = '#3a2430'; cx.beginPath(); cx.ellipse(0, 1, 0.9, 4.2, 0, 0, 7); cx.fill();
+    cx.strokeStyle = '#3a2430'; cx.lineWidth = 0.5; cx.beginPath(); cx.moveTo(-0.3, -3); cx.lineTo(-1.8, -6); cx.moveTo(0.3, -3); cx.lineTo(1.8, -6); cx.stroke();
+    cx.restore();
   }
   function tickFlies() {   // in the simulation, so timers run the same with the screen off or in tests
     const busy = S.enemies.filter(e => !e.dying).length >= 4;
@@ -509,7 +521,7 @@
       if (f.gone || !f.kind || f.a < 0.02) continue;
       const [x, y] = flyPos(f), k = f.kind;
       if (k.rare) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(x, y, 26, 'rgba(255,214,107,', 0.5 * f.a); cx.restore(); }
-      drawWing(x, y, k.col, k.rare ? 2.3 : 1.8, f.ph, 0.92 * f.a);
+      drawWing(x, y, k.col, k.rare ? 2.7 : 2.2, f.ph, 0.95 * f.a);
     }
     // the Garden: caught kinds circle the fountain, one of each, slowly
     const kinds = C.BUTTERFLIES.filter(k => (P.flies || []).includes(k.id));
@@ -594,7 +606,7 @@
   // the Garden: every kind of butterfly, caught ones in colour, the rest as outlines with where to find them
   function gardenHtml() {
     const rows = C.BUTTERFLIES.map(k => { const got = P.flies.includes(k.id), open = C.flyOpen(P, k);
-      const wing = `<svg class="wing" viewBox="-12 -10 24 20" aria-hidden="true"><g fill="${got ? k.col : 'none'}" stroke="${got ? '#2a1a22' : '#8a7a6a'}" stroke-width="1.4"><ellipse cx="-5.5" cy="-2" rx="5.5" ry="4.5" transform="rotate(-29 -5.5 -2)"/><ellipse cx="5.5" cy="-2" rx="5.5" ry="4.5" transform="rotate(29 5.5 -2)"/><ellipse cx="-3.6" cy="3.5" rx="3.6" ry="3" transform="rotate(23 -3.6 3.5)"/><ellipse cx="3.6" cy="3.5" rx="3.6" ry="3" transform="rotate(-23 3.6 3.5)"/></g><rect x="-1" y="-4" width="2" height="9" fill="#3a2430"/></svg>`;
+      const wing = `<svg class="wing" viewBox="-11 -9 22 18" aria-hidden="true"><g fill="${got ? k.col : 'none'}" stroke="${got ? 'rgba(50,30,36,.6)' : '#8a7a6a'}" stroke-width="0.8"><path d="M0.6 -1C3 -9 10 -9 9.5 -4C9 -1 5 .5 .6 .5ZM.6 .6C6 .5 8 5 5.5 7C3.5 8.5 1 5 .6 2.5Z"/><path transform="scale(-1 1)" d="M0.6 -1C3 -9 10 -9 9.5 -4C9 -1 5 .5 .6 .5ZM.6 .6C6 .5 8 5 5.5 7C3.5 8.5 1 5 .6 2.5Z"/></g><ellipse cx="0" cy="1" rx="0.9" ry="4.2" fill="#3a2430"/></svg>`;
       return `<div class="feat${got ? '' : ' unseen'}">${wing}<div class="ft"><b>${got ? k.name : '???'}</b><span>${got ? k.line : open ? 'On the meadow now: tap one to catch it' : k.line}</span></div></div>`; }).join('');
     return `<div class="cardhead"><h2>Garden</h2><button id="c-no" class="x" aria-label="Close"></button></div>${qTabs('garden')}<p class="small">Caught ${C.fmt(P.stats.flies || 0)} · every kind you catch flutters round the fountain</p><div class="feats">${rows}</div>`;
   }
@@ -647,7 +659,7 @@
       + `<p class="small">Earned by Ascending${P.ascensions >= 1 ? ` · Stars ${P.stars.length}/${C.STARS.length}` : ''}</p><div class="perks">`
       + (C.unlocked(P, 'steward') ? `<div class="stew"><span><b>Steward</b> levels your cheapest building</span><button class="buy ${P.settings.steward !== false ? 'eq' : 'can'} steward">${P.settings.steward !== false ? 'On' : 'Off'}</button></div>` : '')
       + open.map(row).join('')
-      + (done.length ? `<p class="maxed"><b>Maxed</b> ${done.map(k => k.name).join(' · ')}</p>` : '')
+      + (done.length ? `<div class="maxed"><b>Maxed</b>${done.map(k => `<span>${k.name}</span>`).join('')}</div>` : '')
       + (C.unlocked(P, 'relics') ? `<h3 class="rel">Relics · ${P.relics.length}/2 equipped</h3>` + C.RELICS.map(r => { const on = P.relics.includes(r.id);
           return `<div class="perkrow${on ? ' on' : ''}"><b>${r.name}</b><span>${r.line}</span><button class="buy ${on ? 'eq' : 'can'} relic" data-id="${r.id}">${on ? 'On' : 'Equip'}</button></div>`; }).join('')
         : `<p class="maxed">Ascension 3 unlocks Relics</p>`)
