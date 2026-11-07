@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07w';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07x';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -40,6 +40,7 @@
     act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'gold' && S.gold) tapGold(S.gold.x, S.gold.y); if (what === 'fly') { const f = FLY.find(q => q.kind && !q.gone && q.a > 0.5); if (f) { const [x, y] = flyPos(f); tapFly(x, y); } else if (FLURRY.list.length) { const [x, y] = flurryPos(FLURRY.list.find(b => b.x > 20 && b.x < W - 20) || FLURRY.list[0]); tapFly(x, y); } } if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
     card: () => S.card,
     surge: () => surgeTap(),
+    refresh: () => refresh(),
     spot: id => [sx(CITY.spots[id][0]), sy(CITY.spots[id][1]), K],
     flurry: () => FLURRY
   });
@@ -224,8 +225,11 @@
     if (has('tavern') && !(S.cheerT > 0)) { S.cheer = Math.min(1, (S.cheer || 0) + 0.06 * (S.event && evIs('feast') ? 2 : 1)); if (S.cheer >= 1) startCheer(); }
     // one combo word on screen at a time, so words never pile into each other
     // above the enemy, or below it near the treeline, so it never sits on the +N
+    // the same word again within 2 s is said quietly (outside review: SHATTER! filled nearly every frame); a new combo shouts
+    const quiet = P.combos.includes(id) && S.lastShout && S.lastShout.w === word && S.t - S.lastShout.t < 2;
+    if (!quiet) S.lastShout = { w: word, t: S.t };
     S.pops = S.pops.filter(p => !p.combo);
-    S.pops.push({ x: Math.max(200, Math.min(520, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: 1.4, size: 58, combo: true, hold: 0.75 });
+    S.pops.push({ x: Math.max(200, Math.min(520, e.x)), y: (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80, text: word, col, t: 0, life: quiet ? 0.8 : 1.4, size: quiet ? 40 : 58, combo: true, hold: 0.75 });
     S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col }); S.shake = 0.14;
     if ((S.event && (evIs('aurora') || evIs('starstorm'))) && P.shop.open && (S.auroraN || 0) < 8 && Math.random() < 0.35) { S.auroraN = (S.auroraN || 0) + 1; P.shop.shards += 1; pop(e.x, e.y - e.size - 40, '+1 Starshard', SHARD, 1.1, 32); }
     if (id === 'shatter' && S.t - (S.lastFlash || -9) > 1.2) { S.flash = { col, t: 0 }; S.lastFlash = S.t; }   // the signature combo lights the screen
@@ -1470,7 +1474,8 @@
         cx.save(); cx.strokeStyle = COLOR.storm; cx.lineWidth = 3; cx.shadowColor = COLOR.storm; cx.shadowBlur = 10;
         cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(mx, my); cx.lineTo(x1, y1); cx.stroke(); cx.restore(); continue;
       }
-      cx.globalAlpha = p.hold ? (p.t < p.life * p.hold ? 1 : 1 - (p.t - p.life * p.hold) / (p.life * (1 - p.hold))) : 1 - p.t / p.life;
+      const hold = p.hold || 0.55;   // solid while it is read, then fades (outside review: numbers were half-transparent from the start)
+      cx.globalAlpha = p.t < p.life * hold ? 1 : 1 - (p.t - p.life * hold) / (p.life * (1 - hold));
       const grow = p.combo ? Math.min(1, 0.6 + p.t * 4) : 1; cx.font = `${Math.round(p.size * grow)}px "HG Display", sans-serif`;
       const py = Math.max(FIELD_TOP - 6 + p.size * 0.5, p.y - (p.combo ? p.t * 18 : p.t * 40));   // never up into the boss bar and HUD (owner's screenshot)
       cx.lineWidth = p.combo ? 10 : 6; cx.strokeStyle = '#2a1a22'; cx.strokeText(p.text, p.x, py); cx.fillStyle = p.col; cx.fillText(p.text, p.x, py);
@@ -1515,7 +1520,7 @@
     if (fountainState() === 'ready' && !S.card && firstTime('fountainSurge')) { guideSay('surge'); S.pointAt = { id: 'fountain', t: 0 }; }
     if (P.firstSession && S.sessionT > 1.2) guideSay('intro');
 
-    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `+${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`; el('stage').classList.toggle('surging', surgeX() > 1);
+    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `Resonance +${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`;   // the word stays with its rate (outside review) el('stage').classList.toggle('surging', surgeX() > 1);
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
     if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the Watchtower'); S.pointAt = { id: 'watchtower', t: 0 }; }
     if (P.shop.open && C.questClaimable(P) && !S.questTold && !S.card) { S.questTold = true; toast('Quest done! Collect it at the Library'); S.pointAt = { id: 'library', t: 0 }; }

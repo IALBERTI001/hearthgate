@@ -10,7 +10,7 @@ const SIZES = [[360, 740], [390, 844], [821, 462], [1085, 990], [1920, 1080]];
     for (const stage of ['first', 'late']) {
       const r = await p.evaluate(async st => { const { P } = Hearthgate.state();
         if (st === 'late') { P.firstSession = false; P.wave = 9999; P.runWave = 9999; P.res = 9.99e62; P.restored = [...Hearthgate.state().P.restored, 'forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower'].filter((v, i, a) => a.indexOf(v) === i);
-          P.ascensions = 61; for (const id of P.restored) P.levels[id] = 400; }
+          P.ascensions = 61; for (const id of P.restored) P.levels[id] = 400; if (Hearthgate.refresh) Hearthgate.refresh(); C_SURGE: { const now = Date.now(); P.surge.until = now + 60e3; } }
         while (Hearthgate.card()) { Hearthgate.act('ok'); Hearthgate.act('close'); if (Hearthgate.card()) break; }
         await new Promise(r => setTimeout(r, 400));
         const out = [], q = s => [...document.querySelectorAll(s)].filter(e => !e.hidden && e.offsetParent);
