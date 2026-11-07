@@ -293,7 +293,7 @@ ul.asc b { color: var(--gold); }
 .srow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 10px; margin-bottom: 4px; background: rgba(0, 0, 0, .18); opacity: .55; }
 .srow.on { opacity: 1; } .srow.next { opacity: 1; outline: 2px dashed rgba(255, 213, 107, .6); }
 .sn { display: flex; flex-direction: column; font: 18px/1.1 'HG Display', sans-serif; min-width: 0; }
-.sn small { font: 600 14px/1.3 'HG Text', sans-serif; color: #d9c6a6; }
+.sn small { font: 600 14px/1.3 'HG Text', sans-serif; color: #d9c6a6; white-space: nowrap; }
 .slv { flex: none; display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 10px; border: 2px solid var(--brass); background: #3b2440; color: #cdb99a; font: 16px/1 'HG Display', sans-serif; cursor: pointer; }
 .slv.can { background: linear-gradient(#c7962f, #8a5a1b); color: var(--ink); border-color: var(--gold); }
 .slv.shake { animation: shake .3s; }

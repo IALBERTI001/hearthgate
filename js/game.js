@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07f';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07g';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -178,7 +178,7 @@
     if ((S.sideT = (S.sideT || 0) + DT) > 0.5) { S.sideT = 0; drawSides(); }
     // the Steward (6th Ascension): every 3 s, level the cheapest building if that leaves two thirds of the Resonance
     if (C.unlocked(P, 'steward') && P.settings.steward !== false && (S.stewT = (S.stewT || 0) + DT) > 3) { S.stewT = 0;
-      const ch = P.restored.map(id => [id, C.levelCost(P, id, B)]).sort((a, b) => a[1] - b[1])[0]; if (ch && ch[1] * 3 <= P.res) levelUp(ch[0], true); }
+      const ch = P.restored.map(id => [id, C.levelCost(P, id, B)]).sort((a, b) => a[1] - b[1])[0]; for (let k = 0; k < 25; k++) { const c2 = P.restored.map(id => [id, C.levelCost(P, id, B)]).sort((a, b) => a[1] - b[1])[0]; if (!c2 || c2[1] * 3 > P.res || !levelUp(c2[0], true)) break; } }
   }
 
   function hit(e, el) {
@@ -186,14 +186,14 @@
     if (e.faded && el !== 'storm') d *= 0.25;   // a faded Phantom: only Storm finds it
     const comboMul = (1 + B.combo) * (S.event && evIs('eclipse') ? 2 : 1);
     if (e.shield) { if (el === 'storm') { e.shield = false; burst(e, '#bfe8ff', 16, 220); pop(e.x, e.y - e.size - 30, 'SHIELD BROKEN', '#bfe8ff', 1, 30); } else d *= 0.2; }
-    if (el === 'earth') { e.stun = S.event && evIs('tremor') ? 1.2 : 0.6; if (e.chill > 0) { d *= 2.5 * comboMul; combo('quake', e, 'QUAKE!', COLOR.earth); S.shake = 0.25; e.bigHit = true;
-      S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 90).forEach(o => { o.hp -= d * 0.5; o.flash = 1; o.stun = 0.4; }); } }
+    if (el === 'earth') { stunE(e, S.event && evIs('tremor') ? 1.2 : 0.6); if (e.chill > 0) { d *= 2.5 * comboMul; combo('quake', e, 'QUAKE!', COLOR.earth); S.shake = 0.25; e.bigHit = true;
+      S.enemies.filter(o => o !== e && !o.dying && Math.hypot(o.x - e.x, o.y - e.y) < 90).forEach(o => { o.hp -= d * 0.5; o.flash = 1; stunE(o, 0.4); }); } }
     if (e.armour && el !== 'fire') d *= 1 - e.armour;                 // armour: only Fire bites fully
     if (el === 'fire') {
       if (e.chill > 0) { d *= 3 * comboMul; combo('shatter', e, 'SHATTER!', COLOR.frost); burst(e, COLOR.frost, 22, 260); A.play('shatter_combo', 0.5); e.bigHit = true; }
       e.burn = 2.2;
     }
-    if (el === 'frost') { e.chill = B.deepFrost ? 3.3 : 2.2; if (evIs('avalanche') && !e.boss) e.stun = Math.max(e.stun || 0, 0.8); if (e.weak === 'frost') d *= 1.3; }
+    if (el === 'frost') { e.chill = B.deepFrost ? 3.3 : 2.2; if (evIs('avalanche') && !e.boss) stunE(e, 0.8); if (e.weak === 'frost') d *= 1.3; }
     if (el === 'storm') {
       const jumps = (e.chill > 0 ? 4 : 2) + B.chainPlus + ((S.event && evIs('stormfront')) ? 3 : 0);
       if (e.chill > 0) { combo('frostStorm', e, 'SUPERCHAIN!', COLOR.storm); A.play('conduction_combo', 0.45); if (C.ROLES[e.role].comboWeak) e.bigHit = true; }
@@ -213,6 +213,9 @@
     else { e.dp = pop(e.x, e.y - e.size * 0.55, C.fmt(d), e.bigHit ? '#ffffff' : COLOR[el], e.bigHit ? 0.9 : 0.7, e.bigHit ? 56 : 30); e.dp.val = d; }
     e.bigHit = false;
   }
+  // a stun lands only if the enemy has had time to recover from the last one (owner, Nov 6 2026: "is the boss not supposed to
+  // move?" - with Earth on, every fifth shot stunned again and the boss stood still at the top of the field for good)
+  function stunE(e, t) { if (S.t < (e.stunCd || 0)) return; if (e.boss) { t *= 0.4; pop(e.x, e.y - e.size - 20, 'STUNNED!', COLOR.earth, 0.8, 34); } e.stun = Math.max(e.stun || 0, t); e.stunCd = S.t + t + (e.boss ? 3 : 1); }
   function combo(id, e, word, col) {
     quest('combo'); if (id === 'shatter') quest('shatter');
     if (has('tavern') && !(S.cheerT > 0)) { S.cheer = Math.min(1, (S.cheer || 0) + 0.06 * (S.event && evIs('feast') ? 2 : 1)); if (S.cheer >= 1) startCheer(); }
@@ -955,6 +958,7 @@
     cx.restore();
     if (e.dying) return;
     if (e.chill > 0) { cx.save(); cx.globalAlpha = 0.5; glow(e.x, e.y - e.size * 0.4, e.size * 0.55, GLOW.frost, 0.35); cx.restore(); }
+    if (e.stun > 0 && !reduced()) { cx.save(); cx.fillStyle = '#ffe28c'; cx.strokeStyle = '#5a3a10'; cx.lineWidth = 1.5; for (let k = 0; k < 3; k++) { const a = S.t * 5 + k * 2.1; L.star(cx, e.x + Math.cos(a) * e.size * 0.35, e.y - e.size * 0.95 + Math.sin(a) * 6, 7, 3, 5, a); cx.stroke(); } cx.restore(); }   // dizzy stars: a stun you can see
     if (e.shield) { cx.save(); cx.strokeStyle = 'rgba(170,225,255,.9)'; cx.fillStyle = 'rgba(150,210,255,.18)'; cx.lineWidth = 3; cx.beginPath(); cx.ellipse(e.x, e.y - e.size * 0.45, e.size * 0.62, e.size * 0.58, 0, 0, 7); cx.fill(); cx.stroke(); cx.restore(); }
     if (C.ROLES[e.role].heal && !(e.burn > 0)) { cx.save(); cx.globalAlpha = 0.25 + 0.15 * Math.sin(S.t * 5); cx.strokeStyle = '#9dffb0'; cx.lineWidth = 3; cx.beginPath(); cx.arc(e.x, e.y - e.size * 0.3, 130, 0, 7); cx.stroke(); cx.restore(); }
     if (e.healed) { cx.save(); cx.globalAlpha = e.healed * 2; cx.fillStyle = '#9dffb0'; cx.font = '26px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.fillText('+', e.x + e.size * 0.3, e.y - e.size * 0.8); cx.restore(); }
@@ -989,8 +993,9 @@
   // A small gold arrow bobs over every restored building the player can afford to level up.
   function drawMarkers() {
     if (S.card || root.__storeCapture || P.settings.stats) return;   // store-cover captures hide them; so does the stats overlay, whose labels sit there
+    const lvShow = P.restored.filter(id => P.res >= C.levelCost(P, id, B)).sort((a, b) => C.levelCost(P, a, B) - C.levelCost(P, b, B)).slice(0, 3);   // at most three arrows, cheapest first
     for (const id of P.restored) {
-      if (P.res < C.levelCost(P, id, B)) continue;
+      if (!lvShow.includes(id)) continue;
       // on the building's upper-left corner, clear of its roof and spires (owner's screenshot, Nov 6 2026: the arrow sat on the
       // Frost Spire's crystal with the tip poking out above it); the job badges sit on the upper-right
       const sp = CITY.spots[id], x = sx(sp[0]) - sp[2] * K * 0.5, y = sy(sp[1]) - sp[3] * K * 0.3 + (reduced() ? 0 : Math.sin(S.t * 4 + x) * 3);
@@ -1131,7 +1136,7 @@
       }
       cx.globalAlpha = p.hold ? (p.t < p.life * p.hold ? 1 : 1 - (p.t - p.life * p.hold) / (p.life * (1 - p.hold))) : 1 - p.t / p.life;
       const grow = p.combo ? Math.min(1, 0.6 + p.t * 4) : 1; cx.font = `${Math.round(p.size * grow)}px "HG Display", sans-serif`;
-      const py = p.y - (p.combo ? p.t * 18 : p.t * 40);
+      const py = Math.max(FIELD_TOP - 6 + p.size * 0.5, p.y - (p.combo ? p.t * 18 : p.t * 40));   // never up into the boss bar and HUD (owner's screenshot)
       cx.lineWidth = p.combo ? 10 : 6; cx.strokeStyle = '#2a1a22'; cx.strokeText(p.text, p.x, py); cx.fillStyle = p.col; cx.fillText(p.text, p.x, py);
       cx.globalAlpha = 1;
     }
@@ -1237,7 +1242,7 @@
   function placeSides(vw, vh, sw) {
     const room = (vw - sw) / 2; sidesOn = sides.length === 2 && room >= 250 && vh >= 420;
     sides.forEach((p, i) => { p.hidden = !sidesOn || P.firstSession; if (!sidesOn) return;
-      const z = Math.max(0.75, Math.min(1.5, vh / 720)), w = Math.min(360, (room - 36) / z);   // panels grow with the window like the stage
+      const z = Math.max(0.6, Math.min(1.5, vh / 720, (room - 36) / 250)), w = Math.min(360, (room - 36) / z);   // never squeezed under 250 px: rows wrapped (owner's screenshot)   // panels grow with the window like the stage
       p.style.width = w + 'px'; p.style.maxHeight = (vh - 40) / z + 'px'; p.style.transform = `translateY(-50%) scale(${z})`;
       p.style.left = (i === 0 ? (room - w * z) / 2 : vw - room + (room - w * z) / 2) + 'px'; });
     if (sidesOn) drawSides();
@@ -1264,7 +1269,7 @@
       + `<div class="sline">Best wave <b>${C.fmt(P.bestWave)}</b> · this run ${rw}</div>`
       + (star ? `<div class="sline">Next star: <b>${star.name}</b> at wave ${C.starWave(P, star.k)}</div>` : '') + qs
       + `<h4>Collections</h4><div class="sgrid"><span>Feats<b>${P.feats.length}/${C.FEATS.length}</b></span><span>Combos<b>${P.combos.length}/${comboTotal()}</b></span>`
-      + `<span>Enemies met<b>${(P.seenRoles || []).length}</b></span><span>Ascension<b>${P.ascensions}/${C.ETERNAL_AT}</b></span>${P.ascensions >= 1 ? `<span>Stars<b>${P.stars.length}/${C.STARS.length}</b></span>` : ''}</div>`);
+      + `<span>Enemies met<b>${(P.seenRoles || []).length}</b></span><span>Ascension<b>${P.ascensions >= C.ETERNAL_AT ? `${P.ascensions} · Eternal` : `${P.ascensions}/${C.ETERNAL_AT}`}</b></span>${P.ascensions >= 1 ? `<span>Stars<b>${P.stars.length}/${C.STARS.length}</b></span>` : ''}</div>`);
   }
   if (sides[0]) sides[0].addEventListener('pointerdown', ev => { const b = ev.target.closest('[data-lv]'); if (!b || S.card) return; const id = b.dataset.lv; clearTimeout(S.lvHold); clearInterval(S.lvRep); holdFired = false;
     S.lvHold = setTimeout(() => { S.lvRep = setInterval(() => { if (!S.card && levelUp(id)) { holdFired = true; drawSides(); } else clearInterval(S.lvRep); }, 120); }, 420); });   // hold to keep levelling, as on the card
