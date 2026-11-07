@@ -221,6 +221,9 @@
     thief: { sheet: 'beetle', hp: 1, speed: 110, size: 54, label: 'Thieves', weak: 'frost', thief: true, tint: 'thief', tip: 'Thieves grab Resonance at the gate: stop them first' },
     bomber: { sheet: 'slime', hp: 2, speed: 34, size: 78, label: 'Bombers', weak: 'fire', bomb: true, tint: 'bomb', tip: 'Bombers blow up: pop them in a crowd, never at the gate' },
     totem: { sheet: 'golem', hp: 4, speed: 24, size: 84, label: 'Totems', weak: 'fire', armour: 0.3, totem: 4, tint: 'totem', tip: 'Totems shield their friends: burn them down first' },
+    leech: { sheet: 'slime', hp: 1.8, speed: 44, size: 70, label: 'Leeches', weak: 'fire', bite: 3, tint: 'leech', tip: 'Leeches drain the gate three times as fast: burn them first' },
+    knight: { sheet: 'golem', hp: 3, speed: 30, size: 80, label: 'Knights', weak: 'storm', shield: true, reshield: 5, tint: 'knight', tip: 'Knights raise their shield again every few seconds: keep Storm on them' },
+    hive: { sheet: 'beetle', hp: 3.5, speed: 26, size: 84, label: 'Hives', weak: 'storm', summon: 3, summonRole: 'swarm', tint: 'hive', tip: 'Hives keep releasing Swarm: Storm chains clear them' },
     // bosses rotate (waves 10, 20, 30, then again): each one fights differently
     boss: { sheet: 'golem', hp: 90, speed: 28, size: 190, label: 'Golem King', armour: 0.3, about: 'The first boss: armoured and huge' },
     queen: { sheet: 'slime', hp: 70, speed: 30, size: 190, label: 'Slime Queen', split: 6, tint: 'queen', tip: 'The Slime Queen bursts into a swarm' },
@@ -244,7 +247,7 @@
   // When each variant first appears (and then keeps appearing): a fixed schedule, the anchor behind the levels.
   const VARIANT_FROM = { elite: 12, shielded: 14, splitter: 16, mender: 19, ironhide: 26, sprinter: 33, bulwark: 37 };
   // Ascension enemies: [Ascensions needed, first wave in that run]
-  const ASC_ROLES = { phantom: [1, 15], thief: [2, 8], bomber: [2, 26], totem: [3, 16] };
+  const ASC_ROLES = { phantom: [1, 15], thief: [2, 8], bomber: [2, 26], totem: [3, 16], leech: [7, 12], knight: [8, 12], hive: [9, 12] };
   // The wave's make-up as [role, count] pairs. New roles arrive one at a time: runners at wave 3, armoured at 6, swarm at 12.
   function waveMix(w, asc) {
     const mix = baseMix(w); if (isBoss(w) && asc) mix[0][0] = bossOf(w, asc);
@@ -319,6 +322,9 @@
     { id: 'titans', name: 'Titan March', line: 'Bulwarks and Totems lead the wave', asc: 4, from: 42 },
     { id: 'starstorm', name: 'Star Storm', line: 'Meteors fall and combos rain Starshards', asc: 4, from: 53 },
     { id: 'assault', name: 'Grand Assault', line: 'Every kind of enemy at once', asc: 4, from: 63 },
+    { id: 'blackout', name: 'Blackout', line: 'Fog, and every enemy runs faster', asc: 7, from: 30 },
+    { id: 'royalhunt', name: 'Royal Hunt', line: 'Elites lead every pack and pay triple', asc: 8, from: 30 },
+    { id: 'cataclysm', name: 'Cataclysm', line: 'Meteors fall and Fire hits twice as hard', asc: 9, from: 30 },
     { id: 'laststand', name: 'Last Stand', line: 'The gate starts at half: every kill pays triple', asc: 3, from: 52 }
   ];
   const squeeze = (p, a, from) => p.ascensions === a ? Math.max(6, Math.round(from * ascendWave(p) / (30 + 10 * a))) : from;   // schedules written for 30 + 10 per Ascension, fitted to the real run
@@ -353,6 +359,7 @@
     if (ev.id === 'pack') return m.concat([['elite', 3]]);
     if (ev.id === 'tide') return m.concat([['splitter', 4], ['mender', 2]]);
     if (ev.id === 'ironrain') return [['armoured', Math.ceil(n * 0.5)], ['ironhide', Math.ceil(n * 0.3)], ['bulwark', 2]];
+    if (ev.id === 'royalhunt') return m.concat([['elite', 4]]);
     if (ev.id === 'titans') return m.concat([['bulwark', 3], ['totem', 2]]);
     if (ev.id === 'assault') return m.concat(['runner', 'shielded', 'splitter', 'mender', 'sprinter', 'phantom', 'thief', 'bomber', 'totem', 'elite'].map(r => [r, 1]));
     if (ev.id === 'swarmnight') return [['swarm', n * 2], ['elite', 1]];

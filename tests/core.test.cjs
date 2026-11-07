@@ -220,3 +220,8 @@ console.log('steward tests passed');
 { const p = C.defaults(); p.told = ['gold', 'tomorrow']; assert.deepStrictEqual(C.sanitize(JSON.parse(JSON.stringify(p))).told, ['gold', 'tomorrow'], 'one-time tips stay told after a reload');
   p.restored = C.BUILDING_IDS.slice(); p.runWave = 40; assert.deepStrictEqual(C.ascend(p).told, ['gold', 'tomorrow']); }
 console.log('told tests passed');
+// the 7th to 9th Ascensions each bring an enemy and an event of their own
+assert.ok(C.waveMix(12, 7).some(r => r[0] === 'leech') && !C.waveMix(12, 6).some(r => r[0] === 'leech'));
+assert.ok(C.waveMix(12, 8).some(r => r[0] === 'knight') && C.waveMix(12, 9).some(r => r[0] === 'hive'));
+for (const id of ['blackout', 'royalhunt', 'cataclysm']) assert.ok(C.EVENTS.some(e => e.id === id));
+console.log('late Ascension tests passed');

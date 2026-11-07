@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07c';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07d';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -82,11 +82,11 @@
     if (at) { x0 = Math.max(60, Math.min(660, at[0])); y0 = Math.min(WALL_FRONT - 4, at[1]); }
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.fx.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
     S.enemies.push({ role, sheet: R.sheet, x: x0, y: y0, off: (Math.random() - 0.5) * 330, hp, max: hp,
-      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (evIs('stampede') || evIs('eclipse') || evIs('frenzy')) ? 1.3 : S.event && evIs('blizzard') ? 0.75 : 1), size: R.size * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 1.3 : 1), armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
+      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (evIs('stampede') || evIs('eclipse') || evIs('frenzy') || evIs('blackout')) ? 1.3 : S.event && evIs('blizzard') ? 0.75 : 1), size: R.size * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 1.3 : 1), armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
       chill: (S.event && evIs('winter')) ? 4 : 0, burn: (S.event && evIs('embers')) ? 4 : 0, flash: 0, born: S.t - (at ? 0.6 : 0), dying: 0, stun: 0, summonT: R.summon || 0, totemT: R.totem || 0, blinkT: Math.random() * 2.4, tint: S.event && evIs('golden') ? 'gold' : R.tint, shield: !!R.shield || !!(S.event && evIs('mirror')) });
   }
 
-  const TINT = { gold: 'sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.15)', shield: 'saturate(0.6) hue-rotate(170deg) brightness(1.05)', split: 'hue-rotate(150deg) saturate(1.3)', mend: 'hue-rotate(-75deg) saturate(0.7) brightness(1.3)', queen: 'hue-rotate(205deg) saturate(1.5) brightness(1.05)', pale: 'saturate(0.3) brightness(1.45)', stone: 'saturate(0.2) brightness(0.8) contrast(1.2)', ghost: 'saturate(0.2) brightness(1.6) hue-rotate(180deg)', thief: 'saturate(0.4) brightness(0.55)', bomb: 'hue-rotate(-95deg) saturate(1.8) brightness(1.05)', totem: 'sepia(0.7) hue-rotate(160deg) saturate(1.4)' };   // enemy colour variants, shared by the field and the Bestiary
+  const TINT = { gold: 'sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.15)', shield: 'saturate(0.6) hue-rotate(170deg) brightness(1.05)', split: 'hue-rotate(150deg) saturate(1.3)', mend: 'hue-rotate(-75deg) saturate(0.7) brightness(1.3)', queen: 'hue-rotate(205deg) saturate(1.5) brightness(1.05)', pale: 'saturate(0.3) brightness(1.45)', stone: 'saturate(0.2) brightness(0.8) contrast(1.2)', ghost: 'saturate(0.2) brightness(1.6) hue-rotate(180deg)', leech: 'hue-rotate(-140deg) saturate(1.6) brightness(0.85)', knight: 'sepia(0.5) hue-rotate(-20deg) saturate(1.8) brightness(1.1)', hive: 'hue-rotate(40deg) saturate(1.3) brightness(0.9)', thief: 'saturate(0.4) brightness(0.55)', bomb: 'hue-rotate(-95deg) saturate(1.8) brightness(1.05)', totem: 'sepia(0.7) hue-rotate(160deg) saturate(1.4)' };   // enemy colour variants, shared by the field and the Bestiary
   // ---------- simulation ----------
   const TOWERS4 = PLATFORMS.map((p, i) => ({ x: p.x, y: p.y, cd: 0.2 + i * 0.13, recoil: 0, flash: 0, n: i }));
   // the fifth tower is the Watchtower's own beacon: a light on its roof that fires over the wall (owner, Nov 6 2026: a
@@ -108,7 +108,7 @@
     syncTowers();
     const els = elements(), interval = C.fireInterval(B) * (S.cheerT > 0 ? 0.5 : 1) * (S.event && evIs('frenzy') ? 0.7 : 1);   // the Tavern's Cheer: towers fire twice as fast
     tickExtras();
-    if ((S.event && (evIs('meteor') || evIs('starstorm'))) && (S.meteorT = (S.meteorT || 2) - DT) <= 0) { S.meteorT = 2.5;
+    if ((S.event && (evIs('meteor') || evIs('starstorm') || evIs('cataclysm'))) && (S.meteorT = (S.meteorT || 2) - DT) <= 0) { S.meteorT = 2.5;
       const live = S.enemies.filter(e => !e.dying && e.y > FIELD_TOP + 40); const tg = live[Math.floor(Math.random() * live.length)];
       if (tg) { burst(tg, '#ffb36b', 24, 260); S.shake = 0.18; S.rings.push({ x: tg.x, y: tg.y - 20, t: 0, col: '#ffb36b' }); pop(tg.x, tg.y - tg.size - 30, 'METEOR!', '#ffb36b', 0.9, 40); A.play('shatter_combo', 0.3);
         S.enemies.filter(o => !o.dying && Math.hypot(o.x - tg.x, o.y - tg.y) < 100).forEach(o => { o.hp -= C.towerDamage(P, B) * 6; o.flash = 1; o.burn = 2; }); } }
@@ -139,6 +139,7 @@
       if (RR.heal && !(e.burn > 0)) for (const o of S.enemies) if (o !== e && !o.dying && o.hp < o.max && Math.hypot(o.x - e.x, o.y - e.y) < 130) { o.hp = Math.min(o.max, o.hp + o.max * RR.heal * DT); o.healed = 0.3; }
       if (RR.summon && (e.summonT -= DT) <= 0) { e.summonT = RR.summon; const sy0 = RR.summonRole ? Math.min(e.y, WALL_FRONT) - 150 : e.y; spawnAt(RR.summonRole || 'runner', e.x + 50, sy0); spawnAt(RR.summonRole || 'runner', e.x - 50, sy0); }   // thieves start well up the field so they can be stopped
       if (e.healed) e.healed = Math.max(0, e.healed - DT);
+      if (RR.reshield && !e.shield && (e.reshT = (e.reshT || 0) + DT) > RR.reshield) { e.reshT = 0; e.shield = true; }   // Knights
       if (RR.blink) { e.blinkT = (e.blinkT + DT) % 2.4; e.faded = e.blinkT > 1.4; }   // Phantoms: 1.4 s seen, 1 s faded
       if (RR.totem && (e.totemT -= DT) <= 0) { e.totemT = RR.totem; S.rings.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col: '#bfe8ff' });
         S.enemies.filter(o => o !== e && !o.dying && !o.shield && !o.boss && Math.hypot(o.x - e.x, o.y - e.y) < 160).slice(0, 3).forEach(o => { o.shield = true; }); }
@@ -150,7 +151,7 @@
       } else if (RR.thief) { const amt = Math.min(P.res * 0.5, (C.fightRate(P, B) * 1.6 + RATE) * 6); P.res -= amt; e.dying = DT; S.thefts = (S.thefts || 0) + 1;
         pop(e.x, WALL_FRONT - 90, `Stolen -${C.fmt(amt)}`, '#ff8a6a', 1.3, 36); continue; }
       else if (RR.bomb) { S.gateHp -= C.enemyBite(P.wave, e.role) * 10; S.gateHit = 1; S.shake = 0.3; e.dying = DT; burst(e, '#ff9a3a', 26, 280); pop(e.x, WALL_FRONT - 90, 'BOOM!', '#ff9a3a', 1.1, 44); continue; }
-      else { S.gateHp -= C.enemyBite(P.wave, e.role) * DT; S.gateHit = 1; }
+      else { S.gateHp -= C.enemyBite(P.wave, e.role) * DT * (RR.bite || 1); S.gateHit = 1; }
       if (e.hp <= 0) kill(e);
     }
     S.enemies = S.enemies.filter(e => !e.dying || e.dying < 0.45);
@@ -181,7 +182,7 @@
   }
 
   function hit(e, el) {
-    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)) * (e.boss ? 1 + B.bossDmg : 1) * (S.event && ((evIs('thunder') && el === 'storm') || (evIs('blizzard') && el === 'frost') || (evIs('inferno') && el === 'fire') || (evIs('rockslide') && el === 'earth')) ? 2 : 1) * (S.event && evIs('hail') && (el === 'frost' || el === 'storm') ? 1.5 : 1) * ((S.event && evIs('stormfront')) && el === 'storm' ? 1.5 : 1);
+    let d = C.towerDamage(P, B) * (1 + (B[el] || 0)) * (e.boss ? 1 + B.bossDmg : 1) * (S.event && ((evIs('thunder') && el === 'storm') || (evIs('blizzard') && el === 'frost') || ((evIs('inferno') || evIs('cataclysm')) && el === 'fire') || (evIs('rockslide') && el === 'earth')) ? 2 : 1) * (S.event && evIs('hail') && (el === 'frost' || el === 'storm') ? 1.5 : 1) * ((S.event && evIs('stormfront')) && el === 'storm' ? 1.5 : 1);
     if (e.faded && el !== 'storm') d *= 0.25;   // a faded Phantom: only Storm finds it
     const comboMul = (1 + B.combo) * (S.event && evIs('eclipse') ? 2 : 1);
     if (e.shield) { if (el === 'storm') { e.shield = false; burst(e, '#bfe8ff', 16, 220); pop(e.x, e.y - e.size - 30, 'SHIELD BROKEN', '#bfe8ff', 1, 30); } else d *= 0.2; }
@@ -225,7 +226,7 @@
     if (!P.combos.includes(id)) { P.combos.push(id); if (P.shop.open) P.shop.shards += C.SHARDS.combo; toast(`New combo: ${word.replace('!', '')}  ·  ${P.combos.length}/${comboTotal()}`); save(); }
   }
   function kill(e) {
-    e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX() * (e.boss ? 1 + bossRank() : 1) * (S.event && evIs('golden') ? 2 : S.event && evIs('bloodmoon') ? 3 : 1) * ((S.event && evIs('giants')) ? 2 : (S.event && evIs('laststand')) ? 3 : 1); quest('kills');
+    e.dying = DT; const gain = C.killRes(P.wave, e.boss, B) * surgeX() * (e.boss ? 1 + bossRank() : 1) * (S.event && evIs('golden') ? 2 : S.event && evIs('bloodmoon') ? 3 : 1) * (evIs('royalhunt') && e.role === 'elite' ? 3 : 1) * ((S.event && evIs('giants')) ? 2 : (S.event && evIs('laststand')) ? 3 : 1); quest('kills');
     const R = C.ROLES[e.role];
     if ((S.event && evIs('echo')) && !e.boss && !e.echo && e.role !== 'swarm') { spawnAt('swarm', e.x, e.y - 4); S.enemies[S.enemies.length - 1].echo = true; }
     if (R.split) for (let k = 0; k < R.split; k++) spawnAt('swarm', e.x + (k - (R.split - 1) / 2) * 34, e.y - 4);
@@ -940,7 +941,7 @@
   function drawEnemy(e) {
     const sh = img[e.sheet]; if (!sh) return;
     const fade = Math.min(1, (S.t - e.born) / 0.6), die = e.dying ? 1 - e.dying / 0.45 : 1;
-    cx.save(); cx.globalAlpha = fade * die * (e.faded ? 0.28 : 1) * (evIs('fog') && e.y < WALL_FRONT - 330 ? 0.22 : 1);
+    cx.save(); cx.globalAlpha = fade * die * (e.faded ? 0.28 : 1) * ((evIs('fog') || evIs('blackout')) && e.y < WALL_FRONT - 330 ? 0.22 : 1);
     shadow(e.x + 4, e.y - 2, e.size * 0.42, e.size * 0.13, 0.35);
     if (e.dying) { cx.translate(e.x, e.y); cx.scale(1 + e.dying, 1 - e.dying * 0.8); cx.translate(-e.x, -e.y); }
     if (GATE_X + e.off < e.x - 20) { cx.translate(e.x, 0); cx.scale(-1, 1); cx.translate(-e.x, 0); }   // face the way it walks
@@ -955,7 +956,7 @@
     if (C.ROLES[e.role].heal && !(e.burn > 0)) { cx.save(); cx.globalAlpha = 0.25 + 0.15 * Math.sin(S.t * 5); cx.strokeStyle = '#9dffb0'; cx.lineWidth = 3; cx.beginPath(); cx.arc(e.x, e.y - e.size * 0.3, 130, 0, 7); cx.stroke(); cx.restore(); }
     if (e.healed) { cx.save(); cx.globalAlpha = e.healed * 2; cx.fillStyle = '#9dffb0'; cx.font = '26px "HG Display", sans-serif'; cx.textAlign = 'center'; cx.fillText('+', e.x + e.size * 0.3, e.y - e.size * 0.8); cx.restore(); }
     if (e.burn > 0 && !reduced() && Math.random() < 0.3) S.fx.push({ x: e.x + (Math.random() - 0.5) * e.size * 0.5, y: e.y - e.size * 0.5, vx: 0, vy: -50, t: 0, life: 0.4, col: COLOR.fire, r: 2.5 });
-    if (evIs('fog') && e.y < WALL_FRONT - 330) return;   // in the mist: no bar either
+    if ((evIs('fog') || evIs('blackout')) && e.y < WALL_FRONT - 330) return;   // in the mist: no bar either
     cx.save(); cx.globalAlpha = Math.min(1, (S.t - e.born) / 0.6) * (e.faded ? 0.3 : 1);   // the bar fades in with its enemy, never alone
     const bw = e.boss ? 120 : 44, by = e.y - e.size - 8;
     cx.fillStyle = 'rgba(42,26,34,.85)'; cx.fillRect(e.x - bw / 2 - 2, by - 2, bw + 4, 9);

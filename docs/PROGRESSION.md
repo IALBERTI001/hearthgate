@@ -22,6 +22,7 @@ The "30-second rule" (something new at least every 30 s in the first 5 minutes a
 | 4 | Earth and QUAKE; Thief Tyrant; 7 events |
 | 5 and on | Boss ranks; 9 new twin events each run |
 | 6 | The Steward: levels the cheapest building by itself (On/Off in the Watchtower) |
+| 7 to 9 | Leeches, Knights and Hives; Blackout, Royal Hunt and Cataclysm |
 | 10 | The Eternal City: a finale card, a lasting light over the fountain; the game goes on |
 | 1 to 8 | One constellation of 5 stars each, 40 stars in all, every star a lasting boon |
 
