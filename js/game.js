@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07k';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07l';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -520,7 +520,7 @@
     for (const f of FLY) {
       if (f.gone || !f.kind || f.a < 0.5) continue; const [fx, fy] = flyPos(f); if (Math.hypot(x - fx, y - fy) > 40) continue;
       const k = f.kind, isNew = !P.flies.includes(k.id); f.gone = true; f.wait = 25 + Math.random() * 20;
-      P.stats.flies = (P.stats.flies || 0) + 1; A.play('claim', 0.45); burst({ x: fx, y: fy + 10, size: 20 }, k.col, 14, 140);
+      quest('fly'); A.play('claim', 0.45); burst({ x: fx, y: fy + 10, size: 20 }, k.col, 14, 140);
       const amt = C.fightRate(P, B) * 1.6 * 2 * surgeX() * (k.rare ? 5 : 1); P.res += amt; pop(fx, fy - 18, `+${C.fmt(amt)}`, '#ffd56b', 1.1, 34);
       if (k.rare && P.shop.open) { P.shop.shards += 3; pop(fx, fy - 56, '+3 Starshards', SHARD, 1.3, 34); }
       if (isNew) { P.flies.push(k.id); toast(`New butterfly: ${k.name} · Garden ${P.flies.length}/${C.BUTTERFLIES.length}`); }
@@ -565,7 +565,7 @@
   // ---------- daily quests and the Resonance Surge ----------
   const today = () => C.dayKey(new Date());
   // quests start with the Shop (their reward is Starshards); a new day brings three new ones
-  const STAT_OF = { kills: 'kills', boss: 'bosses', combo: 'combos', shatter: 'shatter', upgrade: 'upgrades', level: 'levels', surge: 'surges' };
+  const STAT_OF = { kills: 'kills', boss: 'bosses', combo: 'combos', shatter: 'shatter', upgrade: 'upgrades', level: 'levels', surge: 'surges', fly: 'flies' };
   // every counted event feeds the lifetime stats (Feats) and, once the Shop is open, today's quests
   function quest(id, n = 1) { if (STAT_OF[id]) P.stats[STAT_OF[id]] += n; if (P.shop.open) { C.questsFor(P, today()); C.questTick(P, id, n); } }
   // Feats are checked twice a second; during the first session they are earned quietly, so the opening keeps one voice
@@ -624,8 +624,7 @@
         + `<div class="qbar"><i style="width:${Math.round(q.n / q.need * 100)}%"></i></div>`
         + (q.claimed ? `<span class="qok">Claimed</span>` : `<button class="buy ${q.n >= q.need ? 'can' : 'off'} qclaim" data-i="${i}"><i class="star"></i>${C.QUEST_REWARD}</button>`) + `</div>`).join('')
       + `<div class="quest bonus${qs.bonus ? ' done' : ''}"><div class="qt"><b>All three</b><span>${qs.list.filter(q => q.claimed).length}/3</span></div>`
-      + (qs.bonus ? `<span class="qok">Claimed</span>` : `<button class="buy ${all ? 'can' : 'off'} qbonus"><i class="star"></i>${C.QUEST_BONUS}</button>`) + `</div></div>`
-      + `<p class="small">Spend Starshards in the Shop.</p>`;
+      + (qs.bonus ? `<span class="qok">Claimed</span>` : `<button class="buy ${all ? 'can' : 'off'} qbonus"><i class="star"></i>${C.QUEST_BONUS}</button>`) + `</div></div>`;
   }
   function wireQuests(body) {
     body.querySelectorAll('.qtab').forEach(b => (b.onclick = () => { S.qTab = b.dataset.q; A.play('tier_up', 0.08); showCard('quests'); }));
@@ -686,7 +685,7 @@
         + `<button class="buy ${state}" data-id="${it.id}">${on ? 'Equipped' : own ? 'Equip' : `<i class="star"></i>${it.price}`}</button></div>`;
     };
     return `<div class="shophead"><h2>Shop</h2><span class="chip shards"><i class="star"></i><b>${sh.shards}</b></span><button id="c-no" class="x" aria-label="Close"></button></div>`
-      + `<p class="earn"><i class="star"></i> Boss +${C.SHARDS.boss} · combo +${C.SHARDS.combo} · daily +${C.SHARDS.daily} · Ascend +${C.SHARDS.ascend}</p>`
+
       + `<div class="trade">${SDK.rewardsOn ? '' : `<span>or trade about<br>${tradeMins(tc)} of kills</span>`}`
       + `<button id="c-trade" class="cbtn ${P.res >= tc ? 'gold' : 'off'}">Trade <i class="gem"></i>${C.fmt(tc)}<span class="to"></span><i class="star"></i>1</button>`
       // Full Launch only: an ad for Starshards, side by side with the trade so the panel keeps its height
@@ -784,14 +783,15 @@
     if (kind === 'building') {
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
       const hall = HALLS[data] && HALLS[data].ok() ? HALLS[data] : null;
-      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} Resonance a second</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>${P.ascensions >= 1 ? `<p><b>Ascended · ${C.RANK2[data].name}:</b> ${C.RANK2[data].line}</p>` : ''}`
-        + `<p class="small">Restored ${['1st', '2nd', '3rd'][P.restored.indexOf(data)] || (P.restored.indexOf(data) + 1) + 'th'}: each later restore hums stronger<br>Next level: ${rfmt(r)} -> ${rfmt(r2)} a second${m ? `<br>Level ${m} doubles it` : ''}</p>`
+      const nth = ['1st', '2nd', '3rd'][P.restored.indexOf(data)] || (P.restored.indexOf(data) + 1) + 'th';
+      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} a second · restored ${nth}</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>${P.ascensions >= 1 ? `<p><b>Ascended · ${C.RANK2[data].name}:</b> ${C.RANK2[data].line}</p>` : ''}`
+        + `<p class="small">Next level ${rfmt(r)} → ${rfmt(r2)} a second${m ? ` · level ${m} doubles it` : ''}</p>`
         + btn('c-ok', `Level up · <i class="gem"></i>${C.fmt(c)}`, P.res >= c ? 'gold' : 'off') + `<span class="wait"></span>` + btn('c-no', 'Close', 'quiet');
     }
     if (kind === 'shop') html = shopHtml();
     if (kind === 'quests') html = questsHtml();
     if (kind === 'perks') html = perksHtml();
-    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · ★ ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}`;
+    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}`;
     body.innerHTML = html;
     const close = () => { card.className = ''; S.card = null; if (!S.paused) SDK.gameplay(true); ui(); nextCard(); };
     const on = (id, f) => { const b = body.querySelector('#' + id); if (b) b.onclick = () => { A.unlock(); f(); }; };

@@ -571,7 +571,8 @@
     { id: 'shatter', text: n => `Trigger SHATTER ${n} times`, need: 15, ok: p => p.combos.includes('shatter') },
     { id: 'level', text: n => `Level up buildings ${n} times`, need: 6, ok: p => p.restored.length > 0 },
     { id: 'boss', text: () => 'Defeat a boss', need: 1, ok: p => p.bestWave >= 10 },
-    { id: 'surge', text: () => 'Start a Resonance Surge', need: 1, ok: () => true }
+    { id: 'surge', text: () => 'Start a Resonance Surge', need: 1, ok: () => true },
+    { id: 'fly', text: n => `Catch ${n} butterflies`, need: 5, ok: p => (p.stats.flies || 0) > 0 }
   ];
   const QUEST_REWARD = 4, QUEST_BONUS = 5;
   function questsFor(p, today) {
