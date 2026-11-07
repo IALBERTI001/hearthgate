@@ -59,6 +59,28 @@
     const s = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = vol; s.buffer = buffers[name];
     s.playbackRate.value = 0.94 + Math.random() * 0.12; s.connect(g); g.connect(gain); s.start();
   }
+  // ---------- the Magister's voice (owner, Nov 7 2026: "a villager mayor or magician popping out... with a voice thing...
+  // like we did for the karate bunny dialogue just better"). Karate Bunnies played one square blip per vowel group; here
+  // each syllable is a short voiced sound: a warm triangle tone through two band-pass formants picked from its vowel, an
+  // octave shimmer, a speaking melody that falls through the sentence and lifts on a question, and soft attack and release.
+  const FORMANT = { a: [750, 1200], e: [480, 1900], i: [320, 2300], o: [500, 900], u: [360, 800], y: [320, 2100] };
+  function speak(sylls, base = 132) {
+    if (!ctx || !st.sfx || st.muted) return [];
+    const t0 = ctx.currentTime + 0.03, nodes = [];
+    for (const s of sylls) {
+      const t = t0 + s.at, f0 = base * s.tone * (0.96 + Math.random() * 0.08), [f1, f2] = FORMANT[s.v] || FORMANT.a, len = s.len;
+      const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), b1 = ctx.createBiquadFilter(), b2 = ctx.createBiquadFilter(), mix = ctx.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(f0, t); o.frequency.linearRampToValueAtTime(f0 * (s.rise ? 1.18 : 0.94), t + len);
+      o2.type = 'sine'; o2.frequency.setValueAtTime(f0 * 2, t); const g2 = ctx.createGain(); g2.gain.value = 0.35;
+      b1.type = 'bandpass'; b1.frequency.value = f1; b1.Q.value = 5; b2.type = 'bandpass'; b2.frequency.value = f2; b2.Q.value = 7;
+      mix.gain.value = 1;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.8, t + 0.018); g.gain.setValueAtTime(0.8, t + len * 0.55); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      o.connect(b1); o.connect(b2); o2.connect(g2); g2.connect(b1); b1.connect(mix); b2.connect(mix); mix.connect(g); g.connect(gain);
+      o.start(t); o2.start(t); o.stop(t + len + 0.03); o2.stop(t + len + 0.03); nodes.push(o, o2);
+    }
+    return nodes;
+  }
+  function hush(nodes) { for (const n of nodes || []) { try { n.stop(); } catch (e) { /* already stopped */ } } }
   function set(k, v) { st[k] = v; if (k === 'music' || k === 'muted') applyMusic(); if (ctx && k === 'muted') gain.gain.value = v ? 0 : 0.7; }
-  root.HGAudio = { unlock, play, set, boss, state: () => ({ mode, lastSong, boss: st.boss }) };
+  root.HGAudio = { unlock, play, set, boss, speak, hush, state: () => ({ mode, lastSong, boss: st.boss }) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

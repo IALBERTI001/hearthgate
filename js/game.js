@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07r';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07s';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -55,7 +55,7 @@
   const CHEERS = ['Keep it up!', 'Great job!', 'WOOOAHH!', 'Unstoppable!', 'Hold the line!', 'Nice work!', 'You got this!',
     'Crushing it!', 'On fire!', 'Legendary!', 'The city cheers you on!', 'Brick by brick!'];
   function startWave() {
-    const n = P.wave, boss = C.isBoss(n); S.trial = C.isTrial(P, n); S.auroraN = 0;
+    const n = P.wave, boss = C.isBoss(n); S.trial = C.isTrial(P, n); S.auroraN = 0; if (boss) guideSay('boss');
     S.event = C.eventFor(P, n); const evNew = S.event && !P.seenEvents.includes(S.event.id); if (S.event && evNew) P.seenEvents.push(S.event.id);
     const cheer = S.cheerNext || (n === 1 ? ['Good luck!', 'How far will you go?'][Math.floor(Math.random() * 2)]
       : boss ? 'Boss incoming. Hold the gate!' : '');   // ordinary waves show just their number (review: "Crushing it!" was clutter)
@@ -291,7 +291,7 @@
   function gateBroken(noAd) {
     // a boss wave can be saved once by an optional ad (Full Launch only); otherwise the gate falls back, nothing lost
     if (!noAd && C.isBoss(P.wave) && SDK.rewardsOn && !S.savedByAd && !S.card) { S.paused = true; showCard('save'); return; }
-    const to = Math.max(1, P.wave - 3);
+    const to = Math.max(1, P.wave - 3); guideSay('fell');
     toast(`The gate fell back to wave ${to}. Nothing lost.`); S.cheerNext = 'Regroup. You\'ve got this!';
     P.wave = to; S.enemies = []; S.shots = []; S.spawnQ = []; S.gateHp = gateMax(); S.savedByAd = false; startWave(); save();
   }
@@ -344,7 +344,7 @@
     const c = C.restoreCost(P.restored.length); if (P.res < c) return;
     P.res -= c; P.restored.push(id); refresh(); S.upsSinceRestore = 0;
     const b = C.byId(id), r2 = P.ascensions >= 1 && C.RANK2[id];
-    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id);
+    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id); if (P.restored.length === 1) guideSay('restored');
     if (r2) { S.rank2 = (S.rank2 || []).concat(id); pop(sx(CITY.spots[id][0]), sy(CITY.spots[id][1]) - 50, r2.name + '!', '#ffd56b', 1.8, 40); }
     A.play('tier_up', 0.55); SDK.happytime();
     if (P.restored.length === 5) setTimeout(() => { toast('The fountain flows again!'); S.reveal = { b: 'plaza', t: 0 }; }, 2900);
@@ -599,6 +599,94 @@
     const add = Math.min(gateMax() - S.gateHp, gateMax() * 0.35 * (1 + B.repairX)); S.gateHp += add; S.repairs = (S.repairs || 0) + 1;
     folkMend(); pop(GATE_X, WALL_FRONT - 110, `Repaired +${C.fmt(add)}`, '#7bd15a', 1.4, 34);
   }
+  // ---------- the Magister: a guide who explains each step as it arrives (owner, Nov 7 2026, after a friend's phone
+  // playtest: "it does not teach itself... what they upgrade and what ascends is not clear... a villager mayor or magician
+  // popping out the side of the screen with a voice"). The city's old mage-mayor slides in at the lower left, speaks one or
+  // two short lines in a babbling voice while the text types along, and slides away. The fight never pauses; a tap
+  // finishes the line or moves on. Each moment plays once (saved in P.told).
+  const GUIDE = {
+    intro: [['worry', 'Monsters from the forest are back to finish off our city!'], ['smile', 'Our four towers on the wall hold them back. Tap Upgrade to make them hit harder!', 'towers']],
+    restore: [['smile', 'Every fallen monster sends Resonance to our fountain. Spend it: tap Restore to rebuild a home!', 'fountain']],
+    restored: [['proud', 'Wonderful! Each rebuilt home earns Resonance by itself, even while you rest.']],
+    boss: [['worry', 'A great beast is coming! Keep the towers strong. The gate must hold!']],
+    fell: [['smile', 'We fell back a few waves, but nothing is lost. Upgrade, and push again!']],
+    whole: [['proud', 'The whole city stands again! Hold out to wave {aw} and we can Ascend.']],
+    ascend: [['proud', 'The time has come! Ascend, and we rebuild the city better than ever.'], ['smile', 'Our Resonance will flow faster, forever. Tap Ascend!']],
+    surge: [['smile', 'The fountain brims with power! Tap it, and all Resonance pays double for three minutes.', 'fountain']]
+  };
+  const G = { q: [], cur: null, el: null, nodes: [] };
+  function guideSay(id, vars) {
+    if (!GUIDE[id] || (P.told || []).includes('g_' + id) || G.q.some(b => b.id === id) || (G.cur && G.cur.id === id)) return;
+    P.told = (P.told || []).concat('g_' + id); save();
+    G.q.push({ id, lines: GUIDE[id].map(([face, text, focus]) => ({ face, focus, text: text.replace(/\{(\w+)\}/g, (_, k) => vars && vars[k] !== undefined ? vars[k] : '') })) });
+  }
+  // syllables for the voice and for the typing: each vowel group is one sound; a word's last sound before . , ! ? pauses
+  function syllables(text) {
+    const out = []; let t = 0, i = 0; const words = text.split(/(\s+)/), n = text.length;
+    const count = (text.toLowerCase().match(/[aeiouy]+/g) || []).length || 1; let k = 0;
+    for (const w of words) {
+      if (!w.trim()) { i += w.length; continue; }
+      const groups = [...w.toLowerCase().matchAll(/[aeiouy]+/g)], end = /[.!?,:]$/.test(w), q = /\?$/.test(w);
+      if (!groups.length) groups.push({ 0: 'a', index: 0 });
+      groups.forEach((m, j) => {
+        const last = j === groups.length - 1, len = 0.085 + Math.random() * 0.03;
+        const tone = 1.18 - 0.28 * (k++ / count) + (Math.random() - 0.5) * 0.12;   // starts high, settles lower through the sentence
+        out.push({ at: t, len, v: m[0][0], tone, rise: q && last, upto: last ? i + w.length : i + m.index + m[0].length });
+        t += len + 0.025 + (last ? 0.03 : 0) + (last && end ? 0.22 : 0);
+      });
+      i += w.length;
+    }
+    return { sylls: out, dur: t, n };
+  }
+  function guideEl() {
+    if (G.el) return G.el;
+    const d = document.createElement('div'); d.id = 'guide'; d.setAttribute('role', 'status');
+    d.innerHTML = '<div class="por"><canvas width="244" height="240"></canvas></div><div class="bub"><b>Magister Bram</b><p></p></div>';
+    d.addEventListener('pointerdown', ev => { ev.stopPropagation(); guideTap(); });
+    el('stage').appendChild(d); G.el = d; return d;
+  }
+  // the portrait: the painted bust, with a soft-edged open-mouth patch laid over it while a syllable sounds
+  function guideFace(face, open) {
+    if (!G.el) return; const k = face === 'worry' ? 'worry' : 'smile', key = k + (open ? 1 : 0); if (G.face === key) return; G.face = key;
+    const c = G.el.querySelector('canvas'), g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height);
+    if (img['mag_' + k]) g.drawImage(img['mag_' + k], 0, 0); if (open && img['mag_' + k + '_m']) g.drawImage(img['mag_' + k + '_m'], 79, 78);
+  }
+  function guideLine() {
+    const b = G.cur, L = b.lines[b.i], syl = syllables(L.text);
+    b.line = { L, syl, t: 0, typed: 0, hold: 1.1 + L.text.length * 0.022, done: false };
+    G.el.querySelector('p').textContent = ''; guideFace(L.face, false);
+    A.hush(G.nodes); G.nodes = A.speak ? A.speak(syl.sylls) : [];
+  }
+  function guideTap() {
+    const b = G.cur; if (!b) return; const l = b.line;
+    if (!l.done) { l.done = true; l.t = Math.max(l.t, l.syl.dur); A.hush(G.nodes); G.el.querySelector('p').textContent = l.L.text; guideFace(l.L.face, false); return; }
+    guideNext();
+  }
+  function guideNext() {
+    const b = G.cur; A.hush(G.nodes);
+    if (b && ++b.i < b.lines.length) return guideLine();
+    G.cur = null; if (G.el) G.el.classList.remove('in');
+  }
+  // runs every frame (real time, not game time: the guide talks while the fight runs, and also while a card is open)
+  function tickGuide(dt) {
+    if (!G.cur) {
+      if (!G.q.length || S.card || !imgReady.magister) return;
+      G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine(); return;
+    }
+    if (S.card) { G.cur.line.done = true; guideNext(); return; }   // a card took the screen: do not talk over it
+    const l = G.cur.line; l.t += dt;
+    if (l.L.focus === 'towers' && !reduced()) TOWERS.forEach(t => (t.flash = Math.max(t.flash, 0.5 + 0.35 * Math.sin(S.t * 6))));   // what he talks about lights up
+    if (l.L.focus === 'fountain') S.plazaGlow = Math.max(S.plazaGlow || 0, 0.6 + 0.3 * Math.sin(S.t * 5));
+    if (!l.done) {
+      const due = l.syl.sylls.filter(x => x.at <= l.t), last = due[due.length - 1];
+      G.el.querySelector('p').textContent = l.L.text.slice(0, last ? last.upto : 0);
+      const speaking = last && l.t - last.at < last.len * 0.8; guideFace(l.L.face, speaking);
+      if (l.t >= l.syl.dur) { l.done = true; l.t = l.syl.dur; G.el.querySelector('p').textContent = l.L.text; guideFace(l.L.face, false); }
+    } else if (l.t - l.syl.dur > (G.q.length ? Math.min(0.9, l.hold) : l.hold)) guideNext();   // something new to say: move on sooner
+  }
+  const guideFocus = () => G.cur && G.cur.line && G.cur.line.L.focus;
+  const imgReady = {};
+
   // ---------- villagers (owner, Nov 6 2026: "an animation of villagers around moving and building things"; game-polish
   // rules 9-11). Painted townsfolk walk the spoke paths between the plaza and the restored buildings, stop and loiter, run
   // to build what you restore, mend the gate after a wave, and hop with a heart when tapped. Sprites load after play starts.
@@ -684,7 +772,7 @@
   // the fountain erupts: shared by a free Surge, an ad Surge and a Starshard refill
   function surgeFx() {
     quest('surge'); A.play('surge', 0.6); S.pointAt = null;
-    pop(PLAZA.x, PLAZA.y - 96, 'SURGE! x2', '#ffb8f0', 1.6, 52); if (firstTime('surgeWhat')) toast('Surge: everything pays double for 3 minutes');
+    pop(PLAZA.x, PLAZA.y - 96, 'SURGE! x2', '#ffb8f0', 1.6, 52); if (!(P.told || []).includes('g_surge') && firstTime('surgeWhat')) toast('Surge: everything pays double for 3 minutes');
     burst({ x: PLAZA.x, y: PLAZA.y - 10, size: 50 }, RES, 30, 260); SDK.happytime(); save();
   }
   function surgeTap() {
@@ -1355,6 +1443,10 @@
   const html = (node, h) => { if (node._h !== h) { node._h = h; node.innerHTML = h; } };
   // a number never clips (owner's screenshot, Nov 6 2026: "wave is 202 but we see 20"): when its text changes it is set at
   // full size and stepped down until it fits its column
+  function fitHtml(node, h) {   // a button's second line: set, then shrink until it fits inside the button
+    if (node._h === h) return; html(node, h); node.style.fontSize = ''; const room = node.parentElement.clientWidth - 24;
+    let fs = parseFloat(getComputedStyle(node).fontSize); while (node.scrollWidth > room && fs > 20) { fs -= 2; node.style.fontSize = fs + 'px'; }
+  }
   function setFit(node, text, size, box = node) {
     if (node._t === text) return; node._t = text; node.textContent = text; box.style.fontSize = size + 'px';
     const room = box.parentElement.clientWidth; let fs = size;
@@ -1371,7 +1463,9 @@
     el('shop').hidden = true;   // the Shop lives in the Market now
     if (P.shop.open) C.questsFor(P, today());
     el('quests').hidden = true;   // quests and Feats live in the Library
-    if (fountainState() === 'ready' && !S.card && firstTime('fountainSurge')) { toast('The fountain brims with power: tap it!'); S.pointAt = { id: 'fountain', t: 0 }; }
+    if (fountainState() === 'ready' && !S.card && firstTime('fountainSurge')) { guideSay('surge'); S.pointAt = { id: 'fountain', t: 0 }; }
+    if (P.firstSession && S.sessionT > 1.2) guideSay('intro');
+
     el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `+${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`; el('stage').classList.toggle('surging', surgeX() > 1);
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
     if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the Watchtower'); S.pointAt = { id: 'watchtower', t: 0 }; }
@@ -1380,14 +1474,18 @@
     const fork = C.pendingFork(P), uc = C.upgradeCost(P.gateLevel, B), up = el('up');
     up.querySelector('.label').textContent = fork ? 'New path!' : 'Upgrade';
     const gem = '<i class="gem sm"></i>', dmgUp = Math.round((Math.pow(1.235, 1) - 1) * 100);
-    html(up.querySelector('.cost'), fork ? `Stage ${fork}` : `${gem}${C.fmt(uc)} <span class="what">· damage +${dmgUp}%</span>`);
+    // the price alone after the opening (owner, Nov 7 2026: "damage +24%... the buttons at the bottom become clumped and ugly");
+    // the Magister and the "Damage a -> b" pop explain what an Upgrade does
+    fitHtml(up.querySelector('.cost'), fork ? `Stage ${fork}` : `${gem}${C.fmt(uc)}` + (P.firstSession ? ` <span class="what">· damage +${dmgUp}%</span>` : ''));
     up.querySelector('.fill').style.width = fork ? '100%' : Math.min(100, P.res / uc * 100) + '%';
     up.classList.toggle('ready', !!fork || P.res >= uc);
     const re = el('re'), whole = C.cityWhole(P), asc = C.canAscend(P), n = P.restored.length, rc = whole ? 0 : C.restoreCost(n), aw = C.ascendWave(P), rw = Math.max(P.runWave || 1, P.wave);
+    if (whole && !asc && P.ascensions === 0) guideSay('whole', { aw: C.fmt(aw) });
+    if (asc && P.ascensions === 0) guideSay('ascend');
     re.classList.toggle('ascend', asc); re.classList.toggle('waiting', whole && !asc);   // gold only when Ascend is really ready
     re.querySelector('.label').textContent = whole ? 'Ascend' : 'Restore';
     const offer = asc ? [] : C.restoreOffer(P);
-    html(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `at wave ${aw} · now ${rw}` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${gem}${C.fmt(rc)}`);
+    fitHtml(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `Wave ${C.fmt(rw)} / ${C.fmt(aw)}` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${gem}${C.fmt(rc)}`);
     re.querySelector('.fill').style.width = asc ? '100%' : whole ? Math.min(100, rw / aw * 100) + '%' : Math.min(100, P.res / rc * 100) + '%';
     re.classList.toggle('ready', asc || (!whole && P.res >= rc));
     for (const b of [up, re]) if (b.classList.contains('ready')) b.querySelector('.wait').textContent = '';
@@ -1395,7 +1493,7 @@
     let target = null;
     if (P.firstSession && !S.card) {
       // restore first when it is affordable (it changes the fight); otherwise keep pointing at an affordable Upgrade
-      if (n < C.FIXED_ORDER && P.res >= rc && (P.gateLevel > 1 || n > 0)) target = 're';
+      if (n < C.FIXED_ORDER && P.res >= rc && (P.gateLevel > 1 || n > 0)) { target = 're'; guideSay('restore'); }
       else if (S.sessionT > 5 && P.res >= uc && !fork && (n >= C.FIXED_ORDER || (S.upsSinceRestore || 0) < 2)) target = 'up';
       if (n >= C.FIXED_ORDER) { P.firstSession = false; P.daily.day = P.daily.day || C.dayKey(new Date()); save(); }
     }
@@ -1418,7 +1516,8 @@
     let n = 0; while (acc >= DT && n < 600) { if (!S.paused && !S.card) step(); acc -= DT; n++; }
     if ((toastT -= n * DT) <= 0) el('toast').classList.remove('show');
   }
-  function frame(now) { advance(now); render(); ui(); if (S.card === 'shop') drawPreviews(now / 1000); requestAnimationFrame(frame); }
+  let gLast = performance.now();
+  function frame(now) { advance(now); render(); ui(); tickGuide(Math.min(0.1, (now - gLast) / 1000)); gLast = now; if (S.card === 'shop') drawPreviews(now / 1000); requestAnimationFrame(frame); }
   setInterval(() => { if (document.hidden) advance(performance.now()); }, 250);
   document.addEventListener('visibilitychange', () => { SDK.gameplay(!document.hidden && !S.paused); if (document.hidden) { flushWisps(); save(); } });
   root.addEventListener('pagehide', () => { flushWisps(); save(); });
@@ -1516,5 +1615,6 @@
     loadImg('slime', 'assets/enemies/slime-walk.webp'), loadImg('beetle', 'assets/enemies/beetle-walk.webp'), loadImg('golem', 'assets/enemies/golem-walk.webp'),
     ...['fire', 'frost', 'storm'].flatMap(e => [1, 2, 3].map(t => loadImg(e + t, T(`${e}-${t}`))))])
     .then(() => { outline(); for (const n of GROUND.concat(['fire', 'frost', 'storm'].flatMap(e => [e + 1, e + 2, e + 3]))) orig[n] = img[n]; applyLooks(); el('boot').remove(); SDK.loadingStop(); SDK.gameplay(true); last = performance.now(); checkFeats(true); returnCards(); openShop(); /* after the return cards: opening saves, which stamps lastSeen */ requestAnimationFrame(frame);
-      ['builder', 'builderwork', 'baker', 'farmer', 'lamp', 'child', 'merchant'].forEach(k => loadImg('folk_' + k, `assets/city/folk-${k}.webp`)); });   // after play starts: they are not needed for the first frame
+      ['builder', 'builderwork', 'baker', 'farmer', 'lamp', 'child', 'merchant'].forEach(k => loadImg('folk_' + k, `assets/city/folk-${k}.webp`));
+      Promise.all(['smile', 'worry'].flatMap(k => [loadImg('mag_' + k, `assets/ui/magister-${k}.webp`), loadImg(`mag_${k}_m`, `assets/ui/magister-${k}-mouth.webp`)])).then(() => { imgReady.magister = !!img.mag_smile; }); });   // after play starts: they are not needed for the first frame
 })(typeof globalThis !== 'undefined' ? globalThis : this);

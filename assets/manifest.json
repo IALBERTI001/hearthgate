@@ -243,5 +243,45 @@
   ],
   "anchor": "bottom-center",
   "source": "ChatGPT image generation, Nov 6 2026, art/prompts/villagers_v1.md; split by outline in the page, magenta keyed"
+ },
+ "ui/magister-smile.webp": {
+  "subject": "Magister smile",
+  "frames": 1,
+  "cell": [
+   244,
+   240
+  ],
+  "anchor": "bust",
+  "source": "ChatGPT image generation, Nov 7 2026, art/prompts/magister_v1.md; green keyed in the page; mouth patch feathered from the open-mouth row"
+ },
+ "ui/magister-smile-mouth.webp": {
+  "subject": "Magister smile open mouth patch",
+  "frames": 1,
+  "cell": [
+   74,
+   60
+  ],
+  "anchor": "offset 79,78 on the bust",
+  "source": "ChatGPT image generation, Nov 7 2026, art/prompts/magister_v1.md; green keyed in the page; mouth patch feathered from the open-mouth row"
+ },
+ "ui/magister-worry.webp": {
+  "subject": "Magister worry",
+  "frames": 1,
+  "cell": [
+   244,
+   240
+  ],
+  "anchor": "bust",
+  "source": "ChatGPT image generation, Nov 7 2026, art/prompts/magister_v1.md; green keyed in the page; mouth patch feathered from the open-mouth row"
+ },
+ "ui/magister-worry-mouth.webp": {
+  "subject": "Magister worry open mouth patch",
+  "frames": 1,
+  "cell": [
+   74,
+   60
+  ],
+  "anchor": "offset 79,78 on the bust",
+  "source": "ChatGPT image generation, Nov 7 2026, art/prompts/magister_v1.md; green keyed in the page; mouth patch feathered from the open-mouth row"
  }
 }
