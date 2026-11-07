@@ -323,3 +323,11 @@ ul.asc b { color: var(--gold); }
 /* the city is whole but the run is short of its Ascend wave: a calm plum button, not a gold one with pale text (final review) */
 .big.waiting { background: linear-gradient(#5a3360, #3b2240); border-color: var(--brass); }
 .big.waiting .cost { color: #f1e3c8; }
+/* the Perks card, cleaned up (owner, Nov 6 2026) */
+#card.perks .perks { flex: 1 1 auto; }
+.perks .maxed { margin: 4px 2px 2px; font: 600 24px/1.35 'HG Text', sans-serif; color: #bfae92; text-align: left; }
+.perks .maxed b { color: var(--gold); font-family: 'HG Display', sans-serif; font-weight: 400; margin-right: 6px; }
+.perkrow.on { border-color: var(--gold); }
+/* the Garden tab: a butterfly per row (caught in colour, the rest as outlines) */
+svg.wing { flex: none; width: 84px; height: 70px; }
+#card .tabs .qtab { font-size: 26px; padding-left: 4px; padding-right: 4px; white-space: nowrap; }

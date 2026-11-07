@@ -225,3 +225,12 @@ assert.ok(C.waveMix(12, 7).some(r => r[0] === 'leech') && !C.waveMix(12, 6).some
 assert.ok(C.waveMix(12, 8).some(r => r[0] === 'knight') && C.waveMix(12, 9).some(r => r[0] === 'hive'));
 for (const id of ['blackout', 'royalhunt', 'cataclysm']) assert.ok(C.EVENTS.some(e => e.id === id));
 console.log('late Ascension tests passed');
+{ const p = C.defaults(); p.ascensions = 61; assert.strictEqual(C.sanitize(p).stars.length, 50, 'finished runs light their constellations'); p.ascensions = 3; assert.strictEqual(C.sanitize(p).stars.length, 10);
+  const q = C.defaults(); q.perkPts = 10; for (let i = 0; i < 3; i++) assert.ok(C.buyPerk(q, 'flame')); assert.strictEqual(q.perkPts, 1, 'Eternal Flame costs 3 every time'); assert.strictEqual(C.sanitize(q).perks.flame, 3); }
+console.log('crown sink tests passed');
+// butterflies: element kinds come with their buildings, Ascension kinds with Ascension; the Garden survives saves and Ascension
+{ const p = C.defaults(); const open = () => C.BUTTERFLIES.filter(f => !f.rare && C.flyOpen(p, f)).map(f => f.id);
+  assert.ok(!open().includes('ember')); p.restored = ['forge']; assert.ok(open().includes('ember')); assert.ok(!open().includes('moon')); p.ascensions = 1; assert.ok(open().includes('moon'));
+  p.flies = ['sun', 'gold', 'nope']; assert.deepStrictEqual(C.sanitize(p).flies, ['sun', 'gold']); p.restored = C.BUILDING_IDS.slice(); p.runWave = 40; assert.deepStrictEqual(C.ascend(p).flies, ['sun', 'gold', 'nope'].slice(0, 3));
+  let gold = 0; for (let i = 0; i < 3000; i++) if (C.flyPick(p, Math.random).rare) gold++; assert.ok(gold > 40 && gold < 200, 'Golden Monarch about 1 in 30'); }
+console.log('butterfly tests passed');

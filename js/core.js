@@ -84,9 +84,11 @@
     { id: 'night', name: 'Night Watch', line: 'Offline earnings last 2 hours longer', per: { offlineH: 2 }, max: 4 },
     { id: 'surge', name: 'Quick Surge', line: 'Surge recharges 3 minutes sooner', per: { surgeCd: 3 }, max: 3 },
     { id: 'lucky', name: 'Lucky Stars', line: '+1 Starshard from every boss', per: { bossPlus: 1 }, max: 3 },
-    { id: 'start', name: 'Head Start', line: 'Each new city starts 5 waves and 5 gate levels ahead', per: { start: 5 }, max: 3 }
+    { id: 'start', name: 'Head Start', line: 'Each new city starts 5 waves and 5 gate levels ahead', per: { start: 5 }, max: 3 },
+    // no cap (owner, Nov 6 2026: crowns piled up once every perk was maxed): always something to spend them on
+    { id: 'flame', name: 'Eternal Flame', line: 'Towers hit 10% harder and enemies pay 10% more', per: { damage: 0.1, res: 0.1 }, max: Infinity, cost: 3 }
   ];
-  const perkCost = (p, id) => (p.perks[id] || 0) + 1;   // the next level costs one more point than the last
+  const perkCost = (p, id) => { const k = PERKS.find(x => x.id === id); return k && k.cost ? k.cost : (p.perks[id] || 0) + 1; };   // the next level costs one more point than the last; Eternal Flame always 3
   function buyPerk(p, id) {
     const k = PERKS.find(x => x.id === id); if (!k || (p.perks[id] || 0) >= k.max || p.perkPts < perkCost(p, id)) return false;
     p.perkPts -= perkCost(p, id); p.perks[id] = (p.perks[id] || 0) + 1; return true;
@@ -144,7 +146,7 @@
 
   // ---------- gate upgrades and forks ----------
   // The gate climbs levels; stages at levels 10 and 25 grow the towers a tier and each offers a fork (approved fix 2).
-  const STAGES = [1, 15, 40, 60, 85];   // stages 4 and 5 (Nov 6 2026): a crown, then a halo over the tier-3 towers
+  const STAGES = [1, 15, 40, 60, 85];   // stages 4 and 5 bring upgrade paths; their drawn crowns were removed (owner: did not match the painted art)
   const FORKS = {
     2: [{ id: 'ballistae', name: 'Heavy Bolts', line: '+40% tower damage', bonus: { damage: 0.40 } },
         { id: 'crews', name: 'Swift Crews', line: '+35% fire rate', bonus: { fireRate: 0.35 } }],
@@ -233,7 +235,29 @@
     titan: { sheet: 'golem', hp: 110, speed: 22, size: 200, label: 'Totem Titan', armour: 0.3, totem: 3, tint: 'totem', tip: 'The Totem Titan shields his escort: burn them first' },
     tyrant: { sheet: 'beetle', hp: 80, speed: 30, size: 185, label: 'Thief Tyrant', summon: 3, summonRole: 'thief', tint: 'thief', tip: 'The Thief Tyrant sends thieves for your Resonance' }
   };
-  const BESTIARY = Object.keys(ROLES);   // every kind, in the order players meet them
+  const BESTIARY = Object.keys(ROLES);
+  // Butterflies (Nov 6 2026, the owner: "add some interaction for the user with the butterflies"): tap one on the meadow to
+  // catch it for a little Resonance. Kinds arrive with the city (each element building brings its own) and with Ascension;
+  // the Golden Monarch is rare. Caught kinds live in the Garden collection and flutter round the fountain.
+  const BUTTERFLIES = [
+    { id: 'sun', name: 'Sunwing', col: '#ffe28c', line: 'Loves the warm meadow' },
+    { id: 'sky', name: 'Skyblue', col: '#bfe8ff', line: 'Rides the morning breeze' },
+    { id: 'rose', name: 'Rosepetal', col: '#ffb3e6', line: 'Rests on the wildflowers' },
+    { id: 'snow', name: 'Snowdrop', col: '#ffffff', line: 'Pale as the first frost' },
+    { id: 'ember', name: 'Emberwing', col: '#ff9a4a', line: 'Comes when the Forge burns', needs: 'forge' },
+    { id: 'frost', name: 'Frostwing', col: '#7fdcff', line: 'Comes when the Frost Spire shines', needs: 'frostSpire' },
+    { id: 'storm', name: 'Stormwing', col: '#c98bff', line: 'Comes when the Storm Bell rings', needs: 'stormBell' },
+    { id: 'moon', name: 'Moonmoth', col: '#d8d0ff', line: 'Seen only after an Ascension', asc: 1 },
+    { id: 'jewel', name: 'Jewelwing', col: '#7bd15a', line: 'Seen only after the 3rd Ascension', asc: 3 },
+    { id: 'gold', name: 'Golden Monarch', col: '#ffd56b', line: 'Rare: pays Starshards', rare: true }
+  ];
+  const flyOpen = (p, f) => (!f.needs || p.restored.includes(f.needs)) && (!f.asc || p.ascensions >= f.asc);
+  // the next butterfly to appear: the Golden Monarch 1 time in 30 once five buildings stand, else any open kind, new kinds favoured
+  function flyPick(p, rnd) {
+    if (p.restored.length >= 5 && rnd() < 1 / 30) return BUTTERFLIES.find(f => f.rare);
+    const open = BUTTERFLIES.filter(f => !f.rare && flyOpen(p, f)), fresh = open.filter(f => !(p.flies || []).includes(f.id));
+    const pool = fresh.length && rnd() < 0.5 ? fresh : open; return pool[Math.floor(rnd() * pool.length)];
+  }   // every kind, in the order players meet them
   const BOSS_ROLES = ['boss', 'queen', 'lord', 'wraith', 'titan', 'tyrant'];
   const ASC_BOSSES = [['wraith', 2], ['titan', 3], ['tyrant', 4]];
   const isBossRole = r => BOSS_ROLES.includes(r);
@@ -416,7 +440,7 @@
     q.daily = Object.assign({}, p.daily); q.firstSession = false; q.lastSeen = p.lastSeen;
     q.settings = Object.assign({}, p.settings); q.grown = p.grown;
     q.shop = JSON.parse(JSON.stringify(p.shop)); q.quests = JSON.parse(JSON.stringify(p.quests)); q.stats = Object.assign({}, p.stats); q.feats = p.feats.slice(); q.surge = Object.assign({}, p.surge); q.shop.shards += SHARDS.ascend;
-    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p); q.relics = p.relics.slice(); q.stars = (p.stars || []).slice(); q.told = (p.told || []).slice(); q.seenRoles = p.seenRoles.slice(); q.seenEvents = p.seenEvents.slice();
+    q.perks = Object.assign({}, p.perks); q.perkPts = p.perkPts + perkPtsFor(p); q.relics = p.relics.slice(); q.stars = (p.stars || []).slice(); q.told = (p.told || []).slice(); q.flies = (p.flies || []).slice(); q.seenRoles = p.seenRoles.slice(); q.seenEvents = p.seenEvents.slice();
     const st = (q.perks.start || 0) * 5; if (st) { q.wave = 1 + st; q.gateLevel = 1 + st; }   // Head Start   // looks and Starshards stay; Ascending pays
     return q;
   }
@@ -490,7 +514,7 @@
 
   // ---------- Feats (Nov 5 2026): a long collection, shown as N of total, each paying Starshards once ----------
   // Counted from lifetime stats that survive Ascension. Tier 1 bronze, 2 silver, 3 gold; gold pays more.
-  const STATS = ['kills', 'bosses', 'combos', 'shatter', 'upgrades', 'levels', 'surges', 'quests'];
+  const STATS = ['kills', 'bosses', 'combos', 'shatter', 'upgrades', 'levels', 'surges', 'quests', 'flies'];
   const FEATS = [];
   const feat = (id, name, tier, text, get, need) => FEATS.push({ id, name, tier, text, get, need });
   [[10, 'Holdfast', 1], [25, 'Stalwart', 1], [50, 'Bulwark', 2], [100, 'Unbroken', 2], [200, 'Everwall', 3]]
@@ -510,6 +534,9 @@
     .forEach(([n, nm, t]) => feat('ascend' + n, nm, t, n === 1 ? 'Ascend once' : `Ascend ${n} times`, p => p.ascensions, n));
   [[5, 'First Light', 1], [20, 'Stargazer', 2], [40, 'Full Sky', 3]]
     .forEach(([n, nm, t]) => feat('stars' + n, nm, t, `Light ${n} constellation stars`, p => (p.stars || []).length, n));
+  [[25, 'Butterfly Net', 1], [200, 'Meadow Keeper', 2]]
+    .forEach(([n, nm, t]) => feat('flies' + n, nm, t, `Catch ${n} butterflies`, p => p.stats.flies || 0, n));
+  feat('garden', 'Butterfly Garden', 3, 'Catch every kind of butterfly', p => (p.flies || []).length, BUTTERFLIES.length);
   feat('bestiary', 'Monster Scholar', 2, 'Meet every kind of enemy', p => (p.seenRoles || []).filter(r => ROLES[r]).length, Object.keys(ROLES).length);
   [[25, 'Iron Gate', 1], [50, 'Steel Gate', 2], [100, 'Starforged Gate', 3]]
     .forEach(([n, nm, t]) => feat('gate' + n, nm, t, `Upgrade the gate to level ${n}`, p => p.gateLevel, n));
@@ -574,7 +601,7 @@
 
   // ---------- save profile ----------
   function defaults() {
-    return { v: 3, res: 0, wave: 1, bestWave: 1, runWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], stars: [], told: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
+    return { v: 3, res: 0, wave: 1, bestWave: 1, runWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], stars: [], told: [], flies: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
       settings: { music: true, sfx: true, reduced: false, stats: false, steward: true } };
   }
@@ -611,8 +638,10 @@
     if (p.perks && typeof p.perks === 'object') for (const k of PERKS) { const n = Math.floor(num(p.perks[k.id], 0, k.max, 0)); if (n) out.perks[k.id] = n; }
     out.perkPts = Math.floor(num(p.perkPts, 0, 1e6, 0));
     if (p.perks === undefined && out.ascensions > 0) out.perkPts = out.ascensions * 2;   // saves from before perks: points for the Ascensions already made
+    if (Array.isArray(p.flies)) out.flies = [...new Set(p.flies.filter(id => BUTTERFLIES.some(f => f.id === id)))];
     if (Array.isArray(p.told)) out.told = [...new Set(p.told.filter(k => typeof k === 'string' && k.length < 24))].slice(0, 50);   // one-time tips already shown
     if (Array.isArray(p.stars)) out.stars = [...new Set(p.stars.filter(id => STARS.some(x => x.id === id)))];
+    for (const st of STARS) if (st.asc < out.ascensions && !out.stars.includes(st.id)) out.stars.push(st.id);   // runs already finished light their whole constellation (saves from before the stars existed)
     if (Array.isArray(p.relics)) out.relics = [...new Set(p.relics.filter(id => RELICS.some(r => r.id === id)))].slice(0, 2);
     if (Array.isArray(p.seenEvents)) out.seenEvents = [...new Set(p.seenEvents.filter(id => evById(id) || twinOf(id)))];
     if (Array.isArray(p.seenRoles)) out.seenRoles = [...new Set(p.seenRoles.filter(r => ROLES[r]))];
@@ -644,7 +673,7 @@
     bonuses, upgradeCost, restoreCost, towerDamage, fireInterval, gateMax, killRes,
     MILESTONES, levelOf, buildingRate, cityRate, levelCost, nextMilestone, fightRate, ROLES, isBoss, waveMix, enemyHp, enemyBite,
     OFFLINE_CAP_H, offlineRate, offlineEarnings, dayKey, dailyDue, ASCEND_MULT, ETERNAL_AT, canAscend, cityWhole, ascendWave, ascend, defaults, sanitize,
-    CITY, cityToBand, BESTIARY, twinsFor, twinOf, STARS, starWave, starsDue, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
+    CITY, cityToBand, BESTIARY, BUTTERFLIES, flyOpen, flyPick, twinsFor, twinOf, STARS, starWave, starsDue, RANK2, rankOf, ASC_ROLES, EVENTS, eventFor, eventMix, BOSS_ROLES, isBossRole, bossOf, VARIANT_FROM, FORK_STAGES, ASCEND_UNLOCKS, unlocked, isTrial, RELICS, equipRelic, OMENS, omenFor, PERKS, perkCost, buyPerk, perkPtsFor, surgeCooldown, STATS, FEATS, FEAT_PAY, featProgress, featsEarned, QUESTS, QUEST_REWARD, QUEST_BONUS, questsFor, questText, questTick, questClaimable, questClaim, questBonus,
     SURGE_MS, SURGE_COOLDOWN_MS, SURGE_ADS_PER_DAY, SHARD_ADS_PER_DAY, SHARD_AD, surgeOn, surgeReadyFree, startSurge, SHOP, SLOTS, shopItem, slotOf, SHARDS, SHOP_OPENS, exchangeCost, buy, equip, trade, shopNews };
   if (typeof module !== 'undefined') module.exports = root.HGCore;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
