@@ -72,8 +72,8 @@ i.gem { display: inline-block; vertical-align: -4px; }   /* inline in card butto
 .cbtn i.gem { width: 18px; height: 18px; border-width: 2px; margin: 0 8px 0 6px; }
 .gem.sm { width: 18px; height: 18px; border-width: 2px; margin: 0 4px 0 2px; }
 .big .wait { position: absolute; left: 16px; top: 10px; font: 30px 'HG Display', sans-serif; color: var(--gold); }
-.big kbd { display: none; position: absolute; right: 12px; top: 10px; min-width: 40px; padding: 2px 8px; border-radius: 8px; border: 2px solid var(--brass);
-  font: 30px 'HG Display', sans-serif; color: var(--ink); background: var(--plum-dark); }
+.big kbd { display: none; position: absolute; right: 10px; top: 8px; min-width: 32px; padding: 1px 6px; border-radius: 7px; border: 2px solid var(--brass);
+  font: 24px 'HG Display', sans-serif; color: var(--ink); background: var(--plum-dark); }
 .keys .big kbd { display: block; }
 .shake { animation: shake .35s; }
 @keyframes shake { 25% { transform: translateX(-8px); } 50% { transform: translateX(8px); } 75% { transform: translateX(-4px); } }
@@ -363,4 +363,9 @@ svg.wing { flex: none; width: 84px; height: 70px; }
   background: linear-gradient(rgba(64, 36, 70, .97), rgba(40, 22, 38, .97)); box-shadow: 0 8px 18px rgba(0, 0, 0, .4); }
 #guide .bub b { display: block; font: 25px/1 'HG Display', sans-serif; letter-spacing: 1px; color: #ffd56b; }
 #guide .bub p { margin: 8px 0 0; min-height: 2.6em; font: 700 30px/1.3 'HG Text', sans-serif; color: #f7ead2; }
-@media (prefers-reduced-motion: reduce) { #guide { transition: none; } }
+#guide .bub::after { content: 'Tap to continue \25B8'; position: absolute; right: 22px; bottom: -22px; padding: 4px 14px; border-radius: 14px; background: var(--brass);
+  color: #2a1a22; font: 22px/1.2 'HG Display', sans-serif; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.keys #guide .bub::after { content: 'Click or Space \25B8'; }
+#guide.wait:not(.press) .bub::after { opacity: 1; animation: nudge 1s ease-in-out infinite alternate; }
+@keyframes nudge { to { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { #guide { transition: none; } #guide.wait .bub::after { animation: none; } }

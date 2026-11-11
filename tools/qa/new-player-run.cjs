@@ -15,6 +15,8 @@ const [url, out, w, h, secs = '75'] = process.argv.slice(2);
   while ((Date.now() - t0) / 1000 < +secs) {
     const st = await p.evaluate(() => { const { P, S } = Hearthgate.state(); return { res: P.res, lvl: P.gateLevel, rest: P.restored.length, combos: P.combos.slice(), pops: S.pops.filter(x => x.text).map(x => x.text), hand: document.getElementById('hand').className, words: document.body.innerText.split(/\s+/).filter(Boolean).length }; });
     if (st.pops.length) mark('firstPayoff');
+    // the Magister holds the fight until his line is read: a reader takes about 2 s, then taps on (owner, Nov 10 2026)
+    if (await p.evaluate(() => { const g = document.getElementById('guide'); return !!g && g.classList.contains('in') && g.classList.contains('wait') && !g.classList.contains('press'); })) { mark('guideLine'); await p.waitForTimeout(2000); await p.click('#guide'); continue; }
     if (st.hand.includes('up')) { mark('handUpgrade'); await p.waitForTimeout(2000); await p.click('#up'); mark('firstUpgrade'); await p.screenshot({ path: `${out}/1-upgrade.png` }); }
     else if (st.hand.includes('re')) { mark('handRestore' + st.rest); await p.waitForTimeout(2000); await p.click('#re'); mark('restore' + (st.rest + 1)); await p.waitForTimeout(400); await p.screenshot({ path: `${out}/2-restore${st.rest + 1}.png` }); }
     else if (st.hand.includes('bld')) { mark('handBuilding'); await p.waitForTimeout(2000); const r = await p.evaluate(() => { const b = document.getElementById('hand').getBoundingClientRect(); return [b.left + b.width / 2, b.top - 4]; });

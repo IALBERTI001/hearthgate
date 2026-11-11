@@ -45,6 +45,7 @@
     try {
       ctx = new (root.AudioContext || root.webkitAudioContext)(); gain = ctx.createGain(); gain.gain.value = 0.7; gain.connect(ctx.destination);
       for (const n of SFX) fetch(`assets/sfx/${n}.mp3`).then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)).then(buf => { buffers[n] = buf; }).catch(() => {});
+      loadVoices();
     } catch (e) { ctx = null; }
     if (st.boss) { st.boss = false; boss(true); } else nextSong();
   }
@@ -91,7 +92,16 @@
     og.gain.setValueAtTime(vol, t); og.gain.exponentialRampToValueAtTime(0.0001, t + len);
     n.connect(bp); bp.connect(g); g.connect(gain); o.connect(og); og.connect(gain); n.start(t); o.start(t); o.stop(t + len + 0.02);
   }
+  // recorded voice lines (owner, Nov 10 2026: "i will do the voice-lines"): assets/voice/<name>.mp3, decoded once audio unlocks
+  const voices = {}; let voiceList = [];
+  function loadVoices(names) { voiceList = names || voiceList; if (!ctx) return;
+    for (const n of voiceList) if (!voices[n]) { voices[n] = 'loading'; fetch(`assets/voice/${n}.mp3`).then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)).then(buf => { voices[n] = buf; }).catch(() => { delete voices[n]; }); } }
+  const voiceDur = n => (voices[n] && voices[n].duration) || 0;
+  function voice(n, vol = 1) {
+    if (!ctx || !st.sfx || st.muted || !voiceDur(n)) return [];
+    const s = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = vol; s.buffer = voices[n]; s.connect(g); g.connect(gain); s.start(); return [s];
+  }
   function hush(nodes) { for (const n of nodes || []) { try { n.stop(); } catch (e) { /* already stopped */ } } }
   function set(k, v) { st[k] = v; if (k === 'music' || k === 'muted') applyMusic(); if (ctx && k === 'muted') gain.gain.value = v ? 0 : 0.7; }
-  root.HGAudio = { unlock, play, set, boss, speak, hush, knock, state: () => ({ mode, lastSong, boss: st.boss }) };
+  root.HGAudio = { unlock, play, set, boss, speak, hush, knock, voice, voiceDur, loadVoices, state: () => ({ mode, lastSong, boss: st.boss }) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

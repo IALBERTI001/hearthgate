@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-07z2';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-10a';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -338,12 +338,12 @@
     if (S.tapRun >= 5 && !P.firstSession && !holdFired && firstTime('hold')) setTimeout(() => toast('Tip: hold Upgrade to keep buying'), 600);
     if (C.stageOf(P.gateLevel) > stage) { toast(`Gate stage ${C.stageOf(P.gateLevel)}! The towers grow.`); A.play('tier_up', 0.6); TOWERS.forEach(t => (t.flash = 1.5)); }
     else { pop(GATE_X, WALL_FRONT - 240, `Damage ${rfmt(before)} -> ${rfmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach((t, i) => { t.flash = 1.2; t.bumpAt = S.t + 0.04 + i * 0.07; }); A.play('tier_up', 0.25); }
-    chimneyPuff('forge', 4); save(); ui();
+    chimneyPuff('forge', 4); guidePressed('up'); save(); ui();
   }
   function restore() {
     A.unlock();
     if (S.card) return;
-    if (C.canAscend(P)) return showCard('ascend');
+    if (C.canAscend(P)) { guidePressed('re'); return showCard('ascend'); }
     if (C.cityWhole(P)) return toast(`Reach wave ${C.ascendWave(P)} to Ascend · best this run ${Math.max(P.runWave || 1, P.wave)}`);
     const offer = C.restoreOffer(P); if (!offer.length) return;
     const c = C.restoreCost(P.restored.length);
@@ -355,11 +355,11 @@
     const c = C.restoreCost(P.restored.length); if (P.res < c) return;
     P.res -= c; P.restored.push(id); refresh(); S.upsSinceRestore = 0;
     const b = C.byId(id), r2 = P.ascensions >= 1 && C.RANK2[id];
-    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} restored: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id); guideSay(id);   // a tower building says what it gave the towers (outside review, Nov 7 2026: Restore said what it cost, never what it did)
+    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} rebuilt: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id); guidePressed('re'); guideSay(id);   // a tower building says what it gave the towers (outside review, Nov 7 2026: Restore said what it cost, never what it did)
     if (r2) { S.rank2 = (S.rank2 || []).concat(id); pop(sx(CITY.spots[id][0]), sy(CITY.spots[id][1]) - 50, r2.name + '!', '#ffd56b', 1.8, 40); }
     A.play('tier_up', 0.55); SDK.happytime();
     if (P.restored.length === 5) setTimeout(() => { toast('The fountain flows again!'); S.reveal = { b: 'plaza', t: 0 }; }, 2900);
-    if (C.cityWhole(P)) setTimeout(() => toast(C.canAscend(P) ? 'The city is whole! Restore is now Ascend.' : `The city is whole! Reach wave ${C.ascendWave(P)} to Ascend.`), 2900);
+    if (C.cityWhole(P)) setTimeout(() => toast(C.canAscend(P) ? 'The city is whole! Rebuild is now Ascend.' : `The city is whole! Reach wave ${C.ascendWave(P)} to Ascend.`), 2900);
     save(); ui();
   }
   function refuse(id, cost) {
@@ -625,25 +625,36 @@
   // popping out the side of the screen with a voice"). The city's old mage-mayor slides in at the lower left, speaks one or
   // two short lines in a babbling voice while the text types along, and slides away. The fight never pauses; a tap
   // finishes the line or moves on. Each moment plays once (saved in P.told).
+  // the Magister's script. Owner, Nov 10 2026: "players are having trouble understanding what the restore does... the player
+  // should acknowledge the text of the game before continuing... did not get to read it because it was too fast". Each line is
+  // one idea; the game holds while he talks and waits for a tap (or the button the line asks for). [face, text, focus, press]
   const GUIDE = {
-    intro: [['worry', 'Monsters from the forest are back to finish off our city!'], ['smile', 'Our four towers on the wall hold them back. Tap Upgrade to make them hit harder!', 'towers']],
-    restore: [['smile', 'Every fallen monster sends Resonance to our fountain. Spend it: tap Restore to rebuild the Forge!', 'fountain']],
-    forge: [['proud', 'The Forge is back: our towers shoot fire now!', 'towers'], ['smile', 'And every rebuilt building earns Resonance by itself, even while you rest.']],
-    frostSpire: [['proud', 'Frost! Our towers slow them now. Burn a frozen monster and it will SHATTER!', 'towers']],
+    intro: [['worry', 'Monsters from the forest are back to finish off our city!'],
+      ['smile', 'Our four towers on the wall hold them back.', 'towers'],
+      ['smile', 'Tap Upgrade to make the towers hit harder!', 'towers', 'up']],
+    restore: [['smile', 'Every monster we beat sends Resonance to our fountain.', 'fountain'],
+      ['smile', 'Spend it to rebuild our ruined city. Every building brings a new power!'],
+      ['proud', 'Tap Rebuild Forge, and our towers will shoot fire!', null, 're']],
+    forge: [['proud', 'The Forge is back: our towers shoot fire now!', 'towers'],
+      ['smile', 'Rebuilt buildings also make Resonance by themselves, even while you are away.']],
+    frostSpire: [['proud', 'Frost! Our towers slow the monsters now.', 'towers'], ['smile', 'Burn a frozen monster, and it will SHATTER!']],
     stormBell: [['proud', 'The Storm Bell rings! Lightning jumps from monster to monster.', 'towers']],
     boss: [['worry', 'A great beast is coming! Keep the towers strong. The gate must hold!']],
     fell: [['smile', 'We fell back a few waves, but nothing is lost. Upgrade, and push again!']],
-    whole: [['proud', 'The whole city stands again! Hold out to wave {aw} and we can Ascend.']],
-    ascend: [['proud', 'The time has come! Ascend, and we rebuild the city better than ever.'], ['smile', 'Our Resonance will flow faster, forever. Tap Ascend!']],
-    gate: [['worry', 'They are at our gate! Tap Upgrade, quick: stronger towers drive them back!', 'towers']],
+    whole: [['proud', 'The whole city stands again! Hold out to wave {aw}, and we can Ascend.']],
+    ascend: [['proud', 'The time has come! Ascend, and we rebuild the city, better than ever.'], ['smile', 'Our Resonance will flow faster, forever. Tap Ascend!', null, 're']],
+    gate: [['worry', 'They are at our gate! Tap Upgrade, quick: stronger towers drive them back!', 'towers', 'up']],
     surge: [['smile', 'The fountain brims with power! Tap it, and all Resonance pays double for three minutes.', 'fountain']]
   };
+  // recorded lines (owner's voice) as assets/voice/<block>-<n>.mp3, listed here once the file is in; others use the made-up voice
+  const VOICE = new Set([]);
+  if (A.loadVoices && P.ascensions === 0) A.loadVoices([...VOICE]);
   const G = { q: [], cur: null, el: null, nodes: [] };
   function guideSay(id, vars) {
     if (P.ascensions > 0) return;   // he teaches the first run; a player who has Ascended already knows it all (owner, Nov 7 2026)
     if (!GUIDE[id] || (P.told || []).includes('g_' + id) || G.q.some(b => b.id === id) || (G.cur && G.cur.id === id)) return;
     P.told = (P.told || []).concat('g_' + id); save();
-    G.q.push({ id, lines: GUIDE[id].map(([face, text, focus]) => ({ face, focus, text: text.replace(/\{(\w+)\}/g, (_, k) => vars && vars[k] !== undefined ? vars[k] : '') })) });
+    G.q.push({ id, lines: GUIDE[id].map(([face, text, focus, press], i) => ({ face, focus, press, voice: VOICE.has(`${id}-${i + 1}`) ? `${id}-${i + 1}` : null, text: text.replace(/\{(\w+)\}/g, (_, k) => vars && vars[k] !== undefined ? vars[k] : '') })) });
   }
   // syllables for the voice and for the typing: each vowel group is one sound; a word's last sound before . , ! ? pauses
   function syllables(text) {
@@ -679,29 +690,33 @@
   }
   function guideLine() {
     const b = G.cur, L = b.lines[b.i], syl = syllables(L.text);
-    b.line = { L, syl, t: 0, typed: 0, hold: 1.1 + L.text.length * 0.022, done: false };
-    G.el.querySelector('p').textContent = ''; guideFace(L.face, false);
-    A.hush(G.nodes); G.nodes = A.speak ? A.speak(syl.sylls) : [];
+    const rec = L.voice && A.voiceDur && A.voiceDur(L.voice);
+    if (rec) { const k = rec / syl.dur; syl.sylls.forEach(x => { x.at *= k; x.len *= k; }); syl.dur = rec; }
+    b.line = { L, syl, t: 0, typed: 0, done: false };
+    G.el.querySelector('p').textContent = ''; G.el.classList.remove('wait'); G.el.classList.toggle('press', !!L.press); guideFace(L.face, false);
+    A.hush(G.nodes); G.nodes = rec ? A.voice(L.voice) : A.speak ? A.speak(syl.sylls) : [];
   }
   function guideTap() {
     const b = G.cur; if (!b) return; const l = b.line;
-    if (!l.done) { l.done = true; l.t = Math.max(l.t, l.syl.dur); A.hush(G.nodes); G.el.querySelector('p').textContent = l.L.text; guideFace(l.L.face, false); return; }
-    guideNext();
+    if (!l.done) { l.done = true; l.t = Math.max(l.t, l.syl.dur); if (!l.L.voice) A.hush(G.nodes); G.el.querySelector('p').textContent = l.L.text; G.el.classList.add('wait'); guideFace(l.L.face, false); return; }
+    if (l.L.press && l.t - l.syl.dur < 0.25) return;   // a stray double tap does not skip the line that asks for a button
+    A.play('tier_up', 0.06); guideNext();
   }
   function guideNext() {
     const b = G.cur; A.hush(G.nodes);
     if (b && ++b.i < b.lines.length) return guideLine();
-    G.cur = null; if (G.el) G.el.classList.remove('in'); el('toast').style.bottom = '';
+    G.cur = null; if (G.el) G.el.classList.remove('in', 'wait'); el('toast').style.bottom = '';
   }
   // runs every frame (real time, not game time: the guide talks while the fight runs, and also while a card is open)
   function tickGuide(dt) {
     if (!G.cur) {
-      if (!G.q.length || S.card || !imgReady.magister || (S.wavePop && S.wavePop.t < 2.2)) return;   // he waits for the wave banner and its enemy cards to clear (detail pass, Nov 7: his panel sat on them)
+      if (!G.q.length || S.card || !imgReady.magister || (S.wavePop && S.wavePop.t < 2.2) || (S.reveal && S.reveal.t < 1.5)) return;   // he waits for the wave banner and its enemy cards to clear (detail pass, Nov 7: his panel sat on them)
       G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine();
       if (!P.settings.stats) el('toast').style.bottom = (H - WALL_FRONT + 70 + 260) + 'px';   // a toast steps up above the panel while he talks
       return;
     }
-    if (S.card) { G.cur.line.done = true; guideNext(); return; }   // a card took the screen: do not talk over it
+    if (S.card) { G.el.classList.remove('in'); return; }   // a card took the screen: he steps aside and finishes after it
+    if (!G.el.classList.contains('in')) G.el.classList.add('in');
     const l = G.cur.line; l.t += dt;
     if (l.L.focus === 'towers' && !reduced()) TOWERS.forEach(t => (t.flash = Math.max(t.flash, 0.5 + 0.35 * Math.sin(S.t * 6))));   // what he talks about lights up
     if (l.L.focus === 'fountain') S.plazaGlow = Math.max(S.plazaGlow || 0, 0.6 + 0.3 * Math.sin(S.t * 5));
@@ -709,10 +724,15 @@
       const due = l.syl.sylls.filter(x => x.at <= l.t), last = due[due.length - 1];
       G.el.querySelector('p').textContent = l.L.text.slice(0, last ? last.upto : 0);
       const speaking = last && l.t - last.at < last.len * 0.8; guideFace(l.L.face, speaking);
-      if (l.t >= l.syl.dur) { l.done = true; l.t = l.syl.dur; G.el.querySelector('p').textContent = l.L.text; guideFace(l.L.face, false); }
-    } else if (l.t - l.syl.dur > (G.q.length ? Math.min(0.9, l.hold) : l.hold)) guideNext();   // something new to say: move on sooner
+      if (l.t >= l.syl.dur) { l.done = true; l.t = l.syl.dur; G.el.querySelector('p').textContent = l.L.text; G.el.classList.add('wait'); guideFace(l.L.face, false); }
+    }   // then he waits: a tap anywhere (or the button he asks for) moves on
   }
   const guideFocus = () => G.cur && G.cur.line && G.cur.line.L.focus;
+  const guideIn = () => !!(G.cur && G.el && G.el.classList.contains('in'));
+  // the fight holds while he talks; once a line that asks for a button is read, the fight runs on until the player presses it
+  const guideHeld = () => guideIn() && !(G.cur.line && G.cur.line.done && G.cur.line.L.press);
+  const guidePress = () => G.cur && G.cur.line && G.cur.line.L.press;
+  function guidePressed(which) { if (G.cur && G.cur.lines.slice(G.cur.i).some(l => l.press === which)) { A.hush(G.nodes); G.cur.i = G.cur.lines.length; guideNext(); } }   // the player did what the block was leading to: the rest of it is said
   const imgReady = {};
 
   // ---------- villagers (owner, Nov 6 2026: "an animation of villagers around moving and building things"; game-polish
@@ -1089,7 +1109,7 @@
     let html = '';
     if (kind === 'daily') html = `<span class="eyebrow">Day ${data.day} reward</span><h2>+${C.fmt(data.amount)} Resonance</h2>${P.shop.open ? `<p>and ${data.big ? C.SHARDS.daily7 : C.SHARDS.daily} Starshards for the Shop</p>` : ''}<p class="small">${data.big ? 'Day 7 bonus: five times the reward!' : 'Day 7 pays five times as much.'}</p>${btn('c-ok', 'Claim')}`;
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
-    if (kind === 'pick') html = `<span class="eyebrow">Restore · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'pick') html = `<span class="eyebrow">Rebuild · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
     if (kind === 'ascend') { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1), next = Math.min(90, 35 + 5 * P.ascensions), pp = C.perkPtsFor(P), n = P.ascensions + 1;
       // three short lines instead of a paragraph (fresh-eyes review, Nov 6): what you gain, what stays, what starts over
@@ -1105,7 +1125,7 @@
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
       const hall = HALLS[data] && HALLS[data].ok() ? HALLS[data] : null;
       const nth = ['1st', '2nd', '3rd'][P.restored.indexOf(data)] || (P.restored.indexOf(data) + 1) + 'th';
-      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} a second · restored ${nth}</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>${P.ascensions >= 1 ? `<p><b>Ascended · ${C.RANK2[data].name}:</b> ${C.RANK2[data].line}</p>` : ''}`
+      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} a second · rebuilt ${nth}</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>${P.ascensions >= 1 ? `<p><b>Ascended · ${C.RANK2[data].name}:</b> ${C.RANK2[data].line}</p>` : ''}`
         + `<p class="small">Next level ${rfmt(r)} → ${rfmt(r2)} a second${m ? ` · level ${m} doubles it` : ''}</p>`
         + btn('c-ok', `Level up · <i class="gem"></i>${C.fmt(c)}`, P.res >= c ? 'gold' : 'off') + `<span class="wait"></span>` + btn('c-no', 'Close', 'quiet');
     }
@@ -1535,6 +1555,11 @@
   const html = (node, h) => { if (node._h !== h) { node._h = h; node.innerHTML = h; } };
   // a number never clips (owner's screenshot, Nov 6 2026: "wave is 202 but we see 20"): when its text changes it is set at
   // full size and stepped down until it fits its column
+  function fitLabel(node, text) {   // a button's big label: set, then shrink until it fits beside the key cap
+    if (node._t === text) return; node._t = text; node.textContent = text; node.style.fontSize = '';
+    const room = node.parentElement.clientWidth - (document.documentElement.classList.contains('keys') ? 96 : 28);   // centred, so clear of the key cap on both sides
+    let fs = parseFloat(getComputedStyle(node).fontSize); while (node.scrollWidth > room && fs > 26) { fs -= 2; node.style.fontSize = fs + 'px'; }
+  }
   function fitHtml(node, h) {   // a button's second line: set, then shrink until it fits inside the button
     if (node._h === h) return; html(node, h); node.style.fontSize = ''; const room = node.parentElement.clientWidth - 24;
     let fs = parseFloat(getComputedStyle(node).fontSize); while (node.scrollWidth > room && fs > 20) { fs -= 2; node.style.fontSize = fs + 'px'; }
@@ -1575,9 +1600,9 @@
     if (whole && !asc && P.ascensions === 0) guideSay('whole', { aw: C.fmt(aw) });
     if (asc && P.ascensions === 0) guideSay('ascend');
     re.classList.toggle('ascend', asc); re.classList.toggle('waiting', whole && !asc);   // gold only when Ascend is really ready
-    re.querySelector('.label').textContent = whole ? 'Ascend' : 'Restore';
     const offer = asc ? [] : C.restoreOffer(P);
-    fitHtml(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `Wave ${C.fmt(rw)} / ${C.fmt(aw)}` : `${offer.length === 1 ? C.byId(offer[0]).name : 'Pick 1 of 2'} · ${gem}${C.fmt(rc)}`);
+    fitLabel(re.querySelector('.label'), whole ? 'Ascend' : offer.length === 1 ? `Rebuild ${C.byId(offer[0]).name}` : 'Rebuild');   // says what you get (owner, Nov 10 2026: "Restore is too vague")
+    fitHtml(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `Wave ${C.fmt(rw)} / ${C.fmt(aw)}` : `${offer.length === 1 ? '' : 'Pick 1 of 2 · '}${gem}${C.fmt(rc)}`);
     re.querySelector('.fill').style.width = asc ? '100%' : whole ? Math.min(100, rw / aw * 100) + '%' : Math.min(100, P.res / rc * 100) + '%';
     re.classList.toggle('ready', asc || (!whole && P.res >= rc));
     for (const b of [up, re]) if (b.classList.contains('ready')) b.querySelector('.wait').textContent = '';
@@ -1596,6 +1621,7 @@
       const id = P.restored.find(b => P.res >= C.levelCost(P, b, B));
       if (id && (S.growTipT || 0) < 20) { spot = CITY.spots[id]; target = 'bld'; if (!S.growTip) { S.growTip = true; S.growTipT = 0; toast('Tap a building to grow its Resonance'); } }
     }
+    if (guideIn()) { spot = null; target = G.cur.line.done && guidePress() || null; }   // while he talks the hand shows only the button he asks for
     const hand = el('hand');
     const hx = spot ? Math.max(0, Math.min(W - 96, (spot.hx !== undefined ? spot.hx : sx(spot[0])) - 48)) : 0, hy0 = spot ? (spot.hy !== undefined ? spot.hy : sy(spot[1]) - 34) : 0;
     const fromTop = !!spot && hy0 + 40 + 112 > H - 168;   // under the target it would hide behind the button bar (outside review, Nov 7)
@@ -1608,7 +1634,7 @@
   let acc = 0, last = performance.now();
   function advance(now) {
     acc += Math.min(10, (now - last) / 1000); last = now;
-    let n = 0; while (acc >= DT && n < 600) { if (!S.paused && !S.card) step(); acc -= DT; n++; }
+    let n = 0; while (acc >= DT && n < 600) { if (!S.paused && !S.card && !guideHeld()) step(); acc -= DT; n++; }
     if ((toastT -= n * DT) <= 0) el('toast').classList.remove('show');
   }
   let gLast = performance.now();
@@ -1649,10 +1675,10 @@
       if (P.restored.includes(b.id)) { const L = C.levelOf(P, b.id), c = C.levelCost(P, b.id, B);
         return `<div class="srow on"><span class="sn">${b.name}<small>Lv ${L} · +${rfmt(C.buildingRate(P, b.id, B) * surgeX())}/s</small></span><button class="slv ${P.res >= c ? 'can' : ''}" data-lv="${b.id}" aria-label="Level up ${b.name}">${gem}${C.fmt(c)}</button></div>`; }
       const next = offer.includes(b.id);
-      return `<div class="srow${next ? ' next' : ''}"><span class="sn">${b.name}<small>${next ? `Restore next · ${C.fmt(rc)}` : 'In ruins'}</small></span></div>`; }).join('');
+      return `<div class="srow${next ? ' next' : ''}"><span class="sn">${b.name}<small>${next ? `Rebuild next · ${C.fmt(rc)}` : 'In ruins'}</small></span></div>`; }).join('');
     html(el('sideL'), `<h3>The city <small>${P.restored.length}/10</small></h3>${rows}<p class="shint">Click a level button, or a building in the city.</p>`);
     const rw = Math.max(P.runWave || 1, P.wave), aw = C.ascendWave(P);
-    const step = C.canAscend(P) ? '<b>Ascend is ready!</b> Press Restore.' : C.cityWhole(P) ? `Reach wave <b>${aw}</b> to Ascend (now ${rw}).` : `Restore ${offer.map(id => C.byId(id).name).join(' or ')} for ${gem}${C.fmt(rc)}.`;
+    const step = C.canAscend(P) ? '<b>Ascend is ready!</b> Press Ascend.' : C.cityWhole(P) ? `Reach wave <b>${aw}</b> to Ascend (now ${rw}).` : `Rebuild ${offer.map(id => C.byId(id).name).join(' or ')} for ${gem}${C.fmt(rc)}.`;
     const stage = C.stageOf(P.gateLevel), nextStage = C.STAGES[stage];
     const qs = P.shop.open && P.quests.list.length ? `<h4>Today's quests</h4>${P.quests.list.map(q => `<div class="sq${q.claimed ? ' done' : ''}"><span>${C.questText(q)}</span><b>${Math.min(q.n, q.need)}/${q.need}</b></div>`).join('')}` : '';
     const star = P.ascensions >= 1 ? C.STARS.find(st => st.asc === P.ascensions && !P.stars.includes(st.id)) : null;
@@ -1681,17 +1707,19 @@
     });
     root.addEventListener('keydown', e => {
       if (e.repeat) return; const key = e.key.toLowerCase();
+      if (guideHeld() && (key === ' ' || key === 'enter')) { e.preventDefault(); if (!guidePress() || !G.cur.line.done) guideTap(); return; }
       if (S.card) { if (key === 'enter') { const b = el('card').querySelector('#c-ok'); if (b) { e.preventDefault(); b.click(); } } return; }
       if (key === 'u') upgrade(); else if (key === 'r') restore(); else if (key === 'p') el('pause').click(); else if (key === 's') openShopCard(); else if (key === 'q' && P.shop.open && !S.card) showCard('quests'); else if (key === 'x') surgeTap(); else if (key === 'i') toggleStats();
     });
     root.addEventListener('pointerdown', () => A.unlock(), { once: true });
     // tap a restored building to level it up; a ruined one says what it will do once restored
     cv.addEventListener('click', ev => {
-      if (S.card) return; const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H;
+      if (S.card) return; if (guideHeld()) { if (!guidePress()) guideTap(); else if (!G.cur.line.done) guideTap(); return; }   // while he talks a tap on the city reads on
+      const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H;
       if (tapGold(x, y) || tapFly(x, y) || tapFolk(x, y) || tapFountain(x, y)) return;
       for (const id in HALLS) { const [bx, by] = badgeAt(id); if (HALLS[id].ok() && Math.hypot(x - bx, y - by) < 46 && openHall(id)) return; }
       for (const id of C.BUILDING_IDS) { const s = CITY.spots[id]; const dx = (x - sx(s[0])) / (s[2] * K * 0.8), dy = (y - sy(s[1])) / (s[3] * K * 0.8);
-        if (dx * dx + dy * dy < 1) { A.unlock(); if (P.restored.includes(id)) showCard('building', id); else if (!openHall(id)) { const b = C.byId(id); toast(`${b.name} (ruined). Restore it: ${b.line}`); } return; } }
+        if (dx * dx + dy * dy < 1) { A.unlock(); if (P.restored.includes(id)) showCard('building', id); else if (!openHall(id)) { const b = C.byId(id); toast(`${b.name} (ruined). Rebuild it: ${b.line}`); } return; } }
     });
     if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.documentElement.classList.add('keys');
   }

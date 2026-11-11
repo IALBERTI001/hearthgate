@@ -527,7 +527,7 @@
   [[500, 'Chain Reaction', 1], [5000, 'Combo Master', 2]]
     .forEach(([n, nm, t]) => feat('combos' + n, nm, t, `Land ${fmt(n)} combos`, p => p.stats.combos, n));
   [[5, 'Rebuilder', 1], [10, 'Hearth Restored', 2]]
-    .forEach(([n, nm, t]) => feat('city' + n, nm, t, `Restore ${n} buildings in one city`, p => p.restored.length, n));
+    .forEach(([n, nm, t]) => feat('city' + n, nm, t, `Rebuild ${n} buildings in one city`, p => p.restored.length, n));
   [[1, 'Reborn', 2], [3, 'Thrice Risen', 2], [10, 'Eternal City', 3]]
     .forEach(([n, nm, t]) => feat('ascend' + n, nm, t, n === 1 ? 'Ascend once' : `Ascend ${n} times`, p => p.ascensions, n));
   [[5, 'First Light', 1], [20, 'Stargazer', 2], [40, 'Full Sky', 3]]

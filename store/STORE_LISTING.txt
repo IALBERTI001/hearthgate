@@ -6,21 +6,21 @@ Tags: idle, tower defense, defense, upgrade, strategy, city building, clicker, m
 Devices: mobile, tablet, desktop (portrait)
 
 Short description:
-Hold the gate, and the city rebuilds itself behind you. Your towers fight every wave on their own, and every monster they destroy releases Resonance that flies into the city. Spend it to upgrade the gate, restore ruined buildings and grow the city's own magic.
+Hold the gate, and the city rebuilds itself behind you. Your towers fight every wave on their own, and every monster they destroy releases Resonance that flies into the city. Spend it to upgrade the gate, rebuild ruined buildings and grow the city's own magic.
 
 Description:
 Hearthgate is an idle defense game about a city coming back to life. Waves of slimes, beetles and stone golems pour out of the forest toward your gate, and the four towers on the wall fight them by themselves.
 
-Restore the Forge and your towers shoot fire. Restore the Frost Spire and they slow. Restore the Storm Bell and lightning chains between enemies. Mix them for combos: SHATTER a frozen enemy with fire, chain lightning through a slowed crowd, set the whole wave burning.
+Rebuild the Forge and your towers shoot fire. Rebuild the Frost Spire and they slow. Rebuild the Storm Bell and lightning chains between enemies. Mix them for combos: SHATTER a frozen enemy with fire, chain lightning through a slowed crowd, set the whole wave burning.
 
 44 Feats to collect, from First Blood to Butterfly Garden, and boss waves that shake the screen. Three daily quests and a Resonance Surge (double Resonance for three minutes) keep every session moving.
 A Shop full of looks: new tower skins for every element, shot trails, hit effects, Resonance wisp colours, and city looks from Golden Hour to Moonlit and First Snow. Earn Starshards from bosses, combos, daily quests and daily rewards.
-Ten buildings to raise from the ruins, each with its own bonus. Every restored building hums out Resonance of its own: tap it to level it up, and the city keeps earning even when the fight stalls. Upgrade paths at gate stages 2 to 5. Six bosses and more than 15 kinds of enemy, each with a counter to learn, and over 30 named wave events from Stampede to Meteor Shower. Restore the whole city, then Ascend for a permanent bonus and build it again, stronger: every Ascension brings back the buildings with a second ability and adds new enemies, a new boss, new events, Trials, Relics, the Earth element and a constellation of stars to light.
+Ten buildings to raise from the ruins, each with its own bonus. Every rebuilt building hums out Resonance of its own: tap it to level it up, and the city keeps earning even when the fight stalls. Upgrade paths at gate stages 2 to 5. Six bosses and more than 15 kinds of enemy, each with a counter to learn, and over 30 named wave events from Stampede to Meteor Shower. Rebuild the whole city, then Ascend for a permanent bonus and build it again, stronger: every Ascension brings back the buildings with a second ability and adds new enemies, a new boss, new events, Trials, Relics, the Earth element and a constellation of stars to light.
 
 The gate and the city keep earning while you are away, and a daily reward waits every day.
 
 Controls:
-Tap or click Upgrade and Restore. Tap a restored building to level it up. On a keyboard: U to upgrade, R to restore, P to pause.
+Tap or click Upgrade and Rebuild. Tap a rebuilt building to level it up. On a keyboard: U to upgrade, R to rebuild, P to pause.
 
 Credits and AI note:
 Code, design and art direction by the studio. City paintings, towers and enemies were made with AI image generation (ChatGPT) and finished by hand in the studio's pipeline. Fonts: Lilita One and Nunito (SIL Open Font License). Music: four calm 8-bit songs and the town ambience made in code by the studio; the battle theme and sound effects come from the studio's Warden of Power.
