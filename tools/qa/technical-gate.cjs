@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const [B, OUT] = process.argv.slice(2); fs.mkdirSync(OUT, { recursive: true });
 const fake = () => { window.__log = []; const st = {}; window.CrazyGames = { SDK: { environment: 'crazygames', init: async () => {},
-  game: { gameplayStart: () => __log.push('start'), gameplayStop: () => __log.push('stop'), loadingStart: () => __log.push('loadStart'), loadingStop: () => __log.push('loadStop'), happytime: () => __log.push('happy') },
+  game: { gameplayStart: () => __log.push('start'), gameplayStop: () => __log.push('stop'), loadingStart: () => __log.push('loadStart'), loadingStop: () => __log.push('loadStop'), happytime: () => __log.push('happy'), settings: { muteAudio: false }, addSettingsChangeListener: f => { window.__muteListener = f; } },
   ad: { requestAd: (t, cb) => { __log.push('ad:' + t); setTimeout(() => cb.adError && cb.adError('test'), 50); } },
   data: { getItem: k => st[k] ?? null, setItem: (k, v) => { st[k] = v; __log.push('data'); }, removeItem: k => delete st[k] } } }; };
 const sizes = [[390, 844], [800, 450], [821, 462], [910, 512], [1080, 607], [1280, 720], [1920, 1080]];
@@ -43,6 +43,11 @@ const sizes = [[390, 844], [800, 450], [821, 462], [910, 512], [1080, 607], [128
     out.push(`${w}x${h}: gameplayStart ${tStart} ms, initial download ${(bytes / 1e6).toFixed(2)} MB, small text [${small.join(', ')}], build stamp ${stamp}, canvas backing ${canvas.backing} for ${canvas.shown} shown px, sdk: ${log.slice(0, 90)} | returning: ${log2.slice(0, 60)}`);
     await ctx2.close();
   }
+  // the platform's mute button (game settings muteAudio) mutes the game live, and an ad does not unmute it (Nov 12 2026)
+  { const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); await ctx.addInitScript(fake); const pg = await ctx.newPage();
+    await pg.goto(B + '?useLocalSdk=true'); await pg.waitForFunction(() => window.__muteListener, null, { timeout: 15000 }).catch(() => {});
+    const m = await pg.evaluate(() => { if (!window.__muteListener) return 'no listener'; __muteListener({ muteAudio: true }); const a = HGAudio.state().muted; __muteListener({ muteAudio: false }); return a && !HGAudio.state().muted ? 'ok' : 'did not follow'; });
+    out.push('platform mute: ' + m); if (m !== 'ok') bad.push('the game does not follow the CrazyGames mute setting'); await ctx.close(); }
   // ad blocker: SDK script blocked, no stand-in: the game must still play
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const pg = await ctx.newPage();
   await pg.route('**/sdk.crazygames.com/**', r => r.abort()); const errs = []; pg.on('pageerror', e => errs.push(e.message));

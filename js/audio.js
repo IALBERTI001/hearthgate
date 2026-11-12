@@ -107,5 +107,5 @@
   }
   function hush(nodes) { for (const n of nodes || []) { try { n.stop(); } catch (e) { /* already stopped */ } } }
   function set(k, v) { st[k] = v; if (k === 'music' || k === 'muted') applyMusic(); if (ctx && k === 'muted') gain.gain.value = v ? 0 : 0.7; }
-  root.HGAudio = { unlock, play, set, boss, speak, hush, knock, voice, voiceDur, voiceOn, loadVoices, state: () => ({ mode, lastSong, boss: st.boss }) };
+  root.HGAudio = { unlock, play, set, boss, speak, hush, knock, voice, voiceDur, voiceOn, loadVoices, state: () => ({ mode, lastSong, boss: st.boss, muted: !!st.muted }) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

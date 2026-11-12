@@ -40,9 +40,17 @@
       if (this.ready) {
         if (this._loading) this.loadingStop(true);
         await this.syncSaves();
+        this.followMute();
         if (this._playing != null) { const p = this._playing; this._playing = null; this.gameplay(p); }
       }
       return this.ready;
+    },
+
+    // CrazyGames can mute every game from its own page (game settings muteAudio): the game follows it, live (Nov 12 2026)
+    followMute() {
+      const g = this.sdk && this.sdk.game; if (!g) return;
+      const apply = st => { try { if (root.HGAudio && st && typeof st.muteAudio === 'boolean') { GameSDK.platformMuted = st.muteAudio; root.HGAudio.set('muted', st.muteAudio); } } catch (e) {} };
+      try { apply(g.settings); if (g.addSettingsChangeListener) g.addSettingsChangeListener(apply); } catch (e) {}
     },
 
     async syncSaves() {
