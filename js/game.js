@@ -5,8 +5,8 @@
 (function (root) {
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
-  const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-12e';
+  const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-12f';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -34,7 +34,9 @@
   const refresh = () => { P.omen = P.firstSession ? null : C.omenFor(C.dayKey(new Date())).id; B = C.bonuses(P); RATE = C.cityRate(P, B); };
   refresh();
   const rfmt = r => r < 10 ? String(+r.toFixed(r < 1 ? 2 : 1)) : C.fmt(r);
-  root.Hearthgate = { reloadSave() { P = load(); refresh(); S.enemies = []; S.wisps = []; startWave(); }, state: () => ({ P, S, B }) };
+  // completion for CrazyGames: the road to the Eternal City is 10 Ascensions of 10 buildings each; the 10th Ascension is 100
+  function reportProgress() { SDK.reportCompletion(P.ascensions >= C.ETERNAL_AT ? 100 : (P.ascensions + P.restored.length / 10) * 100 / C.ETERNAL_AT); }
+  root.Hearthgate = { reportProgress, reloadSave() { P = load(); refresh(); S.enemies = []; S.wisps = []; startWave(); }, state: () => ({ P, S, B }) };
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
   if (/[?&]qa\b/.test(location.search)) Object.assign(root.Hearthgate, {
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
@@ -276,7 +278,7 @@
     if (B.harvest) { const amt = (C.fightRate(P, B) * 1.6 + RATE) * B.harvest * surgeX(); P.res += amt; pop(W / 2, WALL_FRONT + 120, `Harvest +${C.fmt(amt)}`, '#ffd56b', 1.1, 32); }
     if (C.isBoss(P.wave)) {
       quest('boss');
-      pop(W / 2, 330, 'BOSS DOWN!', '#ffd56b', 1.8, 60); SDK.happytime(); A.play('tier_up', 0.6);
+      pop(W / 2, 330, 'BOSS DOWN!', '#ffd56b', 1.8, 60); if (firstTime('bossHappy')) SDK.happytime(); A.play('tier_up', 0.6);   // the site's confetti only for the first boss: CrazyGames asks for it sparingly
       if (P.shop.open) { const n = (C.SHARDS.boss + B.bossPlus) * (1 + B.bossShards); P.shop.shards += n; pop(W / 2, 400, `+${n} Starshards`, SHARD, 1.6, 40); }
       if (P.wave === 10 && firstTime('tomorrow')) { setTimeout(() => toast('Come back tomorrow: a daily Resonance reward waits'), 1900); }
     }
@@ -358,7 +360,7 @@
     const b = C.byId(id), r2 = P.ascensions >= 1 && C.RANK2[id];
     toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} rebuilt: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id); guidePressed('re'); guideSay(id);   // a tower building says what it gave the towers (outside review, Nov 7 2026: Restore said what it cost, never what it did)
     if (r2) { S.rank2 = (S.rank2 || []).concat(id); pop(sx(CITY.spots[id][0]), sy(CITY.spots[id][1]) - 50, r2.name + '!', '#ffd56b', 1.8, 40); }
-    A.play('tier_up', 0.55); SDK.happytime();
+    A.play('tier_up', 0.55); if (C.cityWhole(P)) SDK.happytime(); reportProgress();   // confetti when the whole city stands, not on every building
     if (P.restored.length === 5) setTimeout(() => { toast('The fountain flows again!'); S.reveal = { b: 'plaza', t: 0 }; }, 2900);
     if (C.cityWhole(P)) setTimeout(() => toast(C.canAscend(P) ? 'The city is whole! Rebuild is now Ascend.' : `The city is whole! Reach wave ${C.ascendWave(P)} to Ascend.`), 2900);
     save(); ui();
@@ -887,7 +889,7 @@
   function surgeFx() {
     quest('surge'); A.play('surge', 0.6); S.pointAt = null;
     pop(PLAZA.x, PLAZA.y - 96, 'SURGE! x2', '#ffb8f0', 1.6, 52); if (!(P.told || []).includes('g_surge') && firstTime('surgeWhat')) toast('Surge: everything pays double for 3 minutes');
-    burst({ x: PLAZA.x, y: PLAZA.y - 10, size: 50 }, RES, 30, 260); SDK.happytime(); save();
+    burst({ x: PLAZA.x, y: PLAZA.y - 10, size: 50 }, RES, 30, 260); save();
   }
   function surgeTap() {
     A.unlock(); const now = Date.now(); if (C.surgeOn(P, now) || S.card) return;
@@ -1174,7 +1176,7 @@
     } else card.onclick = kind === 'shop' ? (ev => { if (ev.target === card) close(); }) : null;
     if (kind === 'ascend') on('c-ok', () => {
       P = C.ascend(P); refresh(); S.wisps = []; S.motes = []; S.enemies = []; S.shots = []; S.spawnQ = []; S.gateHp = 0; A.play('ascension', 0.7);
-      S.cheerNext = 'A new dawn. Rebuild!'; startWave(); save(); close();
+      S.cheerNext = 'A new dawn. Rebuild!'; startWave(); save(); close(); SDK.happytime(); reportProgress();
       const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions);
       toast(un ? `Ascension ${P.ascensions} unlocks ${un.name}! ${un.line}` : `Ascension ${P.ascensions}: Resonance and damage x${rfmt(Math.pow(C.ASCEND_MULT, P.ascensions))}`);
       if (un && un.id === 'relics') S.pointAt = { id: 'watchtower', t: 0 };

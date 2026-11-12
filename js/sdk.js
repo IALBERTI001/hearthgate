@@ -41,6 +41,7 @@
         if (this._loading) this.loadingStop(true);
         await this.syncSaves();
         this.followMute();
+        try { if (root.Hearthgate && root.Hearthgate.reportProgress) root.Hearthgate.reportProgress(); } catch (e) {}   // where a returning player stands
         if (this._playing != null) { const p = this._playing; this._playing = null; this.gameplay(p); }
       }
       return this.ready;
@@ -80,6 +81,12 @@
     loadingStart() { this._loading = true; if (this.ready) try { this.sdk.game.loadingStart(); } catch (e) {} },
     loadingStop(force) { if (!this._loading && !force) return; this._loading = false; if (this.ready) try { this.sdk.game.loadingStop(); } catch (e) {} },
     // Big moments (boss down, city restored), at most once a minute.
+    // progress toward the Eternal City (10 Ascensions), reported forward only (SDK game.reportGameCompletedPercentage, Nov 12 2026)
+    _done: 0,
+    reportCompletion(pct) {
+      const v = Math.max(0, Math.min(100, Math.floor(pct))); if (!this.ready || v <= this._done) return; this._done = v;
+      try { const g = this.sdk.game; if (g.reportGameCompletedPercentage) g.reportGameCompletedPercentage(v); } catch (e) {}
+    },
     happytime() { if (!this.ready || Date.now() - this._happyAt < 60000) return; this._happyAt = Date.now(); try { this.sdk.game.happytime(); } catch (e) {} },
 
     // Resolves true only when the video finished. Never rewards on error, no fill or ad blocker.

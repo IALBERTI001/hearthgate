@@ -33,7 +33,7 @@
     },
     push() { if (!this.fp || !this.fp.save || !this.mirror) return; clearTimeout(this._t); this._t = setTimeout(() => { try { this.fp.save(this.snapshot()); } catch (e) {} }, 1500); },
     gameplay(on) { on = !!on; if (!this.fp) { this._playing = on; return; } if (this._playing === on) return; this._playing = on; try { on ? this.fp.gameplayStart() : this.fp.gameplayStop(); } catch (e) {} },
-    loadingStart() {}, loadingStop() {}, happytime() {},
+    loadingStart() {}, loadingStop() {}, happytime() {}, reportCompletion() {},
     rewarded() { return Promise.resolve(false); }
   };
   const orig = Storage.prototype.setItem;

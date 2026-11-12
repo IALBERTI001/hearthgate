@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const [B, OUT] = process.argv.slice(2); fs.mkdirSync(OUT, { recursive: true });
 const fake = () => { window.__log = []; const st = {}; window.CrazyGames = { SDK: { environment: 'crazygames', init: async () => {},
-  game: { gameplayStart: () => __log.push('start'), gameplayStop: () => __log.push('stop'), loadingStart: () => __log.push('loadStart'), loadingStop: () => __log.push('loadStop'), happytime: () => __log.push('happy'), settings: { muteAudio: false }, addSettingsChangeListener: f => { window.__muteListener = f; } },
+  game: { gameplayStart: () => __log.push('start'), gameplayStop: () => __log.push('stop'), loadingStart: () => __log.push('loadStart'), loadingStop: () => __log.push('loadStop'), happytime: () => __log.push('happy'), reportGameCompletedPercentage: v => __log.push('done:' + v), settings: { muteAudio: false }, addSettingsChangeListener: f => { window.__muteListener = f; } },
   ad: { requestAd: (t, cb) => { __log.push('ad:' + t); setTimeout(() => cb.adError && cb.adError('test'), 50); } },
   data: { getItem: k => st[k] ?? null, setItem: (k, v) => { st[k] = v; __log.push('data'); }, removeItem: k => delete st[k] } } }; };
 const sizes = [[390, 844], [800, 450], [821, 462], [910, 512], [1080, 607], [1280, 720], [1920, 1080]];
