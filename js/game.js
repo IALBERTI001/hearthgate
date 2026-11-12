@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-12a';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-12b';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -27,7 +27,8 @@
   const S = { t: 0, enemies: [], shots: [], pops: [], fx: [], hits: [], wisps: [], motes: [], spawnQ: [], spawnT: 0, gateHp: 0, gateHit: 0, paused: false,
     sessionT: 0, saveT: 0, reveal: null, card: null, rings: [], shake: 0, wavePop: null, cheerNext: null, savedByAd: false };
   function load() { try { return C.sanitize(localStorage.getItem(SAVE_KEY)); } catch (e) { return C.defaults(); } }
-  function save() { P.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(P)); } catch (e) {} }
+  let wiping = false;
+  function save() { if (wiping) return; P.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(P)); } catch (e) {} }
   let RATE = C.cityRate(P, B);   // the city's Resonance per second, recomputed whenever the city or a bonus changes
   // today's Omen joins the bonuses from the second session on (the opening stays as tested)
   const refresh = () => { P.omen = P.firstSession ? null : C.omenFor(C.dayKey(new Date())).id; B = C.bonuses(P); RATE = C.cityRate(P, B); };
@@ -1138,7 +1139,7 @@
     if (kind === 'shop') html = shopHtml();
     if (kind === 'quests') html = questsHtml();
     if (kind === 'perks') html = perksHtml();
-    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}`;
+    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}<button id="c-wipe" class="linkbtn">Start a new game</button>`;
     body.innerHTML = html;
     const close = () => { card.className = ''; S.card = null; if (!S.paused) SDK.gameplay(true); ui(); nextCard(); };
     const on = (id, f) => { const b = body.querySelector('#' + id); if (b) b.onclick = () => { A.unlock(); f(); }; };
@@ -1186,6 +1187,11 @@
     if (kind === 'settings') {
       for (const k of ['music', 'sfx', 'reduced']) body.querySelector('#s-' + k).onchange = ev => { P.settings[k] = ev.target.checked; A.set(k, ev.target.checked); save(); };
       on('c-ok', () => { S.paused = false; el('pause').classList.remove('on'); SDK.gameplay(true); close(); });
+      on('c-wipe', () => {   // owner, Nov 12 2026: a way to see the opening again. Asked twice, in the page itself, never by a browser dialog
+        body.innerHTML = `<h2>Start a new game?</h2><p>This city, every Ascension, perk and Starshard is erased, and you begin again at wave 1.</p>${btn('c-erase', 'Erase and start over', 'danger')}${btn('c-keep', 'Keep my city', 'gold')}`;
+        on('c-keep', () => { close(); showCard('settings'); });
+        on('c-erase', () => { wiping = true; try { Object.keys(localStorage).filter(k => k.startsWith('hearthgate.')).forEach(k => localStorage.removeItem(k)); } catch (e) {} location.reload(); });
+      });
     }
   }
 
