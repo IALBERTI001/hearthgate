@@ -46,9 +46,11 @@ const sizes = [[390, 844], [800, 450], [821, 462], [910, 512], [1080, 607], [128
   // ad blocker: SDK script blocked, no stand-in: the game must still play
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const pg = await ctx.newPage();
   await pg.route('**/sdk.crazygames.com/**', r => r.abort()); const errs = []; pg.on('pageerror', e => errs.push(e.message));
-  await pg.goto(B + '?useLocalSdk=true'); await pg.waitForTimeout(5000);
+  await pg.goto(B + '?useLocalSdk=true'); await pg.waitForTimeout(3000);
+  for (let i = 0; i < 10; i++) { await pg.evaluate(() => { const g = document.getElementById('guide'); if (g && g.classList.contains('wait') && !g.classList.contains('press')) g.click(); }); await pg.waitForTimeout(900); }   // reads the Magister's lines on, as a player does (his lines hold the fight, Nov 10 2026)
   const kills = await pg.evaluate(() => window.Hearthgate ? Hearthgate.state().P.res : -1);
   out.push(`ad blocker: playable ${kills > 0} (Resonance ${kills}), errors ${errs.length}`);
+  if (!(kills > 0)) bad.push('ad blocker: the game did not play without the SDK');   // a printed false went unnoticed once (Nov 12 2026)
   await ctx.close(); await b.close();
   console.log(out.join('\n')); console.log('hosts:', [...hosts].join(' ')); console.log('problems:', bad.length ? '\n' + bad.join('\n') : 'none');
 })();

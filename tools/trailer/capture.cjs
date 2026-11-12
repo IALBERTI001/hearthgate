@@ -14,7 +14,8 @@ const FPS = 30, SECONDS = +(process.env.SECONDS || 19);   // 12.4 when later-gam
     combos: ['shatter', 'frostStorm', 'fireStorm'], forks: { 2: 'ballistae' }, res: 2.4e6, gateLevel: 18, wave: 28, bestWave: 28,
     shop: { open: true, shards: 60, owned: ['fire-obsidian', 'frost-aurora', 'storm-void', 'trail-comet', 'hit-star', 'town-moon', 'wisp-gold'],
       equip: { fire: 'fire-obsidian', frost: 'frost-aurora', storm: 'storm-void', trail: 'trail-comet', hit: 'hit-star', town: 'town-moon', wisp: 'wisp-gold' }, seen: [] },
-    quests: { day: new Date().toISOString().slice(0, 10), list: [], bonus: false } })); } });
+    quests: { day: new Date().toISOString().slice(0, 10), list: [], bonus: false },
+    told: ['g_intro', 'g_restore', 'g_forge', 'g_frostSpire', 'g_stormBell', 'g_boss', 'g_fell', 'g_whole', 'g_ascend', 'g_gate', 'g_surge'] })); } });   // the Magister has said his piece: his lines would hold the fight (Nov 12 2026)
   const p = await ctx.newPage();
   await p.addInitScript(SHIM);
   await p.goto(url);

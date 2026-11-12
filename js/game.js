@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-12c';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-12d';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -648,6 +648,7 @@
     surge: [['smile', 'The fountain brims with power! Tap it, and all Resonance pays double for three minutes.', 'fountain']]
   };
   // recorded lines (owner's voice) as assets/voice/<block>-<n>.mp3, listed here once the file is in; others use the made-up voice
+  const BUILDING_LINES = { forge: 1, frostSpire: 1, stormBell: 1 };
   const VOICE = new Set(['intro-1', 'intro-2', 'intro-3', 'restore-1', 'restore-2', 'restore-3', 'forge-1', 'forge-2', 'frostSpire-1', 'frostSpire-2',
     'stormBell-1', 'gate-1', 'boss-1', 'fell-1', 'surge-1', 'whole-1', 'ascend-1', 'ascend-2']);   // all recorded by the owner, Nov 12 2026
   if (A.loadVoices && P.ascensions === 0) A.loadVoices([...VOICE]);
@@ -717,8 +718,8 @@
     const rl = G.cur && G.cur.line;
     if (rl && rl.replay) { if (A.voiceDur(rl.L.voice)) { rl.replay = 0; guideLine(); } else if (performance.now() > rl.replay) rl.replay = 0; }
     if (!G.cur) {
-      if (!G.q.length || S.card || !imgReady.magister || (S.wavePop && S.wavePop.t < 2.2) || (S.reveal && S.reveal.t < 1.5)) return;   // he waits for the wave banner and its enemy cards to clear (detail pass, Nov 7: his panel sat on them)
-      G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine();
+      if (!G.q.length || S.card || !imgReady.magister || (S.wavePop && S.wavePop.t < 2.2) || (S.reveal && S.reveal.t < (G.q[0].id in BUILDING_LINES ? 4 : 1.5))) return;   // a rebuilt tower building gets ~4 s to show off its new shots before he speaks (review Nov 12)   // he waits for the wave banner and its enemy cards to clear (detail pass, Nov 7: his panel sat on them)
+      G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine(); if (S.wavePop) S.wavePop.t = Math.max(S.wavePop.t, 99);   // the wave banner has had its moment; it would sit frozen over the field while he talks
       if (!P.settings.stats) el('toast').style.bottom = (H - WALL_FRONT + 70 + 260) + 'px';   // a toast steps up above the panel while he talks
       return;
     }
@@ -726,7 +727,7 @@
     if (!G.el.classList.contains('in')) G.el.classList.add('in');
     const l = G.cur.line; l.t += dt;
     if (l.L.focus === 'towers' && !reduced()) TOWERS.forEach(t => (t.flash = Math.max(t.flash, 0.5 + 0.35 * Math.sin(S.t * 6))));   // what he talks about lights up
-    if (l.L.focus === 'fountain') S.plazaGlow = Math.max(S.plazaGlow || 0, 0.6 + 0.3 * Math.sin(S.t * 5));
+    if (l.L.focus === 'fountain') S.plazaGlow = Math.max(S.plazaGlow || 0, 0.45 + 0.35 * Math.sin(performance.now() / 200));   // pulses on the real clock: the fight is held while he talks (a still pink glow read as a bug, review Nov 12)
     if (!l.done) {
       const due = l.syl.sylls.filter(x => x.at <= l.t), last = due[due.length - 1];
       G.el.querySelector('p').textContent = l.L.text.slice(0, last ? last.upto : 0);

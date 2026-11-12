@@ -1,4 +1,4 @@
-Hearthgate: CrazyGames listing draft (updated Nov 6 2026, build 2026-11-06l)
+Hearthgate: CrazyGames listing (updated Nov 12 2026, build 2026-11-12d)
 
 Title: Hearthgate
 Genre: Strategy > Tower Defense (Idle)
@@ -9,7 +9,7 @@ Short description:
 Hold the gate, and the city rebuilds itself behind you. Your towers fight every wave on their own, and every monster they destroy releases Resonance that flies into the city. Spend it to upgrade the gate, rebuild ruined buildings and grow the city's own magic.
 
 Description:
-Hearthgate is an idle defense game about a city coming back to life. Waves of slimes, beetles and stone golems pour out of the forest toward your gate, and the four towers on the wall fight them by themselves.
+Hearthgate is an idle defense game about a city coming back to life. Magister Bram, the city's old mage-mayor, greets you at the gate and talks you through your first battles. Waves of slimes, beetles and stone golems pour out of the forest toward your gate, and the four towers on the wall fight them by themselves.
 
 Rebuild the Forge and your towers shoot fire. Rebuild the Frost Spire and they slow. Rebuild the Storm Bell and lightning chains between enemies. Mix them for combos: SHATTER a frozen enemy with fire, chain lightning through a slowed crowd, set the whole wave burning.
 
@@ -19,8 +19,12 @@ Ten buildings to raise from the ruins, each with its own bonus. Every rebuilt bu
 
 The gate and the city keep earning while you are away, and a daily reward waits every day.
 
+Store media (folder hearthgate-marketing):
+Covers: cover-1920x1080 (landscape), cover-800x1200 (portrait), cover-800x800 (square); cover-1600x1000 for Freeplay. Title is the only text.
+Preview videos for CrazyGames: preview-landscape-1920x1080.mp4 and preview-portrait-1080x1620.mp4 (silent, under 20 s, the cover as the first frame).
+
 Controls:
 Tap or click Upgrade and Rebuild. Tap a rebuilt building to level it up. On a keyboard: U to upgrade, R to rebuild, P to pause.
 
 Credits and AI note:
-Code, design and art direction by the studio. City paintings, towers and enemies were made with AI image generation (ChatGPT) and finished by hand in the studio's pipeline. Fonts: Lilita One and Nunito (SIL Open Font License). Music: four calm 8-bit songs and the town ambience made in code by the studio; the battle theme and sound effects come from the studio's Warden of Power.
+Code, design and art direction by the studio. Magister Bram's voice is recorded by the studio. City paintings, towers, enemies, the Magister and the cover art were made with AI image generation (ChatGPT) and finished by hand in the studio's pipeline. Fonts: Lilita One and Nunito (SIL Open Font License). Music: four calm 8-bit songs and the town ambience made in code by the studio; the battle theme and sound effects come from the studio's Warden of Power.
