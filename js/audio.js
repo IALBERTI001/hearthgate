@@ -97,11 +97,15 @@
   function loadVoices(names) { voiceList = names || voiceList; if (!ctx) return;
     for (const n of voiceList) if (!voices[n]) { voices[n] = 'loading'; fetch(`assets/voice/${n}.mp3`).then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)).then(buf => { voices[n] = buf; }).catch(() => { delete voices[n]; }); } }
   const voiceDur = n => (voices[n] && voices[n].duration) || 0;
-  function voice(n, vol = 1) {
+  const voiceOn = () => !!ctx && st.sfx && !st.muted;
+  function voice(n, vol = 0.6) {   // files are levelled to -19 LUFS; 0.6 sits him about 6 dB over the effects
     if (!ctx || !st.sfx || st.muted || !voiceDur(n)) return [];
-    const s = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = vol; s.buffer = voices[n]; s.connect(g); g.connect(gain); s.start(); return [s];
+    const s = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = vol; s.buffer = voices[n]; s.connect(g); g.connect(gain); s.start();
+    const el = mode === 'boss' ? bossEl : mode === 'gap' ? ambEl : songEl;   // the music steps back while he speaks
+    if (el && audible()) { fadeTo(el, VOL * 0.4, 0.25); s.onended = () => { if (audible()) fadeTo(el, VOL, 0.8); }; }
+    return [s];
   }
   function hush(nodes) { for (const n of nodes || []) { try { n.stop(); } catch (e) { /* already stopped */ } } }
   function set(k, v) { st[k] = v; if (k === 'music' || k === 'muted') applyMusic(); if (ctx && k === 'muted') gain.gain.value = v ? 0 : 0.7; }
-  root.HGAudio = { unlock, play, set, boss, speak, hush, knock, voice, voiceDur, loadVoices, state: () => ({ mode, lastSong, boss: st.boss }) };
+  root.HGAudio = { unlock, play, set, boss, speak, hush, knock, voice, voiceDur, voiceOn, loadVoices, state: () => ({ mode, lastSong, boss: st.boss }) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

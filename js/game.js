@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-10a';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-12a';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -647,7 +647,8 @@
     surge: [['smile', 'The fountain brims with power! Tap it, and all Resonance pays double for three minutes.', 'fountain']]
   };
   // recorded lines (owner's voice) as assets/voice/<block>-<n>.mp3, listed here once the file is in; others use the made-up voice
-  const VOICE = new Set([]);
+  const VOICE = new Set(['intro-1', 'intro-2', 'intro-3', 'restore-1', 'restore-2', 'restore-3', 'forge-1', 'forge-2', 'frostSpire-1', 'frostSpire-2',
+    'stormBell-1', 'gate-1', 'boss-1', 'fell-1', 'surge-1', 'whole-1', 'ascend-1', 'ascend-2']);   // all recorded by the owner, Nov 12 2026
   if (A.loadVoices && P.ascensions === 0) A.loadVoices([...VOICE]);
   const G = { q: [], cur: null, el: null, nodes: [] };
   function guideSay(id, vars) {
@@ -692,13 +693,16 @@
     const b = G.cur, L = b.lines[b.i], syl = syllables(L.text);
     const rec = L.voice && A.voiceDur && A.voiceDur(L.voice);
     if (rec) { const k = rec / syl.dur; syl.sylls.forEach(x => { x.at *= k; x.len *= k; }); syl.dur = rec; }
-    b.line = { L, syl, t: 0, typed: 0, done: false };
+    b.line = { L, syl, t: 0, typed: 0, done: false, rec: !!rec, mute: !!L.voice && !rec };
     G.el.querySelector('p').textContent = ''; G.el.classList.remove('wait'); G.el.classList.toggle('press', !!L.press); guideFace(L.face, false);
     A.hush(G.nodes); G.nodes = rec ? A.voice(L.voice) : A.speak ? A.speak(syl.sylls) : [];
   }
   function guideTap() {
-    const b = G.cur; if (!b) return; const l = b.line;
-    if (!l.done) { l.done = true; l.t = Math.max(l.t, l.syl.dur); if (!l.L.voice) A.hush(G.nodes); G.el.querySelector('p').textContent = l.L.text; G.el.classList.add('wait'); guideFace(l.L.face, false); return; }
+    const b = G.cur; if (!b) return; const l = b.line; A.unlock();
+    // the first tap is often the one that lets the browser play sound: he says that line again, aloud, instead of skipping it unheard
+    if (l.mute && !G.voiced && A.voiceOn && A.voiceOn()) { G.voiced = true; l.replay = performance.now() + 1500; return; }
+    if (l.replay) return;
+    if (!l.done) { l.done = true; l.t = Math.max(l.t, l.syl.dur); if (!l.rec) A.hush(G.nodes); G.el.querySelector('p').textContent = l.L.text; G.el.classList.add('wait'); guideFace(l.L.face, false); return; }
     if (l.L.press && l.t - l.syl.dur < 0.25) return;   // a stray double tap does not skip the line that asks for a button
     A.play('tier_up', 0.06); guideNext();
   }
@@ -709,6 +713,8 @@
   }
   // runs every frame (real time, not game time: the guide talks while the fight runs, and also while a card is open)
   function tickGuide(dt) {
+    const rl = G.cur && G.cur.line;
+    if (rl && rl.replay) { if (A.voiceDur(rl.L.voice)) { rl.replay = 0; guideLine(); } else if (performance.now() > rl.replay) rl.replay = 0; }
     if (!G.cur) {
       if (!G.q.length || S.card || !imgReady.magister || (S.wavePop && S.wavePop.t < 2.2) || (S.reveal && S.reveal.t < 1.5)) return;   // he waits for the wave banner and its enemy cards to clear (detail pass, Nov 7: his panel sat on them)
       G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine();
