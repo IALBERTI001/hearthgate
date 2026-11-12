@@ -1,0 +1,89 @@
+{
+ "fade": 6,
+ "music": "/home/claude/hearthgate/assets/music/hearthfire.mp3",
+ "musicVol": 0.55,
+ "voiceVol": 1.5,
+ "shots": [
+  {
+   "still": "/home/claude/hearthgate/store/cover-800x800.jpg",
+   "frames": 30,
+   "fill": true
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/story",
+   "from": 36,
+   "to": 174,
+   "fade": 8
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/story",
+   "from": 275,
+   "to": 421
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/story",
+   "from": 862,
+   "to": 1090
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/story",
+   "from": 1090,
+   "to": 1222,
+   "fade": 0
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/prog2",
+   "from": 20,
+   "to": 148
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/prog2",
+   "from": 186,
+   "to": 262
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/prog2",
+   "from": 290,
+   "to": 372
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/prog2",
+   "from": 372,
+   "to": 471
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/prog2",
+   "from": 471,
+   "to": 570
+  },
+  {
+   "still": "/home/claude/hearthgate/store/cover-800x800.jpg",
+   "frames": 66,
+   "fill": true,
+   "fade": 10
+  }
+ ],
+ "voice": [
+  {
+   "shot": 1,
+   "frame": 59,
+   "file": "/home/claude/hearthgate/assets/voice/intro-1.mp3"
+  },
+  {
+   "shot": 2,
+   "frame": 277,
+   "file": "/home/claude/hearthgate/assets/voice/intro-3.mp3"
+  },
+  {
+   "shot": 3,
+   "frame": 871,
+   "file": "/home/claude/hearthgate/assets/voice/restore-3.mp3"
+  },
+  {
+   "shot": 4,
+   "frame": 1091,
+   "file": "/home/claude/hearthgate/assets/voice/forge-1.mp3"
+  }
+ ],
+ "bg": "/home/claude/hearthgate/art/masters/keyart.png"
+}

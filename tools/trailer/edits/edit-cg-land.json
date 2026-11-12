@@ -1,0 +1,43 @@
+{
+ "fade": 6,
+ "shots": [
+  {
+   "still": "/home/claude/hearthgate/store/cover-1920x1080.jpg",
+   "frames": 24,
+   "fill": true
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/story",
+   "from": 52,
+   "to": 172,
+   "fade": 8
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/story",
+   "from": 946,
+   "to": 1088
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/prog2",
+   "from": 20,
+   "to": 148
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/prog2",
+   "from": 372,
+   "to": 471
+  },
+  {
+   "dir": "/tmp/claude-0/-home-claude/6df59b33-4165-5e9d-91c6-5b1c98c3106f/scratchpad/prog2",
+   "from": 471,
+   "to": 540
+  },
+  {
+   "still": "/home/claude/hearthgate/store/cover-1920x1080.jpg",
+   "frames": 30,
+   "fill": true,
+   "fade": 8
+  }
+ ],
+ "bg": "/home/claude/hearthgate/art/masters/keyart.png"
+}
