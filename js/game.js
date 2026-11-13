@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13g';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13h';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -127,11 +127,15 @@
       // each tower takes one of the two enemies nearest the gate
       const live = S.enemies.filter(e => !e.dying && e.y > RANGE_Y).sort((a, b) => b.y - a.y);
       if (!live.length) continue;
-      const tgt = live[P.firstSession ? 0 : Math.min(live.length - 1, t.n % 2)];   // in the opening every tower focuses the front enemy, so Frost then Fire meet and the first SHATTER comes on time
-      t.cd = interval * (t.gate && B.beacon ? 0.5 : 1); t.recoil = 1; t.flash = 1; t.shots = (t.shots || 0) + 1;
       const el = els.length ? els[t.n % els.length] : 'none';   // a tower fires its own element, the one it is built for (owner, Nov 13 2026)
+      // each tower takes the target its element works best on, so the elements meet and combos happen (since a tower stopped
+      // cycling elements): frost chills the front enemy not yet chilled, fire, storm and earth go for a chilled one
+      const plain = live[P.firstSession ? 0 : Math.min(live.length - 1, t.n % 2)];
+      const iced = e => e.chill > 0.25 || S.shots.some(q => q.el === 'frost' && q.tx === e);   // chilled, or a mist already on its way
+      const tgt = el === 'frost' ? (live.find(e => !(e.chill > 0.6)) || plain) : (el === 'fire' || el === 'storm' || el === 'earth') ? (live.find(iced) || plain) : plain;
+      t.cd = interval * (t.gate && B.beacon ? 0.5 : 1); t.recoil = 1; t.flash = 1; t.shots = (t.shots || 0) + 1;
       if (el === 'storm' && !t.beacon) { S.bolts.push({ x0: t.x, y0: t.y - 66, x1: tgt.x, y1: tgt.y - tgt.size * 0.45, t: 0, life: 0.22, seed: Math.random() * 1e4 }); hit(tgt, el); }   // lightning strikes at once
-      else S.shots.push({ x: t.x, y: t.beacon ? t.y : t.y - 70, tx: tgt, el, sp: t.beacon ? 1000 : el === 'frost' ? 430 : 820, trail: [], born: S.t });
+      else S.shots.push({ x: t.x, y: t.beacon ? t.y : t.y - 70, tx: tgt, el, sp: t.beacon ? 1000 : el === 'frost' ? 900 : el === 'fire' ? 640 : 820, trail: [], born: S.t });
       A.play(el === 'frost' ? 'ice_launch_0' : el === 'storm' ? 'lightning_launch_0' : 'fire_launch_0', 0.16);
     }
     for (const s of S.shots) {
