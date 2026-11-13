@@ -554,3 +554,21 @@ svg.wing { flex: none; width: 84px; height: 70px; }
 #stage.wide #hud .btns { gap: 6px; } #stage.wide .icon { width: 48px; height: 48px; }
 #stage.wide #hud { grid-template-columns: 96px minmax(0, 1fr) auto; }
 #stage.wide #card canvas.thumb.hero { width: 150px; height: 102px; margin-bottom: 6px; }
+/* wide cards fit whole (owner, Nov 13 2026: "text clipping ... no reason to make this so big"): the stage is wide, so a card is
+   wider and lower, with tighter spacing; type stays at least 26 design px (about 17 px at the reviewer's frame) */
+#stage.wide #card .body { width: 860px; padding: 22px 30px 22px; gap: 10px; }
+#stage.wide #card h2 { font-size: 48px; }
+#stage.wide #card .eyebrow { font-size: 26px; padding-right: 70px; padding-left: 70px; }
+#stage.wide #card p, #stage.wide #card p.small, #stage.wide #card li { font-size: 26px; }
+#stage.wide #card .cbtn { padding: 12px; font-size: 34px; }
+#stage.wide #card .tog { padding: 6px 4px; font-size: 30px; }
+#stage.wide #card .tog .ticon { width: 46px; height: 46px; }
+#stage.wide #card .pick .opt { gap: 6px; padding: 12px 14px; }
+#stage.wide #card .pick .opt canvas.thumb { width: 150px; height: 102px; margin: 0 auto 4px; }
+#stage.wide #card .pick .opt span { font-size: 24px; }
+#stage.wide #card .cx { top: 10px; right: 10px; width: 50px; height: 50px; }
+/* wide: a notice takes the panel's middle (the goals step aside while it shows), so it never covers the city, the fight or the
+   pointing hand (owner's clip, Nov 13 2026: the hand sat on top of the notice's words) */
+#stage.wide #toast { left: calc(var(--wb) + 220px); bottom: auto !important; top: 176px !important; width: 400px; max-width: 400px; font-size: 28px; white-space: normal; text-align: center; }
+#stage.wide:has(#toast.show) #info { opacity: 0; }
+#stage.wide #toast { text-wrap: balance; font-size: 26px; }

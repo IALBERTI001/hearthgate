@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13d';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13e';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -762,8 +762,9 @@
   const FOLK_KINDS = ['builder', 'baker', 'farmer', 'lamp', 'child', 'merchant'], FOLK = [];
   const FOLK_HAUNTS = { baker: ['bakery', 'market'], farmer: ['granary', 'market'], merchant: ['market', 'tavern'], lamp: ['watchtower', 'library'], builder: [] };
   const PL = CITY.spots.plaza;
-  const ringAt = a => [PLAZA.x + Math.cos(a) * PL[2] * K * 0.5, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * 0.5];
-  const angOf = (x, y) => Math.atan2((y - PLAZA.y - 8) / (PL[3] * K * 0.5), (x - PLAZA.x) / (PL[2] * K * 0.5));
+  const RING = 0.8;   // the plaza's outer paved walk (at 0.5 villagers crossed the fountain's basin and steps: owner's clip, Nov 13 2026)
+  const ringAt = a => [PLAZA.x + Math.cos(a) * PL[2] * K * RING, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * RING];
+  const angOf = (x, y) => Math.atan2((y - PLAZA.y - 8) / (PL[3] * K * RING), (x - PLAZA.x) / (PL[2] * K * RING));
   const frontOf = id => { const s = CITY.spots[id], bx = sx(s[0]), by = sy(s[1]); return [bx + (PLAZA.x - bx) * 0.36, by + (PLAZA.y - by) * 0.36 + 18]; };
   function routeTo(f, to) {   // along the spoke to the ring, round the ring, out the other spoke
     const a0 = angOf(f.x, f.y), a1 = angOf(to[0], to[1]); let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
@@ -775,6 +776,9 @@
     while (FOLK.length < folkCount()) { const kind = FOLK_KINDS[FOLK.length], [x, y] = ringAt(Math.random() * 6.28); FOLK.push({ kind, x, y, pts: [], i: 0, wait: Math.random() * 3, dir: 1, t: Math.random() * 9, hop: 0, tapT: 0, speed: kind === 'child' ? 40 : 24 + Math.random() * 6 }); }
     for (const f of FOLK) {
       f.t += DT; f.hop = Math.max(0, f.hop - DT); f.tapT = Math.max(0, f.tapT - DT);
+      f.face = f.face === undefined ? f.dir : f.face + Math.max(-DT * 9, Math.min(DT * 9, f.dir - f.face));   // a turn takes about 0.2 s
+      if (Math.abs(f.face) < 0.18) f.face = Math.sign(f.dir) * 0.18;   // crosses edge-on in one frame, never a paper-thin sliver
+      if (f.i < f.pts.length && f.work <= 0) f.step = (f.step || 0) + DT * f.speed / 22;   // a stride every 22 px: feet keep pace with the ground
       if (f.hop2 && (f.hop2 -= DT) <= 0) { f.hop2 = 0; f.hop = 0.7; }
       if (f.party > 0) { f.party -= DT; if (f.i >= f.pts.length && f.hop <= 0 && Math.random() < DT * 2.5) f.hop = 0.7; if (f.party <= 0) f.speed = f.kind === 'child' ? 40 : 26; }
       if (f.scared && f.i >= f.pts.length && f.work <= 0) { f.dir = f.x < PLAZA.x ? 1 : -1; continue; }   // huddled by the fountain, facing it
@@ -798,6 +802,14 @@
         routeTo(f, pool.length && Math.random() < 0.8 ? frontOf(pool[Math.floor(Math.random() * pool.length)]) : ringAt(Math.random() * 6.28));
       }
     }
+    folkSpace();
+  }
+  // villagers standing still never stand inside one another (owner's clip, Nov 13 2026: two huddled into one shape)
+  function folkSpace() {
+    for (const a of FOLK) for (const b of FOLK) { if (a === b || a.work > 0 || b.work > 0) continue;
+      const dx = b.x - a.x, dy = (b.y - a.y) * 1.6, d = Math.hypot(dx, dy); if (d >= 30 || d === 0) continue;
+      const still = q => q.i >= q.pts.length, push = (30 - d) * 0.5 * Math.min(1, DT * 6) / d;
+      if (still(a)) { a.x -= dx * push; a.y -= dy * push / 1.6; } if (still(b)) { b.x += dx * push; b.y += dy * push / 1.6; } }
   }
   function tickMend() {
     const m = S.mend; if (!m) return; m.t += DT;
@@ -843,7 +855,7 @@
     FOLK.forEach((f, k) => { if (f.scared || f.mending || (f.job && f.job.mend)) return; f.work = 0; routeTo(f, [tx + (k - 2.5) * 16, ty + (k % 2) * 10]); f.speed = 55; f.party = 6; });
   }
   // a boss is coming: everyone hurries to the fountain and huddles there until it falls
-  function folkHide() { FOLK.forEach((f, k) => { if (f.job && f.job.mend) return; f.work = 0; const a = Math.PI / 2 + (k - (FOLK.length - 1) / 2) * 0.5; routeTo(f, [PLAZA.x + Math.cos(a) * PL[2] * K * 0.7, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * 0.62]); f.speed = 62; f.scared = true; }); }
+  function folkHide() { FOLK.forEach((f, k) => { if (f.job && f.job.mend) return; f.work = 0; const a = Math.PI / 2 + (k - (FOLK.length - 1) / 2) * 0.42; routeTo(f, [PLAZA.x + Math.cos(a) * PL[2] * K * RING, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * RING]); f.speed = 62; f.scared = true; }); }
   // a wave won: a couple of villagers hop; a boss beaten: everyone cheers (two hops) and heads back out
   function folkCheer(big) {
     if (!FOLK.length) return;
@@ -863,18 +875,26 @@
       pop(f.x, f.y - 46, `♥ +${C.fmt(amt)}`, '#ffb8d8', 1.1, 28); burst({ x: f.x, y: f.y - 20, size: 12 }, '#ffb8d8', 8, 80); return true; }
     return false;
   }
+  // Villagers (owner, Nov 13 2026: "villager animations look sloppy and unpolished. Every animation in the game needs to be
+  // visually pleasing and correct"). Each villager is one painted pose, so motion is kept to what a single pose can do
+  // convincingly: a footstep bob paced to the walking speed (no rocking), a soft settle on each footfall, a turn that
+  // squeezes through instead of snapping, slow breathing when still, a tool swing with an ease, a plain hop; no jitter.
   function drawFolk() {
     if (!img.folk_builder) return;   // painted villagers belong in store captures too
     for (const f of FOLK.slice().sort((a, b) => a.y - b.y)) {
       const working = f.work > 0, im = img[working && f.kind === 'builder' ? 'folk_builderwork' : 'folk_' + f.kind]; if (!im) continue;
       const walking = !working && f.i < f.pts.length, calm = reduced();
       const h = (f.kind === 'child' ? 34 : 44) * (working && f.kind === 'builder' ? 0.9 : 1), w = h * im.width / im.height;
-      const lift = calm ? 0 : (walking ? Math.abs(Math.sin(f.t * 9)) * 3 : 0) + (f.hop > 0 ? Math.sin(f.hop / 0.7 * Math.PI) * 10 : 0);
-      cx.save(); cx.globalAlpha = 0.22; cx.fillStyle = '#1a0f15'; cx.beginPath(); cx.ellipse(f.x, f.y, w * 0.32, 4, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
-      cx.translate(f.x, f.y - lift); if (!calm && walking) cx.rotate(Math.sin(f.t * 9) * 0.05);
-      if (!calm && working) cx.scale(1, 1 - 0.06 * Math.abs(Math.sin(f.t * 10)));
-      if (!calm && f.scared && !walking) cx.translate(Math.sin(f.t * 38) * 0.9, 0);   // a little shiver while the boss is out
-      cx.scale(f.dir, 1); cx.drawImage(im, -w / 2, -h, w, h); cx.restore();
+      const step = (f.step || 0) % 1, foot = Math.abs(Math.sin(step * Math.PI));   // 0 on a footfall, 1 mid-stride
+      const hop = f.hop > 0 ? Math.sin(f.hop / 0.7 * Math.PI) : 0;
+      const lift = calm ? 0 : (walking ? foot * 2.4 : 0) + hop * 12;
+      // squash and stretch, area kept: a small settle as a foot lands, a stretch at the top of a hop, breathing when still
+      let sy = 1;
+      if (!calm) sy = walking ? 1 - 0.035 * (1 - foot) : working ? 1 - 0.05 * Math.pow(Math.max(0, Math.sin(f.t * 5.2)), 6) : 1 + 0.012 * Math.sin(f.t * 1.9 + f.x);
+      if (!calm && hop) sy = 1 + 0.08 * hop;
+      const turn = calm ? f.dir : (f.face || f.dir);   // eased facing: passes through edge-on when a villager turns
+      cx.save(); cx.globalAlpha = 0.22 * (1 - hop * 0.5); cx.fillStyle = '#1a0f15'; cx.beginPath(); cx.ellipse(f.x, f.y, w * 0.32 * (1 - hop * 0.25), 4, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
+      cx.translate(f.x, f.y - lift); cx.scale(turn * (1 / Math.sqrt(sy)), sy); cx.drawImage(im, -w / 2, -h, w, h); cx.restore();
     }
   }
 
