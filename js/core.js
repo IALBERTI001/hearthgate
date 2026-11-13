@@ -607,7 +607,7 @@
   function defaults() {
     return { v: 3, res: 0, wave: 1, bestWave: 1, runWave: 1, gateLevel: 1, restored: [], levels: {}, grown: false, shop: shopDefaults(), quests: { day: '', list: [], bonus: false }, surge: { until: 0, adDay: '', ads: 0, shardAds: 0 }, stats: Object.fromEntries(STATS.map(k => [k, 0])), feats: [], perks: {}, perkPts: 0, relics: [], stars: [], told: [], flies: [], seenRoles: [], seenEvents: [], combos: [], forks: {}, ascensions: 0,
       lastSeen: 0, daily: { day: '', streak: 0, claimedTotal: 0 }, firstSession: true,
-      settings: { music: true, sfx: true, reduced: false, stats: false, steward: true } };
+      settings: { music: true, sfx: true, reduced: false, stats: false, steward: true, noGuide: false } };
   }
   const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(hi, Math.max(lo, v)) : d;
   const LEGACY = { b4: 'bakery', b5: 'market', b6: 'tavern', b7: 'granary', b8: 'library', b9: 'cottages', b10: 'watchtower' };
@@ -661,7 +661,7 @@
       out.daily.streak = Math.floor(num(p.daily.streak, 0, 1e6, 0));
       out.daily.claimedTotal = Math.floor(num(p.daily.claimedTotal, 0, 1e15, 0));
     }
-    if (p.settings && typeof p.settings === 'object') for (const k of ['music', 'sfx', 'reduced', 'stats', 'steward']) {
+    if (p.settings && typeof p.settings === 'object') for (const k of ['music', 'sfx', 'reduced', 'stats', 'steward', 'noGuide']) {
       if (typeof p.settings[k] === 'boolean') out.settings[k] = p.settings[k];
     }
     return out;

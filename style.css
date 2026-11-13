@@ -372,3 +372,82 @@ svg.wing { flex: none; width: 84px; height: 70px; }
 #guide.wait:not(.press) .bub::after { opacity: 1; animation: nudge 1s ease-in-out infinite alternate; }
 @keyframes nudge { to { transform: translateX(6px); } }
 @media (prefers-reduced-motion: reduce) { #guide { transition: none; } #guide.wait .bub::after { animation: none; } }
+
+/* ---------- desktop landscape layout (CrazyGames review, Nov 13 2026) ----------
+   The world fills the left at full height; the HUD, Bram, the goals and the buttons sit in a 652 px panel on the right.
+   The stage is 720 design px tall here and the frame shows it at about 0.64, so 16 design px is the smallest text. */
+#stage.wide { background: linear-gradient(90deg, #2f5a2a var(--wb), #3a2236 var(--wb)); }
+#stage.wide::before { content: ''; position: absolute; left: var(--wb); top: 0; bottom: 0; right: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(120% 60% at 50% 0%, rgba(255, 213, 107, .10), rgba(0, 0, 0, 0) 60%), linear-gradient(#3e2540, var(--plum-dark));
+  border-left: 5px solid var(--brass); box-shadow: inset 10px 0 18px rgba(0, 0, 0, .35); }
+#stage.wide #field { inset: auto; left: 0; top: 0; }
+#stage.wide #hud { left: calc(var(--wb) + 26px); right: 22px; top: 18px; grid-template-columns: 150px minmax(0, 1fr) auto; }
+#stage.wide #hud::before { display: none; }
+#stage.wide #counters { left: calc(var(--wb) + 30px); right: 28px; top: 150px; }
+#stage.wide #bar { left: calc(var(--wb) + 5px); right: 0; height: 190px; padding: 18px 22px 28px; background: transparent; border-top: 0; }
+#stage.wide #bar::before { content: ''; position: absolute; left: 22px; right: 22px; top: 0; height: 3px; background: linear-gradient(90deg, rgba(201, 162, 74, 0), var(--brass), rgba(201, 162, 74, 0)); }
+#stage.wide #toast { left: calc(var(--wb) + 331px); bottom: 214px !important; top: auto !important; max-width: 600px; }
+#stage.wide #guide { left: calc(var(--wb) + 10px); right: 14px; bottom: 206px !important; }
+#stage.wide #hand.up { left: calc(var(--wb) + 130px); bottom: 196px; }
+#stage.wide #hand.re { left: calc(var(--wb) + 446px); bottom: 196px; }
+#stage.wide #card { left: var(--wb); }
+#stage.wide #card .body { max-width: calc(100% - 24px); }
+#stage.wide #card.shop .body, #stage.wide #card.quests .body, #stage.wide #card.perks .body { max-height: calc(100% - 24px); height: auto; }
+#info { position: absolute; left: calc(var(--wb, 0px) + 28px); right: 26px; top: 196px; bottom: 214px; z-index: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--brass) transparent;
+  font: 600 24px/1.35 'HG Text', 'Trebuchet MS', sans-serif; color: var(--ink); transition: opacity .2s; }
+#stage.wide:has(#guide.in) #info { opacity: 0; pointer-events: none; }
+#info h3 { margin: 0 0 10px; font: 34px/1 'HG Display', sans-serif; color: var(--gold); }
+#info h4 { margin: 14px 0 6px; font: 26px/1 'HG Display', sans-serif; color: #e8cf98; }
+#info .sstep { font-size: 26px; }
+#info .sstep.big1 { font: 34px/1.2 'HG Display', sans-serif; text-align: center; padding: 16px; }
+#info .sline { font-size: 24px; }
+#info .sq { font-size: 22px; }
+#info .sgrid span { font-size: 20px; } #info .sgrid b { font-size: 28px; }
+#info .shint { font-size: 22px; color: #cdbb9c; text-align: center; }
+#info .gem.sm { width: 16px; height: 16px; }
+
+/* captions, not lessons (Nov 13 2026): one short line, no tap-to-continue, and a Skip that silences him for good */
+#guide .bub p { min-height: 0; font: 34px/1.2 'HG Display', sans-serif; letter-spacing: .3px; }
+#guide .bub::after { display: none; }
+#guide .gskip { position: absolute; right: 18px; top: -18px; z-index: 2; padding: 6px 16px; border-radius: 14px; border: 3px solid var(--brass); background: var(--plum-dark);
+  color: var(--ink); font: 24px/1 'HG Display', sans-serif; cursor: pointer; box-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
+#guide .gskip:hover { background: var(--plum); }
+
+/* wide: Bram slides in from the right edge of the panel, never across the field; the buttons are big, like the leaders' */
+#stage.wide #guide:not(.in) { transform: translateX(112%); }
+#stage.wide #bar { height: 236px; }
+#stage.wide #bar .big .label { font-size: 54px; }
+#stage.wide #bar .big .cost { font-size: 38px; }
+#stage.wide #guide { bottom: 250px !important; }
+#stage.wide #info { bottom: 252px; }
+#stage.wide #toast { bottom: 256px !important; }
+#stage.wide #hand.up, #stage.wide #hand.re { bottom: 240px; }
+/* wide: a card takes the whole panel (top to bottom) over the buttons; notices sit over the city, like on phones */
+#stage.wide #card { bottom: 0; }
+#stage.wide #card.shop { padding-top: 12px; }
+#stage.wide #card.shop .body { height: calc(100% - 24px); }
+#stage.wide #toast { left: calc(var(--wb) / 2); bottom: 26px !important; max-width: calc(var(--wb) - 30px); font-size: 30px; }
+#stage.wide #card.quests, #stage.wide #card.perks { padding-top: 12px; }
+
+/* the panel's progress: ten pips and the next building, from the painting */
+#info .cityrow { display: flex; justify-content: space-between; align-items: baseline; font: 34px/1 'HG Display', sans-serif; color: var(--ink); }
+#info .cityrow b { color: var(--gold); font-size: 40px; }
+#info .pips { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; margin: 0 0 16px; }
+#info .pips i { height: 16px; border-radius: 8px; background: rgba(0, 0, 0, .35); border: 2px solid rgba(201, 162, 74, .55); }
+#info .pips i.on { background: linear-gradient(#ffe7a0, #d9a43a); border-color: var(--gold); }
+#info .nextb { display: flex; gap: 16px; align-items: center; padding: 10px 14px 10px 10px; border-radius: 16px; background: rgba(0, 0, 0, .22); border: 2px solid rgba(201, 162, 74, .5); margin-bottom: 12px; }
+#info .nextb canvas { flex: none; width: 176px; height: 120px; border-radius: 12px; background: #2f5a2a; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .25); }
+#info .nextb div { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
+#info .nextb small { font: 22px/1 'HG Display', sans-serif; color: #e8cf98; letter-spacing: .04em; text-transform: uppercase; }
+#info .nextb b { font: 38px/1 'HG Display', sans-serif; color: var(--gold); }
+#info .nextb span { font: 600 24px/1.25 'HG Text', sans-serif; color: #f1e3c8; }
+/* wide: the hand taps right on the button (above Bram's panel, which sits just over the buttons) */
+#stage.wide #hand { z-index: 7; }
+#stage.wide #hand.up { left: calc(var(--wb) + 236px); bottom: 64px; }
+#stage.wide #hand.re { left: calc(var(--wb) + 552px); bottom: 64px; }
+#stage.wide #guide { bottom: 286px !important; }
+#stage.wide #hand.up { left: calc(var(--wb) + 130px); bottom: 196px; }
+#stage.wide #hand.re { left: calc(var(--wb) + 446px); bottom: 196px; }
+/* the panel wears the city's own painting, dimmed, so it reads as part of the same world as the field */
+#stage.wide::before { background: linear-gradient(rgba(42, 22, 40, .9), rgba(30, 16, 26, .95)), url('assets/city/city-restored.webp') center / cover no-repeat; }
+#info .nextb canvas { width: 220px; height: 150px; }

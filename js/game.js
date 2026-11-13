@@ -6,13 +6,14 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-12f';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13a';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
   const sx = x => (x - CITY.crop[0]) * K, sy = y => CITY_Y + (y - CITY.crop[1]) * K;
   const GATE_X = sx(CITY.gate[0]), WALL_FRONT = sy(CITY.wallTop);          // enemies press against the wall here
   const PLATFORMS = CITY.platforms.map(([x, y]) => ({ x: sx(x), y: sy(y) })); // the four round platforms in the wall
+  const ENEMY_VIS = 1.3;   // enemies drawn 30% larger (bosses 12%): at the reviewer's frame a slime was 18 px against accepted games' 40-60 px units (Nov 13 2026)
   const FIELD_TOP = 250;   // nothing that moves or floats goes above this line: the HUD lives there
   const RANGE_Y = 196;   // towers reach the whole field below the treeline, on every screen height
   const ELEMENT = { forge: 'fire', frostSpire: 'frost', stormBell: 'storm' };
@@ -89,7 +90,7 @@
     if (at) { x0 = Math.max(60, Math.min(660, at[0])); y0 = Math.min(WALL_FRONT - 4, at[1]); }
     for (let i = 0; i < (reduced() ? 3 : 9); i++) { const a = Math.random() * Math.PI * 2; S.fx.push({ x: x0 + Math.cos(a) * 20, y: y0 - 6, vx: Math.cos(a) * 50, vy: -20 - Math.random() * 30, t: 0, life: 0.5, col: 'rgba(220,200,150,.9)', r: 4 + Math.random() * 4, dust: true }); }
     S.enemies.push({ role, sheet: R.sheet, x: x0, y: y0, off: (Math.random() - 0.5) * 330, hp, max: hp,
-      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (evIs('stampede') || evIs('eclipse') || evIs('frenzy') || evIs('blackout')) ? 1.3 : S.event && evIs('blizzard') ? 0.75 : 1), size: R.size * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 1.3 : 1), armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
+      sp: R.speed * (WALL_FRONT - FIELD_TOP) / 414 * (S.event && (evIs('stampede') || evIs('eclipse') || evIs('frenzy') || evIs('blackout')) ? 1.3 : S.event && evIs('blizzard') ? 0.75 : 1), size: R.size * ENEMY_VIS * (C.isBossRole(role) ? 0.86 : 1) * ((S.event && evIs('giants')) && !C.isBossRole(role) ? 1.3 : 1), armour: R.armour || 0, weak: R.weak, boss: C.isBossRole(role), frame: Math.random() * 6,
       chill: (S.event && evIs('winter')) ? 4 : 0, burn: (S.event && evIs('embers')) ? 4 : 0, flash: 0, born: S.t - (at ? 0.6 : 0), dying: 0, stun: 0, summonT: R.summon || 0, totemT: R.totem || 0, blinkT: Math.random() * 2.4, tint: S.event && evIs('golden') ? 'gold' : R.tint, shield: !!R.shield || !!(S.event && evIs('mirror')) });
   }
 
@@ -631,35 +632,34 @@
   // the Magister's script. Owner, Nov 10 2026: "players are having trouble understanding what the restore does... the player
   // should acknowledge the text of the game before continuing... did not get to read it because it was too fast". Each line is
   // one idea; the game holds while he talks and waits for a tap (or the button the line asks for). [face, text, focus, press]
+  // Captions (CrazyGames review, Nov 13 2026: the guide held the fight 25 of the first 75 s with 71 words, and accepted games
+  // pause for none). Each line is a short caption shown at once over the running fight; the owner's recorded line plays
+  // in full under it. [face, caption, focus, press, voice]. The opening shows 14 words in its first minute (the bar is 15).
   const GUIDE = {
-    intro: [['worry', 'Monsters from the forest are back to finish off our city!'],
-      ['smile', 'Our four towers on the wall hold them back.', 'towers'],
-      ['smile', 'Tap Upgrade to make the towers hit harder!', 'towers', 'up']],
-    restore: [['smile', 'Every monster we beat sends Resonance to our fountain.', 'fountain'],
-      ['smile', 'Spend it to rebuild our ruined city. Every building brings a new power!'],
-      ['proud', 'Tap Rebuild Forge, and our towers will shoot fire!', null, 're']],
-    forge: [['proud', 'The Forge is back: our towers shoot fire now!', 'towers'],
-      ['smile', 'Rebuilt buildings also make Resonance by themselves, even while you are away.']],
-    frostSpire: [['proud', 'Frost! Our towers slow the monsters now.', 'towers'], ['smile', 'Burn a frozen monster, and it will SHATTER!']],
-    stormBell: [['proud', 'The Storm Bell rings! Lightning jumps from monster to monster.', 'towers']],
-    boss: [['worry', 'A great beast is coming! Keep the towers strong. The gate must hold!']],
-    fell: [['smile', 'We fell back a few waves, but nothing is lost. Upgrade, and push again!']],
-    whole: [['proud', 'The whole city stands again! Hold out to wave {aw}, and we can Ascend.']],
-    ascend: [['proud', 'The time has come! Ascend, and we rebuild the city, better than ever.'], ['smile', 'Our Resonance will flow faster, forever. Tap Ascend!', null, 're']],
-    gate: [['worry', 'They are at our gate! Tap Upgrade, quick: stronger towers drive them back!', 'towers', 'up']],
-    surge: [['smile', 'The fountain brims with power! Tap it, and all Resonance pays double for three minutes.', 'fountain']]
+    intro: [['worry', 'Defend the city!', null, null, 'intro-1'],
+      ['smile', 'Tap Upgrade!', 'towers', 'up', 'intro-3']],
+    restore: [['proud', 'Tap Rebuild Forge!', 'fountain', 're', 'restore-3']],
+    forge: [['proud', 'Fire towers!', 'towers', null, 'forge-1']],
+    frostSpire: [['smile', 'Freeze, then burn: SHATTER!', 'towers', null, 'frostSpire-2']],
+    stormBell: [['proud', 'Lightning chains!', 'towers', null, 'stormBell-1']],
+    boss: [['worry', 'A great beast! Hold the gate!', null, null, 'boss-1']],
+    fell: [['smile', 'Nothing is lost. Push again!', null, null, 'fell-1']],
+    whole: [['proud', 'The city stands! Wave {aw} to Ascend', null, null, 'whole-1']],
+    ascend: [['proud', 'Ascend: better than ever!', null, null, 'ascend-1'], ['smile', 'Tap Ascend!', null, 're', 'ascend-2']],
+    gate: [['worry', 'At the gate! Upgrade!', 'towers', 'up', 'gate-1']],
+    surge: [['smile', 'Tap the fountain: double Resonance!', 'fountain', null, 'surge-1']]
   };
   // recorded lines (owner's voice) as assets/voice/<block>-<n>.mp3, listed here once the file is in; others use the made-up voice
   const BUILDING_LINES = { forge: 1, frostSpire: 1, stormBell: 1 };
-  const VOICE = new Set(['intro-1', 'intro-2', 'intro-3', 'restore-1', 'restore-2', 'restore-3', 'forge-1', 'forge-2', 'frostSpire-1', 'frostSpire-2',
+  const VOICE = new Set(['intro-1', 'intro-3', 'restore-3', 'forge-1', 'frostSpire-2',
     'stormBell-1', 'gate-1', 'boss-1', 'fell-1', 'surge-1', 'whole-1', 'ascend-1', 'ascend-2']);   // all recorded by the owner, Nov 12 2026
   if (A.loadVoices && P.ascensions === 0) A.loadVoices([...VOICE]);
   const G = { q: [], cur: null, el: null, nodes: [] };
   function guideSay(id, vars) {
-    if (P.ascensions > 0) return;   // he teaches the first run; a player who has Ascended already knows it all (owner, Nov 7 2026)
+    if (P.ascensions > 0 || P.settings.noGuide) return;   // he teaches the first run; Skip silences him for good; a player who has Ascended already knows it all (owner, Nov 7 2026)
     if (!GUIDE[id] || (P.told || []).includes('g_' + id) || G.q.some(b => b.id === id) || (G.cur && G.cur.id === id)) return;
     P.told = (P.told || []).concat('g_' + id); save();
-    G.q.push({ id, lines: GUIDE[id].map(([face, text, focus, press], i) => ({ face, focus, press, voice: VOICE.has(`${id}-${i + 1}`) ? `${id}-${i + 1}` : null, text: text.replace(/\{(\w+)\}/g, (_, k) => vars && vars[k] !== undefined ? vars[k] : '') })) });
+    G.q.push({ id, lines: GUIDE[id].map(([face, text, focus, press, voice]) => ({ face, focus, press, voice: VOICE.has(voice) ? voice : null, text: text.replace(/\{(\w+)\}/g, (_, k) => vars && vars[k] !== undefined ? vars[k] : '') })) });
   }
   // syllables for the voice and for the typing: each vowel group is one sound; a word's last sound before . , ! ? pauses
   function syllables(text) {
@@ -682,8 +682,8 @@
   function guideEl() {
     if (G.el) return G.el;
     const d = document.createElement('div'); d.id = 'guide'; d.setAttribute('role', 'status');
-    d.innerHTML = '<div class="por"><canvas width="244" height="240"></canvas></div><div class="bub"><b>Magister Bram</b><p></p></div>';
-    d.addEventListener('pointerdown', ev => { ev.stopPropagation(); guideTap(); });
+    d.innerHTML = '<div class="por"><canvas width="244" height="240"></canvas></div><div class="bub"><b>Magister Bram</b><p></p></div><button class="gskip" type="button">Skip ▸▸</button>';
+    d.addEventListener('pointerdown', ev => { ev.stopPropagation(); if (ev.target.closest('.gskip')) return guideSkip(); guideTap(); });
     d.style.bottom = (H - WALL_FRONT + 70) + 'px';   // on the grass above the wall: never over the fountain, the buildings or the hand
     el('stage').appendChild(d); G.el = d; return d;
   }
@@ -698,7 +698,7 @@
     const rec = L.voice && A.voiceDur && A.voiceDur(L.voice);
     if (rec) { const k = rec / syl.dur; syl.sylls.forEach(x => { x.at *= k; x.len *= k; }); syl.dur = rec; }
     b.line = { L, syl, t: 0, typed: 0, done: false, rec: !!rec, mute: !!L.voice && !rec };
-    G.el.querySelector('p').textContent = ''; G.el.classList.remove('wait'); G.el.classList.toggle('press', !!L.press); guideFace(L.face, false);
+    G.el.querySelector('p').textContent = L.text; G.el.classList.remove('wait'); G.el.classList.toggle('press', !!L.press); guideFace(L.face, false);
     A.hush(G.nodes); G.nodes = rec ? A.voice(L.voice) : A.speak ? A.speak(syl.sylls) : [];
   }
   function guideTap() {
@@ -706,10 +706,11 @@
     // the first tap is often the one that lets the browser play sound: he says that line again, aloud, instead of skipping it unheard
     if (l.mute && !G.voiced && A.voiceOn && A.voiceOn()) { G.voiced = true; l.replay = performance.now() + 1500; return; }
     if (l.replay) return;
-    if (!l.done) { l.done = true; l.t = Math.max(l.t, l.syl.dur); if (!l.rec) A.hush(G.nodes); G.el.querySelector('p').textContent = l.L.text; G.el.classList.add('wait'); guideFace(l.L.face, false); return; }
-    if (l.L.press && l.t - l.syl.dur < 0.25) return;   // a stray double tap does not skip the line that asks for a button
-    A.play('tier_up', 0.06); guideNext();
+    if (l.L.press) return;   // a line that asks for a button stays until it is pressed (the fight runs on meanwhile)
+    guideNext();   // a tap on him moves straight on
   }
+  // Skip: he stops talking for good (Settings can bring him back); the pointing hand still shows the one button to press
+  function guideSkip() { A.unlock(); P.settings.noGuide = true; G.q.length = 0; A.hush(G.nodes); if (G.cur) { G.cur.i = G.cur.lines.length; guideNext(); } save(); }
   function guideNext() {
     const b = G.cur; A.hush(G.nodes);
     if (b && ++b.i < b.lines.length) return guideLine();
@@ -720,8 +721,8 @@
     const rl = G.cur && G.cur.line;
     if (rl && rl.replay) { if (A.voiceDur(rl.L.voice)) { rl.replay = 0; guideLine(); } else if (performance.now() > rl.replay) rl.replay = 0; }
     if (!G.cur) {
-      if (!G.q.length || S.card || !imgReady.magister || (S.wavePop && S.wavePop.t < 2.2) || (S.reveal && S.reveal.t < (G.q[0].id in BUILDING_LINES ? 4 : 1.5))) return;   // a rebuilt tower building gets ~4 s to show off its new shots before he speaks (review Nov 12)   // he waits for the wave banner and its enemy cards to clear (detail pass, Nov 7: his panel sat on them)
-      G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine(); if (S.wavePop) S.wavePop.t = Math.max(S.wavePop.t, 99);   // the wave banner has had its moment; it would sit frozen over the field while he talks
+      if (!G.q.length || S.card || !imgReady.magister || (!WIDE && S.wavePop && S.wavePop.t < 2.2) || (S.reveal && S.reveal.t < (G.q[0].id in BUILDING_LINES ? 4 : 1.5))) return;   // a rebuilt tower building gets ~4 s to show off its new shots before he speaks (review Nov 12)   // he waits for the wave banner and its enemy cards to clear (detail pass, Nov 7: his panel sat on them)
+      G.cur = G.q.shift(); G.cur.i = 0; guideEl().classList.add('in'); guideLine(); if (S.wavePop && !WIDE) S.wavePop.t = Math.max(S.wavePop.t, 99);   // the wave banner has had its moment; it would sit frozen over the field while he talks
       if (!P.settings.stats) el('toast').style.bottom = (H - WALL_FRONT + 70 + 260) + 'px';   // a toast steps up above the panel while he talks
       return;
     }
@@ -732,15 +733,17 @@
     if (l.L.focus === 'fountain') S.plazaGlow = Math.max(S.plazaGlow || 0, 0.45 + 0.35 * Math.sin(performance.now() / 200));   // pulses on the real clock: the fight is held while he talks (a still pink glow read as a bug, review Nov 12)
     if (!l.done) {
       const due = l.syl.sylls.filter(x => x.at <= l.t), last = due[due.length - 1];
-      G.el.querySelector('p').textContent = l.L.text.slice(0, last ? last.upto : 0);
       const speaking = last && l.t - last.at < last.len * 0.8; guideFace(l.L.face, speaking);
-      if (l.t >= l.syl.dur) { l.done = true; l.t = l.syl.dur; G.el.querySelector('p').textContent = l.L.text; G.el.classList.add('wait'); guideFace(l.L.face, false); }
-    }   // then he waits: a tap anywhere (or the button he asks for) moves on
+      if (l.t >= l.syl.dur) { l.done = true; guideFace(l.L.face, false); }
+    }
+    // the fight never waits for him: a caption moves on by itself once said (a line that asks for a button stays up to
+    // 12 s, or until the button is pressed)
+    else if (l.t >= l.syl.dur + (l.L.press ? 12 : 1.1)) guideNext();
   }
   const guideFocus = () => G.cur && G.cur.line && G.cur.line.L.focus;
   const guideIn = () => !!(G.cur && G.el && G.el.classList.contains('in'));
-  // the fight holds while he talks; once a line that asks for a button is read, the fight runs on until the player presses it
-  const guideHeld = () => guideIn() && !(G.cur.line && G.cur.line.done && G.cur.line.L.press);
+  // the fight never holds for him (CrazyGames review, Nov 13 2026); kept as a name so the pinned test can prove it
+  const guideHeld = () => false;
   const guidePress = () => G.cur && G.cur.line && G.cur.line.L.press;
   function guidePressed(which) { if (G.cur && G.cur.lines.slice(G.cur.i).some(l => l.press === which)) { A.hush(G.nodes); G.cur.i = G.cur.lines.length; guideNext(); } }   // the player did what the block was leading to: the rest of it is said
   const imgReady = {};
@@ -1142,7 +1145,7 @@
     if (kind === 'shop') html = shopHtml();
     if (kind === 'quests') html = questsHtml();
     if (kind === 'perks') html = perksHtml();
-    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${P.settings[k] ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}${root.HG_TESTING ? '<button id="c-wipe" class="linkbtn">Start a new game (test page only)</button>' : ''}`;   // the owner's test page only; never in a portal build (owner, Nov 12 2026)
+    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced', 'tips'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${(k === 'tips' ? !P.settings.noGuide : P.settings[k]) ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion', tips: 'Magister Bram\'s tips' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}${root.HG_TESTING ? '<button id="c-wipe" class="linkbtn">Start a new game (test page only)</button>' : ''}`;   // the owner's test page only; never in a portal build (owner, Nov 12 2026)
     body.innerHTML = html;
     const close = () => { card.className = ''; S.card = null; if (!S.paused) SDK.gameplay(true); ui(); nextCard(); };
     const on = (id, f) => { const b = body.querySelector('#' + id); if (b) b.onclick = () => { A.unlock(); f(); }; };
@@ -1189,6 +1192,7 @@
     }
     if (kind === 'settings') {
       for (const k of ['music', 'sfx', 'reduced']) body.querySelector('#s-' + k).onchange = ev => { P.settings[k] = ev.target.checked; A.set(k, ev.target.checked); save(); };
+      body.querySelector('#s-tips').onchange = ev => { P.settings.noGuide = !ev.target.checked; save(); };
       on('c-ok', () => { S.paused = false; el('pause').classList.remove('on'); SDK.gameplay(true); close(); });
       on('c-wipe', () => {   // owner, Nov 12 2026: a way to see the opening again. Asked twice, in the page itself, never by a browser dialog
         body.innerHTML = `<h2>Start a new game?</h2><p>This city, every Ascension, perk and Starshard is erased, and you begin again at wave 1.</p>${btn('c-erase', 'Erase and start over', 'danger')}${btn('c-keep', 'Keep my city', 'gold')}`;
@@ -1460,7 +1464,7 @@
     const age = w.t, L = 2.8; if (age > L) { S.wavePop = null; return; }
     const calm = reduced(), pop = calm ? 1 : age < 0.22 ? 0.55 + 0.6 * age / 0.22 : age < 0.36 ? 1.15 - (age - 0.22) / 0.14 * 0.15 : 1;
     const fade = age > L - 0.5 ? Math.max(0, (L - age) / 0.5) : 1;
-    cx.save(); cx.globalAlpha = fade; cx.translate(W / 2, 236 - (calm ? 0 : age * 6)); cx.scale(pop, pop);
+    cx.save(); cx.globalAlpha = fade; cx.translate(W / 2, (WIDE ? 292 : 236) - (calm ? 0 : age * 6)); cx.scale(pop, pop);
     cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineJoin = 'round';
     const title = (w.boss ? 'BOSS WAVE ' : S.trial && !w.boss ? 'TRIAL WAVE ' : 'WAVE ') + C.fmt(w.n) + '!';   // event waves are big, but only a boss wave says BOSS
     cx.font = (w.big ? 76 : 66) + 'px "HG Display", sans-serif'; cx.lineWidth = 12; cx.strokeStyle = '#24162c'; cx.strokeText(title, 0, 0);
@@ -1493,7 +1497,7 @@
 
   function render() {
     const sh = S.shake > 0 && !reduced() ? (Math.random() - 0.5) * 10 * (S.shake / 0.14) : 0;
-    cx.setTransform(k, 0, 0, k, sh * k, sh * 0.6 * k);
+    cx.setTransform(k, 0, 0, k, sh * k, (sh * 0.6 - camY()) * k);
     // the ground (meadow, treeline, the city and every restored building) comes from one cached canvas; only a building
     // that is fading in right now is drawn on its own. Eleven full-band draws a frame became one (Nov 6 2026, perf pass).
     cx.drawImage(groundLayer(), 0, 0, W, GROUND_H());
@@ -1638,8 +1642,9 @@
     }
     if (guideIn()) { spot = null; target = G.cur.line.done && guidePress() || null; }   // while he talks the hand shows only the button he asks for
     const hand = el('hand');
-    const hx = spot ? Math.max(0, Math.min(W - 96, (spot.hx !== undefined ? spot.hx : sx(spot[0])) - 48)) : 0, hy0 = spot ? (spot.hy !== undefined ? spot.hy : sy(spot[1]) - 34) : 0;
-    const fromTop = !!spot && hy0 + 40 + 112 > H - 168;   // under the target it would hide behind the button bar (outside review, Nov 7)
+    const [wx, wy] = spot ? toStage(spot.hx !== undefined ? spot.hx : sx(spot[0]), spot.hy !== undefined ? spot.hy : sy(spot[1]) - 34) : [0, 0];
+    const hx = spot ? Math.max(0, Math.min((WIDE ? WB() : W) - 96, wx - 48)) : 0, hy0 = wy;
+    const fromTop = !!spot && hy0 + 40 + 112 > (WIDE ? SH : H - 168);   // under the target it would hide behind the button bar (outside review, Nov 7)
     hand.className = target ? 'on ' + target + (fromTop ? ' from-top' : '') : '';
     hand.style.left = spot ? hx + 'px' : '';
     hand.style.top = spot ? (fromTop ? hy0 - 40 - 112 : hy0 + 40) + 'px' : '';   // finger up from under the building or badge, or down from above it
@@ -1659,13 +1664,37 @@
   root.addEventListener('pagehide', () => { flushWisps(); save(); });
 
   // ---------- stage fit ----------
-  el('stage').style.height = H + 'px'; cv.style.height = H + 'px';
+    // Desktop landscape layout (CrazyGames review, Nov 13 2026: the portrait column used a third of the desktop frame and
+  // drew everything at 0.36). On a wide window the stage turns landscape: the playable world (from the field's top line
+  // down to the city's last row) fills the left at full height, and the HUD, Bram, the goals and the two buttons sit in
+  // a panel on the right. Phones and tall windows keep the portrait stage.
+  const CAM_Y = FIELD_TOP - 60, SH = 720, PW = 652;   // 60 above the field line: a new enemy's head shows as it arrives
+  const VIEW_H = () => GROUND_H() - CAM_Y, WZ = () => SH / VIEW_H(), WB = () => W * WZ();
+  let WIDE = false;
+  const camY = () => (WIDE ? CAM_Y : 0);
+  // world point -> stage point (the hand and anything else laid over the canvas)
+  const toStage = (x, y) => (WIDE ? [x * WZ(), (y - CAM_Y) * WZ()] : [x, y]);
   function fit() {
-    const vw = root.innerWidth, vh = root.innerHeight, f = Math.min(vw / W, vh / H);
-    el('stage').style.transform = `translate(${(vw - W * f) / 2}px,${(vh - H * f) / 2}px) scale(${f})`;
-    k = Math.max(0.5, Math.min(2, f * (root.devicePixelRatio || 1)));
-    cv.width = Math.round(W * k); cv.height = Math.round(H * k);
-    placeSides(vw, vh, W * f);
+    const vw = root.innerWidth, vh = root.innerHeight, st = el('stage');
+    WIDE = vw / Math.max(1, vh) >= 1.45 && vh >= 300;
+    st.classList.toggle('wide', WIDE);
+    if (WIDE) {
+      const SW = Math.round(WB() + PW), f = Math.min(vw / SW, vh / SH);
+      st.style.width = SW + 'px'; st.style.height = SH + 'px'; st.style.setProperty('--wb', WB() + 'px');
+      st.style.transform = `translate(${(vw - SW * f) / 2}px,${(vh - SH * f) / 2}px) scale(${f})`;
+      k = Math.max(0.5, Math.min(2.4, f * WZ() * (root.devicePixelRatio || 1)));
+      cv.style.width = WB() + 'px'; cv.style.height = SH + 'px';
+      cv.width = Math.round(W * k); cv.height = Math.round(VIEW_H() * k);
+    } else {
+      const f = Math.min(vw / W, vh / H);
+      st.style.width = W + 'px'; st.style.height = H + 'px';
+      st.style.transform = `translate(${(vw - W * f) / 2}px,${(vh - H * f) / 2}px) scale(${f})`;
+      k = Math.max(0.5, Math.min(2, f * (root.devicePixelRatio || 1)));
+      cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      cv.width = Math.round(W * k); cv.height = Math.round(H * k);
+    }
+    placeSides(vw, vh, WIDE ? vw : W * Math.min(vw / W, vh / H));
+    drawInfo();
   }
   // ---------- desktop side panels (fresh-eyes review, Nov 6 2026: on a wide window the portrait stage left two thirds
   // of the screen as blurred filler). When there is room, the city's buildings sit on the left (level them with a click)
@@ -1673,7 +1702,7 @@
   const sides = [el('sideL'), el('sideR')].filter(Boolean);
   let sidesOn = false;
   function placeSides(vw, vh, sw) {
-    const room = (vw - sw) / 2; sidesOn = sides.length === 2 && room >= 250 && vh >= 420;
+    const room = (vw - sw) / 2; sidesOn = !WIDE && sides.length === 2 && room >= 250 && vh >= 420;
     sides.forEach((p, i) => { p.hidden = !sidesOn || P.firstSession; if (!sidesOn) return;
       const z = Math.max(0.6, Math.min(1.5, vh / 720, (room - 36) / 250)), w = Math.min(360, (room - 36) / z);   // never squeezed under 250 px: rows wrapped (owner's screenshot)   // panels grow with the window like the stage
       p.style.width = w + 'px'; p.style.maxHeight = (vh - 40) / z + 'px'; p.style.transform = `translateY(-50%) scale(${z})`;
@@ -1681,7 +1710,7 @@
     if (sidesOn) drawSides();
   }
   function drawSides() {
-    if (!sidesOn) return;
+    if (!sidesOn) { drawInfo(); return; }
     // a brand-new player sees only the fight and one pointed button: the panels arrive once the opening is over
     for (const p of sides) if (p.hidden !== !!P.firstSession) p.hidden = !!P.firstSession;
     if (P.firstSession) return;
@@ -1692,17 +1721,41 @@
       const next = offer.includes(b.id);
       return `<div class="srow${next ? ' next' : ''}"><span class="sn">${b.name}<small>${next ? `Rebuild next · ${C.fmt(rc)}` : 'In ruins'}</small></span></div>`; }).join('');
     html(el('sideL'), `<h3>The city <small>${P.restored.length}/10</small></h3>${rows}<p class="shint">Click a level button, or a building in the city.</p>`);
+    html(el('sideR'), goalsHtml());
+  }
+  function goalsHtml() {
+    const gem = '<i class="gem sm"></i>', offer = C.restoreOffer(P), rc = C.cityWhole(P) ? 0 : C.restoreCost(P.restored.length);
     const rw = Math.max(P.runWave || 1, P.wave), aw = C.ascendWave(P);
     const step = C.canAscend(P) ? '<b>Ascend is ready!</b> Press Ascend.' : C.cityWhole(P) ? `Reach wave <b>${aw}</b> to Ascend (now ${rw}).` : `Rebuild ${offer.map(id => C.byId(id).name).join(' or ')} for ${gem}${C.fmt(rc)}.`;
     const stage = C.stageOf(P.gateLevel), nextStage = C.STAGES[stage];
     const qs = P.shop.open && P.quests.list.length ? `<h4>Today's quests</h4>${P.quests.list.map(q => `<div class="sq${q.claimed ? ' done' : ''}"><span>${C.questText(q)}</span><b>${Math.min(q.n, q.need)}/${q.need}</b></div>`).join('')}` : '';
     const star = P.ascensions >= 1 ? C.STARS.find(st => st.asc === P.ascensions && !P.stars.includes(st.id)) : null;
-    html(el('sideR'), `<h3>Goals</h3><div class="sstep">${step}</div>`
+    return `<h3>Goals</h3><div class="sstep">${step}</div>`
       + `<div class="sline">Gate level <b>${P.gateLevel}</b>${nextStage ? ` · stage ${stage + 1} at level ${nextStage}` : ' · top stage'}</div>`
       + `<div class="sline">Best wave <b>${C.fmt(P.bestWave)}</b> · this run ${rw}</div>`
       + (star ? `<div class="sline">Next star: <b>${star.name}</b> at wave ${C.starWave(P, star.k)}</div>` : '') + qs
       + `<h4>Collections</h4><div class="sgrid"><span>Feats<b>${P.feats.length}/${C.FEATS.length}</b></span><span>Combos<b>${P.combos.length}/${comboTotal()}</b></span>`
-      + `<span>Butterflies<b>${P.flies.length}/${C.BUTTERFLIES.length}</b></span><span>Enemies met<b>${(P.seenRoles || []).length}</b></span><span>Ascension<b>${P.ascensions >= C.ETERNAL_AT ? `${P.ascensions} · Eternal` : `${P.ascensions}/${C.ETERNAL_AT}`}</b></span>${P.ascensions >= 1 ? `<span>Stars<b>${P.stars.length}/${C.STARS.length}</b></span>` : ''}</div>`);
+      + `<span>Butterflies<b>${P.flies.length}/${C.BUTTERFLIES.length}</b></span><span>Enemies met<b>${(P.seenRoles || []).length}</b></span><span>Ascension<b>${P.ascensions >= C.ETERNAL_AT ? `${P.ascensions} · Eternal` : `${P.ascensions}/${C.ETERNAL_AT}`}</b></span>${P.ascensions >= 1 ? `<span>Stars<b>${P.stars.length}/${C.STARS.length}</b></span>` : ''}</div>`;
+  }
+  function drawNextPic(c, id) {   // a crop of the restored painting around the building, at the painting's own resolution
+    const src = img.restored, sp = CITY.spots[id]; if (!src || !sp) return false;
+    const g = c.getContext('2d'), w = sp[2] * K * 2.3, h = w * c.height / c.width, x = (sp[0] - CITY.crop[0]) * K - w / 2, y = (sp[1] - CITY.crop[1]) * K - h * 0.58, f = src.width / W;
+    g.clearRect(0, 0, c.width, c.height); g.drawImage(src, x * f, y * f, w * f, h * f, 0, 0, c.width, c.height);
+    return true;
+  }
+  // the wide layout's panel: the goals between the HUD and the buttons (a brand-new player sees only the one goal)
+  let infoKey = '';
+  function drawInfo() {
+    const box = el('info'); if (!box) return;
+    box.hidden = !WIDE; if (!WIDE) return;
+    // the next building to rebuild, shown from the painting (blind review, Nov 13 2026: the panel read as half empty)
+    const nx = C.cityWhole(P) ? null : C.restoreOffer(P)[0], nb = nx && C.byId(nx);
+    const pips = Array.from({ length: 10 }, (_, i) => `<i class="${i < P.restored.length ? 'on' : ''}"></i>`).join('');
+    const next = nb ? `<div class="nextb"><canvas width="220" height="150"></canvas><div><small>Next to rebuild</small><b>${nb.name}</b><span>${nb.line}</span></div></div>` : '';
+    const h = P.firstSession ? `<div class="pips">${pips}</div>${next}`
+      : `<div class="pips">${pips}</div>` + next + goalsHtml() + '<p class="shint">Click a building in the city to grow it.</p>';
+    // the picture needs the painting: until it has loaded the card is not shown, and drawn as soon as it can be
+    if (h !== infoKey) { box.innerHTML = h; const c = box.querySelector('.nextb canvas'); infoKey = !c || drawNextPic(c, nx) ? h : ''; if (c && !infoKey) c.closest('.nextb').hidden = true; }
   }
   if (sides[0]) sides[0].addEventListener('pointerdown', ev => { const b = ev.target.closest('[data-lv]'); if (!b || S.card) return; const id = b.dataset.lv; clearTimeout(S.lvHold); clearInterval(S.lvRep); holdFired = false;
     S.lvHold = setTimeout(() => { S.lvRep = setInterval(() => { if (!S.card && levelUp(id)) { holdFired = true; drawSides(); } else clearInterval(S.lvRep); }, 120); }, 420); });   // hold to keep levelling, as on the card
@@ -1722,15 +1775,15 @@
     });
     root.addEventListener('keydown', e => {
       if (e.repeat) return; const key = e.key.toLowerCase();
-      if (guideHeld() && (key === ' ' || key === 'enter')) { e.preventDefault(); if (!guidePress() || !G.cur.line.done) guideTap(); return; }
+      if (guideIn() && !guidePress() && (key === ' ' || key === 'enter')) { e.preventDefault(); guideTap(); return; }
       if (S.card) { if (key === 'enter') { const b = el('card').querySelector('#c-ok'); if (b) { e.preventDefault(); b.click(); } } return; }
       if (key === 'u') upgrade(); else if (key === 'r') restore(); else if (key === 'p') el('pause').click(); else if (key === 's') openShopCard(); else if (key === 'q' && P.shop.open && !S.card) showCard('quests'); else if (key === 'x') surgeTap(); else if (key === 'i') toggleStats();
     });
     root.addEventListener('pointerdown', () => A.unlock(), { once: true });
     // tap a restored building to level it up; a ruined one says what it will do once restored
     cv.addEventListener('click', ev => {
-      if (S.card) return; if (guideHeld()) { if (!guidePress()) guideTap(); else if (!G.cur.line.done) guideTap(); return; }   // while he talks a tap on the city reads on
-      const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H;
+      if (S.card) return;
+      const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * (WIDE ? VIEW_H() : H) + camY();
       if (tapGold(x, y) || tapFly(x, y) || tapFolk(x, y) || tapFountain(x, y)) return;
       for (const id in HALLS) { const [bx, by] = badgeAt(id); if (HALLS[id].ok() && Math.hypot(x - bx, y - by) < 46 && openHall(id)) return; }
       for (const id of C.BUILDING_IDS) { const s = CITY.spots[id]; const dx = (x - sx(s[0])) / (s[2] * K * 0.8), dy = (y - sy(s[1])) / (s[3] * K * 0.8);
