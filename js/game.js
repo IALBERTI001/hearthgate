@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13a';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13b';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -236,7 +236,7 @@
     const quiet = P.combos.includes(id) && S.lastShout && S.lastShout.w === word && S.t - S.lastShout.t < 2;
     if (!quiet) S.lastShout = { w: word, t: S.t };
     S.pops = S.pops.filter(p => !p.combo);
-    let cy = (e.y - e.size - 80 < (S.wavePop ? 500 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80;
+    let cy = (e.y - e.size - 80 < (S.wavePop ? 500 : WIDE ? CAM_Y + 60 : FIELD_TOP + 50)) ? Math.max(e.y + 70, S.wavePop ? 500 : 0) : e.y - e.size - 80;
     const news = S.pops.find(q => q.text && q.size >= 40 && q.x === W / 2 && q.t < q.life * 0.7 && Math.abs(q.y - q.t * 40 - cy) < 70);   // an announcement (Cheer, Boss down, Trial won) keeps its line
     if (news) cy = news.y - news.t * 40 + 80;
     S.pops.push({ x: Math.max(200, Math.min(520, e.x)), y: cy, text: word, col, t: 0, life: quiet ? 0.8 : 1.4, size: quiet ? 40 : 58, combo: true, hold: 0.75 });
@@ -342,8 +342,10 @@
     if (S.tapRun >= 5 && !P.firstSession && !holdFired && firstTime('hold')) setTimeout(() => toast('Tip: hold Upgrade to keep buying'), 600);
     if (C.stageOf(P.gateLevel) > stage) { toast(`Gate stage ${C.stageOf(P.gateLevel)}! The towers grow.`); A.play('tier_up', 0.6); TOWERS.forEach(t => (t.flash = 1.5)); }
     else { pop(GATE_X, WALL_FRONT - 240, `Damage ${rfmt(before)} -> ${rfmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach((t, i) => { t.flash = 1.2; t.bumpAt = S.t + 0.04 + i * 0.07; }); A.play('tier_up', 0.25); }
-    chimneyPuff('forge', 4); guidePressed('up'); save(); ui();
+    chimneyPuff('forge', 4); guidePressed('up'); bounce('up'); save(); ui();
   }
+  // a bought button gives a small springy nod under the hand (F9, Nov 13 2026: every press answers at once)
+  function bounce(id) { const b = el(id); if (!b || reduced()) return; b.classList.remove('bought'); void b.offsetWidth; b.classList.add('bought'); }
   function restore() {
     A.unlock();
     if (S.card) return;
@@ -359,7 +361,7 @@
     const c = C.restoreCost(P.restored.length); if (P.res < c) return;
     P.res -= c; P.restored.push(id); refresh(); S.upsSinceRestore = 0;
     const b = C.byId(id), r2 = P.ascensions >= 1 && C.RANK2[id];
-    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} rebuilt: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id); guidePressed('re'); guideSay(id);   // a tower building says what it gave the towers (outside review, Nov 7 2026: Restore said what it cost, never what it did)
+    toast(r2 ? `${b.name} returns Ascended${P.ascensions >= 2 ? ' and gilded' : ''}! ${r2.name}: ${r2.line}` : `${b.name} rebuilt: ${b.line}`); S.reveal = { b: id, t: 0 }; folkBuild(id); guidePressed('re'); bounce('re'); guideSay(id);   // a tower building says what it gave the towers (outside review, Nov 7 2026: Restore said what it cost, never what it did)
     if (r2) { S.rank2 = (S.rank2 || []).concat(id); pop(sx(CITY.spots[id][0]), sy(CITY.spots[id][1]) - 50, r2.name + '!', '#ffd56b', 1.8, 40); }
     A.play('tier_up', 0.55); if (C.cityWhole(P)) SDK.happytime(); reportProgress();   // confetti when the whole city stands, not on every building
     if (P.restored.length === 5) setTimeout(() => { toast('The fountain flows again!'); S.reveal = { b: 'plaza', t: 0 }; }, 2900);
@@ -1422,7 +1424,7 @@
     const t = m.t, col = ['', '#d08a4a', '#e8eef4', '#ffd56b'][m.tier], dark = ['', '#7a4316', '#7d8896', '#b0740e'][m.tier];
     const pop = t < 0.3 ? 1.35 * t / 0.3 : t < 0.45 ? 1.35 - (t - 0.3) / 0.15 * 0.35 : 1;
     const fly = t > 1.7 ? Math.min(1, (t - 1.7) / 0.5) : 0, e = fly * fly;
-    const tx = 600, ty = 128, x = W / 2 + (tx - W / 2) * e, y = 340 + (ty - 340) * e, sc = pop * (1 - 0.7 * e);
+    const y0 = WIDE ? CAM_Y + 150 : 340, tx = WIDE ? W + 40 : 600, ty = WIDE ? CAM_Y + 140 / WZ() : 128, x = W / 2 + (tx - W / 2) * e, y = y0 + (ty - y0) * e, sc = pop * (1 - 0.7 * e);   // wide: it flies off the field's right edge toward the panel's counter
     if (fly >= 1 && !m.landed) { m.landed = true; const c = el('combos'); c.classList.remove('pulse'); void c.offsetWidth; c.classList.add('pulse'); }
     cx.save(); cx.translate(x, y); cx.scale(sc, sc);
     if (!fly) {   // rays and a dark plate behind, so it reads over any fight
@@ -1464,7 +1466,7 @@
     const age = w.t, L = 2.8; if (age > L) { S.wavePop = null; return; }
     const calm = reduced(), pop = calm ? 1 : age < 0.22 ? 0.55 + 0.6 * age / 0.22 : age < 0.36 ? 1.15 - (age - 0.22) / 0.14 * 0.15 : 1;
     const fade = age > L - 0.5 ? Math.max(0, (L - age) / 0.5) : 1;
-    cx.save(); cx.globalAlpha = fade; cx.translate(W / 2, (WIDE ? 292 : 236) - (calm ? 0 : age * 6)); cx.scale(pop, pop);
+    cx.save(); cx.globalAlpha = fade; cx.translate(W / 2, (WIDE ? CAM_Y + 62 : 236) - (calm ? 0 : age * 6)); cx.scale(pop, pop);
     cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.lineJoin = 'round';
     const title = (w.boss ? 'BOSS WAVE ' : S.trial && !w.boss ? 'TRIAL WAVE ' : 'WAVE ') + C.fmt(w.n) + '!';   // event waves are big, but only a boss wave says BOSS
     cx.font = (w.big ? 76 : 66) + 'px "HG Display", sans-serif'; cx.lineWidth = 12; cx.strokeStyle = '#24162c'; cx.strokeText(title, 0, 0);
@@ -1668,7 +1670,7 @@
   // drew everything at 0.36). On a wide window the stage turns landscape: the playable world (from the field's top line
   // down to the city's last row) fills the left at full height, and the HUD, Bram, the goals and the two buttons sit in
   // a panel on the right. Phones and tall windows keep the portrait stage.
-  const CAM_Y = FIELD_TOP - 60, SH = 720, PW = 652;   // 60 above the field line: a new enemy's head shows as it arrives
+  const CAM_Y = FIELD_TOP + 50, SH = 720, PW = 460;   // owner, Nov 13 2026: "the side is way too big": a narrower panel and a closer camera (enemies walk in from above the top edge)
   const VIEW_H = () => GROUND_H() - CAM_Y, WZ = () => SH / VIEW_H(), WB = () => W * WZ();
   let WIDE = false;
   const camY = () => (WIDE ? CAM_Y : 0);

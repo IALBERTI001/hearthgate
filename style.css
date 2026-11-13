@@ -451,3 +451,56 @@ svg.wing { flex: none; width: 84px; height: 70px; }
 /* the panel wears the city's own painting, dimmed, so it reads as part of the same world as the field */
 #stage.wide::before { background: linear-gradient(rgba(42, 22, 40, .9), rgba(30, 16, 26, .95)), url('assets/city/city-restored.webp') center / cover no-repeat; }
 #info .nextb canvas { width: 220px; height: 150px; }
+
+/* ---------- owner, Nov 13 2026: "the side is way too big. My eyes hurt reading the buttons" ----------
+   A 460 px panel; the two buttons stacked as calm rows (name left, price right, no pulsing glow);
+   Bram, the goals and the next building sized down to match. */
+#stage.wide #hud { left: calc(var(--wb) + 18px); right: 14px; top: 14px; grid-template-columns: 112px minmax(0, 1fr) auto; }
+#stage.wide .stat { font-size: 40px; }
+#stage.wide .stat .lbl { font-size: 20px; letter-spacing: 2px; }
+#stage.wide .stat.res .num { font-size: 44px; } #stage.wide .stat.res .gem { width: 24px; height: 24px; }
+#stage.wide .stat .sub { font-size: 22px; }
+#stage.wide .stat.sm { font-size: 26px; }
+#stage.wide #hud .btns { gap: 8px; } #stage.wide .icon { width: 52px; height: 52px; font-size: 24px; }
+#stage.wide #counters { left: calc(var(--wb) + 22px); right: 18px; top: 122px; }
+#stage.wide #bar { height: 206px; padding: 14px 16px 18px; flex-direction: column; gap: 12px; }
+#stage.wide #bar .big { flex-direction: row; justify-content: space-between; padding: 0 22px 0 58px; border-radius: 18px; border-width: 3px; }
+#stage.wide #bar .big .label { font-size: 36px; text-shadow: 0 2px 0 rgba(0, 0, 0, .3); }
+#stage.wide #bar .big .cost { font-size: 26px; }
+#stage.wide #bar .big kbd { left: 14px; right: auto; top: 50%; transform: translateY(-50%); font-size: 20px; min-width: 28px; }
+#stage.wide #bar .big .wait { left: auto; right: 20px; top: 4px; font-size: 20px; }
+#stage.wide #bar .big.ready { animation: none; box-shadow: 0 4px 0 #1a0f15, 0 0 0 3px rgba(255, 213, 107, .35); }
+#stage.wide #bar .big:not(.ready) .label { color: #c9b89c; }
+#stage.wide #guide { left: calc(var(--wb) + 8px); right: 10px; bottom: 214px !important; }
+#stage.wide #guide .por { width: 150px; height: 148px; }
+#stage.wide #guide .bub { margin: 0 0 12px -18px; padding: 10px 16px 12px 26px; border-width: 3px; }
+#stage.wide #guide .bub b { font-size: 20px; }
+#stage.wide #guide .bub p { font-size: 28px; }
+#stage.wide #guide .gskip { font-size: 20px; padding: 5px 12px; top: -16px; right: 10px; }
+#stage.wide #info { left: calc(var(--wb) + 20px); right: 18px; top: 170px; bottom: 220px; font-size: 20px; }
+#stage.wide #info .pips { gap: 6px; } #stage.wide #info .pips i { height: 12px; }
+#stage.wide #info .nextb { gap: 12px; padding: 8px; }
+#stage.wide #info .nextb canvas { width: 150px; height: 102px; }
+#stage.wide #info .nextb small { font-size: 18px; } #stage.wide #info .nextb b { font-size: 30px; } #stage.wide #info .nextb span { font-size: 20px; }
+#stage.wide #info h3 { font-size: 28px; } #stage.wide #info h4 { font-size: 22px; }
+#stage.wide #info .sstep { font-size: 20px; } #stage.wide #info .sline { font-size: 20px; } #stage.wide #info .sq { font-size: 19px; }
+#stage.wide #info .sgrid span { font-size: 17px; } #stage.wide #info .sgrid b { font-size: 22px; } #stage.wide #info .shint { font-size: 18px; }
+#stage.wide #hand.up { left: auto; right: 40px; bottom: 108px; }
+#stage.wide #hand.re { left: auto; right: 40px; bottom: 16px; }
+#stage.wide #hand.up, #stage.wide #hand.re { width: 72px; height: 84px; }
+#stage.wide #bar .big .cost .what { display: none; }   /* a row has room for the name and the price only */
+/* the hand points at a button from the city's edge, never over its name or price */
+#stage.wide #hand.up, #stage.wide #hand.re { right: auto; left: calc(var(--wb) - 66px); animation-name: tapright; transform: rotate(90deg); }
+#stage.wide #hand.up { bottom: 109px; } #stage.wide #hand.re { bottom: 16px; }
+@keyframes tapright { from { transform: rotate(90deg); } to { transform: rotate(90deg) translateY(-12px); } }
+@media (prefers-reduced-motion: reduce) { #stage.wide #hand { animation: none; } }
+#stage.wide #bar .big kbd { font-size: 22px; }
+#stage.wide #card { left: 0; }   /* cards centre over the whole stage at their normal width (the 460 panel squeezed them) */
+#stage.wide #hud { grid-template-columns: 96px minmax(0, 1fr) auto; }
+#stage.wide .stat .sub.rate { font-size: 19px; }
+#stage.wide #guide .gskip { font-size: 22px; }
+/* feel: a bought button nods under the hand; desktop hover lifts it a touch */
+.big.bought { animation: bought .28s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes bought { 0% { transform: scale(.94); } 55% { transform: scale(1.04); } 100% { transform: none; } }
+@media (hover: hover) { .big:hover { filter: brightness(1.08); } .icon:hover { filter: brightness(1.15); } }
+.calm .big.bought { animation: none; }
