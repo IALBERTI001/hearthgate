@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13c';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13d';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -341,7 +341,7 @@
     S.tapRun = S.t - (S.lastTapT || -9) < 1.2 ? (S.tapRun || 0) + 1 : 1; S.lastTapT = S.t;
     if (S.tapRun >= 5 && !P.firstSession && !holdFired && firstTime('hold')) setTimeout(() => toast('Tip: hold Upgrade to keep buying'), 600);
     if (C.stageOf(P.gateLevel) > stage) { toast(`Gate stage ${C.stageOf(P.gateLevel)}! The towers grow.`); A.play('tier_up', 0.6); TOWERS.forEach(t => (t.flash = 1.5)); }
-    else { pop(GATE_X, WALL_FRONT - 240, `Damage ${rfmt(before)} -> ${rfmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach((t, i) => { t.flash = 1.2; t.bumpAt = S.t + 0.04 + i * 0.07; }); A.play('tier_up', 0.25); }
+    else { pop(GATE_X, WALL_FRONT - 240, `Damage ${rfmt(before)} → ${rfmt(C.towerDamage(P, B))}`, '#ffd56b', 1.2, 38); TOWERS.forEach((t, i) => { t.flash = 1.2; t.bumpAt = S.t + 0.04 + i * 0.07; }); A.play('tier_up', 0.25); }
     chimneyPuff('forge', 4); guidePressed('up'); bounce('up'); save(); ui();
   }
   // a bought button gives a small springy nod under the hand (F9, Nov 13 2026: every press answers at once)
@@ -690,7 +690,7 @@
   function guideEl() {
     if (G.el) return G.el;
     const d = document.createElement('div'); d.id = 'guide'; d.setAttribute('role', 'status');
-    d.innerHTML = '<div class="por"><canvas width="244" height="240"></canvas></div><div class="bub"><b>Magister Bram</b><p></p></div><button class="gskip" type="button">Skip ▸▸</button>';
+    d.innerHTML = '<div class="por"><canvas width="244" height="240"></canvas></div><div class="bub"><b>Magister Bram</b><p></p></div><button class="gskip" type="button">Skip tips ▸▸</button>';
     d.addEventListener('pointerdown', ev => { ev.stopPropagation(); if (ev.target.closest('.gskip')) return guideSkip(); guideTap(); });
     d.style.bottom = (H - WALL_FRONT + 70) + 'px';   // on the grass above the wall: never over the fountain, the buildings or the hand
     el('stage').appendChild(d); G.el = d; return d;
@@ -1130,7 +1130,7 @@
     let html = '';
     if (kind === 'daily') html = `<span class="eyebrow">Day ${data.day} reward</span><h2>+${C.fmt(data.amount)} Resonance</h2>${P.shop.open ? `<p>and ${data.big ? C.SHARDS.daily7 : C.SHARDS.daily} Starshards for the Shop</p>` : ''}<p class="small">${data.big ? 'Day 7 bonus: five times the reward!' : 'Day 7 pays five times as much.'}</p>${btn('c-ok', 'Claim')}`;
     if (kind === 'offline') html = `<span class="eyebrow">While you were away</span><h2>+${C.fmt(data.res)} Resonance</h2><p>The gate held and the city hummed for ${hours(data.secs)}${data.secs >= C.OFFLINE_CAP_H * 3600 - 1 ? ', the most it stores' : ''}.</p><p class="small">From the fight ${C.fmt(data.fight)} · from the city ${C.fmt(data.city)}</p>${SDK.rewardsOn ? btn('c-ad', 'Watch an ad: double it', 'gold') : ''}${btn('c-ok', 'Collect')}`;
-    if (kind === 'pick') html = `<span class="eyebrow">Rebuild · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
+    if (kind === 'pick') html = `<span class="eyebrow">Rebuild · ${C.fmt(C.restoreCost(P.restored.length))} Resonance</span><h2>Pick a building</h2><div class="pick">${data.map(id => { const b = C.byId(id); return `<button class="opt" data-id="${id}"><canvas class="thumb" data-b="${id}" width="220" height="150"></canvas><b>${b.name}</b><span>${b.line}</span></button>`; }).join('')}</div>${btn('c-no', 'Not yet', 'quiet')}`;
     if (kind === 'fork') html = `<span class="eyebrow">Gate stage ${data}</span><h2>Choose a path</h2><div class="pick">${C.FORKS[data].map(f => `<button class="opt" data-id="${f.id}"><b>${f.name}</b><span>${f.line}</span></button>`).join('')}</div>`;
     if (kind === 'ascend') { const un = C.ASCEND_UNLOCKS.find(u => u.at === P.ascensions + 1), next = Math.min(90, 35 + 5 * P.ascensions), pp = C.perkPtsFor(P), n = P.ascensions + 1;
       // three short lines instead of a paragraph (fresh-eyes review, Nov 6): what you gain, what stays, what starts over
@@ -1146,7 +1146,7 @@
       const b = C.byId(data), L = C.levelOf(P, data), r = C.buildingRate(P, data, B), r2 = C.buildingRate(P, data, B, L + 1), c = C.levelCost(P, data, B), m = C.nextMilestone(L);
       const hall = HALLS[data] && HALLS[data].ok() ? HALLS[data] : null;
       const nth = ['1st', '2nd', '3rd'][P.restored.indexOf(data)] || (P.restored.indexOf(data) + 1) + 'th';
-      html = `<span class="eyebrow">Level ${L} · ${rfmt(r)} a second · rebuilt ${nth}</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>${P.ascensions >= 1 ? `<p><b>Ascended · ${C.RANK2[data].name}:</b> ${C.RANK2[data].line}</p>` : ''}`
+      html = `<canvas class="thumb hero" data-b="${data}" width="220" height="150"></canvas><span class="eyebrow">Level ${L} · +${rfmt(r)} Resonance a second</span><h2>${b.name}</h2>${hall ? btn('c-hall', `Open the ${hall.name}`, 'gold') : ''}<p>${b.line}</p>${P.ascensions >= 1 ? `<p><b>Ascended · ${C.RANK2[data].name}:</b> ${C.RANK2[data].line}</p>` : ''}`
         + `<p class="small">Next level ${rfmt(r)} → ${rfmt(r2)} a second${m ? ` · level ${m} doubles it` : ''}</p>`
         + btn('c-ok', `Level up · <i class="gem"></i>${C.fmt(c)}`, P.res >= c ? 'gold' : 'off') + `<span class="wait"></span>` + btn('c-no', 'Close', 'quiet');
     }
@@ -1155,6 +1155,12 @@
     if (kind === 'perks') html = perksHtml();
     if (kind === 'settings') html = `<div class="cardhead"><h2>Paused</h2><button id="c-no" class="x" aria-label="Close"></button></div>${['music', 'sfx', 'reduced', 'tips'].map(k => `<label class="tog"><i class="ticon">${TICON[k]}</i><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion', tips: 'Magister Bram\'s tips' }[k]}</span><input type="checkbox" id="s-${k}" ${(k === 'tips' ? !P.settings.noGuide : P.settings[k]) ? 'checked' : ''}></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}${root.HG_TESTING ? '<button id="c-wipe" class="linkbtn">Start a new game (test page only)</button>' : ''}`;   // the owner's test page only; never in a portal build (owner, Nov 12 2026)
     body.innerHTML = html;
+    body.querySelectorAll('canvas.thumb').forEach(c => drawNextPic(c, c.dataset.b));   // a building is shown from the painting, not only named
+    // every card that can be left has the same close X, top right (sweep, Nov 13 2026: some had an X, some a button, some nothing)
+    if (['daily', 'offline', 'building', 'ascend', 'pick', 'settings'].includes(kind) && !body.querySelector('.x')) {
+      body.insertAdjacentHTML('afterbegin', '<button id="c-x" class="x cx" aria-label="Close"></button>');
+      body.querySelector('#c-x').onclick = () => { A.unlock(); const b = body.querySelector('#c-no') || body.querySelector('#c-ok'); if (b) b.click(); };
+    }
     const close = () => { card.className = ''; S.card = null; if (!S.paused) SDK.gameplay(true); ui(); nextCard(); };
     const on = (id, f) => { const b = body.querySelector('#' + id); if (b) b.onclick = () => { A.unlock(); f(); }; };
     if (kind === 'daily') on('c-ok', () => { P.res += data.amount; if (P.shop.open) P.shop.shards += data.big ? C.SHARDS.daily7 : C.SHARDS.daily; P.daily = { day: data.today, streak: data.day, claimedTotal: P.daily.claimedTotal + data.amount }; A.play('tier_up', 0.5); save(); close(); });
@@ -1611,7 +1617,7 @@
     if (fountainState() === 'ready' && !S.card && firstTime('fountainSurge')) { guideSay('surge'); S.pointAt = { id: 'fountain', t: 0 }; }
     if (P.firstSession && S.sessionT > 0.5) guideSay('intro');
 
-    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `Resonance +${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`; el('stage').classList.toggle('surging', surgeX() > 1);   // the word stays with its rate (outside review)
+    el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `${WIDE ? '' : 'Resonance '}+${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`;   /* wide: the gem above already names it */ el('stage').classList.toggle('surging', surgeX() > 1);   // the word stays with its rate (outside review)
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
     if (P.perkPts && P.ascensions && !S.perkTold && !S.card) { S.perkTold = true; toast('Perk points to spend: tap the Watchtower'); S.pointAt = { id: 'watchtower', t: 0 }; }
     if (P.shop.open && C.questClaimable(P) && !S.questTold && !S.card) { S.questTold = true; toast('Quest done! Collect it at the Library'); S.pointAt = { id: 'library', t: 0 }; }

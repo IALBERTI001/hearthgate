@@ -533,3 +533,24 @@ svg.wing { flex: none; width: 84px; height: 70px; }
 .tog .ticon svg { width: 30px; height: 30px; fill: currentColor; }
 .tog span { flex: 1; }
 .tog { border-bottom: 1px solid rgba(255, 255, 255, .07); }
+
+/* ---------- 30-second sweep (Nov 13 2026) ---------- */
+#card .body { position: relative; }
+#card .cx { position: absolute; top: 14px; right: 14px; z-index: 2; width: 56px; height: 56px; }
+#card canvas.thumb { display: block; width: 176px; height: 120px; border-radius: 12px; margin: 0 auto 10px; box-shadow: 0 0 0 3px rgba(201, 162, 74, .6), 0 6px 14px rgba(0, 0, 0, .35); background: #2f5a2a; }
+#card canvas.thumb.hero { width: 220px; height: 150px; margin-bottom: 12px; }
+#card .pick .opt { display: flex; flex-direction: column; align-items: center; text-align: center; }
+#card #c-ok:not(.quiet) { background: linear-gradient(#c7962f, #8a5a1b); border-color: var(--gold); }   /* the main action of every card is gold */
+#stage.wide #card { background: rgba(14, 7, 12, .78); }
+#stage.wide #bar .big .label { white-space: nowrap; }
+#guide .por { -webkit-mask-image: linear-gradient(#000 78%, transparent); mask-image: linear-gradient(#000 78%, transparent); }
+#pause svg { display: block; margin: auto; }
+/* nothing a player reads in the wide panel is under about 13 px at the reviewer's frame (21 design px at 0.64) */
+#stage.wide .stat .lbl { font-size: 21px; }
+#stage.wide .stat .sub, #stage.wide .stat .sub.rate { font-size: 21px; }
+#stage.wide #info .nextb small, #stage.wide #info .shint, #stage.wide #info .sq, #stage.wide #info .sgrid span { font-size: 21px; }
+#stage.wide #info .sstep, #stage.wide #info .sline, #stage.wide #info .nextb span { font-size: 22px; }
+#stage.wide #hud { grid-template-columns: 84px minmax(0, 1fr) auto; right: 10px; }
+#stage.wide #hud .btns { gap: 6px; } #stage.wide .icon { width: 48px; height: 48px; }
+#stage.wide #hud { grid-template-columns: 96px minmax(0, 1fr) auto; }
+#stage.wide #card canvas.thumb.hero { width: 150px; height: 102px; margin-bottom: 6px; }
