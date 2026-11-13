@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13e';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13f';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -25,7 +25,7 @@
 
   // ---------- state ----------
   let P = load(), B = C.bonuses(P);
-  const S = { t: 0, enemies: [], shots: [], pops: [], fx: [], hits: [], wisps: [], motes: [], spawnQ: [], spawnT: 0, gateHp: 0, gateHit: 0, paused: false,
+  const S = { t: 0, enemies: [], shots: [], bolts: [], pops: [], fx: [], hits: [], wisps: [], motes: [], spawnQ: [], spawnT: 0, gateHp: 0, gateHit: 0, paused: false,
     sessionT: 0, saveT: 0, reveal: null, card: null, rings: [], shake: 0, wavePop: null, cheerNext: null, savedByAd: false };
   function load() { try { return C.sanitize(localStorage.getItem(SAVE_KEY)); } catch (e) { return C.defaults(); } }
   let wiping = false;
@@ -129,17 +129,19 @@
       if (!live.length) continue;
       const tgt = live[P.firstSession ? 0 : Math.min(live.length - 1, t.n % 2)];   // in the opening every tower focuses the front enemy, so Frost then Fire meet and the first SHATTER comes on time
       t.cd = interval * (t.gate && B.beacon ? 0.5 : 1); t.recoil = 1; t.flash = 1; t.shots = (t.shots || 0) + 1;
-      const el = els.length ? els[(t.shots + t.n) % els.length] : 'none';
-      S.shots.push({ x: t.x, y: t.beacon ? t.y : t.y - 70, tx: tgt, el, sp: t.beacon ? 1000 : 820, trail: [] });
+      const el = els.length ? els[t.n % els.length] : 'none';   // a tower fires its own element, the one it is built for (owner, Nov 13 2026)
+      if (el === 'storm' && !t.beacon) { S.bolts.push({ x0: t.x, y0: t.y - 66, x1: tgt.x, y1: tgt.y - tgt.size * 0.45, t: 0, life: 0.22, seed: Math.random() * 1e4 }); hit(tgt, el); }   // lightning strikes at once
+      else S.shots.push({ x: t.x, y: t.beacon ? t.y : t.y - 70, tx: tgt, el, sp: t.beacon ? 1000 : el === 'frost' ? 430 : 820, trail: [], born: S.t });
       A.play(el === 'frost' ? 'ice_launch_0' : el === 'storm' ? 'lightning_launch_0' : 'fire_launch_0', 0.16);
     }
     for (const s of S.shots) {
       const tx = s.tx.x, ty = s.tx.y - s.tx.size * 0.45, dx = tx - s.x, dy = ty - s.y, L = Math.hypot(dx, dy);
-      s.trail.push([s.x, s.y]); if (s.trail.length > 7) s.trail.shift();
+      s.trail.push([s.x, s.y]); if (s.trail.length > (s.el === 'frost' ? 20 : 9)) s.trail.shift();
       if (L < 16 || s.tx.dying) { s.done = true; if (!s.tx.dying) hit(s.tx, s.el); continue; }
       s.x += dx / L * s.sp * DT; s.y += dy / L * s.sp * DT;
     }
     S.shots = S.shots.filter(s => !s.done);
+    for (const b of S.bolts) b.t += DT; S.bolts = S.bolts.filter(b => b.t < b.life);
     for (const e of S.enemies) {
       if (e.dying) { e.dying += DT; continue; }
       if (e.burn > 0) { e.burn -= DT; e.hp -= C.towerDamage(P, B) * (1 + B.fire) * 0.5 * DT * (e.weak === 'fire' ? 2 : 1); }
@@ -1320,7 +1322,7 @@
       g.drawImage(im, 0, 0); img[n] = c; }
   }
   // Draw a sprite from its own sheet, anchored bottom-centre on (x, baseY); pad = the sheet's clear margin.
-  const VARIANT_FILTER = () => Object.assign({ flash: 'brightness(1.8)', chill: 'saturate(0.55) brightness(1.12)', dormant: 'grayscale(0.85) brightness(0.8)' }, TINT);
+  const VARIANT_FILTER = () => Object.assign({ grade: 'saturate(0.86) contrast(0.94) brightness(0.98) sepia(0.07)', flash: 'brightness(1.8)', chill: 'saturate(0.55) brightness(1.12)', dormant: 'grayscale(0.85) brightness(0.8)' }, TINT);
   function variant(im, key) {
     const cache = im._v || (im._v = {}); if (cache[key]) return cache[key];
     const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d');
@@ -1350,8 +1352,16 @@
       const tier = Math.min(3, stage), e = els.length ? els[i % els.length] : null, im = img[(e || idle[i % 4]) + tier]; if (!im) return;
       const grow = Math.min(0.16, (P.gateLevel - C.STAGES[stage - 1]) * 0.012);   // a little taller with every level of the stage
       const breathe = calm ? 0 : Math.sin(S.t * 2 + i) * 0.012, h = CITY.towerH * (1 + (tier - 1) * 0.1 + grow) * (t.gate ? 0.86 : 1) * (1 + breathe - t.recoil * 0.05);
-      shadow(t.x + 5, t.y + 2, CITY.platformR * 0.95, CITY.platformR * 0.36, 0.42);
-      sprite(e ? im : variant(im, 'dormant'), t.x, t.y + CITY.towerSink, h);
+      // seated in the painting (owner, Nov 13 2026: towers "look pasted on"): a soft contact shadow where the base meets the
+      // platform's stone, the sprite graded once toward the painting's softer colour, set a little into the platform's rim,
+      // and the element's own light thrown down onto the stone around it
+      shadow(t.x + 2, t.y + CITY.towerSink - 3, CITY.platformR * 0.78, CITY.platformR * 0.26, 0.5);
+      if (e) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y + 4, CITY.platformR * 1.15, (L.TOWER[P.shop.equip[e]] || {}).glow || GLOW[e], 0.12 + t.flash * 0.2); cx.restore(); }
+      sprite(variant(e ? im : variant(im, 'dormant'), 'grade'), t.x, t.y + CITY.towerSink + 3, h);
+      // the platform's front lip is painted again over the tower's foot, so the tower stands inside the round platform, not on a sticker
+      if (img.wall) { const rx = CITY.platformR * 1.04, ry = CITY.platformR * 0.38, y0 = t.y + 3;
+        cx.save(); cx.beginPath(); cx.moveTo(t.x + rx, y0); cx.ellipse(t.x, y0, rx, ry, 0, 0, Math.PI); cx.lineTo(t.x - rx, y0 + 60); cx.lineTo(t.x + rx, y0 + 60); cx.closePath(); cx.clip();
+        cx.drawImage(img.wall, 0, CITY_Y, W, CITY_H); cx.restore(); }
       if (t.flash > 1) { cx.save(); cx.globalCompositeOperation = 'lighter'; glow(t.x, t.y - h * 0.5, 60, 'rgba(255,230,150,', 0.5 * (t.flash - 1) * 5); cx.restore(); }
       if (e) {
         cx.save(); cx.globalCompositeOperation = 'lighter';
@@ -1398,9 +1408,55 @@
     cx.restore();
   }
 
+  // Each element's shot looks like what it does (owner, Nov 13 2026: "Fire releases a fire shot, ice as a mist ice that freezes
+  // and slows, lightning bolts from the electric tower"). The trail bought in the Shop still flavours fire and the plain shot.
   function drawShot(s) {
     cx.save();   // normal blending: added light turns every colour yellow-white on the bright meadow
-    L.drawTrail(cx, P.shop.equip.trail, s, COLOR[s.el], GLOW[s.el], glow, S.t);   // the trail the player chose in the Shop
+    if (s.el === 'frost') drawMist(s);
+    else if (s.el === 'fire') drawFireball(s);
+    else L.drawTrail(cx, P.shop.equip.trail, s, COLOR[s.el], GLOW[s.el], glow, S.t);   // the trail the player chose in the Shop
+    cx.restore();
+  }
+  // a fireball: a flickering flame tail that thins and reddens behind a white-hot core, shedding embers
+  function drawFireball(s) {
+    const tr = s.trail, n = tr.length, fl = reduced() ? 0 : 1;
+    for (let i = 0; i < n; i++) { const [x, y] = tr[i], k = (i + 1) / n, r = 4 + k * 12 + fl * Math.sin(S.t * 40 + i * 2) * 1.5;
+      cx.globalAlpha = 0.18 + k * 0.5; cx.fillStyle = k > 0.7 ? '#ffb347' : k > 0.4 ? '#ff7a2a' : '#c8401c'; cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.fill(); }
+    cx.globalAlpha = 1; glow(s.x, s.y, 38, 'rgba(255,140,40,', 0.6);
+    cx.fillStyle = '#ffd36b'; cx.beginPath(); cx.arc(s.x, s.y, 12, 0, 7); cx.fill();
+    cx.fillStyle = '#fff6dc'; cx.beginPath(); cx.arc(s.x - 2, s.y - 2, 6, 0, 7); cx.fill();
+    if (fl && Math.random() < 0.5) S.fx.push({ x: s.x + (Math.random() - 0.5) * 8, y: s.y, vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 40, g: 120, t: 0, life: 0.35, col: Math.random() < 0.5 ? '#ffb347' : '#ffe08a', r: 1.8 });
+  }
+  // frost: not a bolt but a drifting stream of icy mist that swells as it travels, with glints of ice in it
+  function drawMist(s) {
+    const tr = s.trail, n = tr.length;
+    for (let i = 0; i < n; i++) { const k = (i + 1) / n, age = (n - i) / n, r = 16 + age * 34, w = Math.sin(i * 1.7 + s.born * 5) * age * 14;
+      const x = tr[i][0] + w, y = tr[i][1] + w * 0.4;   // the mist billows sideways as it spreads
+      const g = cx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(226,246,255,${0.26 * k + 0.08})`); g.addColorStop(0.6, `rgba(200,236,255,${0.1 * k + 0.03})`); g.addColorStop(1, 'rgba(180,225,255,0)');
+      cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.fill(); }
+    const g = cx.createRadialGradient(s.x, s.y, 0, s.x, s.y, 22); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.5, 'rgba(190,235,255,.6)'); g.addColorStop(1, 'rgba(150,215,255,0)');
+    cx.fillStyle = g; cx.beginPath(); cx.arc(s.x, s.y, 22, 0, 7); cx.fill();
+    if (!reduced()) for (let k = 0; k < 3; k++) { const a = S.t * 6 + k * 2.1 + s.born, x = s.x + Math.cos(a) * 9, y = s.y + Math.sin(a) * 6;
+      cx.fillStyle = '#ffffff'; cx.globalAlpha = 0.7 + 0.3 * Math.sin(S.t * 20 + k); cx.beginPath(); cx.moveTo(x, y - 3); cx.lineTo(x + 1.2, y); cx.lineTo(x, y + 3); cx.lineTo(x - 1.2, y); cx.closePath(); cx.fill(); }
+    cx.globalAlpha = 1;
+  }
+  // lightning: a jagged bolt from the tower's coil to the enemy, with a fork, a white core and a violet glow; it lives 0.16 s
+  function drawBolts() {
+    if (!S.bolts.length) return;
+    cx.save(); cx.lineCap = 'round'; cx.lineJoin = 'round';
+    for (const b of S.bolts) {
+      const a = 1 - b.t / b.life; let sd = b.seed; const rnd = () => ((sd = (sd * 9301 + 49297) % 233280) / 233280) - 0.5;
+      const pts = [[b.x0, b.y0]], dx = b.x1 - b.x0, dy = b.y1 - b.y0, L2 = Math.hypot(dx, dy), nx = -dy / L2, ny = dx / L2, segs = Math.max(5, Math.round(L2 / 34));
+      for (let i = 1; i < segs; i++) { const f = i / segs, o = rnd() * 26 * Math.sin(f * Math.PI); pts.push([b.x0 + dx * f + nx * o, b.y0 + dy * f + ny * o]); }
+      pts.push([b.x1, b.y1]);
+      const path = (p) => { cx.beginPath(); cx.moveTo(p[0][0], p[0][1]); for (const q of p.slice(1)) cx.lineTo(q[0], q[1]); cx.stroke(); };
+      cx.globalAlpha = a * 0.4; cx.strokeStyle = '#b27dff'; cx.lineWidth = 16; path(pts);
+      cx.globalAlpha = a; cx.strokeStyle = '#e6d4ff'; cx.lineWidth = 6; path(pts);
+      cx.strokeStyle = '#ffffff'; cx.lineWidth = 2.5; path(pts);
+      const m = pts[Math.floor(pts.length / 2)], fork = [m, [m[0] + nx * 22 + dx * 0.08, m[1] + ny * 22 + dy * 0.08], [m[0] + nx * 30 + dx * 0.16, m[1] + ny * 34 + dy * 0.16]];
+      cx.globalAlpha = a * 0.8; cx.strokeStyle = '#e6d4ff'; cx.lineWidth = 3.5; path(fork);
+      cx.globalAlpha = a; glow(b.x1, b.y1, 26, 'rgba(190,140,255,', 0.6 * a); glow(b.x0, b.y0, 18, 'rgba(190,140,255,', 0.5 * a);
+    }
     cx.restore();
   }
 
@@ -1561,7 +1617,7 @@
     drawGold();
     drawBossBar(); drawStats();
     drawTowers();
-    for (const s of S.shots) drawShot(s);
+    for (const s of S.shots) drawShot(s); drawBolts();
     for (const h of S.hits) L.drawHit(cx, h);
     drawWisps();
     for (const p of S.fx) if (p.dust) {
