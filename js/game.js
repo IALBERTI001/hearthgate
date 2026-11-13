@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13i';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13j';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -37,10 +37,12 @@
   const rfmt = r => r < 10 ? String(+r.toFixed(r < 1 ? 2 : 1)) : C.fmt(r);
   // completion for CrazyGames: the road to the Eternal City is 10 Ascensions of 10 buildings each; the 10th Ascension is 100
   function reportProgress() { SDK.reportCompletion(P.ascensions >= C.ETERNAL_AT ? 100 : (P.ascensions + P.restored.length / 10) * 100 / C.ETERNAL_AT); }
-  root.Hearthgate = { reportProgress, reloadSave() { P = load(); refresh(); S.enemies = []; S.wisps = []; startWave(); }, state: () => ({ P, S, B }), view: () => ({ top: camY(), wide: WIDE }) };   // view: the camera's top line (the pass gate checks monsters are seen as they appear)
+  root.Hearthgate = { reportProgress, reloadSave() { P = load(); refresh(); S.enemies = []; S.wisps = []; startWave(); }, state: () => ({ P, S, B, FOLK }), view: () => ({ top: camY(), wide: WIDE, plaza: [PLAZA.x, PLAZA.y + 8, PL[2] * K, PL[3] * K] }) };   // view: the camera's top line (the pass gate checks monsters are seen as they appear)
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
+  if (/[?&]qa\b/.test(location.search)) root.HG_QA = {};
   if (/[?&]qa\b/.test(location.search)) Object.assign(root.Hearthgate, {
-    walkFrame(c, kind, ph, x, y, h) { const im = img['folk_' + kind]; if (!im) return; const w = h * im.width / im.height; c.save(); c.translate(x, y - Math.abs(Math.cos(ph)) * h * 0.05); folkWalk(im, { kind }, w, h, ph, c); c.restore(); },
+    rigParts(k) { const r = folkRig(k, img['folk_' + k]); return [r.body, r.back.c, r.front.c].map(c => c.toDataURL()); },
+    walkFrame(c, kind, ph, x, y, h) { const im = img['folk_' + kind]; if (!im) return; const w = h * im.width / im.height; c.save(); c.translate(x, y); folkWalk(im, { kind }, w, h, ph, c); c.restore(); },
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
     act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'gold' && S.gold) tapGold(S.gold.x, S.gold.y); if (what === 'fly') { const f = FLY.find(q => q.kind && !q.gone && q.a > 0.5); if (f) { const [x, y] = flyPos(f); tapFly(x, y); } else if (FLURRY.list.length) { const [x, y] = flurryPos(FLURRY.list.find(b => b.x > 20 && b.x < W - 20) || FLURRY.list[0]); tapFly(x, y); } } if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
     card: () => S.card,
@@ -769,21 +771,38 @@
   const FOLK_KINDS = ['builder', 'baker', 'farmer', 'lamp', 'child', 'merchant'], FOLK = [];
   const FOLK_HAUNTS = { baker: ['bakery', 'market'], farmer: ['granary', 'market'], merchant: ['market', 'tavern'], lamp: ['watchtower', 'library'], builder: [] };
   const PL = CITY.spots.plaza;
-  const RING = 0.8;   // the plaza's outer paved walk (at 0.5 villagers crossed the fountain's basin and steps: owner's clip, Nov 13 2026)
-  const ringAt = a => [PLAZA.x + Math.cos(a) * PL[2] * K * RING, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * RING];
-  const angOf = (x, y) => Math.atan2((y - PLAZA.y - 8) / (PL[3] * K * RING), (x - PLAZA.x) / (PL[2] * K * RING));
+  // the middle of the plaza's outer paved walk, measured by drawing rings over the painting (Nov 13 2026): the band runs from
+  // 0.9 to 1.0 of the plaza spot. At 0.5 villagers crossed the fountain's basin and steps (owner's clip); at 0.8 they trod
+  // the flower beds (review).
+  const WALK = { rx: 0.95, ry: 0.95, dy: 8 };
+  const ringAt = a => [PLAZA.x + Math.cos(a) * PL[2] * K * WALK.rx, PLAZA.y + WALK.dy + Math.sin(a) * PL[3] * K * WALK.ry];
+  const TOP = -Math.PI / 2, freeAng = a => { const d = Math.atan2(Math.sin(a - TOP), Math.cos(a - TOP)); return Math.abs(d) < 0.45 ? TOP + Math.sign(d || 1) * 0.45 : a; };   // the fountain's badge sits over the top of the walk
+  const angOf = (x, y) => Math.atan2((y - PLAZA.y - WALK.dy) / (PL[3] * K * WALK.ry), (x - PLAZA.x) / (PL[2] * K * WALK.rx));
   const frontOf = id => { const s = CITY.spots[id], bx = sx(s[0]), by = sy(s[1]); return [bx + (PLAZA.x - bx) * 0.36, by + (PLAZA.y - by) * 0.36 + 18]; };
-  function routeTo(f, to) {   // along the spoke to the ring, round the ring, out the other spoke
-    const a0 = angOf(f.x, f.y), a1 = angOf(to[0], to[1]); let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-    const pts = [ringAt(a0)]; for (let k = 1, n = Math.ceil(Math.abs(d) / 0.3); k <= n; k++) pts.push(ringAt(a0 + d * k / n)); pts.push(to); f.pts = pts; f.i = 0;
+  // the painted spokes leaving the plaza walk, as angles round it (found by sampling the paving on the painting, Nov 13 2026)
+  const SPOKES = [0, 24, 44, 68, 114, 137, 155, 181, 210, 271, 328].map(d => d * Math.PI / 180);
+  function routeTo(f, to) {   // round the walk to the spoke nearest the place, then out along that spoke (never across the grass)
+    const cxw = PLAZA.x, cyw = PLAZA.y + WALK.dy, RX = PL[2] * K * WALK.rx, RY = PL[3] * K * WALK.ry;
+    const qOf = (x, y) => Math.hypot((x - cxw) / RX, (y - cyw) / RY), wrap = d => { while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+    const near = a => SPOKES.reduce((b, s2) => (Math.abs(wrap(s2 - a)) < Math.abs(wrap(b - a)) ? s2 : b), SPOKES[0]);
+    const pts = [];
+    let a0 = angOf(f.x, f.y);
+    if (qOf(f.x, f.y) > 1.12) { a0 = near(a0); pts.push(ringAt(a0)); }   // out on a spoke: back along it to the walk first
+    else pts.push(ringAt(a0));
+    const qt = qOf(to[0], to[1]), a1 = qt > 1.12 ? near(angOf(to[0], to[1])) : angOf(to[0], to[1]);
+    let d = wrap(a1 - a0); const under = (s0, dd) => { for (let t = 0; t <= 1; t += 0.05) if (Math.abs(wrap(s0 + dd * t - TOP)) < 0.3) return true; return false; };
+    if (Math.abs(wrap(a1 - TOP)) > 0.3 && Math.abs(wrap(a0 - TOP)) > 0.3 && under(a0, d)) d = d > 0 ? d - 2 * Math.PI : d + 2 * Math.PI;   // round the other way, not under the badge
+    for (let k = 1, n = Math.ceil(Math.abs(d) / 0.3); k <= n; k++) pts.push(ringAt(a0 + d * k / n));
+    const qe = qt > 1.12 ? 1 + (qt - 1) * 0.7 : qt; pts.push(qt > 1.12 ? [cxw + Math.cos(a1) * RX * qe, cyw + Math.sin(a1) * RY * qe] : to); f.pts = pts; f.i = 0;   // stop on the path short of the door
   }
   function folkCount() { return Math.min(FOLK_KINDS.length, 2 + Math.floor(P.restored.length * 0.45)); }
   function tickFolk() {
     if (!img.folk_builder) return;
-    while (FOLK.length < folkCount()) { const kind = FOLK_KINDS[FOLK.length], [x, y] = ringAt(Math.random() * 6.28); FOLK.push({ kind, x, y, pts: [], i: 0, wait: Math.random() * 3, dir: 1, t: Math.random() * 9, hop: 0, tapT: 0, speed: kind === 'child' ? 40 : 24 + Math.random() * 6 }); }
+    while (FOLK.length < folkCount()) { const kind = FOLK_KINDS[FOLK.length], [x, y] = ringAt(freeAng(Math.random() * 6.28)); FOLK.push({ kind, x, y, pts: [], i: 0, wait: Math.random() * 3, dir: 1, t: Math.random() * 9, hop: 0, tapT: 0, speed: kind === 'child' ? 40 : 24 + Math.random() * 6 }); }
     for (const f of FOLK) {
       f.t += DT; f.hop = Math.max(0, f.hop - DT); f.tapT = Math.max(0, f.tapT - DT);
-      if (f.i < f.pts.length && f.work <= 0 && !(f.pause > 0)) f.step = (f.step || 0) + DT * f.speed / 22;   // a stride every 22 px: feet keep pace with the ground
+      const moved = Math.hypot(f.x - (f.px ?? f.x), f.y - (f.py ?? f.y)); f.px = f.x; f.py = f.y; f.moving = moved > 0.05 ? 0.12 : Math.max(0, (f.moving || 0) - DT);
+      if (f.i < f.pts.length && f.work <= 0 && !(f.pause > 0) && f.moving > 0) f.step = (f.step || 0) + DT * f.speed / (RIG[f.kind] ? RIG[f.kind].stride * (f.kind === 'child' ? 34 : 44) / RIG[f.kind].H0 : 14);   // a planted foot slides back exactly as fast as the body moves on: it stays still on the ground
       if (f.hop2 && (f.hop2 -= DT) <= 0) { f.hop2 = 0; f.hop = 0.7; }
       if (f.party > 0) { f.party -= DT; if (f.i >= f.pts.length && f.hop <= 0 && Math.random() < DT * 2.5) f.hop = 0.7; if (f.party <= 0) f.speed = f.kind === 'child' ? 40 : 26; }
       if (f.scared && f.i >= f.pts.length && f.work <= 0) { f.dir = f.x < PLAZA.x ? 1 : -1; continue; }   // huddled by the fountain, facing it
@@ -801,25 +820,37 @@
         // turn only for a real change of course, held for a moment, and at the passing moment of a step (a pivot, not a flip-flop)
         const want = Math.abs(dx) > Math.abs(dy) * 0.35 + 2 ? (dx > 0 ? 1 : -1) : f.dir;
         f.wantT = want !== f.dir ? (f.wantT || 0) + DT : 0;
-        if (f.wantT > 0.22 && Math.abs(Math.sin((f.step || 0) * Math.PI)) < 0.25) { f.dir = want; f.wantT = 0; }   // legs together: the pivot
-        if (d <= step) { f.x = tx; f.y = ty; f.i++; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.mending = !!f.job.mend; f.dir = f.mending ? (f.x < GATE_X ? 1 : -1) : f.dir; f.knockT = 0; f.job = null; } else f.wait = f.party > 0 ? f.party : 2 + Math.random() * 5; } }
+        if (f.wantT > 0.22 && Math.abs(((f.step || 0) % 1) - 0.5) < 0.14) { f.dir = want; f.wantT = 0; }   // feet passing each other: the pivot
+        f.stuck = d < (f.lastD ?? 1e9) - 0.2 ? 0 : (f.stuck || 0) + DT; f.lastD = d; if (f.stuck > 1.5) { f.stuck = 0; f.lastD = 1e9; f.i++; continue; }   // pushed off its line by a neighbour or the fountain: move on
+        if (d <= step) { f.x = tx; f.y = ty; f.i++; f.lastD = 1e9; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.mending = !!f.job.mend; f.dir = f.mending ? (f.x < GATE_X ? 1 : -1) : f.dir; f.knockT = 0; f.job = null; } else f.wait = f.party > 0 ? f.party : 2 + Math.random() * 5; } }
         else { f.x += dx / d * step; f.y += dy / d * step; }
       } else if ((f.wait -= DT) <= 0) {
         const homes = P.restored.filter(id => CITY.spots[id] && id !== 'plaza');
         // each villager mostly keeps to their own trade's buildings; the child runs everywhere
         const mine = (FOLK_HAUNTS[f.kind] || []).filter(id => homes.includes(id)), pool = mine.length && Math.random() < 0.7 ? mine : homes;
-        routeTo(f, pool.length && Math.random() < 0.8 ? frontOf(pool[Math.floor(Math.random() * pool.length)]) : ringAt(Math.random() * 6.28));
+        routeTo(f, pool.length && Math.random() < 0.8 ? frontOf(pool[Math.floor(Math.random() * pool.length)]) : ringAt(freeAng(Math.random() * 6.28)));
       }
     }
     folkSpace();
   }
   // villagers standing still never stand inside one another (owner's clip, Nov 13 2026: two huddled into one shape)
   function folkSpace() {
-    for (const a of FOLK) for (const b of FOLK) { if (a === b || a.work > 0 || b.work > 0) continue;   // walkers too: two never share one spot on a path
-      const dx = b.x - a.x, dy = (b.y - a.y) * 1.6, d = Math.hypot(dx, dy); if (d >= 30 || d === 0) continue;
-      const push = (30 - d) * 0.5 * Math.min(1, DT * 6) / d;
-      a.x -= dx * push; a.y -= dy * push / 1.6; b.x += dx * push; b.y += dy * push / 1.6;
-      if (a.i < a.pts.length && b.i < b.pts.length && d < 18) (a.y < b.y ? a : b).pause = 0.5; }   // the one behind lets the other pass
+    const R = 46;   // a villager's width across, and a little more than its height up and down: two never overlap, walking or standing (fresh-eyes review, Nov 13 2026)
+    for (const a of FOLK) for (const b of FOLK) { if (a === b || a.work > 0 || b.work > 0) continue;
+      const dx = b.x - a.x, dy = (b.y - a.y) * 0.85, d = Math.hypot(dx, dy); if (d >= R || d === 0) continue;
+      const push = (R - d) * 0.5 * Math.min(1, DT * 10) / d;
+      a.x -= dx * push; a.y -= dy * push / 0.85; b.x += dx * push; b.y += dy * push / 0.85;
+      if (a.i < a.pts.length && !(a.pause > 0)) {   // a walker closing on someone ahead waits for them to get clear
+        const [tx, ty] = a.pts[a.i], hx = tx - a.x, hy = ty - a.y;
+        if (hx * (b.x - a.x) + hy * (b.y - a.y) > 0 && b.i < b.pts.length && !(b.pause > 0) && b.work <= 0) a.pause = 0.45; } }   // someone standing is stepped round (the push), never waited on: no stand-offs
+    for (const f of FOLK) {   // pushed off a spoke into the grass: back onto the spoke's line
+      if (f.work > 0 || f.mending) continue;
+      const ex = (f.x - PLAZA.x) / (PL[2] * K * WALK.rx), ey = (f.y - PLAZA.y - WALK.dy) / (PL[3] * K * WALK.ry), q = Math.hypot(ex, ey);
+      if (q > 1.04) { const a = Math.atan2(ey, ex), sp = SPOKES.reduce((b, s2) => (Math.abs(Math.atan2(Math.sin(s2 - a), Math.cos(s2 - a))) < Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))) ? s2 : b), SPOKES[0]);
+        f.x = PLAZA.x + Math.cos(sp) * q * PL[2] * K * WALK.rx; f.y = PLAZA.y + WALK.dy + Math.sin(sp) * q * PL[3] * K * WALK.ry; } }
+    for (const f of FOLK) {   // and nobody is ever pushed off the walk into the flower beds or the fountain's basin
+      const ex = (f.x - PLAZA.x) / (PL[2] * K * WALK.rx), ey = (f.y - PLAZA.y - WALK.dy) / (PL[3] * K * WALK.ry), q = Math.hypot(ex, ey);
+      if (q < 0.96 && q > 1e-6) { f.x = PLAZA.x + ex / q * 0.96 * PL[2] * K * WALK.rx; f.y = PLAZA.y + WALK.dy + ey / q * 0.96 * PL[3] * K * WALK.ry; } }
   }
   function tickMend() {
     const m = S.mend; if (!m) return; m.t += DT;
@@ -859,13 +890,13 @@
       if (id === 'forge') for (let i = 0; i < 6; i++) S.fx.push({ x, y, vx: (Math.random() - 0.5) * 70, vy: -50 - Math.random() * 60, t: 0, life: 0.5 + Math.random() * 0.3, r: 2.6, col: '#ffb35a', g: 120 });
     });
   }
-  // the Tavern's cheer: whoever is free hurries over to it and hops along
+  // the Tavern's cheer: whoever is free hurries round the plaza walk toward it, each with room to hop
   function folkToTavern() {
     if (!CITY.spots.tavern) return; const [tx, ty] = frontOf('tavern');
-    FOLK.forEach((f, k) => { if (f.scared || f.mending || (f.job && f.job.mend)) return; f.work = 0; routeTo(f, [tx + (k - 2.5) * 16, ty + (k % 2) * 10]); f.speed = 55; f.party = 6; });
+    FOLK.forEach((f, k) => { if (f.scared || f.mending || (f.job && f.job.mend)) return; f.work = 0; const a = angOf(tx, ty) + (k - (FOLK.length - 1) / 2) * 0.7; routeTo(f, ringAt(a)); f.pause = k * 0.3; f.speed = 55; f.party = 6; });   // set off one after another, not as one clump
   }
-  // a boss is coming: everyone hurries to the fountain and huddles there until it falls
-  function folkHide() { FOLK.forEach((f, k) => { if (f.job && f.job.mend) return; f.work = 0; const a = Math.PI / 2 + (k - (FOLK.length - 1) / 2) * 0.42; routeTo(f, [PLAZA.x + Math.cos(a) * PL[2] * K * RING, PLAZA.y + 8 + Math.sin(a) * PL[3] * K * RING]); f.speed = 62; f.scared = true; }); }
+  // a boss is coming: everyone hurries to the fountain and huddles there, either side of its steps (never on them), until it falls
+  function folkHide() { FOLK.forEach((f, k) => { if (f.job && f.job.mend) return; f.work = 0; const j = k >> 1, a = Math.PI / 2 + (k % 2 ? 1 : -1) * (0.5 + j * 0.42); routeTo(f, [...ringAt(a)]); f.speed = 62; f.scared = true; }); }
   // a wave won: a couple of villagers hop; a boss beaten: everyone cheers (two hops) and heads back out
   function folkCheer(big) {
     if (!FOLK.length) return;
@@ -885,59 +916,150 @@
       pop(f.x, f.y - 46, `♥ +${C.fmt(amt)}`, '#ffb8d8', 1.1, 28); burst({ x: f.x, y: f.y - 20, size: 12 }, '#ffb8d8', 8, 80); return true; }
     return false;
   }
-  // Villagers walk (owner, Nov 13 2026: "I WANT THE WALKING ANIMATION"). Each painted villager is cut, once, into a body and
-  // two legs (the leg region below the clothes, split at the gap between the feet), like a paper-doll puppet. When walking,
-  // the two legs swing from the hip in opposite directions, so the feet really alternate, and the body rises as they pass.
-  // Legs are drawn first and the body over them, so a leg's top always tucks under the hem. A turn is a pivot at the passing
-  // moment (the legs are together there).
-  const HIP = { builder: 0.78, baker: 0.78, farmer: 0.84, lamp: 0.8, child: 0.72, merchant: 0.8 };   // where the legs show below the clothes
+  // Villagers walk (owner, Nov 13 2026: "I WANT THE WALKING ANIMATION"). Each painted villager is split, once, into a body and
+  // two legs. The clothes (apron, skirt, coat, shorts, a hanging bag or tool) stay whole on the body, so nothing tears; the
+  // legs are the pixels below the hip that are not clothes. Walking moves each foot through a real cycle (natural-movement
+  // rules 2 and 6): planted, it slides back under the body at exactly the walking speed, so it stays still on the ground;
+  // then it lifts, swings past the other foot and lands in front, rolling toe-up as it lands and heel-up as it pushes off.
+  // A leg is carried whole, never stretched; it tucks under the clothes, and the hips (not the feet) rise as the legs pass. Legs are drawn first and the
+  // body over them, so a leg's top always tucks under the hem.
+  const gold = (r, g, b) => r > 165 && g > 115 && b < 95;
+  const FOLK_LEGS = {   // cut: the hip line (source px); cloth(x, y, r, g, b): a pixel below it that stays on the body; hem: the
+    // garment whose lower edge hides the legs (everything above that edge, in each column, is cloth: a hem is one solid shape)
+    builder: { cut: 80, copy: true, reach: 1.3, hem: (x, y, r, g, b) => y < 83 && r - b > 60 && r > 90 && !(x >= 32 && x <= 44), cloth: (x, y, r, g, b) => (x >= 32 && x <= 44 && y < 91 && gold(r, g, b)) || (x < 16 && y < 88) },   // the hammer on his belt, his fist
+    baker: { cut: 82, copy: true, hem: (x, y, r, g, b) => r > 175 && g > 150 && b > 105, cloth: (x, y, r, g, b) => r > 175 && g > 150 && b > 105 },   // the apron
+    farmer: { cut: 84, hem: (x, y, r, g, b) => (g > r + 6 && g > b + 18) || (r > 175 && g > 155 && b > 105), cloth: (x, y, r, g, b) => (g > r + 6 && g > b + 18) || (r > 175 && g > 155 && b > 105) },   // skirt and apron
+    lamp: { cut: 90, copy: true, under: true, hem: (x, y, r, g, b) => (y < 100 && b > r + 25 && b > 90) || (y < 96 && x < 28 && gold(r, g, b)), cloth: (x, y, r, g, b) => (b > r + 25 && b > 90) || (x < 28 && y < 96 && gold(r, g, b)) || (y < 106 && Math.abs(x - (42 - (y - 80) * 0.4)) < (gold(r, g, b) ? 3.4 : 1.8)) },   // coat, its trim, the pole
+    child: { cut: 77, legFrom: 85, skip: (x, y, r, g, b) => y < 90 && x > 54 && r + g + b < 260, copy: true, under: true, drop: (x, y, r, g, b) => x < 25 && y >= 73 && !(r > 190 && g > 120 && b > 80),   // his painted kicked-up calf (not his fist)
+        // copy: his painted back leg reads badly carried forward, so both legs are his front one
+      split: 45, hem: (x, y, r, g, b) => x >= 26 && x <= 54 && y < 89 && r + g + b > 160, cloth: (x, y, r, g, b) => x >= 26 && x <= 54 && y < 89 && r + g + b > 160 },   // the shorts and his knee, one solid shape: the bare shin below is his leg
+    merchant: { cut: 88, copy: true, hem: (x, y, r, g, b) => x < 44 && y < 94 && gold(r, g, b), cloth: (x, y, r, g, b) => (x <= 24 && y < 91 && !(r < 120 && g < 80)) || (x < 44 && y < 94 && gold(r, g, b)) },   // the coat's gold-trimmed hem (his trousers are legs); the satchel at his hip
+  };
   const RIG = {};
   function folkRig(kind, im) {
     if (RIG[kind]) return RIG[kind];
-    const W0 = im.width, H0 = im.height, y0 = Math.round(H0 * HIP[kind]);
+    const W0 = im.width, H0 = im.height, L = FOLK_LEGS[kind], cut = L.cut;
     const src = document.createElement('canvas'); src.width = W0; src.height = H0; const g = src.getContext('2d'); g.drawImage(im, 0, 0);
-    const d = g.getImageData(0, 0, W0, H0).data, col = new Array(W0).fill(0), from = y0 + Math.floor((H0 - y0) / 3);
-    for (let y = from; y < H0; y++) for (let x = 0; x < W0; x++) if (d[(y * W0 + x) * 4 + 3] > 100) col[x]++;
+    const d = g.getImageData(0, 0, W0, H0).data, A = i => d[i + 3];
+    // clothes below the hip; a pixel within 2 of them is the hem's edge and goes with both (so a hem never frays as a leg leaves)
+    const cl = new Uint8Array(W0 * H0), edge = new Uint8Array(W0 * H0);
+    for (let y = cut; y < H0; y++) for (let x = 0; x < W0; x++) { const i = (y * W0 + x) * 4; if (A(i) > 8 && L.cloth(x, y, d[i], d[i + 1], d[i + 2])) cl[y * W0 + x] = 1; }
+    if (L.hem) for (let x = 0; x < W0; x++) {   // each column: down to the garment's lowest pixel (reached from the body without a gap) is garment
+      let low = -1; for (let y = cut; y < H0; y++) { const i = (y * W0 + x) * 4; if (A(i) < 8) break; if (L.hem(x, y, d[i], d[i + 1], d[i + 2])) low = y; }
+      for (let y = cut; y <= low; y++) if (A((y * W0 + x) * 4) > 8) cl[y * W0 + x] = 1; }
+    for (let y = cut; y < H0; y++) for (let x = 0; x < W0; x++) { if (cl[y * W0 + x] || A((y * W0 + x) * 4) < 8) continue;
+      const R = d[(y * W0 + x) * 4] + d[(y * W0 + x) * 4 + 1] + d[(y * W0 + x) * 4 + 2] < 200 ? 3 : 2;   // a dark outline pixel a little further off is still the hem's
+      let near = 0; for (let v = -R; v <= R && !near; v++) for (let u = -R; u <= R; u++) { const X = x + u, Y = y + v; if (X >= 0 && X < W0 && Y >= cut && Y < H0 && cl[Y * W0 + X]) { near = 1; break; } }
+      edge[y * W0 + x] = near; }
+    const solid = (x, y) => { let n = 0; for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) { const X = x + u, Y = y + v; if ((u || v) && X >= 0 && X < W0 && Y < H0 && A((Y * W0 + X) * 4) > 8) n++; } return n >= 3; };   // no lone specks
+    const isLeg = (x, y) => y >= (L.legFrom || cut) && !(L.skip && L.skip(x, y, d[(y * W0 + x) * 4], d[(y * W0 + x) * 4 + 1], d[(y * W0 + x) * 4 + 2])) && !cl[y * W0 + x] && A((y * W0 + x) * 4) > 8 && solid(x, y);
+    // the gap between the feet: the emptiest column in the middle half of the bottom third
+    const col = new Array(W0).fill(0), from = cut + Math.floor((H0 - cut) * 0.55);
+    for (let y = from; y < H0; y++) for (let x = 0; x < W0; x++) if (isLeg(x, y)) col[x]++;
     let lo = W0, hi = 0; col.forEach((c, x) => { if (c) { lo = Math.min(lo, x); hi = Math.max(hi, x); } });
-    let split = Math.round((lo + hi) / 2), best = 1e9;   // the gap between the feet: the emptiest column in the middle half
-    for (let x = lo + Math.floor((hi - lo) * 0.25); x <= lo + Math.floor((hi - lo) * 0.75); x++) { const v = col[x] * 100 + Math.abs(x - (lo + hi) / 2); if (v < best) { best = v; split = x; } }
-    const piece = (x0, x1) => {   // one leg, from 3 px above the hem (tucked under it) to the ground; a gold staff stays with the body
-      const c = document.createElement('canvas'); c.width = W0; c.height = H0; const q = c.getContext('2d'), out = q.createImageData(W0, H0); let sx = 0, n = 0;
-      for (let y = y0 - 3; y < H0; y++) for (let x = x0; x < x1; x++) { const i = (y * W0 + x) * 4; if (d[i + 3] < 8) continue;
-        if (kind === 'lamp' && x < split - 6 && d[i] > 165 && d[i + 1] > 115 && d[i + 2] < 90) continue;   // the lamplighter's pole, beside his back leg
-        out.data.set(d.subarray(i, i + 4), i); if (y > y0) { sx += x; n++; } }
-      q.putImageData(out, 0, 0); return { c, px: n ? sx / n : (x0 + x1) / 2 };
+    let split = Math.round((lo + hi) / 2), best = 1e9;
+    if (L.split) { best = -1; split = L.split; }
+    for (let x = lo + Math.floor((hi - lo) * 0.25); best >= 0 && x <= lo + Math.floor((hi - lo) * 0.75); x++) { const v = col[x] * 100 + Math.abs(x - (lo + hi) / 2); if (v < best) { best = v; split = x; } }
+    const piece = (x0, x1) => {   // one leg: its largest connected part only (no specks, stray strokes or bits of a pole)
+      const mine = new Uint8Array(W0 * H0); let bestN = 0;
+      const seen = new Uint8Array(W0 * H0);
+      for (let y = cut; y < H0; y++) for (let x = x0; x < x1; x++) { if (seen[y * W0 + x] || !isLeg(x, y)) continue;
+        const st = [[x, y]], got = []; seen[y * W0 + x] = 1;
+        while (st.length) { const [X, Y] = st.pop(); got.push(Y * W0 + X);
+          for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) { const XX = X + u, YY = Y + v; if (XX < x0 || XX >= x1 || YY < cut || YY >= H0 || seen[YY * W0 + XX] || !isLeg(XX, YY)) continue; seen[YY * W0 + XX] = 1; st.push([XX, YY]); } }
+        if (got.length > bestN) { bestN = got.length; mine.fill(0); got.forEach(j => (mine[j] = 1)); } }
+      // an opening (erode, then grow back inside the leg): thin strokes of hem shadow or outline are not legs
+      const er = new Uint8Array(W0 * H0), op = new Uint8Array(W0 * H0), at = (x, y) => x >= 0 && x < W0 && y >= 0 && y < H0 && mine[y * W0 + x];
+      for (let y = cut; y < H0; y++) for (let x = x0; x < x1; x++) { let ok = mine[y * W0 + x]; for (let v = -1; v <= 1 && ok; v++) for (let u = -1; u <= 1; u++) if (!at(x + u, y + v)) { ok = 0; break; } er[y * W0 + x] = ok; }
+      for (let y = cut; y < H0; y++) for (let x = x0; x < x1; x++) { if (!mine[y * W0 + x]) continue; let ok = 0; for (let v = -1; v <= 1 && !ok; v++) for (let u = -1; u <= 1; u++) { const X = x + u, Y = y + v; if (X >= 0 && X < W0 && Y >= 0 && Y < H0 && er[Y * W0 + X]) { ok = 1; break; } } op[y * W0 + x] = ok; }
+      {   // and of what is left, again only the largest connected part
+        const seen2 = new Uint8Array(W0 * H0); let bestN2 = 0, keepSet = null;
+        for (let y = cut; y < H0; y++) for (let x = x0; x < x1; x++) { const j0 = y * W0 + x; if (seen2[j0] || !op[j0]) continue;
+          const st2 = [j0], got = []; seen2[j0] = 1;
+          while (st2.length) { const j = st2.pop(), X = j % W0, Y = (j - X) / W0; got.push(j);
+            for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) { const XX = X + u, YY = Y + v; if (XX < x0 || XX >= x1 || YY < cut || YY >= H0) continue; const jj = YY * W0 + XX; if (seen2[jj] || !op[jj]) continue; seen2[jj] = 1; st2.push(jj); } }
+          if (got.length > bestN2) { bestN2 = got.length; keepSet = got; } }
+        op.fill(0); if (keepSet) keepSet.forEach(j => (op[j] = 1)); }
+      const has = (x, y) => op[y * W0 + x] === 1;
+      const c = document.createElement('canvas'); c.width = W0; c.height = H0; const q = c.getContext('2d'), out = q.createImageData(W0, H0);
+      let top = H0, bot = 0, fx = 0, fn = 0;
+      for (let y = cut; y < H0; y++) for (let x = x0; x < x1; x++) if (has(x, y)) { const i = (y * W0 + x) * 4; out.data.set(d.subarray(i, i + 4), i); top = Math.min(top, y); bot = Math.max(bot, y); }
+      for (let y = bot - 7; y <= bot; y++) for (let x = x0; x < x1; x++) if (has(x, y)) { fx += x; fn++; }
+      q.putImageData(out, 0, 0);
+      const sole = []; for (let x = x0; x < x1; x++) for (let y = H0 - 1; y >= cut; y--) if (has(x, y)) { sole.push([x, y + 0.5]); break; }   // the underside, for ground contact
+      // the leg's own colour and width where it leaves the clothes, for the shin that joins it to the hip as it swings
+      let tx0 = W0, tx1 = -1, cr = 0, cg = 0, cb = 0, cn = 0;
+      for (let y = top; y <= top + 2; y++) for (let x = x0; x < x1; x++) if (has(x, y)) { if (y === top + 1 || tx1 < 0) { tx0 = Math.min(tx0, x); tx1 = Math.max(tx1, x); } const i = (y * W0 + x) * 4; cr += d[i]; cg += d[i + 1]; cb += d[i + 2]; cn++; }
+      // the shin wears what the leg wears just above where it leaves the clothes (trousers, stocking), else the leg's own top
+      let ur = 0, ug = 0, ub = 0, un = 0; for (let y = Math.max(0, top - 4); y < top; y++) for (let x = tx0; x <= tx1; x++) { const i = (y * W0 + x) * 4; if (d[i + 3] > 200 && !cl[y * W0 + x] && d[i] + d[i + 1] + d[i + 2] > 150) { ur += d[i]; ug += d[i + 1]; ub += d[i + 2]; un++; } }
+      const col = un > 3 ? [ur / un, ug / un, ub / un] : cn ? [cr / cn, cg / cn, cb / cn] : [90, 60, 40];
+      return { c, top, bot, sole, fx: fn ? fx / fn : (x0 + x1) / 2, tx0, tx1: tx1 + 1, colA: col, col: `rgb(${col.map(Math.round)})`, ink: `rgb(${col.map(v => Math.round(v * 0.42))})` };
     };
-    const back = piece(0, split), front = piece(split, W0);
-    const body = document.createElement('canvas'); body.width = W0; body.height = H0; const b = body.getContext('2d'); b.drawImage(im, 0, 0);
-    b.globalCompositeOperation = 'destination-out'; b.drawImage(back.c, 0, 0); b.drawImage(front.c, 0, 0); b.globalCompositeOperation = 'source-over';
-    b.clearRect(0, y0 + 2, W0, H0);   // nothing of the old legs is left on the body below the hem
-    if (kind === 'lamp') { for (let y = y0 + 2; y < H0; y++) for (let x = 0; x < split - 6; x++) { const i = (y * W0 + x) * 4; if (d[i + 3] > 8 && d[i] > 165 && d[i + 1] > 115 && d[i + 2] < 90) { b.fillStyle = `rgba(${d[i]},${d[i + 1]},${d[i + 2]},${d[i + 3] / 255})`; b.fillRect(x, y, 1, 1); } } }
-    // the shadow inside the clothes between the legs: the legs' own colour at the hem, darkened, so no daylight shows through
-    let rr = 0, gg = 0, bb = 0, nn = 0; for (let y = y0; y < y0 + 4; y++) for (let x = 0; x < W0; x++) { const i = (y * W0 + x) * 4; if (d[i + 3] > 200) { rr += d[i]; gg += d[i + 1]; bb += d[i + 2]; nn++; } }
-    const inner = nn ? `rgb(${Math.round(rr / nn * 0.45)},${Math.round(gg / nn * 0.45)},${Math.round(bb / nn * 0.45)})` : '#3a2418';
-    return (RIG[kind] = { body, back, front, y0, W0, H0, inner });
+    const front = Object.assign(piece(split, W0), { home: 1 }), painted = Object.assign(piece(0, split), { home: -1 });
+    const shade = cv => { const o = document.createElement('canvas'); o.width = W0; o.height = H0; const q = o.getContext('2d'); q.drawImage(cv, 0, 0);
+      q.globalCompositeOperation = 'source-atop'; q.fillStyle = 'rgba(30,16,14,0.4)'; q.fillRect(0, 0, W0, H0); return o; };   // the far leg sits a shade back
+    const back = L.copy ? Object.assign({}, front, { slot: painted.fx, c: shade(front.c), col: `rgb(${front.colA.map(v => Math.round(v * 0.8))})` }) : painted;   
+    const keep = new Uint8Array(W0 * H0), st = [];   // clothes below the hip hang from the body: a loose speck is dropped
+    for (let x = 0; x < W0; x++) if (A(((cut - 1) * W0 + x) * 4) > 8) st.push([x, cut - 1]);
+    while (st.length) { const [X, Y] = st.pop(); for (let v = 0; v <= 1; v++) for (let u = -1; u <= 1; u++) { const XX = X + u, YY = Y + v; if (XX < 0 || XX >= W0 || YY >= H0 || YY < cut) continue; const j = YY * W0 + XX; if (keep[j] || !cl[j]) continue; keep[j] = 1; st.push([XX, YY]); } }
+    for (let y = cut; y < H0; y++) for (let x = 1; x < W0 - 1; x++) { const j = y * W0 + x; if (!edge[j] || keep[j]) continue; for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) if (keep[(y + v) * W0 + x + u] === 1) keep[j] = 2; }
+    const body = document.createElement('canvas'); body.width = W0; body.height = H0; const b = body.getContext('2d'), bd = b.createImageData(W0, H0);
+    for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) { const i = (y * W0 + x) * 4; if ((y < cut || keep[y * W0 + x] || (L.legFrom && y < L.legFrom && x > 26 && x <= 55)) && !(L.drop && L.drop(x, y, d[i], d[i + 1], d[i + 2]))) bd.data.set(d.subarray(i, i + 4), i); }
+    b.putImageData(bd, 0, 0);
+    const bx = back.slot != null ? back.slot : back.fx, D = Math.max(6, (front.fx - bx) / 2) * (L.reach || 1), mid = (front.fx + bx) / 2;
+    const ua = front.colA.map((v, i) => Math.round((v + back.colA[i]) / 2 * 0.72));
+    return (RIG[kind] = { body, back, front, cut, under: `rgb(${ua})`, W0, H0, D, mid, ground: Math.max(front.bot, back.bot) + 0.5, sink: H0 - 1 - Math.max(front.bot, back.bot), stride: 2 * D });
+  }
+  // where a foot is at cycle point u (0..2): +1 is a full step forward, -1 a full step back; lifted off the ground in its swing
+  function footAt(u) {
+    u = ((u % 2) + 2) % 2;
+    if (u < 1) return { x: 1 - 2 * u, up: 0 };   // planted: slides back at the walking speed (still on the ground)
+    const s = u - 1, e = s * s * (3 - 2 * s);
+    return { x: -1 + 2 * e, up: Math.sin(Math.PI * s) };   // swing: lifts, passes the planted foot, sets down in front
   }
   function folkWalk(im, f, w, h, ph, c = cx) {
-    const r = folkRig(f.kind, im), k = w / r.W0, sw = Math.sin(ph) * 0.48;   // each leg swings about 27 degrees either side
-    // planted feet stay on the ground (natural-movement-rules 2): a swung leg is shorter in height, so the hips drop by that
-    // much at full stride and are highest as the legs pass; the leg swinging forward lifts its foot a little to clear the ground
-    const legH = (r.H0 - r.y0) * k, drop = legH * (1 - Math.cos(sw)), clear = legH * 0.1 * Math.max(0, Math.cos(ph));
-    c.translate(0, drop);
-    const leg = (L, a) => { const px = -w / 2 + L.px * k, py = -h + r.y0 * k; c.save(); c.translate(px, py); c.rotate(a); c.translate(-px, -py); c.drawImage(L.c, -w / 2, -h, w, h); c.restore(); };
-    const hx = -w / 2 + (r.back.px + r.front.px) / 2 * k, hw = Math.abs(r.front.px - r.back.px) * k / 2 + 4 * k, hy = -h + r.y0 * k;
-    c.fillStyle = r.inner; c.beginPath(); c.ellipse(hx, hy + 2 * k, hw, 6 * k, 0, 0, Math.PI * 2); c.fill();
-    const leg2 = (L, a, up) => { c.save(); c.translate(0, -up); leg(L, a); c.restore(); };
-    leg2(r.back, sw, clear); leg2(r.front, -sw, Math.max(0, -Math.cos(ph)) * legH * 0.1);   // the back leg swings forward as the front one swings back: the feet alternate
-    c.drawImage(r.body, -w / 2, -h, w, h);
+    const r = folkRig(f.kind, im), k = w / r.W0, u = ph / Math.PI, mid = r.mid, pass = Math.abs(Math.sin(Math.PI * u));
+    const drop = 3.4 * (1 - pass);   // the body settles onto each planted foot and rises as the feet pass (source px); it only ever
+    // comes down over the legs, so no gap can open under a hem
+    c.translate(0, r.sink * k);   // the painted feet stand on the ground line itself
+    const sway = 0.05 * Math.sin(Math.PI * u);   // and rocks a touch toward the foot it stands on: a rhythm that reads at 44 px
+    // a chibi's leg is mostly boot: the leg is carried whole (never bent or stretched) to where the cycle puts its foot, and
+    // turns about the foot so the toe rises as it lands in front and the heel rises as it pushes off behind. Its underside
+    // then sits exactly on the ground line: a planted foot never floats or sinks.
+    const leg = (P, uu) => {
+      const ft = footAt(uu), off = mid + ft.x * r.D - P.fx, lift = ft.up * 8, rot = (-(ft.x - P.home) * 0.2 - ft.up * 0.12) * Math.min(1, 16 / (P.bot - P.top));   // a long leg rolls less (its top must stay under the clothes)
+      const pxS = P.fx + off, pyS = P.bot - 5 - lift, sn = Math.sin(rot), cs = Math.cos(rot);
+      let low = -1e9; for (const [x, y] of P.sole) low = Math.max(low, pyS + (x + off - pxS) * sn + (y - lift - pyS) * cs);
+      const dy = (r.ground - lift) - low, px = -w / 2 + pxS * k, py = -h + (pyS + dy) * k;
+      // the shin: from under the hem (where the leg was painted) to the top of the carried boot, in the leg's own colours, so
+      // a leg is never cut off from the body and no daylight shows under the clothes
+      const T = (x, y) => { const X = x + off - pxS, Y = y + dy - lift - (pyS + dy); return [pxS + X * cs - Y * sn, pyS + dy + X * sn + Y * cs]; };
+      const a = T(P.tx0 + 0.6, P.top + 1.5), b2 = T(P.tx1 - 0.6, P.top + 1.5), hy = P.top - 4 + drop * 0.6, S_ = (x, y) => [-w / 2 + x * k, -h + y * k];
+      const hc = P.tx0 + (P.tx1 - P.tx0) / 2, hm = hc + (mid - hc) * 0.35, hw = (P.tx1 - P.tx0) * 0.36;   // the hip end sits in under the body
+      const q = [S_(hm - hw, hy), S_(hm + hw, hy), S_(...b2), S_(...a)];
+      c.save(); c.beginPath(); c.moveTo(...q[0]); q.slice(1).forEach(v => c.lineTo(...v)); c.closePath();
+      c.fillStyle = P.col; c.fill(); c.strokeStyle = P.ink; c.lineWidth = Math.max(1, k * 1.1);
+      c.beginPath(); c.moveTo(...q[0]); c.lineTo(...q[3]); c.moveTo(...q[1]); c.lineTo(...q[2]); c.stroke(); c.restore();
+      c.save(); c.translate(px, py); c.rotate(rot); c.translate(-px, -py);
+      c.drawImage(P.c, -w / 2 + off * k, -h + (dy - lift) * k, w, h); c.restore();
+    };
+    if (FOLK_LEGS[f.kind].under) {   // the inside of the clothes at the hips, in the legs' own (shaded) colour: no daylight between the hem and the legs as they swing
+      const B = r.back, F = r.front, x0 = Math.min(B.tx0, F.tx0) + 1, x1 = Math.max(B.tx1, F.tx1) - 1, top = Math.min(B.top, F.top);
+      c.fillStyle = r.under; c.beginPath(); c.ellipse(-w / 2 + (mid * 0.6 + (x0 + x1) / 2 * 0.4) * k, -h + (top + drop * 0.5) * k, (x1 - x0) / 2 * 0.62 * k, 3.5 * k, 0, 0, Math.PI * 2); c.fill();
+    }
+    leg(r.back, u + 1); leg(r.front, u);   // opposite halves of the cycle: the feet alternate
+    const hx = -w / 2 + mid * k, hy = -h + r.cut * k;
+    c.save(); c.translate(hx, hy); c.rotate(sway); c.translate(-hx, -hy);
+    c.drawImage(r.body, -w / 2, -h + drop * k, w, h); c.restore();
   }
   function drawFolk() {
     if (!img.folk_builder) return;   // painted villagers belong in store captures too
+    if (root.HG_QA) root.HG_QA.folkT = cx.getTransform();   // QA: where the villagers' ground is drawn on screen
     for (const f of FOLK.slice().sort((a, b) => a.y - b.y)) {
       const working = f.work > 0, im = img[working && f.kind === 'builder' ? 'folk_builderwork' : 'folk_' + f.kind]; if (!im) continue;
-      const walking = !working && f.i < f.pts.length, calm = reduced();
+      const walking = !working && f.i < f.pts.length && f.moving > 0, calm = reduced();
       const h = (f.kind === 'child' ? 34 : 44) * (working && f.kind === 'builder' ? 0.9 : 1), w = h * im.width / im.height;
-      const step = f.step || 0, st = walking && !calm ? Math.abs(Math.cos(step * Math.PI)) : 0;   // 1 as the legs pass each other (body highest), 0 at full stride
+      const step = f.step || 0, st = 0;   // the walk itself lives in folkWalk
       const hop = f.hop > 0 ? Math.sin(f.hop / 0.7 * Math.PI) : 0;
       const lift = calm ? 0 : hop * 12;   // a walker's rise and fall comes from its legs (folkWalk)
       let sy = 1;
@@ -946,7 +1068,7 @@
       const lean = walking && !calm ? 0.05 : 0;   // a walker leans a touch into the walk
       cx.save(); cx.globalAlpha = 0.22 * (1 - hop * 0.5); cx.fillStyle = '#1a0f15'; cx.beginPath(); cx.ellipse(f.x, f.y, w * (0.32 - 0.06 * st) * (1 - hop * 0.25), 4, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
       cx.translate(f.x, f.y - lift); cx.scale(f.dir, 1); cx.rotate(lean); cx.scale(1 / Math.sqrt(sy), sy);
-      if (walking && !calm) folkWalk(im, f, w, h, step * Math.PI); else cx.drawImage(im, -w / 2, -h, w, h);
+      if (walking && !calm) folkWalk(im, f, w, h, step * Math.PI); else { const sk = im === img['folk_' + f.kind] ? folkRig(f.kind, im).sink * w / im.width : 0; cx.drawImage(im, -w / 2, -h + sk, w, h); }
       cx.restore();
     }
   }
