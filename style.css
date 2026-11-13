@@ -504,3 +504,27 @@ svg.wing { flex: none; width: 84px; height: 70px; }
 @keyframes bought { 0% { transform: scale(.94); } 55% { transform: scale(1.04); } 100% { transform: none; } }
 @media (hover: hover) { .big:hover { filter: brightness(1.08); } .icon:hover { filter: brightness(1.15); } }
 .calm .big.bought { animation: none; }
+
+/* ---------- polish pass (fresh-eyes review, Nov 13 2026) ----------
+   1. The panel is a quiet plum surface, not a blurred copy of the city (it read as a placeholder).
+   2. Information is plain text with thin dividers; only things you press keep a gold frame.
+   3. Nothing is cut mid-line: long lists fade out at the bottom and scroll. */
+#stage.wide::before { background: radial-gradient(130% 70% at 50% 0%, rgba(255, 213, 107, .07), rgba(0, 0, 0, 0) 60%), linear-gradient(#3b2238, #24141f); }
+#stage.wide #info .sstep { background: none; border: 0; border-bottom: 1px solid rgba(201, 162, 74, .35); border-radius: 0; padding: 4px 2px 10px; }
+#stage.wide #info .nextb { background: none; border: 0; border-bottom: 1px solid rgba(201, 162, 74, .35); border-radius: 0; padding: 4px 0 12px; }
+#stage.wide #info .nextb canvas { border-radius: 10px; box-shadow: 0 0 0 2px rgba(201, 162, 74, .55), 0 4px 10px rgba(0, 0, 0, .35); }
+#stage.wide #info .sq { background: none; border-bottom: 1px solid rgba(255, 255, 255, .07); border-radius: 0; padding: 4px 2px; }
+#stage.wide #info .sgrid span { background: none; border-left: 2px solid rgba(201, 162, 74, .4); border-radius: 0; padding: 2px 8px; }
+#stage.wide #info .sline, #stage.wide #info .sstep, #stage.wide #info .sq { font-weight: 700; }
+#stage.wide #info { -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent); mask-image: linear-gradient(#000 calc(100% - 28px), transparent); padding-bottom: 24px; }
+#info b, .side b, .sstep b { white-space: nowrap; }
+#info .gem.sm + *, #info .sstep { word-break: normal; }
+.stat .sub.rate { color: #ffc2ec; text-shadow: 0 0 2px #22121b, 1px 1px 0 #22121b, -1px -1px 0 #22121b, 1px -1px 0 #22121b, -1px 1px 0 #22121b; }
+#backdrop { filter: blur(26px) brightness(.26) saturate(1.05) !important; }
+/* the hand over a building on desktop is smaller, so it never hides what it points at */
+#stage.wide #hand.bld { width: 68px; height: 80px; }
+/* phones: Bram's portrait is smaller so his panel covers less of the field */
+#stage:not(.wide) #guide .por { width: 176px; height: 172px; }
+#stage:not(.wide) #guide .bub p { font-size: 32px; }
+.nw { white-space: nowrap; }
+#stage.wide .big .fill { background: linear-gradient(90deg, rgba(201, 162, 74, .14) calc(100% - 18px), rgba(201, 162, 74, 0)); }

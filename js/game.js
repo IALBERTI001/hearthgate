@@ -221,7 +221,7 @@
     if (hs !== 'hit-classic' && S.hits.length < 30) S.hits.push({ x: e.x, y: e.y - e.size * 0.45, t: 0, col: COLOR[el], style: hs, seed: Math.random() * 6 });
     A.play(el === 'frost' ? 'ice_contact_0' : el === 'storm' ? 'lightning_contact_0' : el === 'fire' || el === 'earth' ? 'fire_contact_0' : 'ice_contact_0', 0.12);
     if (e.dp && e.dp.t < 0.25 && S.pops.includes(e.dp) && !e.bigHit) { e.dp.val += d; e.dp.text = C.fmt(e.dp.val); }
-    else { e.dp = pop(e.x, e.y - e.size * 0.55, C.fmt(d), e.bigHit ? '#ffffff' : COLOR[el], e.bigHit ? 0.9 : 0.7, e.bigHit ? 56 : 30); e.dp.val = d; }
+    else if (e.bigHit || S.pops.filter(q => q.dmg && q.t < q.life).length < 7) { e.dp = pop(e.x, e.y - e.size * 0.55, C.fmt(d), e.bigHit ? '#ffffff' : COLOR[el], e.bigHit ? 0.9 : 0.7, e.bigHit ? 56 : 30); e.dp.val = d; e.dp.dmg = true; }   // at most 7 small damage numbers at once (polish review, Nov 13 2026: the top of the field was a pile of numbers)
     e.bigHit = false;
   }
   // a stun lands only if the enemy has had time to recover from the last one (owner, Nov 6 2026: "is the boss not supposed to
@@ -313,7 +313,7 @@
   // Floating numbers never pile up: a new one that lands on a fresh one steps above it, and at most 8 small numbers
   // live at once (the oldest goes first). Final-review fix, Nov 6 2026: "4.82K" sat on "3.81K".
   function pop(x, y, text, col, life, size) {
-    y = Math.max(FIELD_TOP - 20 + size, y);
+    y = Math.max((WIDE ? CAM_Y + 6 : FIELD_TOP - 20) + size, y);   // never above the top of what the camera shows
     const half = String(text).length * size * 0.29; x = Math.max(half + 12, Math.min(W - half - 12, x));   // words stay on screen (a flurry caught at the edge cut its shout)
     for (let k = 0; k < 5; k++) { const hit = S.pops.find(q => q.text && !q.combo && q.t < q.life * (q.hold || 0.55) && Math.abs(q.x - x) < half + String(q.text).length * q.size * 0.29 && Math.abs(q.y - q.t * 40 - y) < (size + q.size) * 0.48); if (!hit) break; y = hit.y - hit.t * 40 - (size + hit.size) * 0.5; }   // whole widths and the whole readable time (owner-level detail pass, Nov 7: "1.1K" sat on "1.06K")
     const small = S.pops.filter(q => q.text && !q.combo && q.size <= 40); if (size <= 40 && small.length >= 8) S.pops.splice(S.pops.indexOf(small[0]), 1);
@@ -1623,7 +1623,7 @@
     re.classList.toggle('ascend', asc); re.classList.toggle('waiting', whole && !asc);   // gold only when Ascend is really ready
     const offer = asc ? [] : C.restoreOffer(P);
     fitLabel(re.querySelector('.label'), whole ? 'Ascend' : offer.length === 1 ? `Rebuild ${C.byId(offer[0]).name}` : 'Rebuild');   // says what you get (owner, Nov 10 2026: "Restore is too vague")
-    fitHtml(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `Wave ${C.fmt(rw)} / ${C.fmt(aw)}` : `${offer.length === 1 ? '' : 'Pick 1 of 2 · '}${gem}${C.fmt(rc)}`);
+    fitHtml(re.querySelector('.cost'), asc ? `x${C.ASCEND_MULT} forever` : whole ? `Wave ${C.fmt(rw)} / ${C.fmt(aw)}` : `${offer.length === 1 ? '' : '<span class="what">Pick 1 of 2 · </span>'}${gem}${C.fmt(rc)}`);
     re.querySelector('.fill').style.width = asc ? '100%' : whole ? Math.min(100, rw / aw * 100) + '%' : Math.min(100, P.res / rc * 100) + '%';
     re.classList.toggle('ready', asc || (!whole && P.res >= rc));
     for (const b of [up, re]) if (b.classList.contains('ready')) b.querySelector('.wait').textContent = '';
@@ -1728,7 +1728,7 @@
   function goalsHtml() {
     const gem = '<i class="gem sm"></i>', offer = C.restoreOffer(P), rc = C.cityWhole(P) ? 0 : C.restoreCost(P.restored.length);
     const rw = Math.max(P.runWave || 1, P.wave), aw = C.ascendWave(P);
-    const step = C.canAscend(P) ? '<b>Ascend is ready!</b> Press Ascend.' : C.cityWhole(P) ? `Reach wave <b>${aw}</b> to Ascend (now ${rw}).` : `Rebuild ${offer.map(id => C.byId(id).name).join(' or ')} for ${gem}${C.fmt(rc)}.`;
+    const step = C.canAscend(P) ? '<b>Ascend is ready!</b> Press Ascend.' : C.cityWhole(P) ? `Reach wave <b>${aw}</b> to Ascend (now ${rw}).` : `Rebuild ${offer.map(id => C.byId(id).name).join(' or ')} for <span class="nw">${gem}${C.fmt(rc)}</span>.`;
     const stage = C.stageOf(P.gateLevel), nextStage = C.STAGES[stage];
     const qs = P.shop.open && P.quests.list.length ? `<h4>Today's quests</h4>${P.quests.list.map(q => `<div class="sq${q.claimed ? ' done' : ''}"><span>${C.questText(q)}</span><b>${Math.min(q.n, q.need)}/${q.need}</b></div>`).join('')}` : '';
     const star = P.ascensions >= 1 ? C.STARS.find(st => st.asc === P.ascensions && !P.stars.includes(st.id)) : null;
