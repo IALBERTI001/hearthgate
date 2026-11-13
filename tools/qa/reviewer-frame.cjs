@@ -3,7 +3,8 @@
 // against what accepted games did in the same frame: frame use, smallest text (page and canvas), size of enemies and
 // towers, time the fight is held, caption words in the first 60 s, Skip on screen. Usage: node reviewer-frame.cjs <url> [out]
 const { chromium } = require('playwright');
-const BAR = { frame: 0.8, text: 10, button: 14, subject: 36, held: 3, words: 15, skipBy: 3 };
+const BAR = { frame: 0.75,   // owner, Nov 13 2026: the whole working area in view beats filling the frame (was 0.8)
+ text: 10, button: 14, subject: 36, held: 3, words: 15, skipBy: 3 };
 (async () => { const [url, out] = process.argv.slice(2), W = 824, H = 464;
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
@@ -16,7 +17,7 @@ const BAR = { frame: 0.8, text: 10, button: 14, subject: 36, held: 3, words: 15,
   });
   const t0 = Date.now(), T = () => (Date.now() - t0) / 1000;
   await p.goto(url); await p.waitForFunction(() => !document.getElementById('boot'), null, { timeout: 20000 });
-  let held = 0, lastT = null, words = new Set(), skipAt = null, minDom = [99, ''], minBtn = [99, ''], subj = 99, tower = 0, shot = 3;
+  let offView = 0, held = 0, lastT = null, words = new Set(), skipAt = null, minDom = [99, ''], minBtn = [99, ''], subj = 99, tower = 0, shot = 3;
   while (T() < 75) {
     const st = await p.evaluate(() => {
       const g = document.getElementById('guide'), cv = document.getElementById('field'), r = cv.getBoundingClientRect(), s = Hearthgate.state();
@@ -24,14 +25,16 @@ const BAR = { frame: 0.8, text: 10, button: 14, subject: 36, held: 3, words: 15,
       const txt = []; for (const e of document.querySelectorAll('#stage *')) { if (!e.offsetParent) continue; const t = [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join(' ');
         if (!t) continue; const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue; const k = e.getBoundingClientRect().height / (e.offsetHeight || 1);
         txt.push([t.slice(0, 30), +(parseFloat(cs.fontSize) * k).toFixed(1), !!e.closest('button')]); }
-      const en = s.S.enemies.filter(e => !e.boss && !e.dying).map(e => e.size * css);
+      const en = s.S.enemies.filter(e => !e.boss && !e.dying).map(e => e.size * css), top = Hearthgate.view().top;
+      const hidden = s.S.enemies.filter(e => !e.dying && e.y - e.size * 0.5 < top).length;
       return { t: s.S.t, gin: !!g && g.classList.contains('in'), cap: g ? g.querySelector('p').textContent : '', skip: !!(g && g.classList.contains('in') && g.querySelector('.gskip')),
-        txt, en: en.length ? Math.min(...en) : null, tower: 82 * css, hand: document.getElementById('hand').className };
+        txt, hidden, en: en.length ? Math.min(...en) : null, tower: 82 * css, hand: document.getElementById('hand').className };
     });
     if (lastT !== null && st.t - lastT < 0.05) held += 0.25; lastT = st.t;
     if (st.gin && T() < 60) st.cap.split(/\s+/).filter(Boolean).forEach(w => words.add(st.cap + '|' + w));
     if (st.skip && skipAt === null) skipAt = T();
     for (const [t, px, btn] of st.txt) { if (px < minDom[0]) minDom = [px, t]; if (btn && px < minBtn[0]) minBtn = [px, t]; }
+    if (st.hidden) offView += 0.25;
     if (st.en) subj = Math.min(subj, st.en); tower = st.tower;
     if (out && T() >= shot) { await p.screenshot({ path: `${out}/rf-${String(Math.round(T())).padStart(2, '0')}.png` }); shot += 15; }
     if (/\bup\b/.test(st.hand)) await p.click('#up').catch(() => {}); else if (/\bre\b/.test(st.hand)) await p.click('#re').catch(() => {});
@@ -48,6 +51,7 @@ const BAR = { frame: 0.8, text: 10, button: 14, subject: 36, held: 3, words: 15,
     ['Smallest enemy px', +subj.toFixed(1), subj >= BAR.subject],
     ['Tower px (tier 1)', +tower.toFixed(1), tower >= BAR.subject],
     ['Fight held s (first 75 s)', held, held <= BAR.held],
+    ['Monster bodies above the view, s', offView, offView <= 0.5],
     ['Caption words (first 60 s)', nWords, nWords <= BAR.words],
     ['Skip on screen by s', skipAt === null ? 'never' : +skipAt.toFixed(1), skipAt !== null && skipAt <= BAR.skipBy],
     ['Page errors', errs.length, errs.length === 0]];

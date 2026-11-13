@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13b';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13c';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -37,7 +37,7 @@
   const rfmt = r => r < 10 ? String(+r.toFixed(r < 1 ? 2 : 1)) : C.fmt(r);
   // completion for CrazyGames: the road to the Eternal City is 10 Ascensions of 10 buildings each; the 10th Ascension is 100
   function reportProgress() { SDK.reportCompletion(P.ascensions >= C.ETERNAL_AT ? 100 : (P.ascensions + P.restored.length / 10) * 100 / C.ETERNAL_AT); }
-  root.Hearthgate = { reportProgress, reloadSave() { P = load(); refresh(); S.enemies = []; S.wisps = []; startWave(); }, state: () => ({ P, S, B }) };
+  root.Hearthgate = { reportProgress, reloadSave() { P = load(); refresh(); S.enemies = []; S.wisps = []; startWave(); }, state: () => ({ P, S, B }), view: () => ({ top: camY(), wide: WIDE }) };   // view: the camera's top line (the pass gate checks monsters are seen as they appear)
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
   if (/[?&]qa\b/.test(location.search)) Object.assign(root.Hearthgate, {
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
@@ -345,6 +345,12 @@
     chimneyPuff('forge', 4); guidePressed('up'); bounce('up'); save(); ui();
   }
   // a bought button gives a small springy nod under the hand (F9, Nov 13 2026: every press answers at once)
+  // a small glyph for each setting (sweep, Nov 13 2026: a settings menu that is a plain list with no icons reads unfinished)
+  const TICON = {
+    music: '<svg viewBox="0 0 24 24"><path d="M9 18.5a3 3 0 1 1-2-2.83V5l12-2v12.5a3 3 0 1 1-2-2.83V7.2L9 8.6z"/></svg>',
+    sfx: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    reduced: '<svg viewBox="0 0 24 24"><path d="M3 8c3-3 6 3 9 0s6 3 9 0M3 16c3-3 6 3 9 0s6 3 9 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    tips: '<svg viewBox="0 0 24 24"><path d="M12 2l3.6 9.4L21 20H3l5.4-8.6z"/><circle cx="14.5" cy="9" r="1.3" fill="#3a2236"/><path d="M2 21h20" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>' };
   function bounce(id) { const b = el(id); if (!b || reduced()) return; b.classList.remove('bought'); void b.offsetWidth; b.classList.add('bought'); }
   function restore() {
     A.unlock();
@@ -1147,7 +1153,7 @@
     if (kind === 'shop') html = shopHtml();
     if (kind === 'quests') html = questsHtml();
     if (kind === 'perks') html = perksHtml();
-    if (kind === 'settings') html = `<h2>Paused</h2>${['music', 'sfx', 'reduced', 'tips'].map(k => `<label class="tog"><input type="checkbox" id="s-${k}" ${(k === 'tips' ? !P.settings.noGuide : P.settings[k]) ? 'checked' : ''}><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion', tips: 'Magister Bram\'s tips' }[k]}</span></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}${root.HG_TESTING ? '<button id="c-wipe" class="linkbtn">Start a new game (test page only)</button>' : ''}`;   // the owner's test page only; never in a portal build (owner, Nov 12 2026)
+    if (kind === 'settings') html = `<div class="cardhead"><h2>Paused</h2><button id="c-no" class="x" aria-label="Close"></button></div>${['music', 'sfx', 'reduced', 'tips'].map(k => `<label class="tog"><i class="ticon">${TICON[k]}</i><span>${{ music: 'Music', sfx: 'Sound effects', reduced: 'Reduced motion', tips: 'Magister Bram\'s tips' }[k]}</span><input type="checkbox" id="s-${k}" ${(k === 'tips' ? !P.settings.noGuide : P.settings[k]) ? 'checked' : ''}></label>`).join('')}<p class="small">Best wave ${C.fmt(P.bestWave)} · Ascensions ${P.ascensions}</p><p class="small">Hearthgate · build ${BUILD}</p>${btn('c-ok', 'Resume')}${root.HG_TESTING ? '<button id="c-wipe" class="linkbtn">Start a new game (test page only)</button>' : ''}`;   // the owner's test page only; never in a portal build (owner, Nov 12 2026)
     body.innerHTML = html;
     const close = () => { card.className = ''; S.card = null; if (!S.paused) SDK.gameplay(true); ui(); nextCard(); };
     const on = (id, f) => { const b = body.querySelector('#' + id); if (b) b.onclick = () => { A.unlock(); f(); }; };
@@ -1196,6 +1202,7 @@
       for (const k of ['music', 'sfx', 'reduced']) body.querySelector('#s-' + k).onchange = ev => { P.settings[k] = ev.target.checked; A.set(k, ev.target.checked); save(); };
       body.querySelector('#s-tips').onchange = ev => { P.settings.noGuide = !ev.target.checked; save(); };
       on('c-ok', () => { S.paused = false; el('pause').classList.remove('on'); SDK.gameplay(true); close(); });
+      on('c-no', () => body.querySelector('#c-ok').click());   // the X resumes, like Resume
       on('c-wipe', () => {   // owner, Nov 12 2026: a way to see the opening again. Asked twice, in the page itself, never by a browser dialog
         body.innerHTML = `<h2>Start a new game?</h2><p>This city, every Ascension, perk and Starshard is erased, and you begin again at wave 1.</p>${btn('c-erase', 'Erase and start over', 'danger')}${btn('c-keep', 'Keep my city', 'gold')}`;
         on('c-keep', () => { close(); showCard('settings'); });
@@ -1602,7 +1609,7 @@
     if (P.shop.open) C.questsFor(P, today());
     el('quests').hidden = true;   // quests and Feats live in the Library
     if (fountainState() === 'ready' && !S.card && firstTime('fountainSurge')) { guideSay('surge'); S.pointAt = { id: 'fountain', t: 0 }; }
-    if (P.firstSession && S.sessionT > 1.2) guideSay('intro');
+    if (P.firstSession && S.sessionT > 0.5) guideSay('intro');
 
     el('rate').hidden = RATE <= 0 || P.firstSession; el('rateN').textContent = `Resonance +${rfmt(RATE * surgeX())}/s${surgeX() > 1 ? ' ×2' : ''}`; el('stage').classList.toggle('surging', surgeX() > 1);   // the word stays with its rate (outside review)
     html(el('stars'), `<i class="star gold"></i>${P.perkPts || ''}`); el('stars').hidden = true;   // perks live in the Watchtower
@@ -1670,7 +1677,10 @@
   // drew everything at 0.36). On a wide window the stage turns landscape: the playable world (from the field's top line
   // down to the city's last row) fills the left at full height, and the HUD, Bram, the goals and the two buttons sit in
   // a panel on the right. Phones and tall windows keep the portrait stage.
-  const CAM_Y = FIELD_TOP + 50, SH = 720, PW = 460;   // owner, Nov 13 2026: "the side is way too big": a narrower panel and a closer camera (enemies walk in from above the top edge)
+  // The camera shows the whole working area: monsters are seen the moment they appear (owner, Nov 13 2026: zoomed in, "monsters
+  // do not really show on the screen until after two seconds"), from 70 above the field line down to the city's last row.
+  // The panel stays narrow (owner: "the side is way too big"); the game then fills about 78% of a 16:9 frame.
+  const CAM_Y = FIELD_TOP - 70, SH = 720, PW = 440;
   const VIEW_H = () => GROUND_H() - CAM_Y, WZ = () => SH / VIEW_H(), WB = () => W * WZ();
   let WIDE = false;
   const camY = () => (WIDE ? CAM_Y : 0);

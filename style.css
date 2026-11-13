@@ -528,3 +528,8 @@ svg.wing { flex: none; width: 84px; height: 70px; }
 #stage:not(.wide) #guide .bub p { font-size: 32px; }
 .nw { white-space: nowrap; }
 #stage.wide .big .fill { background: linear-gradient(90deg, rgba(201, 162, 74, .14) calc(100% - 18px), rgba(201, 162, 74, 0)); }
+/* the pause menu: a title with a close X, and each setting a row with its glyph, its name and its switch on the right */
+.tog .ticon { flex: none; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, .25); border: 2px solid rgba(201, 162, 74, .55); color: var(--gold); }
+.tog .ticon svg { width: 30px; height: 30px; fill: currentColor; }
+.tog span { flex: 1; }
+.tog { border-bottom: 1px solid rgba(255, 255, 255, .07); }
