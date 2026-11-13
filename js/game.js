@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13h';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13i';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -40,6 +40,7 @@
   root.Hearthgate = { reportProgress, reloadSave() { P = load(); refresh(); S.enemies = []; S.wisps = []; startWave(); }, state: () => ({ P, S, B }), view: () => ({ top: camY(), wide: WIDE }) };   // view: the camera's top line (the pass gate checks monsters are seen as they appear)
   // QA only (?qa in the address): run the simulation fast and drive the buttons, for the pacing bot in tools/qa.
   if (/[?&]qa\b/.test(location.search)) Object.assign(root.Hearthgate, {
+    walkFrame(c, kind, ph, x, y, h) { const im = img['folk_' + kind]; if (!im) return; const w = h * im.width / im.height; c.save(); c.translate(x, y - Math.abs(Math.cos(ph)) * h * 0.05); folkWalk(im, { kind }, w, h, ph, c); c.restore(); },
     sim(sec) { for (let i = 0; i < sec * 60; i++) if (!S.paused) step(); },
     act(what, id) { if (what === 'up') upgrade(); if (what === 're') restore(); if (what === 'pick') { const o = document.querySelector('#card .opt' + (id ? `[data-id="${id}"]` : '')); if (o) o.click(); } if (what === 'ok') { const o = document.querySelector('#card #c-ok'); if (o) o.click(); } if (what === 'level') levelUp(id); if (what === 'gold' && S.gold) tapGold(S.gold.x, S.gold.y); if (what === 'fly') { const f = FLY.find(q => q.kind && !q.gone && q.a > 0.5); if (f) { const [x, y] = flyPos(f); tapFly(x, y); } else if (FLURRY.list.length) { const [x, y] = flurryPos(FLURRY.list.find(b => b.x > 20 && b.x < W - 20) || FLURRY.list[0]); tapFly(x, y); } } if (what === 'card') showCard(id.kind, id.data); if (what === 'shop') openShopCard(); if (what === 'buy') { const b = document.querySelector(`#card .buy[data-id="${id}"]`); if (b) b.click(); } if (what === 'tab') { const b = document.querySelector(`#card .tab[data-tab="${id}"]`); if (b) b.click(); } if (what === 'close') { const o = document.querySelector('#card #c-no'); if (o) o.click(); } },
     card: () => S.card,
@@ -782,7 +783,7 @@
     while (FOLK.length < folkCount()) { const kind = FOLK_KINDS[FOLK.length], [x, y] = ringAt(Math.random() * 6.28); FOLK.push({ kind, x, y, pts: [], i: 0, wait: Math.random() * 3, dir: 1, t: Math.random() * 9, hop: 0, tapT: 0, speed: kind === 'child' ? 40 : 24 + Math.random() * 6 }); }
     for (const f of FOLK) {
       f.t += DT; f.hop = Math.max(0, f.hop - DT); f.tapT = Math.max(0, f.tapT - DT);
-      if (f.i < f.pts.length && f.work <= 0) f.step = (f.step || 0) + DT * f.speed / 22;   // a stride every 22 px: feet keep pace with the ground
+      if (f.i < f.pts.length && f.work <= 0 && !(f.pause > 0)) f.step = (f.step || 0) + DT * f.speed / 22;   // a stride every 22 px: feet keep pace with the ground
       if (f.hop2 && (f.hop2 -= DT) <= 0) { f.hop2 = 0; f.hop = 0.7; }
       if (f.party > 0) { f.party -= DT; if (f.i >= f.pts.length && f.hop <= 0 && Math.random() < DT * 2.5) f.hop = 0.7; if (f.party <= 0) f.speed = f.kind === 'child' ? 40 : 26; }
       if (f.scared && f.i >= f.pts.length && f.work <= 0) { f.dir = f.x < PLAZA.x ? 1 : -1; continue; }   // huddled by the fountain, facing it
@@ -794,12 +795,13 @@
         } else if (!reduced() && Math.random() < DT * 3) S.fx.push({ dust: true, x: f.x + f.dir * 14, y: f.y - 2, vx: (Math.random() - 0.5) * 30, vy: -20, t: 0, life: 0.6, col: '#d8c3a0', r: 3 });
         continue;
       }
+      if (f.pause > 0) { f.pause -= DT; continue; }
       if (f.i < f.pts.length) {
         const [tx, ty] = f.pts[f.i], dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy), step = f.speed * DT;
         // turn only for a real change of course, held for a moment, and at the passing moment of a step (a pivot, not a flip-flop)
         const want = Math.abs(dx) > Math.abs(dy) * 0.35 + 2 ? (dx > 0 ? 1 : -1) : f.dir;
         f.wantT = want !== f.dir ? (f.wantT || 0) + DT : 0;
-        if (f.wantT > 0.22 && Math.abs(Math.sin((f.step || 0) * Math.PI)) > 0.8) { f.dir = want; f.wantT = 0; }
+        if (f.wantT > 0.22 && Math.abs(Math.sin((f.step || 0) * Math.PI)) < 0.25) { f.dir = want; f.wantT = 0; }   // legs together: the pivot
         if (d <= step) { f.x = tx; f.y = ty; f.i++; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.mending = !!f.job.mend; f.dir = f.mending ? (f.x < GATE_X ? 1 : -1) : f.dir; f.knockT = 0; f.job = null; } else f.wait = f.party > 0 ? f.party : 2 + Math.random() * 5; } }
         else { f.x += dx / d * step; f.y += dy / d * step; }
       } else if ((f.wait -= DT) <= 0) {
@@ -813,10 +815,11 @@
   }
   // villagers standing still never stand inside one another (owner's clip, Nov 13 2026: two huddled into one shape)
   function folkSpace() {
-    for (const a of FOLK) for (const b of FOLK) { if (a === b || a.work > 0 || b.work > 0) continue;
+    for (const a of FOLK) for (const b of FOLK) { if (a === b || a.work > 0 || b.work > 0) continue;   // walkers too: two never share one spot on a path
       const dx = b.x - a.x, dy = (b.y - a.y) * 1.6, d = Math.hypot(dx, dy); if (d >= 30 || d === 0) continue;
-      const still = q => q.i >= q.pts.length, push = (30 - d) * 0.5 * Math.min(1, DT * 6) / d;
-      if (still(a)) { a.x -= dx * push; a.y -= dy * push / 1.6; } if (still(b)) { b.x += dx * push; b.y += dy * push / 1.6; } }
+      const push = (30 - d) * 0.5 * Math.min(1, DT * 6) / d;
+      a.x -= dx * push; a.y -= dy * push / 1.6; b.x += dx * push; b.y += dy * push / 1.6;
+      if (a.i < a.pts.length && b.i < b.pts.length && d < 18) (a.y < b.y ? a : b).pause = 0.5; }   // the one behind lets the other pass
   }
   function tickMend() {
     const m = S.mend; if (!m) return; m.t += DT;
@@ -882,22 +885,51 @@
       pop(f.x, f.y - 46, `♥ +${C.fmt(amt)}`, '#ffb8d8', 1.1, 28); burst({ x: f.x, y: f.y - 20, size: 12 }, '#ffb8d8', 8, 80); return true; }
     return false;
   }
-  // Villagers walk (owner, Nov 13 2026: "villagers still do not have a walk animation. They just move with the same image ...
-  // When they turn around it's like a paper being flipped. I want immersion"). Each painted villager is already mid-stride,
-  // so the walk is built from that pose like a cut-out puppet: the legs below the hip are warped from the full stride at
-  // each footfall to feet-together at the passing moment (the body rises there, as a real walk does). Swapping the legs
-  // front and back was tried and tore the aprons, skirts and tool belts, so it is not done. A turn happens at that passing moment as a quick pivot step:
-  // never a squeeze, never a turn back and forth on a curve.
-  const HIP = { builder: 0.78, baker: 0.78, farmer: 0.84, lamp: 0.8, child: 0.72, merchant: 0.8 };   // where the legs show below the clothes: only legs and feet move, never an apron, skirt or tool belt
-  function folkLegs(im, f, w, h, st) {
-    const hip = HIP[f.kind] || 0.68, sh = im.height * hip, N = 8, legs = im.height - sh;
-    cx.drawImage(im, 0, 0, im.width, sh, -w / 2, -h, w, h * hip);   // body above the hip, unchanged
-    for (let k = 0; k < N; k++) {   // below the hip: strips narrowing toward the feet (a smooth trapezoid, no seam at the hip)
-      const a = k / N, b = (k + 1) / N, sc = 1 - 0.5 * st * ((a + b) / 2), y0 = sh + legs * a, hh = legs * b - legs * a + 0.6;
-      cx.save(); cx.scale(sc, 1);
-      cx.drawImage(im, 0, y0, im.width, hh, -w / 2, -h + h * (hip + (1 - hip) * a), w, h * (1 - hip) * (b - a) + 0.5);
-      cx.restore();
-    }
+  // Villagers walk (owner, Nov 13 2026: "I WANT THE WALKING ANIMATION"). Each painted villager is cut, once, into a body and
+  // two legs (the leg region below the clothes, split at the gap between the feet), like a paper-doll puppet. When walking,
+  // the two legs swing from the hip in opposite directions, so the feet really alternate, and the body rises as they pass.
+  // Legs are drawn first and the body over them, so a leg's top always tucks under the hem. A turn is a pivot at the passing
+  // moment (the legs are together there).
+  const HIP = { builder: 0.78, baker: 0.78, farmer: 0.84, lamp: 0.8, child: 0.72, merchant: 0.8 };   // where the legs show below the clothes
+  const RIG = {};
+  function folkRig(kind, im) {
+    if (RIG[kind]) return RIG[kind];
+    const W0 = im.width, H0 = im.height, y0 = Math.round(H0 * HIP[kind]);
+    const src = document.createElement('canvas'); src.width = W0; src.height = H0; const g = src.getContext('2d'); g.drawImage(im, 0, 0);
+    const d = g.getImageData(0, 0, W0, H0).data, col = new Array(W0).fill(0), from = y0 + Math.floor((H0 - y0) / 3);
+    for (let y = from; y < H0; y++) for (let x = 0; x < W0; x++) if (d[(y * W0 + x) * 4 + 3] > 100) col[x]++;
+    let lo = W0, hi = 0; col.forEach((c, x) => { if (c) { lo = Math.min(lo, x); hi = Math.max(hi, x); } });
+    let split = Math.round((lo + hi) / 2), best = 1e9;   // the gap between the feet: the emptiest column in the middle half
+    for (let x = lo + Math.floor((hi - lo) * 0.25); x <= lo + Math.floor((hi - lo) * 0.75); x++) { const v = col[x] * 100 + Math.abs(x - (lo + hi) / 2); if (v < best) { best = v; split = x; } }
+    const piece = (x0, x1) => {   // one leg, from 3 px above the hem (tucked under it) to the ground; a gold staff stays with the body
+      const c = document.createElement('canvas'); c.width = W0; c.height = H0; const q = c.getContext('2d'), out = q.createImageData(W0, H0); let sx = 0, n = 0;
+      for (let y = y0 - 3; y < H0; y++) for (let x = x0; x < x1; x++) { const i = (y * W0 + x) * 4; if (d[i + 3] < 8) continue;
+        if (kind === 'lamp' && x < split - 6 && d[i] > 165 && d[i + 1] > 115 && d[i + 2] < 90) continue;   // the lamplighter's pole, beside his back leg
+        out.data.set(d.subarray(i, i + 4), i); if (y > y0) { sx += x; n++; } }
+      q.putImageData(out, 0, 0); return { c, px: n ? sx / n : (x0 + x1) / 2 };
+    };
+    const back = piece(0, split), front = piece(split, W0);
+    const body = document.createElement('canvas'); body.width = W0; body.height = H0; const b = body.getContext('2d'); b.drawImage(im, 0, 0);
+    b.globalCompositeOperation = 'destination-out'; b.drawImage(back.c, 0, 0); b.drawImage(front.c, 0, 0); b.globalCompositeOperation = 'source-over';
+    b.clearRect(0, y0 + 2, W0, H0);   // nothing of the old legs is left on the body below the hem
+    if (kind === 'lamp') { for (let y = y0 + 2; y < H0; y++) for (let x = 0; x < split - 6; x++) { const i = (y * W0 + x) * 4; if (d[i + 3] > 8 && d[i] > 165 && d[i + 1] > 115 && d[i + 2] < 90) { b.fillStyle = `rgba(${d[i]},${d[i + 1]},${d[i + 2]},${d[i + 3] / 255})`; b.fillRect(x, y, 1, 1); } } }
+    // the shadow inside the clothes between the legs: the legs' own colour at the hem, darkened, so no daylight shows through
+    let rr = 0, gg = 0, bb = 0, nn = 0; for (let y = y0; y < y0 + 4; y++) for (let x = 0; x < W0; x++) { const i = (y * W0 + x) * 4; if (d[i + 3] > 200) { rr += d[i]; gg += d[i + 1]; bb += d[i + 2]; nn++; } }
+    const inner = nn ? `rgb(${Math.round(rr / nn * 0.45)},${Math.round(gg / nn * 0.45)},${Math.round(bb / nn * 0.45)})` : '#3a2418';
+    return (RIG[kind] = { body, back, front, y0, W0, H0, inner });
+  }
+  function folkWalk(im, f, w, h, ph, c = cx) {
+    const r = folkRig(f.kind, im), k = w / r.W0, sw = Math.sin(ph) * 0.48;   // each leg swings about 27 degrees either side
+    // planted feet stay on the ground (natural-movement-rules 2): a swung leg is shorter in height, so the hips drop by that
+    // much at full stride and are highest as the legs pass; the leg swinging forward lifts its foot a little to clear the ground
+    const legH = (r.H0 - r.y0) * k, drop = legH * (1 - Math.cos(sw)), clear = legH * 0.1 * Math.max(0, Math.cos(ph));
+    c.translate(0, drop);
+    const leg = (L, a) => { const px = -w / 2 + L.px * k, py = -h + r.y0 * k; c.save(); c.translate(px, py); c.rotate(a); c.translate(-px, -py); c.drawImage(L.c, -w / 2, -h, w, h); c.restore(); };
+    const hx = -w / 2 + (r.back.px + r.front.px) / 2 * k, hw = Math.abs(r.front.px - r.back.px) * k / 2 + 4 * k, hy = -h + r.y0 * k;
+    c.fillStyle = r.inner; c.beginPath(); c.ellipse(hx, hy + 2 * k, hw, 6 * k, 0, 0, Math.PI * 2); c.fill();
+    const leg2 = (L, a, up) => { c.save(); c.translate(0, -up); leg(L, a); c.restore(); };
+    leg2(r.back, sw, clear); leg2(r.front, -sw, Math.max(0, -Math.cos(ph)) * legH * 0.1);   // the back leg swings forward as the front one swings back: the feet alternate
+    c.drawImage(r.body, -w / 2, -h, w, h);
   }
   function drawFolk() {
     if (!img.folk_builder) return;   // painted villagers belong in store captures too
@@ -905,16 +937,16 @@
       const working = f.work > 0, im = img[working && f.kind === 'builder' ? 'folk_builderwork' : 'folk_' + f.kind]; if (!im) continue;
       const walking = !working && f.i < f.pts.length, calm = reduced();
       const h = (f.kind === 'child' ? 34 : 44) * (working && f.kind === 'builder' ? 0.9 : 1), w = h * im.width / im.height;
-      const step = f.step || 0, st = walking && !calm ? Math.abs(Math.sin(step * Math.PI)) : 0;   // 0 at a footfall, 1 as the legs pass
+      const step = f.step || 0, st = walking && !calm ? Math.abs(Math.cos(step * Math.PI)) : 0;   // 1 as the legs pass each other (body highest), 0 at full stride
       const hop = f.hop > 0 ? Math.sin(f.hop / 0.7 * Math.PI) : 0;
-      const lift = calm ? 0 : st * 2.2 + hop * 12;
+      const lift = calm ? 0 : hop * 12;   // a walker's rise and fall comes from its legs (folkWalk)
       let sy = 1;
       if (!calm) sy = walking ? 1 + 0.02 * st : working ? 1 - 0.05 * Math.pow(Math.max(0, Math.sin(f.t * 5.2)), 6) : 1 + 0.012 * Math.sin(f.t * 1.9 + f.x);
       if (!calm && hop) sy = 1 + 0.08 * hop;
       const lean = walking && !calm ? 0.05 : 0;   // a walker leans a touch into the walk
       cx.save(); cx.globalAlpha = 0.22 * (1 - hop * 0.5); cx.fillStyle = '#1a0f15'; cx.beginPath(); cx.ellipse(f.x, f.y, w * (0.32 - 0.06 * st) * (1 - hop * 0.25), 4, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
       cx.translate(f.x, f.y - lift); cx.scale(f.dir, 1); cx.rotate(lean); cx.scale(1 / Math.sqrt(sy), sy);
-      if (walking && !calm) folkLegs(im, f, w, h, st); else cx.drawImage(im, -w / 2, -h, w, h);
+      if (walking && !calm) folkWalk(im, f, w, h, step * Math.PI); else cx.drawImage(im, -w / 2, -h, w, h);
       cx.restore();
     }
   }
