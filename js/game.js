@@ -6,7 +6,7 @@
   'use strict';
   const C = root.HGCore, A = root.HGAudio || { play() {}, music() {}, unlock() {}, set() {}, boss() {} };
   const SDK = root.GameSDK || { gameplay() {}, loadingStop() {}, happytime() {}, reportCompletion() {}, rewarded: () => Promise.resolve(false), rewardsOn: false };
-  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13f';
+  const W = 720, H = Math.round(Math.max(1280, Math.min(1560, 720 * root.innerHeight / Math.max(1, root.innerWidth)))), DT = 1 / 60, SAVE_KEY = 'hearthgate.profile.v1', BUILD = '2026-11-13g';
 
   // ---------- layout from the city painting (art/masters/city-north-gate, cropped at exactly half scale) ----------
   const CITY = C.CITY, CITY_H = CITY.band[1], CITY_Y = H - 168 - CITY_H, K = CITY.band[0] / CITY.crop[2];
@@ -778,8 +778,6 @@
     while (FOLK.length < folkCount()) { const kind = FOLK_KINDS[FOLK.length], [x, y] = ringAt(Math.random() * 6.28); FOLK.push({ kind, x, y, pts: [], i: 0, wait: Math.random() * 3, dir: 1, t: Math.random() * 9, hop: 0, tapT: 0, speed: kind === 'child' ? 40 : 24 + Math.random() * 6 }); }
     for (const f of FOLK) {
       f.t += DT; f.hop = Math.max(0, f.hop - DT); f.tapT = Math.max(0, f.tapT - DT);
-      f.face = f.face === undefined ? f.dir : f.face + Math.max(-DT * 9, Math.min(DT * 9, f.dir - f.face));   // a turn takes about 0.2 s
-      if (Math.abs(f.face) < 0.18) f.face = Math.sign(f.dir) * 0.18;   // crosses edge-on in one frame, never a paper-thin sliver
       if (f.i < f.pts.length && f.work <= 0) f.step = (f.step || 0) + DT * f.speed / 22;   // a stride every 22 px: feet keep pace with the ground
       if (f.hop2 && (f.hop2 -= DT) <= 0) { f.hop2 = 0; f.hop = 0.7; }
       if (f.party > 0) { f.party -= DT; if (f.i >= f.pts.length && f.hop <= 0 && Math.random() < DT * 2.5) f.hop = 0.7; if (f.party <= 0) f.speed = f.kind === 'child' ? 40 : 26; }
@@ -794,7 +792,10 @@
       }
       if (f.i < f.pts.length) {
         const [tx, ty] = f.pts[f.i], dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy), step = f.speed * DT;
-        if (Math.abs(dx) > 0.5) f.dir = dx > 0 ? 1 : -1;
+        // turn only for a real change of course, held for a moment, and at the passing moment of a step (a pivot, not a flip-flop)
+        const want = Math.abs(dx) > Math.abs(dy) * 0.35 + 2 ? (dx > 0 ? 1 : -1) : f.dir;
+        f.wantT = want !== f.dir ? (f.wantT || 0) + DT : 0;
+        if (f.wantT > 0.22 && Math.abs(Math.sin((f.step || 0) * Math.PI)) > 0.8) { f.dir = want; f.wantT = 0; }
         if (d <= step) { f.x = tx; f.y = ty; f.i++; if (f.i >= f.pts.length) { if (f.job) { f.work = f.job.work; f.mending = !!f.job.mend; f.dir = f.mending ? (f.x < GATE_X ? 1 : -1) : f.dir; f.knockT = 0; f.job = null; } else f.wait = f.party > 0 ? f.party : 2 + Math.random() * 5; } }
         else { f.x += dx / d * step; f.y += dy / d * step; }
       } else if ((f.wait -= DT) <= 0) {
@@ -877,26 +878,40 @@
       pop(f.x, f.y - 46, `♥ +${C.fmt(amt)}`, '#ffb8d8', 1.1, 28); burst({ x: f.x, y: f.y - 20, size: 12 }, '#ffb8d8', 8, 80); return true; }
     return false;
   }
-  // Villagers (owner, Nov 13 2026: "villager animations look sloppy and unpolished. Every animation in the game needs to be
-  // visually pleasing and correct"). Each villager is one painted pose, so motion is kept to what a single pose can do
-  // convincingly: a footstep bob paced to the walking speed (no rocking), a soft settle on each footfall, a turn that
-  // squeezes through instead of snapping, slow breathing when still, a tool swing with an ease, a plain hop; no jitter.
+  // Villagers walk (owner, Nov 13 2026: "villagers still do not have a walk animation. They just move with the same image ...
+  // When they turn around it's like a paper being flipped. I want immersion"). Each painted villager is already mid-stride,
+  // so the walk is built from that pose like a cut-out puppet: the legs below the hip are warped from the full stride at
+  // each footfall to feet-together at the passing moment (the body rises there, as a real walk does). Swapping the legs
+  // front and back was tried and tore the aprons, skirts and tool belts, so it is not done. A turn happens at that passing moment as a quick pivot step:
+  // never a squeeze, never a turn back and forth on a curve.
+  const HIP = { builder: 0.78, baker: 0.78, farmer: 0.84, lamp: 0.8, child: 0.72, merchant: 0.8 };   // where the legs show below the clothes: only legs and feet move, never an apron, skirt or tool belt
+  function folkLegs(im, f, w, h, st) {
+    const hip = HIP[f.kind] || 0.68, sh = im.height * hip, N = 8, legs = im.height - sh;
+    cx.drawImage(im, 0, 0, im.width, sh, -w / 2, -h, w, h * hip);   // body above the hip, unchanged
+    for (let k = 0; k < N; k++) {   // below the hip: strips narrowing toward the feet (a smooth trapezoid, no seam at the hip)
+      const a = k / N, b = (k + 1) / N, sc = 1 - 0.5 * st * ((a + b) / 2), y0 = sh + legs * a, hh = legs * b - legs * a + 0.6;
+      cx.save(); cx.scale(sc, 1);
+      cx.drawImage(im, 0, y0, im.width, hh, -w / 2, -h + h * (hip + (1 - hip) * a), w, h * (1 - hip) * (b - a) + 0.5);
+      cx.restore();
+    }
+  }
   function drawFolk() {
     if (!img.folk_builder) return;   // painted villagers belong in store captures too
     for (const f of FOLK.slice().sort((a, b) => a.y - b.y)) {
       const working = f.work > 0, im = img[working && f.kind === 'builder' ? 'folk_builderwork' : 'folk_' + f.kind]; if (!im) continue;
       const walking = !working && f.i < f.pts.length, calm = reduced();
       const h = (f.kind === 'child' ? 34 : 44) * (working && f.kind === 'builder' ? 0.9 : 1), w = h * im.width / im.height;
-      const step = (f.step || 0) % 1, foot = Math.abs(Math.sin(step * Math.PI));   // 0 on a footfall, 1 mid-stride
+      const step = f.step || 0, st = walking && !calm ? Math.abs(Math.sin(step * Math.PI)) : 0;   // 0 at a footfall, 1 as the legs pass
       const hop = f.hop > 0 ? Math.sin(f.hop / 0.7 * Math.PI) : 0;
-      const lift = calm ? 0 : (walking ? foot * 2.4 : 0) + hop * 12;
-      // squash and stretch, area kept: a small settle as a foot lands, a stretch at the top of a hop, breathing when still
+      const lift = calm ? 0 : st * 2.2 + hop * 12;
       let sy = 1;
-      if (!calm) sy = walking ? 1 - 0.035 * (1 - foot) : working ? 1 - 0.05 * Math.pow(Math.max(0, Math.sin(f.t * 5.2)), 6) : 1 + 0.012 * Math.sin(f.t * 1.9 + f.x);
+      if (!calm) sy = walking ? 1 + 0.02 * st : working ? 1 - 0.05 * Math.pow(Math.max(0, Math.sin(f.t * 5.2)), 6) : 1 + 0.012 * Math.sin(f.t * 1.9 + f.x);
       if (!calm && hop) sy = 1 + 0.08 * hop;
-      const turn = calm ? f.dir : (f.face || f.dir);   // eased facing: passes through edge-on when a villager turns
-      cx.save(); cx.globalAlpha = 0.22 * (1 - hop * 0.5); cx.fillStyle = '#1a0f15'; cx.beginPath(); cx.ellipse(f.x, f.y, w * 0.32 * (1 - hop * 0.25), 4, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
-      cx.translate(f.x, f.y - lift); cx.scale(turn * (1 / Math.sqrt(sy)), sy); cx.drawImage(im, -w / 2, -h, w, h); cx.restore();
+      const lean = walking && !calm ? 0.05 : 0;   // a walker leans a touch into the walk
+      cx.save(); cx.globalAlpha = 0.22 * (1 - hop * 0.5); cx.fillStyle = '#1a0f15'; cx.beginPath(); cx.ellipse(f.x, f.y, w * (0.32 - 0.06 * st) * (1 - hop * 0.25), 4, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
+      cx.translate(f.x, f.y - lift); cx.scale(f.dir, 1); cx.rotate(lean); cx.scale(1 / Math.sqrt(sy), sy);
+      if (walking && !calm) folkLegs(im, f, w, h, st); else cx.drawImage(im, -w / 2, -h, w, h);
+      cx.restore();
     }
   }
 
