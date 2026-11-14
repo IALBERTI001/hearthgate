@@ -31,7 +31,8 @@ namespace Hearthgate.Game
             if (i == TRAINER) return TRAINER_AT;
             var c = Field.CENTREPIECE[i]; float hz = Field.PlotSize(i).y / 2f;
             float v = Mathf.Max(c.y - (c.z + 0.65f), -(hz - 0.55f));
-            return Field.World(i, c.x, v, Field.FLOOR);
+            float u = c.x - (HG.BUILDING_IDS[i] == "watchtower" ? 0.55f : 0f);   // Orrin stands clear of the stair and the ruin's fallen stones
+            return Field.World(i, u, v, Field.FLOOR);
         }
         public static float TalkReach(int i) => i == TRAINER ? 2.2f : 2f * Field.CENTREPIECE[i].z + 1.75f;
 
