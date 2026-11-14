@@ -22,6 +22,7 @@ namespace Hearthgate.Game
             cam.transform.LookAt(Field.CAM_LOOK);
             this.cam = cam;
             cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(0.55f, 0.75f, 0.95f);
+            Sound.Init();
             new GameObject("HUD").AddComponent<Hud>().Init();
             new GameObject("Game").AddComponent<GameLoop>();
         }

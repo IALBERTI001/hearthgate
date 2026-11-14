@@ -54,7 +54,7 @@ namespace Hearthgate.Game
         public void Toggle()
         {
             On = !On; target = null; goal.SetActive(false);
-            Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14);
+            Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14); Sound.Play("surge", 0.35f);
             if (On) Hud.Banner("Walk into a building to work on it");
         }
 
@@ -77,7 +77,8 @@ namespace Hearthgate.Game
         {
             if (cam == null) return;
             float dt = Time.deltaTime; idle += dt;
-            if (Input.GetKeyDown(KeyCode.T)) Toggle();
+            if (Hud.Paused) return;
+            if (Input.GetKeyDown(KeyCode.T)) { Sound.Click(); Toggle(); }
             if (Input.GetMouseButtonDown(0) && Debug.isDebugBuild == false && Application.isEditor == false && log < 12)
             {   // QA trace of taps (Nov 13 2026: taps in the browser pane sent him the wrong way); the first dozen only
                 log++; Ground(Hud.PointerPos, out var g0);
@@ -114,11 +115,13 @@ namespace Hearthgate.Game
             float speed = vel.magnitude;
             if (speed > 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-vel.x, -vel.z) * Mathf.Rad2Deg, 540f * dt);   // models face -Z
             else if (!On) yaw = Mathf.MoveTowardsAngle(yaw, 180f, 180f * dt);   // at rest in the square he faces the walls
-            step += dt * (speed > 0.25f ? 10f : 0f);
+            float was = step; step += dt * (speed > 0.25f ? 10f : 0f);
+            if (Mathf.Floor(step / Mathf.PI) != Mathf.Floor(was / Mathf.PI)) Sound.Step();   // a footfall at each low point of the hop
 
             // indoors: which room he stands in (the floor is on a 0.34 m plinth: he steps up through the doorway)
-            Inside = -1;
+            int wasIn = Inside; Inside = -1;
             for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (InFootprint(i, pos, -Field.WALL_T)) { Inside = i; break; }
+            if (Inside >= 0 && wasIn < 0) Sound.Knock();   // the door
             bool onStep = false;
             for (int i = 0; i < HG.BUILDING_IDS.Length && !onStep; i++) onStep = InFootprint(i, pos, 0.2f);
             lift = Mathf.MoveTowards(lift, Inside >= 0 || onStep ? Field.FLOOR : 0f, dt * 2.5f);
@@ -143,7 +146,7 @@ namespace Hearthgate.Game
                 }
             }
             if (!On) Near = -1;
-            if (On && Near >= 0 && Input.GetKeyDown(KeyCode.E)) GameLoop.I.WorkOn(Near);
+            if (On && Near >= 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else Sound.Dud(); }
 
             // the camera: from the walls it glides down into the town and settles behind and above him, looking the way the
             // wall view looks (FollowFrom keeps it inside the ring); high enough to look over a room's walls when he is inside

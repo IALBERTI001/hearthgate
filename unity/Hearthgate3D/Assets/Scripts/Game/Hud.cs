@@ -37,10 +37,10 @@ namespace Hearthgate.Game
             press.RemoveAll(p => p.rt == null);
             foreach (var p in press.ToArray())
             {
-                if (!p.rt.gameObject.activeInHierarchy) { p.down = false; continue; }
+                if (!p.rt.gameObject.activeInHierarchy || settingsBox && !p.rt.IsChildOf(settingsBox)) { p.down = false; continue; }   // an open menu takes every press
                 bool on = p.on(), inside = RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null);
-                if (dn && inside && on) p.down = true;
-                if (upNow) { if (p.down && inside && on) p.act(); p.down = false; }
+                if (dn && inside) { if (on) p.down = true; else Sound.Dud(); }   // a soft low thud on a button that cannot act yet
+                if (upNow) { if (p.down && inside && on) { Sound.Click(); p.act(); } p.down = false; }
                 float target = !on ? 1f : p.down && inside ? 0.95f : inside ? 1.04f : 1f;
                 p.s = Mathf.MoveTowards(p.s, target, Time.unscaledDeltaTime * 1.2f); p.rt.localScale = Vector3.one * p.s;
                 if (p.img) p.img.color = on ? (inside ? Color.Lerp(p.col, Color.white, 0.12f) : p.col) : new Color(p.col.r * 0.6f, p.col.g * 0.6f, p.col.b * 0.6f, p.col.a * 0.8f);
@@ -141,6 +141,14 @@ namespace Hearthgate.Game
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
 
+            // settings (game-polish rule 19: the controls inside the game, the music and sound switches): a small brass
+            // medallion with a cog rendered in Blender, inside the top-left label block, right of the wave
+            var gear = Box("Settings", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(200, -14), new Vector2(44, 44)); gear.pivot = new Vector2(0, 1);
+            var gimg = gear.gameObject.AddComponent<Image>(); gimg.sprite = Panel(INK, BRASS, 21, 3); gimg.type = Image.Type.Sliced;
+            var gic = Box("Icon", gear, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
+            var gii = gic.gameObject.AddComponent<Image>(); gii.sprite = Icon("gear"); gii.preserveAspect = true; gii.raycastTarget = false; if (!gii.sprite) gii.enabled = false;
+            Press(gear, () => ShowSettings(true));
+
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
             // buildings"): a small plum board with its name, level and output, pinned over the signpost in its yard while
             // the wizard walks the town; behind the HUD controls, so the cards and buttons stay on top
@@ -189,7 +197,7 @@ namespace Hearthgate.Game
         {
             if (!I) return false;
             foreach (var p in I.press) if (p.rt && p.rt.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null)) return true;
-            return I.forkBox != null;
+            return I.forkBox != null || I.settingsBox != null;
         }
 
         RectTransform Box(string n, Transform p, Vector2 aMin, Vector2 aMax, Vector2 pos, Vector2 size)
@@ -331,11 +339,53 @@ namespace Hearthgate.Game
                 else { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"The {b.name} lies in ruins", null, false, now); work.title.fontSize = 18; }
             }
             Refit();
+            if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
+            if (Input.GetKeyDown(KeyCode.M)) { bool on = !(Sound.MusicOn || Sound.SfxOn); Sound.SetMusic(on); Sound.SetSfx(on); Banner(on ? "Sound on" : "Sound off"); RefreshSettings(); }
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
         }
 
         public static void Banner(string s) { if (!I) return; I.banner.text = s; I.bannerT = 2.6f; var c = I.banner.color; c.a = 1; I.banner.color = c; }
         public static void Toast(string s) => Banner(s);
+
+        // ---------- settings and controls ----------
+        RectTransform settingsBox; Text musicLbl, sfxLbl;
+        public static bool Paused => I && I.settingsBox != null;
+        void ShowSettings(bool open)
+        {
+            if (!open) { if (settingsBox) { Destroy(settingsBox.gameObject); settingsBox = null; } Time.timeScale = 1; return; }
+            if (settingsBox) return;
+            Time.timeScale = 0;   // the fight waits while the menu is open
+            var dim = Box("SettingsDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, 0.55f); settingsBox = dim;
+            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 470));
+            var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
+            Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = "Settings";
+            BtnAt("S_Music", new Vector2(0.5f, 1), new Vector2(-140, -76), new Vector2(250, 50), () => { Sound.SetMusic(!Sound.MusicOn); RefreshSettings(); }, null, out musicLbl).rt.SetParent(box, false);
+            BtnAt("S_Sfx", new Vector2(0.5f, 1), new Vector2(140, -76), new Vector2(250, 50), () => { Sound.SetSfx(!Sound.SfxOn); RefreshSettings(); }, null, out sfxLbl).rt.SetParent(box, false);
+            var ct = Label("Controls", box, new Vector2(0.5f, 1), new Vector2(0, -148), 22, TextAnchor.UpperCenter); ct.text = "Controls";
+            string[,] rows = {
+                { "U", "Upgrade the gate" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
+                { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
+                { "M", "Sound on or off" }, { "P", "This menu" } };
+            for (int k = 0; k < rows.GetLength(0); k++)
+            {
+                float y = -186 - k * 26;
+                var key = Label("K" + k, box, new Vector2(0.5f, 1), new Vector2(-30, y), 17, TextAnchor.UpperRight); key.font = body; key.color = RES; key.text = rows[k, 0];
+                key.rectTransform.pivot = new Vector2(1, 1); key.rectTransform.sizeDelta = new Vector2(200, 24);
+                var what = Label("W" + k, box, new Vector2(0.5f, 1), new Vector2(-10, y), 17, TextAnchor.UpperLeft); what.font = body; what.text = rows[k, 1];
+                what.rectTransform.pivot = new Vector2(0, 1); what.rectTransform.sizeDelta = new Vector2(300, 24);
+            }
+            var stamp = Label("Stamp", box, new Vector2(0.5f, 0), new Vector2(0, 74), 13, TextAnchor.LowerCenter); stamp.font = body; stamp.color = new Color(0.8f, 0.74f, 0.82f);
+            stamp.text = "Hearthgate 3D · build " + Application.version;
+            var close = BtnAt("S_Close", new Vector2(0.5f, 0), new Vector2(0, 16), new Vector2(200, 48), () => ShowSettings(false), null, out var cl);
+            close.rt.SetParent(box, false); cl.text = "Back to the game";
+            RefreshSettings();
+        }
+        void RefreshSettings()
+        {
+            if (!settingsBox) return;
+            musicLbl.text = "Music: " + (Sound.MusicOn ? "on" : "off"); sfxLbl.text = "Sound effects: " + (Sound.SfxOn ? "on" : "off");
+        }
 
         // a gate stage asks for one of two upgrades
         public static void ShowFork(int stage)

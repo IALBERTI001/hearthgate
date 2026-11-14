@@ -15,12 +15,33 @@ ICONS = {
     'upgrade': ('building_bakery', 200, 0.95),
     'walk': ('wizard', 205, 0.86),
     'tower': ('tower_base', 200, 0.9),
+    'gear': (None, 0, 0.9),   # the settings cog, modelled here: a brass wheel with eight teeth and a dark hub
 }
+
+def gear():
+    import bmesh
+    me = bpy.data.meshes.new('gear'); bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=48, radius1=0.78, radius2=0.78, depth=0.22)
+    for k in range(8):
+        a = k * math.tau / 8; m = bmesh.ops.create_cube(bm, size=1.0)['verts']
+        bmesh.ops.scale(bm, vec=(0.34, 0.36, 0.22), verts=m)
+        bmesh.ops.translate(bm, vec=(0, 0.86, 0), verts=m); bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=__import__('mathutils').Matrix.Rotation(a, 3, 'Z'), verts=m)
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.025, segments=2, affect='EDGES')
+    bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new('gear', me); bpy.context.scene.collection.objects.link(o)
+    mat = bpy.data.materials.new('brass'); mat.use_nodes = True; b = mat.node_tree.nodes['Principled BSDF']
+    b.inputs['Base Color'].default_value = (0.82, 0.6, 0.22, 1); b.inputs['Metallic'].default_value = 0.6; b.inputs['Roughness'].default_value = 0.4
+    me.materials.append(mat)
+    hub = bpy.data.meshes.new('hub'); bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=32, radius1=0.3, radius2=0.3, depth=0.3); bm.to_mesh(hub); bm.free()
+    h = bpy.data.objects.new('hub', hub); bpy.context.scene.collection.objects.link(h)
+    hm = bpy.data.materials.new('hub'); hm.use_nodes = True; hm.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.16, 0.08, 0.19, 1); hub.materials.append(hm)
+    for ob in (o, h): ob.rotation_euler = (math.radians(68), 0, 0)   # turned toward the camera, a little tilted
 
 def render(name, model, yaw, fill):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
-    bpy.ops.import_scene.fbx(filepath=os.path.join(MODELS, model + '.fbx'))
+    if model: bpy.ops.import_scene.fbx(filepath=os.path.join(MODELS, model + '.fbx'))
+    else: gear()
     objs = [o for o in sc.objects if o.type == 'MESH']
     for o in sc.objects:
         if o.parent is None: o.rotation_euler.rotate_axis('Z', math.radians(yaw))

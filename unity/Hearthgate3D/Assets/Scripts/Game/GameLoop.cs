@@ -97,6 +97,7 @@ namespace Hearthgate.Game
             list = list.OrderBy(_ => rnd.Next()).ToList();
             float gap = Mathf.Max(0.35f, 1.4f - P.wave * 0.02f);
             for (int i = 0; i < list.Count; i++) queue.Add((list[i], 0.8f + i * gap));
+            Sound.Boss(HG.IsBoss(P.wave)); if (HG.IsBoss(P.wave)) Sound.Play("boss_horn", 0.5f);
             Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave)].label}!" : $"Wave {P.wave}");
         }
 
@@ -142,7 +143,7 @@ namespace Hearthgate.Game
         {
             e.dying = 0.0001f;
             double pay = HG.KillRes(P.wave, e.boss, B); P.res += pay;
-            Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8);
+            Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8); Sound.Play(e.boss ? "ascension" : "golem_death", e.boss ? 0.55f : 0.28f);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); }
             if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, e.lane, Mathf.Clamp(e.x + Random.Range(-1.5f, 1.5f), -Field.LANE, Field.LANE), e.z + Random.Range(0, 1.5f), unitsRoot));
@@ -153,13 +154,14 @@ namespace Hearthgate.Game
             foreach (var e in enemies) Destroy(e.t.gameObject);
             enemies.Clear(); queue.Clear(); waveLive = false; betweenT = 2f;
             P.wave = Mathf.Max(1, P.wave - 1); gateHp = HG.GateMax(P, B);
-            Hud.Banner("The gate held you back a wave. Upgrade it!"); Fx.I.Shake(0.4f);
+            Hud.Banner("The gate held you back a wave. Upgrade it!"); Fx.I.Shake(0.4f); Sound.Play("boss_horn", 0.4f);
         }
 
         void WaveWon()
         {
             P.wave++; P.bestWave = Mathf.Max(P.bestWave, P.wave); P.runWave = Mathf.Max(P.runWave, P.wave);
             if (P.restored.Contains("cottages")) gateHp = HG.GateMax(P, B);
+            Sound.Play("claim", 0.22f);
         }
 
         // ---------- towers and shots ----------
@@ -176,7 +178,7 @@ namespace Hearthgate.Game
                 mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : 0.65f);
                 var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.3f; tr.startWidth = 0.55f; tr.endWidth = 0f;
                 tr.material = Art.Mat(Field.Of(tw.el), true);
-                go.transform.position = tw.Muzzle;
+                go.transform.position = tw.Muzzle; Sound.Play(Sfx(tw.el) + "_launch_0", 0.16f);
                 shots.Add(new Shot { p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
             }
         }
@@ -227,15 +229,17 @@ namespace Hearthgate.Game
                 foreach (var o in enemies.Where(x => x != e && x.dying <= 0).OrderBy(x => (x.Pos - e.Pos).sqrMagnitude).Take(jumps).ToList())
                 { o.hp -= cd; o.flash = 1; if (e.burn > 0) o.burn = 2; Bolt.Arc(e.Pos, o.Pos); }
             }
-            e.hp -= d; e.flash = 1;
+            e.hp -= d; e.flash = 1; if (el != "none") Sound.Play(Sfx(el) + "_contact_0", 0.2f);
             Fx.I.Burst(e.Pos, Field.Of(el), el == "none" ? 4 : 7);
         }
+        static string Sfx(string el) => el == "frost" ? "ice" : el == "storm" ? "lightning" : "fire";   // the 2D game's file names
         void Combo(string id, Enemy e, string word, Color c)
         {
             if (!P.combos.Contains(id)) { P.combos.Add(id); Hud.Banner($"New combo: {word.TrimEnd('!')}"); }
             lastCombo = word; comboT = 1.2f;
             Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.6f), word, c, 40, 1.1f); Fx.I.Burst(e.Pos, c, 20);
             if (id == "shatter") Fx.I.Shake(0.12f);
+            Sound.Play(id == "shatter" ? "shatter_combo" : id == "frostStorm" ? "freeze_combo" : "conduction_combo", 0.4f);
         }
 
         // ---------- the player's actions ----------
@@ -251,15 +255,16 @@ namespace Hearthgate.Game
             P.res -= UpgradeCost; double before = HG.GateMax(P, B); P.gateLevel++; B = HG.Bonuses(P);
             gateHp += HG.GateMax(P, B) - before;
             foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 6);
+            Sound.Play("tier_up", 0.5f);
             int f = HG.PendingFork(P); if (f > 0) Hud.ShowFork(f);
         }
-        public void Fork(int stage, string id) { P.SetFork(stage, id); B = HG.Bonuses(P); Save(); }
+        public void Fork(int stage, string id) { Sound.Play("claim", 0.45f); P.SetFork(stage, id); B = HG.Bonuses(P); Save(); }
         public void Restore(string id = null)
         {
             id ??= NextBuilding; if (id == null || !CanRestore) return;
             P.res -= RestoreCost; P.restored.Add(id); B = HG.Bonuses(P);
             int i = System.Array.IndexOf(HG.BUILDING_IDS, id); RefreshPlot(i); RefreshTowers();
-            Fx.I.Burst(Field.Plot(i) + Vector3.up * 2, Field.GOLD, 30); Fx.I.Shake(0.15f);
+            Fx.I.Burst(Field.Plot(i) + Vector3.up * 2, Field.GOLD, 30); Fx.I.Shake(0.15f); Sound.Play("feat", 0.55f);
             Hud.Banner($"{HG.ById(id).name} rebuilt! {HG.ById(id).line}"); Save();
         }
 
@@ -290,7 +295,7 @@ namespace Hearthgate.Game
             if (!P.restored.Contains(id)) { if (HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost) { Restore(id); Glow(i, 30); } return; }
             double cost = LevelCost(i); if (P.res < cost) return;
             P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P);
-            bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0;
+            bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0; Sound.Play(big ? "tier_up" : "level_up", big ? 0.5f : 0.42f);
             Glow(i, big ? 28 : 10);
             Fx.I.Pop(Field.Plot(i) + new Vector3(0, 3.8f, Field.PlotSize(i).y / 2), $"Level {L}", Field.GOLD, 34);   // over the door, in view inside and out
             if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f); }
@@ -314,8 +319,8 @@ namespace Hearthgate.Game
                     marker.localScale = Vector3.one * (CanRestore ? 1f + Mathf.Sin(t * 5f) * 0.05f : 0.8f);
                 }
             }
-            if (Input.GetKeyDown(KeyCode.U)) Upgrade();
-            if (Input.GetKeyDown(KeyCode.R)) Restore();
+            if (!Hud.Paused && Input.GetKeyDown(KeyCode.U)) { if (CanUpgrade) { Sound.Click(); Upgrade(); } else Sound.Dud(); }
+            if (!Hud.Paused && Input.GetKeyDown(KeyCode.R) && NextBuilding != null) { if (CanRestore) { Sound.Click(); Restore(); } else Sound.Dud(); }
             foreach (var e in enemies) e.Show(Time.time);
         }
 

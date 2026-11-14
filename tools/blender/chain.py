@@ -16,6 +16,14 @@ def blend_all(args, log):
     with open(log + '.txt', 'w', encoding='utf-8') as out:
         for _, lg in ps: out.write(open(lg, encoding='utf-8', errors='replace').read())
     return ok
+# the 2D game's sound, shared: effects go into Resources (they load with the game, about 150 KB), music and ambience
+# into StreamingAssets (fetched when first played, so they stay out of the first download)
+import shutil
+for src, dst in ((B + r"\assets\sfx", U + r"\Assets\Resources\Sfx"), (B + r"\assets\music", U + r"\Assets\StreamingAssets\Music"), (B + r"\assets\ambience", U + r"\Assets\StreamingAssets\Music")):
+    os.makedirs(dst, exist_ok=True)
+    for f in os.listdir(src):
+        if f.endswith('.mp3') and (not os.path.exists(os.path.join(dst, f)) or os.path.getsize(os.path.join(dst, f)) != os.path.getsize(os.path.join(src, f))):
+            shutil.copyfile(os.path.join(src, f), os.path.join(dst, f))
 ok = True
 if UNITY_ONLY: pass
 elif not SKIP_TEST: ok = blend_all(["-P", B + r"\tools\blender\hg_kit_test.py"], B + r"\log-kittest")
