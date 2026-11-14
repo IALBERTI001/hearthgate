@@ -63,6 +63,8 @@ bg = w.node_tree.nodes['Background']; bg.inputs['Color'].default_value = (0.55, 
 cam = bpy.data.cameras.new('cam'); cam.sensor_fit = 'VERTICAL'; cam.angle_y = math.radians(CAM_FOV); cam.clip_end = 300
 co = bpy.data.objects.new('cam', cam); sc.collection.objects.link(co); sc.camera = co
 co.location = CAM_POS; co.rotation_euler = (CAM_LOOK - CAM_POS).to_track_quat('-Z', 'Y').to_euler()
+if os.environ.get('HG_TOP'):   # a plan view of the whole layout, for finding stray geometry (north up)
+    cam.type = 'ORTHO'; cam.ortho_scale = 90; co.location = (-8, -2, 80); co.rotation_euler = (0, 0, math.pi)
 
 eng = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items]
 sc.render.engine = 'BLENDER_EEVEE' if 'BLENDER_EEVEE' in eng else 'BLENDER_EEVEE_NEXT'
