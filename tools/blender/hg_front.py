@@ -571,13 +571,13 @@ def beetle(kind='beetle'):
         for t in (0.35, 0.7): K.cyl('band', rr * 1.18, 0.07, tuple(Vector(base) + d * ln * t), M('gold'), 12, 0.0).rotation_euler = e
         K.cyl('ramface', rr * 1.45, 0.16, tuple(Vector(base) + d * (ln + 0.02)), M('iron'), 10, 0.02, r2=rr * 1.05).rotation_euler = _aim(-d)
     if kind in ('swarm',):   # three rams, the middle one longest
-        ram((0, -1.15, 0.7), (0, -1, 0.22), 0.95, 0.15)   # low and level: from behind (the game camera) a raised ram read as a pole
-        for s in (-1, 1): ram((s * 0.22, -1.08, 0.66), (s * 0.45, -0.9, 0.12), 0.6, 0.1)
+        ram((0, -1.22, 0.6), (0, -1, -0.05), 0.6, 0.17)   # short, low and level: from behind and above (the game camera) any long ram stands up like a pole
+        for s in (-1, 1): ram((s * 0.24, -1.15, 0.58), (s * 0.5, -0.9, -0.05), 0.42, 0.11)
     elif kind == 'elite':    # a gold rhino horn, branched like antlers: the treasure-bearer's crest
         K.cone('horn', 0.17, 0.8, (0, -1.2, 1.0), M('gold'), 8).rotation_euler = _aim((0, -0.5, 1))
         for s in (-1, 1): K.cone('tine', 0.07, 0.4, (s * 0.15, -1.25, 1.15), M('gold'), 6).rotation_euler = _aim((s * 0.8, -0.3, 1))
     elif kind not in ('tyrant', 'phantom', 'thief'):
-        ram((0, -1.15, 0.66), (0, -1, 0.18), 0.7, 0.13)
+        ram((0, -1.22, 0.58), (0, -1, -0.05), 0.45, 0.15)
     for s in (-1, 1):
         o = K.cone('mandible', 0.08 if kind != 'swarm' else 0.13, 0.4 if kind != 'swarm' else 0.65, (s * 0.2, -1.2, 0.42), M('iron'), 6); o.rotation_euler = (-1.4, 0, s * 0.4)
         for k in range(3):   # each leg turns at the shell's edge (a part: the game walks them on alternating tripods)
@@ -690,7 +690,6 @@ def totem_titan():
         # the back of each block: a second carved face (a totem is carved all round; the game camera sees his back)
         block((0, 0.6, z + 0.27), (w * 1.04, 0.36, 0.2), M('wood_dk'), 0.03)
         for s in (-1, 1): K.sphere('eye', 0.12, (s * 0.26, 0.56, z + 0.1), M('tree2', 3.5), (1.4, 0.5, 0.8), 2)
-        block((0, 0.54, z - 0.25), (w * 0.5, 0.1, 0.18), M('char'), 0.02)
         block((0, 0.53, z + 0.43), (w * 0.98, 0.04, 0.07), M('roof_blue'), 0.0)
         block((0, -0.6, z + 0.27), (w * 1.04, 0.36, 0.2), M('wood_dk'), 0.03)   # the brow, overhanging
         K.cone('nose', 0.13, 0.4, (0, -0.62, z - 0.02), M(m), 4).rotation_euler = (math.pi / 2, 0, 0)
