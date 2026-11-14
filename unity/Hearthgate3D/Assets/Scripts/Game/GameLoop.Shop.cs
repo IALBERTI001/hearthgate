@@ -14,8 +14,15 @@ namespace Hearthgate.Game
 
         public void GiveShards(int n, Vector3 at)
         {
-            if (!P.shopOpen || n <= 0) return;
-            P.shards += n; Fx.I.Pop(at, $"+{n} Starshard{(n == 1 ? "" : "s")}", ROSE, 32, 1.2f);
+            // always earned and always shown (owner, Nov 14 2026: "It shouldnt be a surprise to see I earned stars"); the
+            // first time, one line says what they are for
+            if (n <= 0) return;
+            P.shards += n; Fx.I.Pop(at, $"+{n} Starshard{(n == 1 ? "" : "s")}", ROSE, 32, 1.2f); Hud.ShardsIn(n); TellShards();
+        }
+        public void TellShards()
+        {
+            if (P.told.Contains("shards")) return; P.told.Add("shards");
+            Hud.Banner(P.shopOpen ? "Starshards! Spend them at the Market's Starshard counter" : "Starshards! Save them: the Market's Shop sells new looks once you rebuild it");
         }
         void OpenShop()
         {
@@ -52,7 +59,7 @@ namespace Hearthgate.Game
             if ((featT += Time.deltaTime) < 0.5f) return; featT = 0;
             var got = HG.FeatsEarned(P); if (got.Count == 0) return;
             int pay = got.Sum(f => HG.FEAT_PAY[f.tier]); Save();
-            string paid = P.shopOpen ? $" +{pay} Starshards" : "";
+            string paid = $" +{pay} Starshards"; Hud.ShardsIn(pay);
             Hud.Banner(got.Count == 1 ? $"Feat: {got[0].name}!{paid}" : $"{got.Count} Feats earned!{paid}");
             Sound.Play("feat", 0.6f); Hud.FeatNews = true;
         }

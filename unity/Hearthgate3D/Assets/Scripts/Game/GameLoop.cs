@@ -243,7 +243,7 @@ namespace Hearthgate.Game
                 double amt = (HG.FightRate(P, B) * 1.6 + HG.CityRate(P, B)) * B["harvest"] * SurgeX; P.res += amt;
                 int gi = System.Array.IndexOf(HG.BUILDING_IDS, "granary"); Fx.I.Pop(Field.Plot(gi) + Vector3.up * (Field.PlotHeight(gi) + 2f), $"Harvest +{HG.Fmt(amt)}", Field.GOLD, 32, 1.1f);
             }
-            if (trial) { int n = 3 + P.wave / 20; GiveShards(n, Field.PLAZA + Vector3.up * 8f); Hud.Banner(P.shopOpen ? $"TRIAL WON! +{n} Starshards" : "TRIAL WON!"); Sound.Play("feat", 0.5f); }
+            if (trial) { int n = 3 + P.wave / 20; GiveShards(n, Field.PLAZA + Vector3.up * 8f); Hud.Banner($"TRIAL WON! +{n} Starshards"); Sound.Play("feat", 0.5f); }
             LightStars();
         }
 

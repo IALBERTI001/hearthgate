@@ -178,7 +178,7 @@ namespace Hearthgate.Game
             P.AddStat("flies", 1);
             var col = new Color(f.kind.r, f.kind.g, f.kind.b);
             Fx.I.Burst(at, col, 22); Fx.I.Burst(at, Field.GOLD, 10); Sound.Play("claim", 0.5f);
-            if (f.kind.rare && P.shopOpen) GiveShards(2, at + Vector3.up);
+            if (f.kind.rare) GiveShards(2, at + Vector3.up);
             else { double amt = HG.FightRate(P, B) * 1.6 * 3 * SurgeX * (f.kind.rare ? 5 : 1); P.res += amt; Fx.I.Pop(at + Vector3.up, "+" + HG.Fmt(amt), Field.GOLD, 34, 1.1f); }
             if (fresh) { P.flies.Add(f.kind.id); Hud.Banner($"New in the Garden: {f.kind.name}! {P.flies.Count}/{HG.BUTTERFLIES.Length}"); }
             Save();

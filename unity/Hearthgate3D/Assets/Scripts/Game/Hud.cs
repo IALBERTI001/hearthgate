@@ -14,6 +14,8 @@ namespace Hearthgate.Game
         static Hud I;
         Font font, body; Text wave, res, rate, evTxt, banner, gateTxt; Image gateBar; RectTransform forkBox;
         Act up, re, walk, work; RectTransform workCard; double shownRes = -1;
+        RectTransform shardRow, perkRow; Text shardTxt, perkTxt; float shardFlash;
+        public static void ShardsIn(int n) { if (I) I.shardFlash = 1.2f; }
         Sprite gemSprite; static Sprite Icon(string n) => Resources.Load<Sprite>("Icons/icon_" + n);
         readonly RectTransform[] signs = new RectTransform[10]; readonly Text[] signTxt = new Text[10];   // the buildings' boards (see Signs)
         readonly Text[] signHead = new Text[10]; readonly Act[] signBtn = new Act[10]; readonly Image[] signGlow = new Image[10];
@@ -108,17 +110,30 @@ namespace Hearthgate.Game
             var pops = Box("Pops", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             gameObject.AddComponent<Fx>().Init(pops, font);
 
-            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(380, 150)); shade.pivot = new Vector2(0, 1);
+            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(400, 186)); shade.pivot = new Vector2(0, 1);
             var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.55f); si.raycastTarget = false;
             wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -12), 28, TextAnchor.UpperLeft);
             var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -52), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
             gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
             res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -46), 40, TextAnchor.UpperLeft); res.color = RES;
             rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -94), 18, TextAnchor.UpperLeft); rate.font = body;
-            evTxt = Label("Event", transform, new Vector2(0, 1), new Vector2(24, -116), 18, TextAnchor.UpperLeft); evTxt.color = new Color(1f, 0.72f, 0.9f);   // the named wave
+            // every currency in sight (owner, Nov 14 2026: "all the different currencies should be displayed for the player to
+            // see"): Resonance above, then Starshards (the Shop's) and, after an Ascension, perk points (the Watchtower's), each
+            // with its icon and its name; a tap on a counter says where it comes from and what it buys
+            shardRow = Box("Shards", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -120), new Vector2(190, 30)); shardRow.pivot = new Vector2(0, 1);
+            var shi = Box("Icon", shardRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(30, 30)); shi.pivot = new Vector2(0, 0.5f);
+            var shImg = shi.gameObject.AddComponent<Image>(); shImg.sprite = Icon("shard"); shImg.preserveAspect = true; shImg.raycastTarget = false;
+            shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(36, 0), 22, TextAnchor.MiddleLeft); shardTxt.color = ROSE_TXT;
+            shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(160, 30);
+            perkRow = Box("PerkPts", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(200, -120), new Vector2(190, 30)); perkRow.pivot = new Vector2(0, 1);
+            var pki = Box("Icon", perkRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(30, 30)); pki.pivot = new Vector2(0, 0.5f);
+            var pkImg = pki.gameObject.AddComponent<Image>(); pkImg.sprite = Icon("ascend"); pkImg.preserveAspect = true; pkImg.raycastTarget = false;
+            perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(36, 0), 22, TextAnchor.MiddleLeft); perkTxt.color = RES;
+            perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(160, 30);
+            evTxt = Label("Event", transform, new Vector2(0, 1), new Vector2(24, -154), 18, TextAnchor.UpperLeft); evTxt.color = new Color(1f, 0.72f, 0.9f);   // the named wave
             // the banner sits under the top row of the HUD, never across it (QA, Nov 14 2026: in a portrait window the walk
             // banner ran under the cog and the Upgrade button), and wraps to the window's width
-            banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -136), 34, TextAnchor.UpperCenter); banner.color = RES;
+            banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -190), 34, TextAnchor.UpperCenter); banner.color = RES;
             banner.horizontalOverflow = HorizontalWrapMode.Wrap; banner.verticalOverflow = VerticalWrapMode.Overflow;
 
             // the gate's health, centred over the bottom of the view
@@ -323,6 +338,7 @@ namespace Hearthgate.Game
         {
             if (!I) return false;
             foreach (var p in I.press) if (p.rt && p.rt.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null)) return true;
+            foreach (var r in new[] { I.shardRow, I.perkRow }) if (r && r.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(r, m, null)) return true;   // the counters explain themselves
             return I.forkBox != null || I.settingsBox != null;
         }
 
@@ -474,6 +490,17 @@ namespace Hearthgate.Game
             shownRes = shownRes < 0 ? P.res : shownRes + (P.res - shownRes) * Mathf.Min(1f, Time.deltaTime * 9f);   // the number counts toward the truth (game-polish 14)
             if (System.Math.Abs(P.res - shownRes) < 1) shownRes = P.res;
             res.text = HG.Fmt(shownRes);
+            shardTxt.text = $"{P.shards} Starshard{(P.shards == 1 ? "" : "s")}";
+            shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(ROSE_TXT, Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
+            bool pk = P.ascensions > 0; if (perkRow.gameObject.activeSelf != pk) perkRow.gameObject.SetActive(pk);
+            if (pk) perkTxt.text = $"{P.perkPts} perk point{(P.perkPts == 1 ? "" : "s")}";
+            if (Input.GetMouseButtonDown(0) && !Paused)
+            {   // a tap on a counter: where it comes from and what it buys
+                if (RectTransformUtility.RectangleContainsScreenPoint(shardRow, PointerPos, null))
+                    Banner(P.shopOpen ? "Starshards: from bosses, Trials, Feats, quests and rare butterflies. Spend them at the Market's Starshard counter" : "Starshards: from bosses, Trials, Feats and rare butterflies. The Market's Shop takes them once it is rebuilt");
+                else if (pk && RectTransformUtility.RectangleContainsScreenPoint(perkRow, PointerPos, null))
+                    Banner("Perk points: each Ascension pays them. Spend them at the Watchtower's star table");
+            }
             double r = HG.CityRate(P, g.B); rate.text = r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
