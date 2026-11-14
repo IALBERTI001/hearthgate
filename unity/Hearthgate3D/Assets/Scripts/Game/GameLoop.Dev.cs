@@ -18,6 +18,7 @@ namespace Hearthgate.Game
                 case "shards": P.shards += int.Parse(a[1]); break;
                 case "wave": P.wave = P.runWave = int.Parse(a[1]); break;
                 case "asc": P.ascensions = int.Parse(a[1]); Refresh(); for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i); RefreshTowers(); break;
+                case "fly": flyT = 0; Debug.Log("[dev] butterfly model: " + (art != null && art.butterfly ? "yes" : "NO")); break;
                 case "pause": Time.timeScale = a[1] == "1" ? 0 : 1; break;
                 case "shop": foreach (var id in HG.BUILDING_IDS.Where(id => !P.restored.Contains(id)).ToArray()) { P.res += RestoreCost; Restore(id); } break;
                 case "spawn":
