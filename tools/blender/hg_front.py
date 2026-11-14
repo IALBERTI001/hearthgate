@@ -657,3 +657,49 @@ def fountain():
         a = i / 8 * math.tau
         K.cyl('fall', 0.05, 1.4, (math.cos(a) * 1.0, math.sin(a) * 1.0, 1.85), M('water_gloss', 0.5), 6, 0.0)
     return K.export('fountain')
+
+# ---------------------------------------------------------------------------------------------------------------------
+# the wizard (owner, Nov 13 2026: "a button that makes you into the wizard that can walk into the town and upgrade the
+# building from inside"): a chunky chibi in an indigo robe with gold trim, a big floppy pointed hat with a brass band
+# and a star, a long white beard, rosy nose, and a gnarled staff topped with a glowing hearth-orb. About 2.3 m to the
+# hat's tip so he reads beside the 6 m buildings. Front toward Blender -Y, origin between the feet. The game bobs and
+# leans him as he walks.
+def wizard():
+    # robe: a flared bell with a hem band and a gold trim strip down the front
+    K.cyl('robe', 0.62, 1.05, (0, 0, 0.55), M('robe'), 20, 0.03, r2=0.36)
+    K.cyl('hem', 0.64, 0.1, (0, 0, 0.07), M('gold'), 20, 0.02)
+    block((0, -0.47, 0.55), (0.12, 0.08, 0.95), M('gold'), 0.02).rotation_euler = (-0.27, 0, 0)
+    K.cyl('belt', 0.42, 0.1, (0, 0, 0.88), M('wood_dk'), 16, 0.02)
+    block((0, -0.42, 0.88), (0.16, 0.06, 0.13), M('gold'), 0.02)
+    K.sphere('chest', 0.42, (0, 0, 1.1), M('robe'), (1, 0.9, 0.85), 3)
+    # sleeves and hands; the right one holds the staff
+    for s in (-1, 1):
+        o = K.cyl('sleeve', 0.17, 0.55, (s * 0.46, -0.08, 1.02), M('robe'), 12, 0.02, r2=0.22); o.rotation_euler = (0.35, s * 0.55, 0)
+        K.cyl('cuff', 0.2, 0.07, (s * 0.6, -0.2, 0.83), M('gold'), 12, 0.0).rotation_euler = (0.35, s * 0.55, 0)
+        K.sphere('hand', 0.12, (s * 0.63, -0.25, 0.76), M('skin'), sub=2)
+    # head: a round face, rosy nose, little eyes under bushy brows, and a long tapering beard
+    K.sphere('head', 0.33, (0, -0.02, 1.52), M('skin'), sub=3)
+    K.sphere('nose', 0.08, (0, -0.33, 1.5), M('blush'), sub=2)
+    for s in (-1, 1):
+        K.sphere('eye', 0.06, (s * 0.12, -0.29, 1.6), M('pupil'), (1, 0.6, 1.2), 2)
+        K.sphere('catch', 0.018, (s * 0.11, -0.34, 1.63), M('white_gloss', 0.5), sub=1)
+        o = block((s * 0.13, -0.29, 1.69), (0.17, 0.08, 0.06), M('beard'), 0.02); o.rotation_euler = (0, -s * 0.25, 0)
+        K.sphere('tuft', 0.12, (s * 0.3, -0.12, 1.47), M('beard'), (0.8, 0.9, 1.1), 2)
+    K.sphere('moustache', 0.13, (0, -0.3, 1.43), M('beard'), (1.6, 0.6, 0.55), 2)
+    o = K.cone('beard', 0.27, 0.75, (0, -0.24, 1.08), M('beard'), 12); o.rotation_euler = (math.pi + 0.12, 0, 0)
+    # the hat: a wide brim, a brass band with a gold star, a tall cone flopping forward at the tip
+    K.cyl('brim', 0.62, 0.06, (0, 0, 1.76), M('robe_dk'), 24, 0.02)
+    K.cyl('band', 0.37, 0.12, (0, 0, 1.84), M('gold'), 20, 0.02)
+    K.cyl('crown', 0.36, 0.42, (0, 0, 2.07), M('robe'), 20, 0.0, r2=0.22)
+    o = K.cone('tip', 0.22, 0.55, (0, 0.06, 2.48), M('robe'), 16); o.rotation_euler = (-0.45, 0, 0)
+    K.sphere('pom', 0.07, (0, 0.18, 2.72), M('gold', 1.0), sub=2)
+    o = K.cone('star', 0.1, 0.03, (0, -0.37, 1.85), M('gold', 1.2), 5); o.rotation_euler = (math.pi / 2, 0, 0)
+    # the staff: a gnarled shaft in the right hand, a claw holding a glowing hearth-orb above the hat brim
+    o = K.cyl('staff', 0.05, 2.2, (0.66, -0.26, 1.05), M('wood_dk'), 8, 0.0, r2=0.04); o.rotation_euler = (0, 0.04, 0)
+    for k in range(3):
+        a = k / 3 * math.tau
+        o = K.cone('claw', 0.04, 0.3, (0.7 + math.cos(a) * 0.1, -0.26 + math.sin(a) * 0.1, 2.18), M('wood_dk'), 6); o.rotation_euler = (-math.sin(a) * 0.5, math.cos(a) * 0.5, 0)
+    K.sphere('orb', 0.15, (0.7, -0.26, 2.3), M('fire_core', 2.5), sub=3)
+    K.sphere('orb_core', 0.08, (0.7, -0.26, 2.3), M('gold', 3.0), sub=2)
+    for s in (-1, 1): K.sphere('boot', 0.13, (s * 0.2, -0.22, 0.07), M('wood_dk'), (1, 1.5, 0.6), 2)
+    return K.export('wizard')

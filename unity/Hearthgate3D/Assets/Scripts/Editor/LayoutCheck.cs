@@ -177,6 +177,7 @@ namespace Hearthgate.EditorTools
                 ("labels", TopLeft(250, 118)),                       // wave, Resonance, rate
                 ("buttons", TopRight(16, 16, 246, 134)),             // Upgrade and Rebuild (Hud.Btn: 230 x 56, 6 apart)
                 ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 27 * s / h, 0.5f + 180 * s / w, 53 * s / h)),
+                ("walk button", Rect.MinMaxRect(0.5f - 115 * s / w, 62 * s / h, 0.5f + 115 * s / w, 112 * s / h)),   // Hud: the town walk
             };
         }
 

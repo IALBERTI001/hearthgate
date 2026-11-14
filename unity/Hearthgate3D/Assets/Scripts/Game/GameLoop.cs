@@ -18,7 +18,7 @@ namespace Hearthgate.Game
         readonly List<Tower> towers = new List<Tower>();
         readonly List<Shot> shots = new List<Shot>();
         readonly List<(string role, float at)> queue = new List<(string, float)>();
-        readonly GameObject[] plots = new GameObject[10];
+        readonly GameObject[] plots = new GameObject[10]; readonly float[] punch = new float[10];
         Transform world, unitsRoot, marker;
         float waveT, saveT, betweenT; bool waveLive; System.Random rnd = new System.Random();
         const string SAVE_KEY = "hearthgate.profile.v1";
@@ -54,6 +54,7 @@ namespace Hearthgate.Game
             RefreshTowers();
             for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
             if (art && art.marker) marker = Art.Spawn(art.marker, "marker", Vector3.zero, world).transform;
+            new GameObject("Wizard").AddComponent<Wizard>().Init(art);   // the town walk
             var sun = new GameObject("Sun").AddComponent<Light>(); sun.type = LightType.Directional;
             // a warm sun from the upper left of the screen, in front (art/STYLE.md: "warm golden light from the upper left"):
             // the faces the camera sees are lit, shadows fall back and to the right; a cool sky fill keeps shadows coloured
@@ -248,8 +249,36 @@ namespace Hearthgate.Game
             Hud.Banner($"{HG.ById(id).name} rebuilt! {HG.ById(id).line}"); Save();
         }
 
+        // the town walk: the wizard works on the plot he stands at. A restored building goes up a level (its output grows,
+        // doubling at levels 10, 25, 50 and 100); a ruin the city can rebuild now is rebuilt.
+        public double LevelCost(int i) => HG.LevelCost(P, HG.BUILDING_IDS[i], B);
+        public bool CanWork(int i)
+        {
+            var id = HG.BUILDING_IDS[i];
+            if (P.restored.Contains(id)) return P.res >= LevelCost(i);
+            return HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost;
+        }
+        public void WorkOn(int i)
+        {
+            var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
+            if (!P.restored.Contains(id)) { if (HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost) { Restore(id); punch[i] = 1; } return; }
+            double cost = LevelCost(i); if (P.res < cost) return;
+            P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P);
+            var top = Field.Plot(i) + Vector3.up * 6.5f; punch[i] = 1;
+            Fx.I.Burst(top - Vector3.up * 2, Field.GOLD, System.Array.IndexOf(HG.MILESTONES, L) >= 0 ? 34 : 12);
+            Fx.I.Pop(top, $"Lv {L}", Field.GOLD, 34);
+            if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f); }
+            Save();
+        }
+
         void Update()
         {
+            for (int i = 0; i < plots.Length; i++)   // a building squashes and springs back when worked on
+                if (punch[i] > 0 && plots[i])
+                {
+                    punch[i] = Mathf.Max(0, punch[i] - Time.deltaTime * 2.2f); float q = Mathf.Sin(punch[i] * Mathf.PI * 2.5f) * punch[i] * 0.12f;
+                    plots[i].transform.localScale = new Vector3(1 + q, 1 - q, 1 + q);
+                }
             // the next plot to rebuild, marked in the world: a gold ring and arrow that bob, brighter when affordable
             if (marker)
             {

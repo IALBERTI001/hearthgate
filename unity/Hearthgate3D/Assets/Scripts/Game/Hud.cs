@@ -12,7 +12,7 @@ namespace Hearthgate.Game
     {
         static Hud I;
         Font font, body; Text wave, res, rate, banner, upLbl, reLbl, gateTxt; Image gateBar; RectTransform forkBox;
-        Pressable up, re;
+        Pressable up, re, walk, work; Text walkLbl, workLbl; RectTransform workCard;
 
         // A control this HUD answers itself, from the raw pointer. uGUI's event system drops pointer input whenever the page
         // does not report focus to Unity (Windows hosts), which left the buttons dead in a browser pane while the keys
@@ -35,6 +35,7 @@ namespace Hearthgate.Game
             press.RemoveAll(p => p.rt == null);
             foreach (var p in press.ToArray())
             {
+                if (!p.rt.gameObject.activeInHierarchy) { p.down = false; continue; }
                 bool on = p.on(), inside = RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null);
                 if (dn && inside && on) p.down = true;
                 if (upNow) { if (p.down && inside && on) p.act(); p.down = false; }
@@ -124,6 +125,21 @@ namespace Hearthgate.Game
             // top right, over the far meadow: the city fills the bottom of the view (LayoutCheck keeps it clear)
             up = Btn("Upgrade", new Vector2(-16, -16), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
             re = Btn("Rebuild", new Vector2(-16, -78), () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, out reLbl);
+
+            // the town walk (owner, Nov 13 2026): one button over the gate bar, between the inner lanes; while walking, a
+            // card over it offers the work on the building in reach
+            walk = BtnAt("Walk", new Vector2(0.5f, 0), new Vector2(0, 62), new Vector2(230, 50), () => Wizard.I?.Toggle(), null, out walkLbl);
+            work = BtnAt("Work", new Vector2(0.5f, 0), new Vector2(0, 122), new Vector2(430, 78), () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
+                () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), out workLbl);
+            workCard = work.rt; workCard.gameObject.SetActive(false);
+        }
+
+        // true when the pointer is over a pressable control (the town walk ignores those taps)
+        public static bool OnHud(Vector2 m)
+        {
+            if (!I) return false;
+            foreach (var p in I.press) if (p.rt && p.rt.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null)) return true;
+            return I.forkBox != null;
         }
 
         RectTransform Box(string n, Transform p, Vector2 aMin, Vector2 aMax, Vector2 pos, Vector2 size)
@@ -163,6 +179,14 @@ namespace Hearthgate.Game
                 while (size > f.min && f.t.preferredHeight > f.h) f.t.fontSize = --size;
             }
         }
+        Pressable BtnAt(string n, Vector2 anchor, Vector2 pos, Vector2 size, System.Action act, System.Func<bool> on, out Text lbl)
+        {
+            var r = Box(n, transform, anchor, anchor, pos, size); r.pivot = anchor;
+            var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, BRASS); img.type = Image.Type.Sliced; img.color = Color.white;
+            lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 20, TextAnchor.MiddleCenter);
+            Fit(lbl, r.sizeDelta - new Vector2(20, 8), 12);
+            return Press(r, act, on);
+        }
         Pressable Btn(string n, Vector2 pos, System.Action act, System.Func<bool> on, out Text lbl)
         {
             var r = Box(n, transform, new Vector2(1, 1), new Vector2(1, 1), pos, new Vector2(230, 56)); r.pivot = new Vector2(1, 1);   // slimmer (Nov 13 2026): the ring's outer towers stand under the corners
@@ -186,6 +210,21 @@ namespace Hearthgate.Game
             upLbl.text = $"Upgrade gate\n<color=#FFD56B>{HG.Fmt(g.UpgradeCost)}</color>{keyU}";
             var nb = g.NextBuilding;
             reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n<color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>{keyR}";
+            // the town walk
+            var wz = Wizard.I; string keyT = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[T]</color>", keyE = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[E]</color>";
+            walkLbl.text = (wz && wz.On ? "Back to the walls" : "Walk the town") + keyT;
+            bool showWork = wz && wz.On && wz.Near >= 0; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);
+            if (showWork)
+            {
+                var id = HG.BUILDING_IDS[wz.Near]; var b = HG.ById(id);
+                if (P.restored.Contains(id))
+                {
+                    int L = HG.LevelOf(P, id); double now = HG.BuildingRate(P, id, g.B), next = HG.BuildingRate(P, id, g.B, L + 1);
+                    workLbl.text = $"Upgrade {b.name}  ·  level {L} to {L + 1}\n+{HG.Fmt(next - now)}/s   <color=#FFD56B>{HG.Fmt(g.LevelCost(wz.Near))}</color>{keyE}";
+                }
+                else if (HG.RestoreOffer(P).Contains(id)) workLbl.text = $"Rebuild {b.name}\n{b.line}   <color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>{keyE}";
+                else workLbl.text = $"Ruined {b.name}\n<color=#D9C9A8>Rebuild the marked plot first</color>";
+            }
             Refit();
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
         }

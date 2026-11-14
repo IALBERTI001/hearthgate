@@ -35,6 +35,7 @@ PAL = {
     'canvas': (0.90, 0.84, 0.70), 'hay': (0.90, 0.74, 0.36), 'cave': (0.07, 0.06, 0.07),
     'water_gloss': (0.25, 0.55, 0.85), 'window': (1.0, 0.72, 0.32), 'skin': (0.96, 0.75, 0.6), 'cloth': (0.3, 0.5, 0.8),
     'road': (0.52, 0.39, 0.26),
+    'robe': (0.33, 0.22, 0.62), 'robe_dk': (0.20, 0.13, 0.40), 'beard': (0.95, 0.94, 0.90),   # the wizard (the town walk)
 }
 _mats = {}
 def mat(name, glow=0.0):
@@ -279,4 +280,5 @@ if __name__ == '__main__':
     for bid in ROOF: report['building_' + bid] = building(bid)
     for bid in ROOF: report['ruin_' + bid] = C.ruin_of(bid)   # each plot's own burnt shell
     report['marker'] = F.marker()
+    report['wizard'] = F.wizard()
     print('[hg_kit] done', len(report), 'models,', sum(report.values()), 'tris total, into', OUT)

@@ -33,7 +33,7 @@ def tower_front():
     if len(front) < 6: bad.append(f'tower_base: only {len(front)} stones on the face toward the camera')
 for fn, name, extra in ((F.gate, 'gate', None), (F.wall, 'wall', None), (F.tower_base, 'tower_base', tower_front), (F.road, 'road', None),
                         (F.ground, 'ground', None), (F.fountain, 'fountain', None), (F.slime, 'slime', None), (F.beetle, 'beetle', None),
-                        (F.golem, 'golem', None), (C.ruin, 'ruin', None)):
+                        (F.golem, 'golem', None), (C.ruin, 'ruin', None), (F.wizard, 'wizard', None)):
     K.clear(); fn(); check(name)
     if extra: extra()
 for k in ('stone', 'fire', 'frost', 'storm'): K.clear(); F.top(k); check('top_' + k)

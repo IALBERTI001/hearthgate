@@ -67,10 +67,10 @@ namespace Hearthgate.EditorTools
             art.topStone = M("top_stone"); art.topFire = M("top_fire"); art.topFrost = M("top_frost"); art.topStorm = M("top_storm");
             art.slime = M("slime"); art.beetle = M("beetle"); art.golem = M("golem"); art.ruin = M("ruin"); art.villager = M("villager"); art.fountain = M("fountain");
             art.buildings = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("building_" + id)).ToArray();
-            art.ruins = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("ruin_" + id)).ToArray(); art.marker = M("marker");
+            art.ruins = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("ruin_" + id)).ToArray(); art.marker = M("marker"); art.wizard = M("wizard");
             EditorUtility.SetDirty(art);
-            int have = new[] { art.ground, art.road, art.gate, art.wall, art.towerBase, art.topStone, art.topFire, art.topFrost, art.topStorm, art.slime, art.beetle, art.golem, art.ruin, art.fountain }.Count(x => x) + art.buildings.Count(x => x);
-            Debug.Log($"[Hearthgate] art set: {have} of 24 models found in {MODELS}");
+            int have = new[] { art.ground, art.road, art.gate, art.wall, art.towerBase, art.topStone, art.topFire, art.topFrost, art.topStorm, art.slime, art.beetle, art.golem, art.ruin, art.fountain, art.wizard }.Count(x => x) + art.buildings.Count(x => x);
+            Debug.Log($"[Hearthgate] art set: {have} of 25 models found in {MODELS}");
             return art;
         }
 

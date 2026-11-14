@@ -12,7 +12,7 @@ namespace Hearthgate.Game
         ParticleSystem sparks;
         RectTransform popLayer; Font font;
         readonly List<(Text txt, Vector3 at, float t, float life)> pops = new List<(Text, Vector3, float, float)>();
-        float shake; Vector3 camHome; Camera cam;
+        float shake; public Vector3 camHome; Camera cam;   // the camera's resting place (the town walk moves it)
 
         public void Init(RectTransform layer, Font f)
         {

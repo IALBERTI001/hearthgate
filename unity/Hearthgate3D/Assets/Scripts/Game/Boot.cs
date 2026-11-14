@@ -8,7 +8,7 @@ namespace Hearthgate.Game
     {
         public ArtSet art;
         Camera cam;
-        void Update() { if (cam) cam.fieldOfView = Field.FovFor(cam.aspect); }   // the window can change shape
+        void Update() { if (cam && Wizard.I == null) cam.fieldOfView = Field.FovFor(cam.aspect); }   // the window can change shape (the town walk sets it once it exists)
 
         void Awake()
         {
