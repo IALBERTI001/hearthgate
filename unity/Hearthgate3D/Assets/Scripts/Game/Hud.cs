@@ -26,13 +26,14 @@ namespace Hearthgate.Game
         class Pressable
         {
             public RectTransform rt; public Image img; public Color col; public System.Func<bool> on; public System.Action act;
-            public bool down; public float s = 1;
+            public bool down; public float s = 1; public CanvasGroup group;
         }
         readonly System.Collections.Generic.List<Pressable> press = new System.Collections.Generic.List<Pressable>();
         Pressable Press(RectTransform rt, System.Action act, System.Func<bool> on = null)
         {
             var img = rt.GetComponent<Image>();
             var p = new Pressable { rt = rt, img = img, col = img ? img.color : Color.white, on = on ?? (() => true), act = act };
+            p.group = rt.gameObject.GetComponent<CanvasGroup>() ?? rt.gameObject.AddComponent<CanvasGroup>();   // fades the whole button when it cannot act
             press.Add(p); return p;
         }
         void Pointer()
@@ -45,7 +46,10 @@ namespace Hearthgate.Game
                 bool on = p.on(), inside = RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null);
                 if (dn && inside) { if (on) p.down = true; else Sound.Dud(); }   // a soft low thud on a button that cannot act yet
                 if (upNow) { if (p.down && inside && on) { Sound.Click(); p.act(); } p.down = false; }
-                float target = !on ? 1f : p.down && inside ? 0.95f : inside ? 1.04f : 1f;
+                // no growth on hover (a scaled button blurs its words: owner, Nov 14 2026); a short squeeze while pressed;
+                // a button that cannot act fades as a whole, words and all, so it never reads as pressable
+                float target = !on ? 1f : p.down && inside ? 0.96f : 1f;
+                if (p.group) p.group.alpha = on ? 1f : 0.5f;
                 p.s = Mathf.MoveTowards(p.s, target, Time.unscaledDeltaTime * 1.2f); p.rt.localScale = Vector3.one * p.s;
                 if (p.img) p.img.color = on ? (inside ? Color.Lerp(p.col, Color.white, 0.12f) : p.col) : new Color(p.col.r * 0.6f, p.col.g * 0.6f, p.col.b * 0.6f, p.col.a * 0.8f);
             }
@@ -265,17 +269,18 @@ namespace Hearthgate.Game
             var wz = Wizard.I; var cam = Camera.main; var canvas = (RectTransform)transform;
             for (int i = 0; i < signs.Length; i++)
             {
-                var at = Field.SignPoint(i); bool show = wz && wz.On && cam;
+                var at = Field.SignPoint(i); bool show = wz && wz.On && cam; bool docked = show && wz.Inside == i;
                 Vector3 sp = default; float dist = 0;
                 if (show)
                 {
                     dist = Vector3.Distance(cam.transform.position, at); sp = cam.WorldToScreenPoint(at);
-                    show = sp.z > 0 && dist < 32f && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height;
+                    show = docked || sp.z > 0 && dist < 32f && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height;
                 }
                 if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
                 if (!show) continue;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp);
-                signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f;
+                // inside, the steep room camera put the yard's board over the room and the wizard: it docks above the walls bar
+                if (docked) signs[i].anchoredPosition = new Vector2(canvas.rect.width * 0.5f, 64f);
+                else { RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp); signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f; }
                 signs[i].localScale = Vector3.one;   // never scaled: scaled text is blurry (owner, Nov 14 2026); its font is sized to read
                 // the building's board (owner, Nov 14 2026: "Everything to do with this building should be at player level to
                 // interact with. Not hidden from the player"): its one name, its level and what it makes, what it does (and its
@@ -299,7 +304,8 @@ namespace Hearthgate.Game
                     signHead[i].text = $"{b.name}  ·  ruined";
                     body = offer ? $"<color=#E6DCEA>{b.line}</color>" : $"<color=#D9C9A8>{(g.NextBuilding != null ? "rebuilt after the " + HG.ById(g.NextBuilding).name : "rebuilt later")}</color>";
                 }
-                body += HallLine(g, P, i);
+                if (docked && g.CentreOn(i) && wz.Looking != i) body += $"\n<color=#FFD56B>Walk up to the {GameLoop.CentreName(i)} to open {(HG.BUILDING_IDS[i] == "watchtower" ? "the perks and stars" : HG.BUILDING_IDS[i] == "market" ? "the Shop" : "the quests and Feats")}</color>";
+                else body += HallLine(g, P, i);
                 signTxt[i].text = body;
                 bool btn = near && (up || offer);
                 if (signBtn[i].p.rt.gameObject.activeSelf != btn) signBtn[i].p.rt.gameObject.SetActive(btn);
