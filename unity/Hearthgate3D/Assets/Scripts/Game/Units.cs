@@ -51,12 +51,13 @@ namespace Hearthgate.Game
 
     public class Tower
     {
-        public int n; public string el = "none"; public Transform t, top; public float cool, x, z;   // n is also its lane
-        public Vector3 Muzzle => new Vector3(x, Field.TOWER_TOP + 0.8f, z);
+        public int n; public string el = "none"; public Transform t, top; public float cool, x, z, flash;   // n is also its lane
+        public Vector3? muzzle; public bool beacon;   // the Watchtower's beacon: a fifth tower in the town (GameLoop.Town)
+        public Vector3 Muzzle => muzzle ?? new Vector3(x, Field.TOWER_TOP + 0.8f, z);
     }
 
     public class Shot
     {
-        public Vector3 p, from; public Enemy target; public string el; public float speed, k, dur; public Transform t; public TrailRenderer trail;   // k: 0..1 along the arc
+        public Vector3 p, from; public Enemy target; public string el; public float speed, k, dur; public Transform t; public TrailRenderer trail; public bool beacon;   // k: 0..1 along the arc
     }
 }

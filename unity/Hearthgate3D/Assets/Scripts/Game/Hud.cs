@@ -164,6 +164,49 @@ namespace Hearthgate.Game
                 signTxt[i].font = body; Fit(signTxt[i], new Vector2(226, 60), 14);
                 r.SetSiblingIndex(1); r.gameObject.SetActive(false); signs[i] = r;
             }
+
+            // the fountain's board (game-polish rule 6, in the world): ready, it says so and a tap starts the Surge; on, it
+            // counts down. Hidden while the fountain refills.
+            surgeTag = Box("SurgeTag", transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(190, 44)); surgeTag.pivot = new Vector2(0.5f, 0);
+            var sti = surgeTag.gameObject.AddComponent<Image>(); sti.sprite = Panel(PLUM, new Color(1f, 0.62f, 0.86f), 12, 3); sti.type = Image.Type.Sliced;
+            surgeTxt = Label("T", surgeTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 19, TextAnchor.MiddleCenter); surgeTxt.color = new Color(1f, 0.8f, 0.94f);
+            surgeTxt.rectTransform.pivot = new Vector2(0.5f, 0.5f); surgeTxt.rectTransform.sizeDelta = new Vector2(180, 40);
+            Press(surgeTag, () => GameLoop.I.TapSurge()); surgeTag.SetSiblingIndex(1); surgeTag.gameObject.SetActive(false);
+            // the Tavern's Cheer meter, over its roof
+            cheerTag = Box("CheerTag", transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(120, 30)); cheerTag.pivot = new Vector2(0.5f, 0);
+            var cbg = cheerTag.gameObject.AddComponent<Image>(); cbg.sprite = Panel(INK, BRASS, 8, 2); cbg.type = Image.Type.Sliced; cbg.raycastTarget = false;
+            var cf = Box("Fill", cheerTag, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
+            cheerFill = cf.gameObject.AddComponent<Image>(); cheerFill.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
+            cheerFill.type = Image.Type.Filled; cheerFill.fillMethod = Image.FillMethod.Horizontal; cheerFill.raycastTarget = false;
+            var ct = Label("T", cheerTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 15, TextAnchor.MiddleCenter); ct.text = "Cheer"; ct.font = body;
+            ct.rectTransform.pivot = new Vector2(0.5f, 0.5f); ct.rectTransform.sizeDelta = new Vector2(110, 26);
+            cheerTag.SetSiblingIndex(1); cheerTag.gameObject.SetActive(false);
+        }
+        RectTransform surgeTag, cheerTag; Text surgeTxt; Image cheerFill;
+        // a HUD element pinned over a point in the world; false when that point is off screen
+        bool Pin(RectTransform r, Vector3 at, float near = 9999f)
+        {
+            var cam = Camera.main; var canvas = (RectTransform)transform; if (!cam) return false;
+            var sp = cam.WorldToScreenPoint(at); float dist = Vector3.Distance(cam.transform.position, at);
+            bool show = sp.z > 0 && dist < near && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height;
+            if (r.gameObject.activeSelf != show) r.gameObject.SetActive(show);
+            if (!show) return false;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp);
+            r.anchoredPosition = lp + canvas.rect.size * 0.5f; return true;
+        }
+        void TownTags(GameLoop g, Profile P)
+        {
+            bool tagOn = !P.firstSession && (g.SurgeOn || g.SurgeReady);
+            if (tagOn && Pin(surgeTag, Field.PLAZA + new Vector3(0, 4.2f, 0)))
+                surgeTxt.text = g.SurgeOn ? $"x2  ·  {GameLoop.Mmss(g.SurgeLeftMs)}" : (Application.isMobilePlatform ? "Surge ready: tap" : "Surge ready  [X]");
+            else if (!tagOn && surgeTag.gameObject.activeSelf) surgeTag.gameObject.SetActive(false);
+            int ti = System.Array.IndexOf(HG.BUILDING_IDS, "tavern");
+            if (P.restored.Contains("tavern") && Pin(cheerTag, Field.Plot(ti) + Vector3.up * (Field.PlotHeight(ti) + 0.8f)))
+            {
+                cheerFill.fillAmount = g.CheerShown;
+                cheerFill.color = g.cheerT > 0 ? new Color(1f, 0.84f, 0.42f) : new Color(0.9f, 0.6f, 0.23f);
+            }
+            else if (!P.restored.Contains("tavern") && cheerTag.gameObject.activeSelf) cheerTag.gameObject.SetActive(false);
         }
 
         // where the pointer is: a touch's own position when there is one (the mouse position Unity simulates from a touch can
@@ -353,7 +396,7 @@ namespace Hearthgate.Game
             Show(up, "Upgrade towers", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
             var nb = g.NextBuilding; if (re.p.rt.gameObject.activeSelf != (nb != null)) re.p.rt.gameObject.SetActive(nb != null);
             if (nb != null) Show(re, $"Rebuild {HG.ById(nb).name}", HG.Fmt(g.RestoreCost), g.CanRestore, now);
-            Signs(g, P);
+            Signs(g, P); TownTags(g, P);
             // the town walk
             var wz = Wizard.I;
             Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", null, true, now);
@@ -397,7 +440,7 @@ namespace Hearthgate.Game
             Time.timeScale = 0;   // the fight waits while the menu is open
             var dim = Box("SettingsDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, 0.55f); settingsBox = dim;
-            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 520));   // tall enough for every control row above the stamp
+            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 550));   // tall enough for every control row above the stamp
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = "Settings";
             BtnAt("S_Music", new Vector2(0.5f, 1), new Vector2(-140, -76), new Vector2(250, 50), () => { Sound.SetMusic(!Sound.MusicOn); RefreshSettings(); }, null, out musicLbl).rt.SetParent(box, false);
@@ -406,7 +449,7 @@ namespace Hearthgate.Game
             string[,] rows = {
                 { "U", "Upgrade the towers" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
                 { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
-                { "M", "Sound on or off" }, { "P", "This menu" } };
+                { "X", "Start a Surge at the fountain" }, { "M", "Sound on or off" }, { "P", "This menu" } };
             for (int k = 0; k < rows.GetLength(0); k++)
             {
                 float y = -186 - k * 26;

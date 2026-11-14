@@ -8,7 +8,7 @@ using Hearthgate.Core;
 
 namespace Hearthgate.Game
 {
-    public class GameLoop : MonoBehaviour
+    public partial class GameLoop : MonoBehaviour
     {
         public ArtSet art;
         public static GameLoop I;
@@ -73,10 +73,12 @@ namespace Hearthgate.Game
             var els = Elements();
             foreach (var tw in towers)
             {
+                if (tw.beacon) continue;
                 tw.el = els.Length > 0 ? els[tw.n % els.Length] : "none";
                 if (tw.top) Destroy(tw.top.gameObject);
                 tw.top = Art.Spawn(art ? art.Top(tw.el) : null, "top-" + (tw.el == "none" ? "stone" : tw.el), new Vector3(tw.x, Field.TOWER_TOP, tw.z), world).transform;
             }
+            RefreshBeacon();
         }
         void RefreshPlot(int i)
         {
@@ -113,7 +115,7 @@ namespace Hearthgate.Game
             }
             TickEnemies(); TickTowers(); TickShots();
             // the city hums
-            P.res += HG.CityRate(P, B) * DT;
+            P.res += HG.CityRate(P, B) * DT * SurgeX;
             if (waveLive && queue.Count == 0 && enemies.Count == 0) { waveLive = false; betweenT = 1.2f; WaveWon(); }
             if (!waveLive && (betweenT -= DT) <= 0) StartWave();
             if ((saveT += DT) > 5) { saveT = 0; Save(); }
@@ -143,7 +145,7 @@ namespace Hearthgate.Game
         void Kill(Enemy e)
         {
             e.dying = 0.0001f;
-            double pay = HG.KillRes(P.wave, e.boss, B); P.res += pay;
+            double pay = HG.KillRes(P.wave, e.boss, B) * SurgeX; SendWisps(e.Pos, pay);   // paid when it reaches the fountain
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8); Sound.Play(e.boss ? "ascension" : "golem_death", e.boss ? 0.55f : 0.28f);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); }
@@ -171,8 +173,9 @@ namespace Hearthgate.Game
             foreach (var tw in towers)
             {
                 if ((tw.cool -= DT) > 0) continue;
+                if (tw.beacon) tw.el = BeaconElement();
                 var tg = Pick(tw); if (tg == null) continue;
-                tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f);
+                tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f) * (cheerT > 0 ? 0.5f : 1f); tw.flash = 1;   // the Tavern's Cheer: twice as fast
                 var go = new GameObject("shot");
                 var col = tw.el == "fire" || tw.el == "frost" || tw.el == "storm" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
                 var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
@@ -182,7 +185,7 @@ namespace Hearthgate.Game
                 tr.material = Art.Flat(Color.Lerp(col, Color.black, 0.15f)); tr.numCapVertices = 3;
                 tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; var smr = mr.GetComponent<Renderer>(); if (smr) smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
                 go.transform.position = tw.Muzzle; Sound.Play(Sfx(tw.el) + "_launch_0", 0.16f);
-                shots.Add(new Shot { p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
+                shots.Add(new Shot { beacon = tw.beacon, p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
             }
         }
         // frost picks someone not yet chilled; fire, storm and stone prefer the chilled (that is how combos happen). A tower
@@ -209,7 +212,7 @@ namespace Hearthgate.Game
                 var goal = s.target.Pos; float dist = Vector3.Distance(s.from, goal);
                 if (s.dur <= 0) s.dur = Mathf.Max(0.12f, dist / s.speed);
                 s.k = Mathf.Min(1f, s.k + DT / s.dur);
-                bool crosses = Mathf.Sign(s.from.x) != Mathf.Sign(goal.x) || Mathf.Abs(goal.x) < Field.GATE_HALF + 1f;
+                bool crosses = !s.beacon && (Mathf.Sign(s.from.x) != Mathf.Sign(goal.x) || Mathf.Abs(goal.x) < Field.GATE_HALF + 1f);   // the beacon fires down from high in the town
                 if (crosses)
                 {   // across the middle: a curve that swings out in front of the gatehouse, over the road, never over the
                     // keep and the town behind it (a high lob over the keep still read as a shot into the town)
@@ -249,7 +252,7 @@ namespace Hearthgate.Game
         void Combo(string id, Enemy e, string word, Color c)
         {
             if (!P.combos.Contains(id)) { P.combos.Add(id); Hud.Banner($"New combo: {word.TrimEnd('!')}"); }
-            lastCombo = word; comboT = 1.2f;
+            lastCombo = word; comboT = 1.2f; FillCheer();
             Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.6f), word, c, 40, 1.1f); Fx.I.Burst(e.Pos, c, 20);
             Sound.Play(id == "shatter" ? "shatter_combo" : id == "frostStorm" ? "freeze_combo" : "conduction_combo", 0.4f);
         }
@@ -317,6 +320,8 @@ namespace Hearthgate.Game
         void Update()
         {
             var wz = Wizard.I;
+            TickTown(Time.deltaTime); TapWorld();
+            if (!Hud.Paused && Input.GetKeyDown(KeyCode.X)) TapSurge();
             for (int i = 0; i < plots.Length; i++) if (uppers[i]) uppers[i].gameObject.SetActive(!(wz && wz.Inside == i));
             // the next plot to rebuild, marked in the world: a gold ring and arrow that bob, brighter when affordable
             if (marker)
@@ -344,7 +349,7 @@ namespace Hearthgate.Game
             p ??= new Profile(); p.Sanitize(); return p;
         }
         public void Save() { P.lastSeen = Now(); P.firstSession = false; PlayerPrefs.SetString(SAVE_KEY, JsonUtility.ToJson(P)); PlayerPrefs.Save(); }
-        void OnApplicationPause(bool paused) { if (paused) Save(); }
-        void OnApplicationQuit() { Save(); }
+        void OnApplicationPause(bool paused) { if (paused) { FlushWisps(); Save(); } }
+        void OnApplicationQuit() { FlushWisps(); Save(); }
     }
 }

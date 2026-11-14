@@ -184,7 +184,7 @@ namespace Hearthgate.Core
         public List<KV> levels = new List<KV>();
         public List<KV> forks = new List<KV>();   // k = fork id, v = stage
         public List<string> combos = new List<string>();
-        public long lastSeen;
+        public long lastSeen, surgeUntil;   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
         public bool firstSession = true;
         public bool music = true, sfx = true, reduced;
 
