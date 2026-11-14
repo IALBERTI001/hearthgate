@@ -17,7 +17,8 @@ namespace Hearthgate.Game
     public partial class GameLoop
     {
         public bool Fallen => P.fallen;
-        GameObject gateObj, breachObj; Quaternion gateRot; Vector3 gatePos;
+        GameObject gateObj, breachObj; readonly System.Collections.Generic.List<GameObject> heaps = new System.Collections.Generic.List<GameObject>();
+        readonly System.Collections.Generic.List<(Transform t, float age, float life, float size, Vector3 drift)> puffs = new System.Collections.Generic.List<(Transform, float, float, float, Vector3)>();
         float smokeT;
 
         public int FallCost => 3 + P.wave / 10;
@@ -54,13 +55,22 @@ namespace Hearthgate.Game
             foreach (var tw in towers) if (tw.top) tw.top.gameObject.SetActive(!on);
             if (on && !breachObj && art && art.breach) { breachObj = Instantiate(art.breach, world); breachObj.transform.position = new Vector3(0, 0, Field.GATE_Z); }
             else if (!on && breachObj) { Destroy(breachObj); breachObj = null; }
-            if (gateObj)
-            {
-                if (on) { gateRot = gateObj.transform.rotation; gatePos = gateObj.transform.position; gateObj.transform.SetPositionAndRotation(gatePos + new Vector3(0.3f, -0.9f, 0.4f), gateRot * Quaternion.Euler(-14f, 0, 7f)); }
-                else gateObj.transform.SetPositionAndRotation(gatePos, gateRot);
-            }
+            // fallen blocks heaped at the foot of the wall beside every tower, spilling outward
+            foreach (var h in heaps) if (h) Destroy(h);
+            heaps.Clear();
+            if (on && art && art.rubbleHeap)
+                foreach (var tw in towers)
+                {
+                    var at = new Vector3(tw.x, 0, tw.z); var outward = at - Field.PLAZA; outward.y = 0; outward.Normalize();
+                    var side = Vector3.Cross(Vector3.up, outward);
+                    foreach (float sx in new[] { -2.4f, 2.6f })
+                    {
+                        var h = Instantiate(art.rubbleHeap, world); h.transform.position = at + outward * 1.6f + side * sx;
+                        h.transform.rotation = Quaternion.LookRotation(-outward) * art.rubbleHeap.transform.rotation; heaps.Add(h);   // models face -Z: its +y spill goes outward
+                    }
+                }
+            if (!on) { foreach (var p in puffs) if (p.t) Destroy(p.t.gameObject); puffs.Clear(); }
             if (beaconFlame) beaconFlame.gameObject.SetActive(!on);
-            if (Debug.isDebugBuild) Debug.Log($"[fall] shambles {on}: gate {(gateObj ? gateObj.transform.position + " " + gateObj.transform.eulerAngles : "none")}, breach {(breachObj ? "yes" : "no")}");
         }
 
         // smoke and embers drift up over the ruins while the card is up
@@ -69,11 +79,29 @@ namespace Hearthgate.Game
             if (adWaiting && (adT += dt) > 90f) AdDone("0");   // never wait on an ad for good
             if (!P.fallen) return;
             if (!Hud.Paused) Hud.ShowFallen();   // the card stays until a choice is made (P, the menu, a reload)
+            // smoke: dark puffs (hg_front.puff) rise from the ruins and the gate, swell, drift with the wind and sink away
+            for (int k = puffs.Count - 1; k >= 0; k--)
+            {
+                var p = puffs[k]; p.age += dt;
+                if (!p.t || p.age > p.life) { if (p.t) Destroy(p.t.gameObject); puffs.RemoveAt(k); continue; }
+                float u = p.age / p.life;
+                p.t.position += (Vector3.up * 1.6f + p.drift) * dt;
+                p.t.localScale = Vector3.one * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0.7f, 1f, u));
+                p.t.Rotate(0, 20f * dt, 0); puffs[k] = p;
+            }
             if ((smokeT -= dt) > 0) return;
-            smokeT = 0.18f;
-            int i = Random.Range(0, HG.BUILDINGS.Length + 1);
-            var at = i == HG.BUILDINGS.Length ? new Vector3(Random.Range(-3f, 3f), 2.5f, Field.GATE_Z) : Field.Plot(i) + new Vector3(Random.Range(-1.5f, 1.5f), 1.5f, Random.Range(-1.5f, 1.5f));
-            Fx.I.Burst(at, Random.value < 0.75f ? new Color(0.36f, 0.34f, 0.34f) : Field.FIRE, 3);
+            smokeT = 0.12f;
+            var standing = new System.Collections.Generic.List<int>();
+            for (int b = 0; b < HG.BUILDINGS.Length; b++) if (P.restored.Contains(HG.BUILDINGS[b].id)) standing.Add(b);
+            int i = Random.Range(-1, standing.Count);
+            var at = i < 0 ? new Vector3(Random.Range(-2f, 2f), 3.5f, Field.GATE_Z) : Field.Plot(standing[i]) + new Vector3(Random.Range(-1.2f, 1.2f), 1.2f, Random.Range(-1.2f, 1.2f));
+            if (art && art.puff && puffs.Count < 70)
+            {
+                var g = Instantiate(art.puff, world); g.transform.position = at; g.transform.localScale = Vector3.zero;
+                foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                puffs.Add((g.transform, 0f, Random.Range(3.2f, 4.5f), Random.Range(1.3f, 2.2f), new Vector3(0.5f, 0, Random.Range(-0.2f, 0.2f))));
+            }
+            if (Random.value < 0.3f) Fx.I.Burst(at, Field.FIRE, 2);   // embers
         }
 
         public void RestoreFallen(bool paid)

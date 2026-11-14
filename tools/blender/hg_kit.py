@@ -22,7 +22,7 @@ PAL = {
     'bush': (0.22, 0.46, 0.18), 'tree': (0.20, 0.44, 0.18), 'tree2': (0.30, 0.52, 0.20), 'pine': (0.13, 0.33, 0.20),
     'tree_far': (0.22, 0.38, 0.33), 'rock': (0.50, 0.47, 0.44), 'rock_dk': (0.37, 0.35, 0.33),
     'flower_y': (1.0, 0.85, 0.30), 'flower_w': (0.97, 0.95, 0.90), 'flower_p': (0.85, 0.40, 0.65),
-    'wood': (0.50, 0.32, 0.18), 'wood_dk': (0.30, 0.19, 0.11), 'timber': (0.32, 0.20, 0.12), 'char': (0.15, 0.12, 0.11),
+    'wood': (0.50, 0.32, 0.18), 'wood_dk': (0.30, 0.19, 0.11), 'timber': (0.32, 0.20, 0.12), 'char': (0.15, 0.12, 0.11), 'smoke': (0.30, 0.29, 0.30),
     'plaster': (0.93, 0.86, 0.72), 'plaster2': (0.88, 0.78, 0.62),
     'roof_red': (0.72, 0.24, 0.16), 'roof_terra': (0.80, 0.40, 0.22), 'roof_slate': (0.26, 0.30, 0.42), 'roof_blue': (0.24, 0.40, 0.70),
     'roof_purple': (0.46, 0.26, 0.64), 'awning': (0.80, 0.18, 0.16),
@@ -357,7 +357,7 @@ if __name__ == '__main__':
     jobs += [('ruin_' + b, (lambda b=b: C.ruin_of(b))) for b in ROOF]
     jobs += [('centre_' + b, (lambda b=b: C.centrepiece(b))) for b in ('watchtower', 'market', 'library')]
     jobs += [('proj_' + k, (lambda k=k: F.projectile(k))) for k in ('fire', 'frost', 'storm', 'earth', 'stone')]
-    jobs += [('breach', F.breach)]
+    jobs += [('breach', F.breach), ('rubble_heap', F.rubble_heap), ('puff', F.puff)]
     jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly)] + [(k, (lambda k=k: F.variant(k))) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem', 'leech', 'knight', 'hive')] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
     k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))
     report = {}

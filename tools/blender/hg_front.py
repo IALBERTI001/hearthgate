@@ -1126,6 +1126,25 @@ def breach():
         o = block((x, y, 0.3), (0.62, 0.5, 0.6), M('mortar'), 0.04); o.rotation_euler = (0.4, R.uniform(-0.3, 0.3), R.uniform(0, 3))
     return K.export('breach')
 
+def rubble_heap():
+    """Fallen wall blocks and broken merlons at the foot of the wall (the loss): a heap about 3 m long, spilling to +y
+    (away from the wall), a charred beam across it."""
+    for k in range(26):
+        t = k / 26; s = R.uniform(0.3, 0.62) * (1.15 - 0.5 * t)
+        x, y = R.uniform(-1.5, 1.5) * (0.6 + 0.4 * t), t * 2.4 + R.uniform(-0.2, 0.2)
+        z = max(s * 0.3, (1.0 - t) * 0.9 * (1 - abs(x) / 2) + R.uniform(0, 0.2))
+        o = block((x, y, z), (s * 1.4, s, s * 0.75), M(R.choice(('mortar', 'stone2', 'stone_dk'))), 0.05)
+        o.rotation_euler = (R.uniform(-0.35, 0.35), R.uniform(-0.35, 0.35), R.uniform(0, 3.1))
+    o = block((0.2, 1.0, 0.75), (2.4, 0.22, 0.22), M('char'), 0.03); o.rotation_euler = (0.25, 0.1, 0.4)
+    for k in range(4): K.sphere('ember', 0.07, (R.uniform(-1, 1), R.uniform(0.4, 1.8), 0.35), M('fire', 2.8), sub=1)
+    return K.export('rubble_heap')
+
+def puff():
+    """A puff of smoke over the ruins (the loss): three soft lumps of dark grey; the game lifts, swells and sinks each."""
+    for (x, y, z, r) in ((0, 0, 0, 0.5), (0.3, 0.1, 0.22, 0.38), (-0.28, -0.08, 0.18, 0.34)):
+        K.sphere('puff', r, (x, y, z), M('smoke'), sub=2)
+    return K.export('puff')
+
 # the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender
 CAP_LOOKS = {
     'fire_obsidian': ('fire', {'iron': 'pupil', 'gold': 'iron'}),                                        # black glass and magma
