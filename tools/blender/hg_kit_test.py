@@ -1,7 +1,7 @@
 # Kit test (Nov 13 2026): builds every model without exporting and fails when a part's origin is far from the part
 # (the transform_apply bug that sent tower stones to the wrong faces and roof battens across the gatehouse), or when the
 # tower's camera-facing face has no stones. Run: blender -b --factory-startup --python-exit-code 1 -P hg_kit_test.py
-# (exit 1 on failure; without --python-exit-code Blender exits 0 even when the script raises)
+# Also runs one real export and fails if it moves the model. (exit 1 on failure; without --python-exit-code Blender exits 0 even when the script raises)
 import bpy, sys, os, math
 sys.argv = [sys.argv[0], '--', os.environ.get('TEMP', '/tmp')]
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -19,6 +19,12 @@ def check(name):
         size = max(o.dimensions) or 1
         if c.length > max(1.0, size):   # a rotated part whose geometry sits far from its own origin
             bad.append(f'{name}: {o.name} is rotated about a far origin (mesh centre {tuple(round(v, 2) for v in c)})'); break
+# the real export must keep every model where it was built (only turned 180 degrees): a rotated, offset first part caught
+# the join keeping its rotation (Nov 13 2026, the ring wall came out mirrored); export raises if the model moves
+real_export = K.export
+K.clear(); F.block((6.0, -9.0, 1.0), (2.0, 1.0, 1.0), F.M('stone'), 0.0, 2.6); F.block((-3.0, -14.0, 0.5), (1.0, 1.0, 1.0), F.M('stone'), 0.0)
+try: real_export('_export_test')
+except Exception as ex: bad.append(f'export: {ex}')
 K.export = lambda name: 0
 F.K.export = K.export; C.K.export = K.export
 def tower_front():
