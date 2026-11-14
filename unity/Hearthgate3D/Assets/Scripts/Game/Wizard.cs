@@ -22,7 +22,7 @@ namespace Hearthgate.Game
         public Vector3 Position => pos;
         public const float SCALE = 0.66f, SPEED = 3.4f, RADIUS = 0.32f, REACH = 2.6f, FOUNTAIN_R = 3.4f;
         // in the square, left of the gatehouse's keep as seen from the walls (LayoutCheck: seen from the wall camera)
-        public static readonly Vector3 HOME = new Vector3(-6f, 0, -10.5f);   // a few steps into the town, so the first walk shot is the street, not the wall walk behind him
+        public static readonly Vector3 HOME = new Vector3(0f, 0, -10.5f);   // a few steps into the town, so the first walk shot is the street, not the wall walk behind him
         // the walk camera, from his feet: on the gate side looking into the town, the way the wall view looks, so it sees
         // the fronts and doorways (from the town side it looked at the backs and lost him at every door: 159 of 692 spots)
         // lower and further than the first 8 m crane shot (owner, Nov 14 2026: "view of the player walking the town should be
@@ -53,7 +53,7 @@ namespace Hearthgate.Game
             for (float k = 1f; k > 0.05f; k -= 0.1f)
             {
                 var c = p + new Vector3(-h.x * off.z * k, off.y + (1 - k) * 3f, -h.y * off.z * k);
-                if (Mathf.Abs(c.x) < 11f) c.y += Mathf.Clamp01((c.z + 15f) / 6f) * 2.6f;   // over the gatehouse and its towers when he is just inside the gate
+                if (Mathf.Abs(c.x) < 11f) c.y += Mathf.Clamp01((c.z + 5f) / 3f) * 2.6f;   // over the gatehouse and its towers when he is just inside the gate
                 float ex = c.x / (Field.RX - 1.2f), ez = (c.z + Field.RZ) / (Field.RZ - 1.2f);
                 if (ex * ex + ez * ez < 0.8f) return c;   // well inside: right against the ring the wall walk filled the bottom third of the first shot
             }
