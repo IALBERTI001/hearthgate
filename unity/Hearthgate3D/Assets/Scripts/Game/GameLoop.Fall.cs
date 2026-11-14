@@ -19,7 +19,7 @@ namespace Hearthgate.Game
         public bool Fallen => P.fallen;
         GameObject gateObj, breachObj; readonly System.Collections.Generic.List<GameObject> heaps = new System.Collections.Generic.List<GameObject>();
         readonly System.Collections.Generic.List<(Transform t, float age, float life, float size, Vector3 drift)> puffs = new System.Collections.Generic.List<(Transform, float, float, float, Vector3)>();
-        float smokeT;
+        float smokeT; Vector3 puffUnit;
 
         public int FallCost => 3 + P.wave / 10;
         public bool CanPayRestore => P.shards >= FallCost;
@@ -86,8 +86,8 @@ namespace Hearthgate.Game
                 if (!p.t || p.age > p.life) { if (p.t) Destroy(p.t.gameObject); puffs.RemoveAt(k); continue; }
                 float u = p.age / p.life;
                 p.t.position += (Vector3.up * 2.4f + p.drift) * dt;
-                p.t.localScale = art.puff.transform.localScale * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0.7f, 1f, u));
-                p.t.Rotate(0, 20f * dt, 0); puffs[k] = p;   // (the scale is the prefab's own times ours: a one-mesh FBX root carries the importer's scale)
+                p.t.localScale = puffUnit * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0.7f, 1f, u));
+                p.t.Rotate(0, 20f * dt, 0); puffs[k] = p;
             }
             if ((smokeT -= dt) > 0) return;
             smokeT = 0.12f;
@@ -97,7 +97,14 @@ namespace Hearthgate.Game
             var at = i < 0 ? new Vector3(Random.Range(-2f, 2f), 3.5f, Field.GATE_Z) : Field.Plot(standing[i]) + new Vector3(Random.Range(-1.2f, 1.2f), 1.2f, Random.Range(-1.2f, 1.2f));
             if (art && art.puff && puffs.Count < 80)
             {
-                var g = Instantiate(art.puff, world); g.transform.position = at; g.transform.localScale = Vector3.zero;
+                var g = Instantiate(art.puff, world); g.transform.position = at;
+                if (puffUnit == Vector3.zero)
+                {   // a scale for one metre across, measured from the model itself (an imported root may carry any scale)
+                    var rr = g.GetComponentInChildren<Renderer>(); float w = rr ? Mathf.Max(0.001f, rr.bounds.size.x) : 1f;
+                    puffUnit = g.transform.localScale / w;
+                    if (Debug.isDebugBuild) Debug.Log($"[fall] puff {w:0.000} m wide at scale {g.transform.localScale}");
+                }
+                g.transform.localScale = Vector3.zero;
                 foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 puffs.Add((g.transform, 0f, Random.Range(4f, 5.5f), Random.Range(4.5f, 7f), new Vector3(0.9f, 0, Random.Range(-0.3f, 0.3f))));   // seen from 55 m: a puff must be metres across to read
             }
