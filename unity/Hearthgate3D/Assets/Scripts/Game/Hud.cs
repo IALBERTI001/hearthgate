@@ -9,7 +9,7 @@ using Hearthgate.Core;
 
 namespace Hearthgate.Game
 {
-    public class Hud : MonoBehaviour
+    public partial class Hud : MonoBehaviour
     {
         static Hud I;
         Font font, body; Text wave, res, rate, evTxt, banner, gateTxt; Image gateBar; RectTransform forkBox;
@@ -183,6 +183,7 @@ namespace Hearthgate.Game
             cheerTag.SetSiblingIndex(1); cheerTag.gameObject.SetActive(false);
             perksAct = Action("PerksTag", Vector2.zero, Vector2.zero, new Vector2(230, 56), "perks", null, () => ShowPerks(), null, false);
             perksTag = perksAct.p.rt; perksTag.pivot = new Vector2(0.5f, 0); perksTag.SetSiblingIndex(1); perksTag.gameObject.SetActive(false);
+            InitHalls();
         }
         RectTransform perksTag; Act surgeAct, perksAct;
         RectTransform surgeTag, cheerTag; Image cheerFill; Act guide;
@@ -415,7 +416,7 @@ namespace Hearthgate.Game
                 re.gem.enabled = false;
             }
             if (nb != null) re.gem.enabled = true;
-            Signs(g, P); TownTags(g, P); perkRefresh?.Invoke();
+            Signs(g, P); TownTags(g, P); HallTags(g, P); perkRefresh?.Invoke();
             // the town walk
             var wz = Wizard.I;
             Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", null, true, now);

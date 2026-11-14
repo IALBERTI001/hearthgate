@@ -952,6 +952,23 @@ def variant(kind):
         block((0, -1.05, 1.3), (1.6, 0.25, 1.9), M('stone3'), 0.06); block((0, -1.2, 1.3), (0.3, 0.1, 1.2), M('iron'), 0.02)
     return K.export(kind)
 
+# the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender
+CAP_LOOKS = {
+    'fire_obsidian': ('fire', {'iron': 'pupil', 'gold': 'iron'}),                                        # black glass and magma
+    'fire_ember': ('fire', {'iron': 'gold', 'fire_red': ('fire_core', 3.5), 'fire_core': ('white_gloss', 3.0)}),   # gilded, white-hot
+    'frost_night': ('frost', {'frost': ('roof_slate', 2.0), 'frost_dk': ('robe_dk', 1.0), 'stone3': 'stone_dk'}),  # deep-sea ice
+    'frost_aurora': ('frost', {'frost': ('tree2', 2.0), 'frost_dk': ('flower_p', 1.2)}),                           # northern lights
+    'storm_void': ('storm', {'storm': ('robe', 3.0), 'gold': 'pupil'}),                                            # night purple
+    'storm_steel': ('storm', {'storm': ('white_gloss', 2.5), 'gold': 'iron'}),                                     # silver, white sparks
+}
+def cap_look(name):
+    kind, remap = CAP_LOOKS[name]
+    real = K.export; K.export = lambda n: 0
+    try: top(kind)
+    finally: K.export = real
+    K.flush_blocks(); flush_batch(); _remap(remap)
+    return K.export('top_' + name)
+
 def villager(v):
     """The townsfolk (owner, Nov 14 2026: a town that is lived in), in the wizard's style and units (the game scales them to
     about 1.6 m): a: the baker (cream tunic, white apron and cap), b: the farmer (green tunic, straw hat), c: a townswoman

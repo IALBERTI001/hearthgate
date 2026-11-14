@@ -23,6 +23,7 @@ namespace Hearthgate.Game
         public Mesh MeshOf(PrimitiveType t) => t == PrimitiveType.Sphere ? sphereMesh : t == PrimitiveType.Capsule ? capsuleMesh
             : t == PrimitiveType.Cylinder ? cylinderMesh : t == PrimitiveType.Plane ? planeMesh : cubeMesh;
 
+        public GameObject[] capLooks = new GameObject[0];        // the Shop's tower caps (hg_front.cap_look), by name
         public GameObject[] variants = new GameObject[0];        // the enemy variants (hg_front.variant), found by name
         public GameObject Enemy(string model)
         {

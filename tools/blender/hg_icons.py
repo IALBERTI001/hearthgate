@@ -18,6 +18,9 @@ ICONS = {
     'tower': ('tower_base', 200, 0.9),
     'gear': (None, 0, 0.9),   # the settings cog, modelled here: a brass wheel with eight teeth and a dark hub
     'ascend': (None, 0, 0.9),
+    'shard': (None, 0, 0.85),   # Starshards: a rose crystal, modelled here
+    'shop': ('building_market', 205, 0.95),   # the Market keeps the Shop
+    'quests': ('building_library', 205, 0.95),   # the Library keeps the quests
     'fountain': ('fountain', 200, 0.92),      # the Surge board
     'perks': ('building_watchtower', 205, 0.95),   # the Watchtower keeps the perks  # Ascend: a five-pointed gold star rising from a ring, modelled here
 }
@@ -40,6 +43,20 @@ def gear():
     h = bpy.data.objects.new('hub', hub); bpy.context.scene.collection.objects.link(h)
     hm = bpy.data.materials.new('hub'); hm.use_nodes = True; hm.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.16, 0.08, 0.19, 1); hub.materials.append(hm)
     for ob in (o, h): ob.rotation_euler = (math.radians(68), 0, 0)   # turned toward the camera, a little tilted
+
+def shard():
+    import bmesh
+    me = bpy.data.meshes.new('shard'); bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.42, radius2=0.0, depth=0.9, matrix=__import__('mathutils').Matrix.Translation((0, 0, 0.45)))
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.42, radius2=0.0, depth=0.5, matrix=__import__('mathutils').Matrix.Translation((0, 0, -0.25)) @ __import__('mathutils').Matrix.Rotation(math.pi, 4, 'X'))
+    bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new('shard', me); bpy.context.scene.collection.objects.link(o)
+    mat = bpy.data.materials.new('rose'); mat.use_nodes = True; b = mat.node_tree.nodes['Principled BSDF']
+    b.inputs['Base Color'].default_value = (1.0, 0.45, 0.8, 1); b.inputs['Roughness'].default_value = 0.15
+    em = b.inputs.get('Emission Color') or b.inputs.get('Emission')
+    if em: em.default_value = (1.0, 0.4, 0.75, 1)
+    if b.inputs.get('Emission Strength'): b.inputs['Emission Strength'].default_value = 0.5
+    me.materials.append(mat); o.rotation_euler = (0.25, 0.35, 0.5)
 
 def star():
     import bmesh
@@ -68,6 +85,7 @@ def render(name, model, yaw, fill):
     sc = bpy.context.scene
     if model: bpy.ops.import_scene.fbx(filepath=os.path.join(MODELS, model + '.fbx'))
     elif name.startswith('ascend'): star()
+    elif name.startswith('shard'): shard()
     else: gear()
     objs = [o for o in sc.objects if o.type == 'MESH']
     bpy.context.view_layer.update()

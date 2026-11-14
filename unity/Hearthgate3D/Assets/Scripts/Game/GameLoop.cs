@@ -33,6 +33,7 @@ namespace Hearthgate.Game
             BuildWorld();
             var off = HG.OfflineEarnings(P, B, Now());
             if (off.res > 0) { P.res += off.res; Hud.Toast($"While you were away: +{HG.Fmt(off.res)}"); }
+            ApplyLooks(); if (P.shopOpen) HG.QuestsFor(P, Today());
             StartWave();
             if (P.ascensions == 0 && P.restored.Count == 0 && P.wave <= 2) Guide.Say("intro");
         }
@@ -58,7 +59,7 @@ namespace Hearthgate.Game
             if (art && art.marker) marker = Art.Spawn(art.marker, "marker", Vector3.zero, world).transform;
             new GameObject("Wizard").AddComponent<Wizard>().Init(art);   // the town walk
             new GameObject("Townsfolk").AddComponent<Townsfolk>().Init(art);   // villagers walking the square
-            var sun = new GameObject("Sun").AddComponent<Light>(); sun.type = LightType.Directional;
+            sun = new GameObject("Sun").AddComponent<Light>(); sun.type = LightType.Directional;
             // a warm sun from the upper left of the screen, in front (art/STYLE.md: "warm golden light from the upper left"):
             // the faces the camera sees are lit, shadows fall back and to the right; a cool sky fill keeps shadows coloured
             sun.transform.rotation = Quaternion.LookRotation(new Vector3(-0.45f, -0.8f, -0.4f));
@@ -77,7 +78,7 @@ namespace Hearthgate.Game
                 if (tw.beacon) continue;
                 tw.el = els.Length > 0 ? els[tw.n % els.Length] : "none";
                 if (tw.top) Destroy(tw.top.gameObject);
-                tw.top = Art.Spawn(art ? art.Top(tw.el) : null, "top-" + (tw.el == "none" ? "stone" : tw.el), new Vector3(tw.x, Field.TOWER_TOP, tw.z), world).transform;
+                tw.top = Art.Spawn(TopFor(tw.el), "top-" + (tw.el == "none" ? "stone" : tw.el), new Vector3(tw.x, Field.TOWER_TOP, tw.z), world).transform;
             }
             RefreshBeacon();
         }
@@ -158,7 +159,8 @@ namespace Hearthgate.Game
             double pay = HG.KillRes(P.wave, e.boss, B) * SurgeX * (Ev("golden") || Ev("giants") ? 2 : Ev("bloodmoon") ? 3 : 1); SendWisps(e.Pos, pay);   // paid when it reaches the fountain
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8); Sound.Play(e.boss ? "ascension" : "golem_death", e.boss ? 0.55f : 0.28f);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
-            if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); }
+            Quest("kills");
+            if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); Quest("boss"); GiveShards(HG.SHARDS["boss"], e.Pos + Vector3.up * (e.size + 2.5f)); }
             if (e.R.chest)
             {   // an Elite's treasure chest
                 double amt = HG.FightRate(P, B) * 1.6 * 5 * SurgeX; P.res += amt; Sound.Play("claim", 0.5f);
@@ -177,7 +179,7 @@ namespace Hearthgate.Game
 
         void WaveWon()
         {
-            P.wave++; P.bestWave = Mathf.Max(P.bestWave, P.wave); P.runWave = Mathf.Max(P.runWave, P.wave);
+            P.wave++; P.bestWave = Mathf.Max(P.bestWave, P.wave); P.runWave = Mathf.Max(P.runWave, P.wave); Quest("waves");
             if (P.restored.Contains("cottages")) gateHp = HG.GateMax(P, B);
             Sound.Play("claim", 0.22f);
         }
@@ -197,7 +199,7 @@ namespace Hearthgate.Game
                 // fat, glowing shots with long trails: the fight has to read across the screen (fresh-eyes review 2)
                 mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : 0.65f);
                 var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f; tr.endWidth = 0f;
-                tr.material = Art.Flat(Color.Lerp(col, Color.black, 0.15f)); tr.numCapVertices = 3;
+                tr.material = Art.Flat(Color.Lerp(col, Color.black, 0.15f)); tr.numCapVertices = 3; StyleTrail(tr, col);
                 tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; var smr = mr.GetComponent<Renderer>(); if (smr) smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
                 go.transform.position = tw.Muzzle; Sound.Play(Sfx(tw.el) + "_launch_0", 0.16f);
                 shots.Add(new Shot { beacon = tw.beacon, p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
@@ -269,12 +271,13 @@ namespace Hearthgate.Game
             if (e.R.comboWeak > 0 && e.bigHit) { d *= e.R.comboWeak; Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1.2f), "CRACK!", Field.STONE, 30); }   // Bulwarks
             e.bigHit = false;
             e.hp -= d; e.flash = 1; if (el != "none") Sound.Play(Sfx(el) + "_contact_0", 0.2f);
-            Fx.I.Burst(e.Pos, Field.Of(el), el == "none" ? 4 : 7);
+            HitBurst(e.Pos, Field.Of(el), el == "none" ? 4 : 7);
         }
         static string Sfx(string el) => el == "frost" ? "ice" : el == "storm" ? "lightning" : "fire";   // the 2D game's file names
         void Combo(string id, Enemy e, string word, Color c)
         {
-            if (!P.combos.Contains(id)) { P.combos.Add(id); Hud.Banner($"New combo: {word.TrimEnd('!')}"); }
+            if (!P.combos.Contains(id)) { P.combos.Add(id); Hud.Banner($"New combo: {word.TrimEnd('!')}"); GiveShards(HG.SHARDS["combo"], e.Pos + Vector3.up * 3); }
+            Quest("combo"); if (id == "shatter") Quest("shatter");
             lastCombo = word; comboT = 1.2f; FillCheer();
             Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.6f), word, c, 40, 1.1f); Fx.I.Burst(e.Pos, c, 20);
             Sound.Play(id == "shatter" ? "shatter_combo" : id == "frostStorm" ? "freeze_combo" : "conduction_combo", 0.4f);
@@ -290,7 +293,7 @@ namespace Hearthgate.Game
         public void Upgrade()
         {
             if (!CanUpgrade) return;
-            P.res -= UpgradeCost; double before = HG.GateMax(P, B); P.gateLevel++; B = HG.Bonuses(P);
+            P.res -= UpgradeCost; double before = HG.GateMax(P, B); P.gateLevel++; B = HG.Bonuses(P); Quest("upgrade");
             gateHp += HG.GateMax(P, B) - before;
             foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 6);
             Sound.Play("tier_up", 0.5f);
@@ -304,6 +307,7 @@ namespace Hearthgate.Game
             int i = System.Array.IndexOf(HG.BUILDING_IDS, id); RefreshPlot(i); RefreshTowers();
             Fx.I.Burst(Field.Plot(i) + Vector3.up * 2, Field.GOLD, 30); Fx.I.Shake(0.15f, true); Sound.Play("feat", 0.55f);
             Hud.Banner($"{HG.ById(id).name} rebuilt! {HG.ById(id).line}"); Save();
+            if (id == "market") OpenShop();
             Guide.Say(id); if (HG.CityWhole(P)) Guide.Say("whole", HG.AscendWave(P).ToString());
         }
 
@@ -333,7 +337,7 @@ namespace Hearthgate.Game
             var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
             if (!P.restored.Contains(id)) { if (HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost) { Restore(id); Glow(i, 30); } return; }
             double cost = LevelCost(i); if (P.res < cost) return;
-            P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P);
+            P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P); Quest("level");
             bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0; Sound.Play(big ? "tier_up" : "level_up", big ? 0.5f : 0.42f);
             Glow(i, big ? 28 : 10);
             Fx.I.Pop(Field.Door(i, 0f, 3.8f), $"Level {L}", Field.GOLD, 34);   // over the door, in view inside and out

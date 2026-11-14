@@ -40,9 +40,9 @@ namespace Hearthgate.Game
             for (int k = 0; k < n; k++)
             {
                 var go = new GameObject("wisp"); var tr = go.transform; tr.position = from + Vector3.up;
-                var ball = Art.Shape(PrimitiveType.Sphere, Art.Flat((n > 1 ? ROSE : Field.GOLD) * 1.3f)); ball.transform.SetParent(tr, false); ball.transform.localScale = Vector3.one * 0.38f;
+                var wc = n > 1 ? ROSE : WispColor; var ball = Art.Shape(PrimitiveType.Sphere, Art.Flat(wc * 1.3f)); ball.transform.SetParent(tr, false); ball.transform.localScale = Vector3.one * 0.38f;
                 var r = ball.GetComponent<Renderer>(); if (r) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                var trail = go.AddComponent<TrailRenderer>(); trail.time = 0.35f; trail.startWidth = 0.28f; trail.endWidth = 0; trail.material = Art.Flat(n > 1 ? ROSE : Field.GOLD);
+                var trail = go.AddComponent<TrailRenderer>(); trail.time = 0.35f; trail.startWidth = 0.28f; trail.endWidth = 0; trail.material = Art.Flat(wc);
                 trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 var mid = (from + to) * 0.5f; float side = (k == 0 ? 1 : -1) * Random.Range(3f, 7f);
                 var c = new Vector3(mid.x + side, Mathf.Max(from.y, to.y) + 13f + Random.Range(0f, 4f), mid.z);   // high over the wall
@@ -71,7 +71,7 @@ namespace Hearthgate.Game
             if (!SurgeOpen) return;
             if (SurgeOn) { Hud.Toast($"Surge: double pay for {Mmss(SurgeLeftMs)} more"); return; }
             if (!SurgeReady) { Sound.Dud(); Hud.Toast($"The fountain refills in {Mmss(SurgeWaitMs)}"); return; }
-            P.surgeUntil = Now() + SURGE_MS; Sound.Play("surge", 0.6f); Fx.I.Shake(0.12f, true);
+            P.surgeUntil = Now() + SURGE_MS; Sound.Play("surge", 0.6f); Quest("surge"); Fx.I.Shake(0.12f, true);
             Fx.I.Burst(Field.PLAZA + FOUNTAIN_TOP, ROSE, 36); Fx.I.Pop(Field.PLAZA + FOUNTAIN_TOP + Vector3.up * 2, "SURGE! x2", ROSE, 48, 1.4f);
             Hud.Banner("Surge! Everything pays double for 3 minutes"); Save();
         }

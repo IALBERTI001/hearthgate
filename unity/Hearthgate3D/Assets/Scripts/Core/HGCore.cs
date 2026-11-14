@@ -114,7 +114,9 @@ namespace Hearthgate.Core
             {
                 ascensions = p.ascensions + 1, bestWave = p.bestWave, combos = new List<string>(p.combos), firstSession = false, lastSeen = p.lastSeen,
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
-                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles)
+                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
+                shards = p.shards + (p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(),
+                questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
             return q;
@@ -257,6 +259,48 @@ namespace Hearthgate.Core
                 default: return mix;
             }
         }
+        // ---------- the Shop: looks bought with Starshards (js/core.js SHOP). Cosmetic only. Starshards come from the Market
+        // opening, bosses, new combos, quests and Ascension; never from Resonance.
+        public class Look { public string id, cat, el, name, line; public int price; }
+        static Look Lk(string id, string cat, string name, string line, int price, string el = null) => new Look { id = id, cat = cat, el = el, name = name, line = line, price = price };
+        public static readonly Look[] SHOP =
+        {
+            Lk("fire-classic", "tower", "Forge Fire", "The first flame", 0, "fire"), Lk("fire-obsidian", "tower", "Obsidian", "Black glass and magma", 20, "fire"), Lk("fire-ember", "tower", "Ember Gold", "Gilded and white-hot", 20, "fire"),
+            Lk("frost-classic", "tower", "Frost Spire", "The first ice", 0, "frost"), Lk("frost-night", "tower", "Glacier Night", "Deep-sea ice, cold light", 20, "frost"), Lk("frost-aurora", "tower", "Aurora", "Ice that holds the northern lights", 20, "frost"),
+            Lk("storm-classic", "tower", "Storm Bell", "The first thunder", 0, "storm"), Lk("storm-void", "tower", "Voidcaller", "Night-purple and humming", 20, "storm"), Lk("storm-steel", "tower", "Thunder Steel", "Silver iron, white sparks", 20, "storm"),
+            Lk("trail-classic", "trail", "Orbs", "A string of glowing beads", 0), Lk("trail-comet", "trail", "Comet", "One long burning tail", 12), Lk("trail-sparkle", "trail", "Stardust", "Twinkling sparks behind every shot", 12),
+            Lk("hit-classic", "hit", "Sparks", "A spray of sparks", 0), Lk("hit-star", "hit", "Starburst", "A bright white flash", 12), Lk("hit-shards", "hit", "Crystals", "Glittering splinters of crystal", 15),
+            Lk("wisp-gold", "wisp", "Sunlit Gold", "Wisps like falling coins", 0), Lk("wisp-rose", "wisp", "Rose", "The city's own colour", 8), Lk("wisp-star", "wisp", "Starlight", "White wisps, blue light", 8), Lk("wisp-ruby", "wisp", "Ruby", "Deep red and bright", 8),
+            Lk("town-spring", "town", "Spring Day", "The city as it was built", 0), Lk("town-golden", "town", "Golden Hour", "Late sun on every roof", 30), Lk("town-autumn", "town", "Autumn", "Amber light on the fields", 30), Lk("town-winter", "town", "First Snow", "Ice-blue light", 30),
+        };
+        public static readonly Dictionary<string, int> SHARDS = new Dictionary<string, int> { { "welcome", 10 }, { "boss", 3 }, { "combo", 2 }, { "ascend", 15 }, { "quest", 4 }, { "questBonus", 5 } };
+        // the slot a look fills: a tower look is per element
+        public static string Slot(Look l) => l.cat == "tower" ? "tower:" + l.el : l.cat;
+        public static string Equipped(Profile p, string slot)
+        {
+            var e = p.equip.Find(x => x.k == slot); if (e != null) return e.s;
+            return SHOP.First(x => Slot(x) == slot && x.price == 0).id;
+        }
+
+        // ---------- daily quests (js/core.js QUESTS): three a day from the Library once the Shop is open, Starshards each ----------
+        public class QuestDef { public string id, text; public int need; }
+        public static readonly QuestDef[] QUESTS =
+        {
+            new QuestDef { id = "kills", text = "Defeat {n} enemies", need = 150 }, new QuestDef { id = "waves", text = "Clear {n} waves", need = 8 },
+            new QuestDef { id = "upgrade", text = "Upgrade the towers {n} times", need = 8 }, new QuestDef { id = "combo", text = "Land {n} combos", need = 40 },
+            new QuestDef { id = "shatter", text = "Trigger SHATTER {n} times", need = 15 }, new QuestDef { id = "level", text = "Level up buildings {n} times", need = 6 },
+            new QuestDef { id = "boss", text = "Defeat a boss", need = 1 }, new QuestDef { id = "surge", text = "Start a Surge", need = 1 },
+        };
+        static bool QuestOk(Profile p, string id) => id == "combo" ? p.combos.Count > 0 : id == "shatter" ? p.combos.Contains("shatter") : id == "level" ? p.restored.Count > 0 : id == "boss" ? p.bestWave >= 10 : true;
+        public static void QuestsFor(Profile p, string today)
+        {
+            if (p.questDay == today && p.quests.Count > 0) return;
+            var pool = QUESTS.Where(q => QuestOk(p, q.id)).ToList(); uint seed = 7; foreach (var c in today) seed = seed * 31 + c;
+            var pick = new List<QuestDef>();
+            for (int i = 0; pick.Count < 3 && i < pool.Count * 3; i++) { var q = pool[(int)((seed + (uint)i * 5) % (uint)pool.Count)]; if (!pick.Contains(q)) pick.Add(q); }
+            p.questDay = today; p.questBonus = false; p.quests = pick.Select(q => new QuestState { id = q.id, need = q.need }).ToList();
+        }
+        public static string QuestText(QuestState q) => QUESTS.First(x => x.id == q.id).text.Replace("{n}", q.need.ToString());
         public static double EnemyBite(int w, string role) =>
             (ROLES[role].boss ? 16 : role == "armoured" ? 7 : role == "swarm" ? 2 : 4) * Math.Pow(1.12, w - 1);
         public static double EnemyHp(int w, string role) => 10 * Math.Pow(1.235, w - 1) * ROLES[role].hp;
@@ -274,6 +318,8 @@ namespace Hearthgate.Core
 
     // ---------- the save profile (JsonUtility-friendly: lists, no dictionaries) ----------
     [Serializable] public class KV { public string k; public int v; }
+    [Serializable] public class KS { public string k, s; }
+    [Serializable] public class QuestState { public string id; public int n, need; public bool claimed; }
     [Serializable]
     public class Profile
     {
@@ -289,7 +335,11 @@ namespace Hearthgate.Core
         public List<KV> perks = new List<KV>();
         public List<string> told = new List<string>();   // one-time hints already shown
         public List<string> seenEvents = new List<string>();   // named waves met at least once
-        public List<string> seenRoles = new List<string>();    // enemy kinds met (each one's tip shows once)   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
+        public List<string> seenRoles = new List<string>();    // enemy kinds met (each one's tip shows once)
+        public int shards; public bool shopOpen;               // Starshards, and whether the Market has opened the Shop
+        public List<string> owned = new List<string>();        // looks bought
+        public List<KS> equip = new List<KS>();                // slot -> look
+        public string questDay = ""; public bool questBonus; public List<QuestState> quests = new List<QuestState>();   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
         public bool firstSession = true;
         public bool music = true, sfx = true, reduced;
 
@@ -313,6 +363,9 @@ namespace Hearthgate.Core
             perkPts = Math.Max(0, perkPts); told = (told ?? new List<string>()).Distinct().ToList();
             seenEvents = (seenEvents ?? new List<string>()).Where(id => HG.EVENTS.Any(e => e.id == id)).Distinct().ToList();
             seenRoles = (seenRoles ?? new List<string>()).Distinct().ToList();
+            shards = Math.Max(0, shards); owned = (owned ?? new List<string>()).Where(id => HG.SHOP.Any(l => l.id == id)).Distinct().ToList();
+            equip = (equip ?? new List<KS>()).Where(e => HG.SHOP.Any(l => l.id == e.s && HG.Slot(l) == e.k)).ToList();
+            quests = (quests ?? new List<QuestState>()).Where(q => HG.QUESTS.Any(d => d.id == q.id)).ToList(); questDay = questDay ?? "";
             perks = (perks ?? new List<KV>()).Where(e => HG.PERKS.Any(k => k.id == e.k) && e.v > 0).Select(e => new KV { k = e.k, v = Math.Min(e.v, HG.PERKS.First(k => k.id == e.k).max) }).ToList();
         }
     }
