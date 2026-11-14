@@ -116,6 +116,7 @@ namespace Hearthgate.Core
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
                 perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
                 shards = p.shards + (p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(),
+                stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats),
                 questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
@@ -301,6 +302,46 @@ namespace Hearthgate.Core
             p.questDay = today; p.questBonus = false; p.quests = pick.Select(q => new QuestState { id = q.id, need = q.need }).ToList();
         }
         public static string QuestText(QuestState q) => QUESTS.First(x => x.id == q.id).text.Replace("{n}", q.need.ToString());
+        // ---------- Feats (js/core.js FEATS): a long collection from lifetime stats that survive Ascension, each paying
+        // Starshards once. Tier 1 bronze, 2 silver, 3 gold. (Stars, butterflies and the daily streak join when those systems do.)
+        public static readonly string[] STATS = { "kills", "bosses", "combos", "shatter", "upgrades", "levels", "surges", "quests" };
+        public class Feat { public string id, name, text; public int tier; public double need; public Func<Profile, double> get; }
+        public static readonly int[] FEAT_PAY = { 0, 2, 4, 8 };
+        public static readonly List<Feat> FEATS = MakeFeats();
+        static List<Feat> MakeFeats()
+        {
+            var L = new List<Feat>();
+            void F(string id, string name, int tier, string text, Func<Profile, double> get, double need) => L.Add(new Feat { id = id, name = name, tier = tier, text = text, get = get, need = need });
+            foreach (var (n, nm, t) in new[] { (10, "Holdfast", 1), (25, "Stalwart", 1), (50, "Bulwark", 2), (100, "Unbroken", 2), (200, "Everwall", 3) }) F("wave" + n, nm, t, $"Reach wave {n}", p => p.bestWave, n);
+            foreach (var (n, nm, t) in new[] { (100, "First Blood", 1), (1000, "Monster Bane", 1), (10000, "Horde Breaker", 2), (100000, "Legend of the Gate", 3) }) F("kills" + n, nm, t, $"Defeat {Fmt(n)} enemies", p => p.Stat("kills"), n);
+            foreach (var (n, nm, t) in new[] { (1, "Giant Slayer", 1), (5, "Boss Hunter", 2), (25, "Kingbreaker", 3) }) F("boss" + n, nm, t, n == 1 ? "Defeat a boss" : $"Defeat {n} bosses", p => p.Stat("bosses"), n);
+            foreach (var (n, nm, t) in new[] { (10, "Cracked Ice", 1), (100, "Shatterer", 2), (1000, "Glass Storm", 3) }) F("shatter" + n, nm, t, $"Trigger SHATTER {Fmt(n)} times", p => p.Stat("shatter"), n);
+            F("allcombos", "Elementalist", 2, "Discover all three combos", p => p.combos.Count, 3);
+            foreach (var (n, nm, t) in new[] { (500, "Chain Reaction", 1), (5000, "Combo Master", 2) }) F("combos" + n, nm, t, $"Land {Fmt(n)} combos", p => p.Stat("combos"), n);
+            foreach (var (n, nm, t) in new[] { (5, "Rebuilder", 1), (10, "Hearth Restored", 2) }) F("city" + n, nm, t, $"Rebuild {n} buildings in one city", p => p.restored.Count, n);
+            foreach (var (n, nm, t) in new[] { (1, "Reborn", 2), (3, "Thrice Risen", 2), (10, "Eternal City", 3) }) F("ascend" + n, nm, t, n == 1 ? "Ascend once" : $"Ascend {n} times", p => p.ascensions, n);
+            F("bestiary", "Monster Scholar", 2, "Meet every kind of enemy", p => p.seenRoles.Count(r => ROLES.ContainsKey(r)), ROLES.Count);
+            foreach (var (n, nm, t) in new[] { (25, "Iron Ramparts", 1), (50, "Steel Ramparts", 2), (100, "Starforged Ramparts", 3) }) F("gate" + n, nm, t, $"Upgrade the towers to level {n}", p => p.gateLevel, n);
+            foreach (var (n, nm, t) in new[] { (10, "Humming Halls", 1), (25, "Resonant", 2), (50, "Heart of the City", 3) }) F("blvl" + n, nm, t, $"Get one building to level {n}", p => p.restored.Count == 0 ? 0 : p.restored.Max(id => p.LevelAt(id)), n);
+            int buyable = SHOP.Count(l => l.price > 0);
+            foreach (var (n, nm, t) in new[] { (3, "New Look", 1), (10, "Collector", 2), (buyable, "Grand Wardrobe", 3) }) F("looks" + n, nm, t, n == buyable ? "Buy every look in the Shop" : $"Buy {n} looks", p => p.owned.Count, n);
+            foreach (var (n, nm, t) in new[] { (10, "Errand Runner", 1), (50, "Questkeeper", 2) }) F("quests" + n, nm, t, $"Finish {n} daily quests", p => p.Stat("quests"), n);
+            foreach (var (n, nm, t) in new[] { (5, "Surge Rider", 1), (25, "Storm of Light", 2) }) F("surges" + n, nm, t, $"Start {n} Surges", p => p.Stat("surges"), n);
+            return L;
+        }
+        public static double FeatProgress(Profile p, Feat f) => Math.Min(f.need, Math.Max(0, f.get(p)));
+        // newly earned Feats: marked, paid and returned so the game can celebrate them
+        public static List<Feat> FeatsEarned(Profile p)
+        {
+            var got = FEATS.Where(f => !p.feats.Contains(f.id) && FeatProgress(p, f) >= f.need).ToList();
+            foreach (var f in got) { p.feats.Add(f.id); p.shards += FEAT_PAY[f.tier]; }
+            return got;
+        }
+        // the Bestiary: every kind, in the order a player meets them
+        public static readonly string[] BESTIARY = { "slime", "runner", "armoured", "swarm", "boss", "elite", "shielded", "splitter", "queen", "mender", "lord", "ironhide", "sprinter", "bulwark" };
+        public static string About(Role r) => r.tip ?? (r.id == "slime" ? "The common foe: anything beats them" : r.id == "runner" ? "Fast on their feet: Frost slows them"
+            : r.id == "armoured" ? "Half damage from most hits: Fire melts armour" : r.id == "swarm" ? "Many and small: Storm chains through them"
+            : r.id == "boss" ? "Every few boss waves: a slow giant of stone" : r.id == "queen" ? "Bursts into a brood of slimes when she falls" : r.id == "lord" ? "Calls beetles to its side" : "");
         public static double EnemyBite(int w, string role) =>
             (ROLES[role].boss ? 16 : role == "armoured" ? 7 : role == "swarm" ? 2 : 4) * Math.Pow(1.12, w - 1);
         public static double EnemyHp(int w, string role) => 10 * Math.Pow(1.235, w - 1) * ROLES[role].hp;
@@ -340,6 +381,9 @@ namespace Hearthgate.Core
         public List<string> owned = new List<string>();        // looks bought
         public List<KS> equip = new List<KS>();                // slot -> look
         public string questDay = ""; public bool questBonus; public List<QuestState> quests = new List<QuestState>();   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
+        public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>();   // lifetime counts and Feats earned (kept by Ascension)
+        public int Stat(string k) { var e = stats.Find(x => x.k == k); return e == null ? 0 : e.v; }
+        public void AddStat(string k, int n) { var e = stats.Find(x => x.k == k); if (e == null) stats.Add(new KV { k = k, v = n }); else e.v = (int)Math.Min(int.MaxValue, (long)e.v + n); }
         public bool firstSession = true;
         public bool music = true, sfx = true, reduced;
 
@@ -365,6 +409,8 @@ namespace Hearthgate.Core
             seenRoles = (seenRoles ?? new List<string>()).Distinct().ToList();
             shards = Math.Max(0, shards); owned = (owned ?? new List<string>()).Where(id => HG.SHOP.Any(l => l.id == id)).Distinct().ToList();
             equip = (equip ?? new List<KS>()).Where(e => HG.SHOP.Any(l => l.id == e.s && HG.Slot(l) == e.k)).ToList();
+            stats = (stats ?? new List<KV>()).Where(e => HG.STATS.Contains(e.k) && e.v > 0).GroupBy(e => e.k).Select(g => g.First()).ToList();
+            feats = (feats ?? new List<string>()).Where(id => HG.FEATS.Any(f => f.id == id)).Distinct().ToList();
             quests = (quests ?? new List<QuestState>()).Where(q => HG.QUESTS.Any(d => d.id == q.id)).ToList(); questDay = questDay ?? "";
             perks = (perks ?? new List<KV>()).Where(e => HG.PERKS.Any(k => k.id == e.k) && e.v > 0).Select(e => new KV { k = e.k, v = Math.Min(e.v, HG.PERKS.First(k => k.id == e.k).max) }).ToList();
         }

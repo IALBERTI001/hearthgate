@@ -25,8 +25,12 @@ namespace Hearthgate.Game
         }
 
         // ---------- quests ----------
+        static readonly System.Collections.Generic.Dictionary<string, string> STAT_OF = new System.Collections.Generic.Dictionary<string, string>
+        { { "kills", "kills" }, { "boss", "bosses" }, { "combo", "combos" }, { "shatter", "shatter" }, { "upgrade", "upgrades" }, { "level", "levels" }, { "surge", "surges" } };
+        // every counted event feeds the lifetime stats (Feats) and, once the Shop is open, today's quests
         public void Quest(string id, int n = 1)
         {
+            if (STAT_OF.TryGetValue(id, out var st)) P.AddStat(st, n);
             if (!P.shopOpen) return;
             HG.QuestsFor(P, Today());
             foreach (var q in P.quests) if (q.id == id && q.n < q.need) { q.n = Mathf.Min(q.need, q.n + n); if (q.n == q.need) Hud.Banner($"Quest done: {HG.QuestText(q)}. Claim it at the Library"); }
@@ -37,9 +41,21 @@ namespace Hearthgate.Game
         {
             if (i < 0 || i >= P.quests.Count) return; var q = P.quests[i];
             if (q.claimed || q.n < q.need) { Sound.Dud(); return; }
-            q.claimed = true; P.shards += HG.SHARDS["quest"]; Sound.Play("claim", 0.6f); Save();
+            q.claimed = true; P.AddStat("quests", 1); P.shards += HG.SHARDS["quest"]; Sound.Play("claim", 0.6f); Save();
         }
         public void ClaimBonus() { if (!BonusReady) { Sound.Dud(); return; } P.questBonus = true; P.shards += HG.SHARDS["questBonus"]; Sound.Play("feat", 0.6f); Save(); }
+
+        // ---------- Feats: checked twice a second; each is a gold-ringed moment and Starshards ----------
+        float featT;
+        void CheckFeats()
+        {
+            if ((featT += Time.deltaTime) < 0.5f) return; featT = 0;
+            var got = HG.FeatsEarned(P); if (got.Count == 0) return;
+            int pay = got.Sum(f => HG.FEAT_PAY[f.tier]); Save();
+            string paid = P.shopOpen ? $" +{pay} Starshards" : "";
+            Hud.Banner(got.Count == 1 ? $"Feat: {got[0].name}!{paid}" : $"{got.Count} Feats earned!{paid}");
+            Sound.Play("feat", 0.6f); Hud.FeatNews = true;
+        }
 
         // ---------- the Shop ----------
         public bool Owns(HG.Look l) => l.price == 0 || P.owned.Contains(l.id);

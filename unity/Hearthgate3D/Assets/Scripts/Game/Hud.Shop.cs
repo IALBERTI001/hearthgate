@@ -27,7 +27,7 @@ namespace Hearthgate.Game
             else if (!P.shopOpen && shopAct.p.rt.gameObject.activeSelf) shopAct.p.rt.gameObject.SetActive(false);
             int claim = g.QuestsToClaim, done = P.quests.Count(q => q.n >= q.need);
             if (P.shopOpen && Pin(questAct.p.rt, Field.Plot(li) + Vector3.up * (Field.PlotHeight(li) + 1.2f)))
-            { Show(questAct, "Quests", claim > 0 ? $"{claim} to claim" : $"{done} / {P.quests.Count} done", true, 0); questAct.gem.enabled = false; questAct.cost.color = claim > 0 ? RES : CREAM; }
+            { Show(questAct, "Library", claim > 0 ? $"{claim} to claim" : FeatNews ? "New Feat!" : $"Quests {done} / {P.quests.Count}", true, 0); questAct.gem.enabled = false; questAct.cost.color = claim > 0 || FeatNews ? RES : CREAM; }
             else if (!P.shopOpen && questAct.p.rt.gameObject.activeSelf) questAct.p.rt.gameObject.SetActive(false);
         }
 
@@ -65,26 +65,90 @@ namespace Hearthgate.Game
             I.perkRefresh();
         }
 
-        public static void ShowQuests()
+        public static bool FeatNews;   // a Feat was earned since the Feats tab was last opened
+        static readonly Color[] TIER = { Color.white, new Color(0.85f, 0.58f, 0.35f), new Color(0.86f, 0.88f, 0.92f), new Color(1f, 0.84f, 0.42f) };
+        const int PAGE = 6;
+        // the Library: today's quests, the Feats and the Bestiary, one card with three tabs (js/game.js qTabs). Every card
+        // is the same size so the tabs never jump; long lists turn pages.
+        public static void ShowQuests(string tab = "quests", int page = 0)
         {
             if (!I || !GameLoop.I) return;
-            var g = GameLoop.I; HG.QuestsFor(g.P, GameLoop.Today());
-            var box = I.Modal("Today's quests", new Vector2(680, 430));
-            I.Line(box, -62, $"{HG.SHARDS["quest"]} Starshards each, {HG.SHARDS["questBonus"]} more for all three. New quests tomorrow.", 17, new Color(0.85f, 0.8f, 0.88f));
+            var g = GameLoop.I; var P = g.P; HG.QuestsFor(P, GameLoop.Today());
+            var box = I.Modal("The Library", new Vector2(720, 680));
+            var tabs = new (string id, string label)[] { ("quests", "Quests"), ("feats", $"Feats {P.feats.Count}/{HG.FEATS.Count}"), ("beasts", $"Beasts {HG.BESTIARY.Count(r => P.seenRoles.Contains(r))}/{HG.BESTIARY.Length}") };
+            for (int k = 0; k < tabs.Length; k++)
+            {
+                var t = tabs[k];
+                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-220 + k * 220, -70), new Vector2(210, 56), () => ShowQuests(t.id), () => t.id != tab, out var tl, box).rt.pivot = new Vector2(0.5f, 1);
+                tl.text = t.label;
+            }
+            I.perkRefresh = null;
+            if (tab == "feats") { FeatNews = false; FeatsTab(box, P, page); }
+            else if (tab == "beasts") BeastsTab(box, P, page);
+            else QuestsTab(box, g);
+            I.Choice(box, "Q_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
+        }
+        // one row: a name, a line under it, and a short note on the right
+        void Row(RectTransform box, int i, string name, Color nameCol, string line, string right, Color rightCol)
+        {
+            float y = -176 - i * 64;
+            var n = Label("N" + i, box, new Vector2(0, 1), new Vector2(36, y), 20, TextAnchor.UpperLeft); n.text = name; n.color = nameCol;
+            n.rectTransform.pivot = new Vector2(0, 1); n.rectTransform.sizeDelta = new Vector2(470, 26);
+            var d = Label("D" + i, box, new Vector2(0, 1), new Vector2(36, y - 27), 15, TextAnchor.UpperLeft); d.font = body; d.text = line; d.color = new Color(0.85f, 0.8f, 0.88f);
+            d.rectTransform.pivot = new Vector2(0, 1); d.rectTransform.sizeDelta = new Vector2(500, 22);
+            if (right == null) return;
+            var r = Label("R" + i, box, new Vector2(1, 1), new Vector2(-36, y - 6), 18, TextAnchor.UpperRight); r.text = right; r.color = rightCol;
+            r.rectTransform.pivot = new Vector2(1, 1); r.rectTransform.sizeDelta = new Vector2(150, 48);
+        }
+        void Pager(RectTransform box, string tab, int page, int pages)
+        {
+            if (pages <= 1) return;
+            var pg = Label("Pg", box, new Vector2(0.5f, 0), new Vector2(0, 92), 16, TextAnchor.MiddleCenter); pg.font = body; pg.text = $"Page {page + 1} of {pages}"; pg.color = new Color(0.85f, 0.8f, 0.88f);
+            Choice(box, "Prev", new Vector2(-250, 18), new Vector2(150, 56), "Previous", () => ShowQuests(tab, page - 1), () => page > 0);
+            Choice(box, "Next", new Vector2(250, 18), new Vector2(150, 56), "Next", () => ShowQuests(tab, page + 1), () => page < pages - 1);
+        }
+        static void FeatsTab(RectTransform box, Profile P, int page)
+        {
+            var rows = HG.FEATS.Select(f => (f, done: P.feats.Contains(f.id), n: HG.FeatProgress(P, f)))
+                .OrderBy(x => x.done).ThenByDescending(x => x.n / x.f.need).ToList();   // closest unfinished first, finished last
+            int pages = (rows.Count + PAGE - 1) / PAGE; page = Mathf.Clamp(page, 0, pages - 1);
+            I.Line(box, -136, $"Each Feat pays Starshards once: bronze {HG.FEAT_PAY[1]}, silver {HG.FEAT_PAY[2]}, gold {HG.FEAT_PAY[3]}", 16, new Color(0.85f, 0.8f, 0.88f));
+            for (int i = 0; i < PAGE && page * PAGE + i < rows.Count; i++)
+            {
+                var (f, done, n) = rows[page * PAGE + i];
+                I.Row(box, i, f.name, done ? TIER[f.tier] : CREAM, f.text, done ? "Done" : $"{HG.Fmt(n)} / {HG.Fmt(f.need)}", done ? TIER[f.tier] : RES);
+            }
+            I.Pager(box, "feats", page, pages);
+        }
+        static void BeastsTab(RectTransform box, Profile P, int page)
+        {
+            var list = HG.BESTIARY; int pages = (list.Length + PAGE - 1) / PAGE; page = Mathf.Clamp(page, 0, pages - 1);
+            I.Line(box, -136, "Every kind you meet, and what beats it", 16, new Color(0.85f, 0.8f, 0.88f));
+            for (int i = 0; i < PAGE && page * PAGE + i < list.Length; i++)
+            {
+                var R = HG.ROLES[list[page * PAGE + i]]; bool seen = P.seenRoles.Contains(R.id);
+                string weak = R.weak == null ? null : "Weak to " + char.ToUpper(R.weak[0]) + R.weak.Substring(1);
+                I.Row(box, i, seen ? R.label + (R.boss ? "  <size=14><color=#FF9A7A>boss</color></size>" : "") : "???", seen ? CREAM : new Color(0.6f, 0.55f, 0.62f),
+                    seen ? HG.About(R) : "Not met yet", seen ? weak : null, R.weak == "fire" ? new Color(1f, 0.6f, 0.35f) : R.weak == "frost" ? new Color(0.55f, 0.85f, 1f) : new Color(0.85f, 0.7f, 1f));
+            }
+            I.Pager(box, "beasts", page, pages);
+        }
+        static void QuestsTab(RectTransform box, GameLoop g)
+        {
+            I.Line(box, -136, $"{HG.SHARDS["quest"]} Starshards each, {HG.SHARDS["questBonus"]} more for all three. New quests tomorrow.", 16, new Color(0.85f, 0.8f, 0.88f));
             var rows = new List<(int i, Text prog, Text b)>();
             for (int i = 0; i < g.P.quests.Count; i++)
             {
-                var q = g.P.quests[i]; float y = -110 - i * 66;
-                var t = I.Label("Q" + i, box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); t.text = HG.QuestText(q);
-                t.rectTransform.pivot = new Vector2(0, 1); t.rectTransform.sizeDelta = new Vector2(400, 24);
-                var pr = I.Label("P" + i, box, new Vector2(0, 1), new Vector2(32, y - 26), 15, TextAnchor.UpperLeft); pr.font = I.body; pr.color = RES;
+                var q = g.P.quests[i]; float y = -176 - i * 70;
+                var t = I.Label("Q" + i, box, new Vector2(0, 1), new Vector2(36, y), 20, TextAnchor.UpperLeft); t.text = HG.QuestText(q);
+                t.rectTransform.pivot = new Vector2(0, 1); t.rectTransform.sizeDelta = new Vector2(440, 26);
+                var pr = I.Label("P" + i, box, new Vector2(0, 1), new Vector2(36, y - 27), 15, TextAnchor.UpperLeft); pr.font = I.body; pr.color = RES;
                 pr.rectTransform.pivot = new Vector2(0, 1); pr.rectTransform.sizeDelta = new Vector2(300, 22);
                 int qi = i;
-                I.BtnAt("C" + i, new Vector2(1, 1), new Vector2(-24, y + 4), new Vector2(180, 56), () => g.ClaimQuest(qi), () => g.P.quests[qi].n >= g.P.quests[qi].need && !g.P.quests[qi].claimed, out var bt, box, "shard");
+                I.BtnAt("C" + i, new Vector2(1, 1), new Vector2(-28, y + 4), new Vector2(180, 56), () => g.ClaimQuest(qi), () => g.P.quests[qi].n >= g.P.quests[qi].need && !g.P.quests[qi].claimed, out var bt, box, "shard");
                 rows.Add((i, pr, bt));
             }
-            I.BtnAt("Bonus", new Vector2(0.5f, 0), new Vector2(0, 86), new Vector2(300, 56), () => g.ClaimBonus(), () => g.BonusReady, out var bonus, box, "shard", true);
-            I.Choice(box, "Q_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
+            I.BtnAt("Bonus", new Vector2(0.5f, 1), new Vector2(0, -176 - 3 * 70 - 10), new Vector2(320, 56), () => g.ClaimBonus(), () => g.BonusReady, out var bonus, box, "shard", true).rt.pivot = new Vector2(0.5f, 1);
             I.perkRefresh = () =>
             {
                 foreach (var (i, pr, b) in rows)
