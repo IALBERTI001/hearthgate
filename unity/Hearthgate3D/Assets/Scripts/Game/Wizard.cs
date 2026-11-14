@@ -61,7 +61,7 @@ namespace Hearthgate.Game
         // the player's own camera in the town (owner, Nov 14 2026: "Players should be able to rotate the camera when in town.
         // Gives them the ability to watch the fight ... from the ground floor level"): a right or middle drag turns it round
         // him and tilts it, the wheel raises it over the walls or lowers it to the street; C puts it back
-        float orbit, tilt; Vector2 lastPtr; bool dragging, toldCam;
+        float orbit, tilt; Vector2 lastPtr, baseHeading = START_HEADING; bool dragging, toldCam;
         Gait gait;
 
         public void Init(ArtSet art)
@@ -203,8 +203,8 @@ namespace Hearthgate.Game
             blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
             indoors = Mathf.MoveTowards(indoors, Inside >= 0 ? 1 : 0, dt / 0.5f);
-            var wantH = On ? HeadingAt(pos, heading) : START_HEADING;   // the camera turns, gently, to the house he is at
-            wantH = Quaternion.Euler(0, 0, -orbit) * wantH;   // and as far round as the player has turned it
+            if (!On) baseHeading = START_HEADING; else if (Mathf.Abs(orbit) < 1f) baseHeading = HeadingAt(pos, baseHeading);   // the camera turns, gently, to the house he is at, until the player turns it (then it holds that way until C)
+            Vector2 wantH = Quaternion.Euler(0, 0, -orbit) * baseHeading;   // and as far round as the player has turned it (kept apart, or the two fed each other)
             float ang = Vector2.SignedAngle(heading, wantH); heading = (Quaternion.Euler(0, 0, Mathf.MoveTowards(0, ang, (dragging ? 900f : 120f) * dt)) * heading); heading.Normalize();
             var lk = Vector3.Lerp(LOOK, new Vector3(0, 0.6f, -0.8f), indoors);   // ahead along the heading (-z of LOOK is "ahead")
             var followLook = pos + new Vector3(heading.x * -lk.z, lk.y, heading.y * -lk.z); var followPos = FollowFrom(pos, Mathf.SmoothStep(0, 1, indoors), heading);
