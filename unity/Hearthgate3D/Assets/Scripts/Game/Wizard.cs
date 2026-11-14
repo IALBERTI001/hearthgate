@@ -78,17 +78,17 @@ namespace Hearthgate.Game
             if (Input.GetKeyDown(KeyCode.T)) Toggle();
             if (Input.GetMouseButtonDown(0) && Debug.isDebugBuild == false && Application.isEditor == false && log < 12)
             {   // QA trace of taps (Nov 13 2026: taps in the browser pane sent him the wrong way); the first dozen only
-                log++; Ground(Input.mousePosition, out var g0);
-                Debug.Log($"[Hearthgate] tap {Input.mousePosition} screen {Screen.width}x{Screen.height} onHud {Hud.OnHud(Input.mousePosition)} ground {g0} wizard {pos} cam {cam.transform.position}");
+                log++; Ground(Hud.PointerPos, out var g0);
+                Debug.Log($"[Hearthgate] tap {Hud.PointerPos} screen {Screen.width}x{Screen.height} onHud {Hud.OnHud(Hud.PointerPos)} ground {g0} wizard {pos} cam {cam.transform.position}");
             }
-            if (Input.GetMouseButtonDown(0) && !Hud.OnHud(Input.mousePosition))
+            if (Input.GetMouseButtonDown(0) && !Hud.OnHud(Hud.PointerPos))
             {
                 if (!On)
                 {   // a tap on the wizard from the walls is the same as the Walk button
-                    var ray = cam.ScreenPointToRay(Input.mousePosition); var c = pos + Vector3.up * 0.9f;
+                    var ray = cam.ScreenPointToRay(Hud.PointerPos); var c = pos + Vector3.up * 0.9f;
                     if (Vector3.Cross(ray.direction, c - ray.origin).magnitude < 1.6f) Toggle();
                 }
-                else if (Ground(Input.mousePosition, out var at)) { target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
+                else if (Ground(Hud.PointerPos, out var at)) { target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
             }
 
             // walking: keys move him relative to the camera, a tap sends him

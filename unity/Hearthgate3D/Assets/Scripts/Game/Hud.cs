@@ -31,7 +31,7 @@ namespace Hearthgate.Game
         }
         void Pointer()
         {
-            Vector2 m = Input.mousePosition; bool dn = Input.GetMouseButtonDown(0), upNow = Input.GetMouseButtonUp(0);
+            Vector2 m = PointerPos; bool dn = Input.GetMouseButtonDown(0), upNow = Input.GetMouseButtonUp(0);
             press.RemoveAll(p => p.rt == null);
             foreach (var p in press.ToArray())
             {
@@ -134,6 +134,9 @@ namespace Hearthgate.Game
             workCard = work.rt; workCard.gameObject.SetActive(false);
         }
 
+        // where the pointer is: a touch's own position when there is one (the mouse position Unity simulates from a touch can
+        // lag a frame), else the mouse (QA, Nov 13 2026: a click with no mouse move before it reported (0, 0))
+        public static Vector2 PointerPos => Input.touchCount > 0 ? Input.GetTouch(0).position : (Vector2)Input.mousePosition;
         // true when the pointer is over a pressable control (the town walk ignores those taps)
         public static bool OnHud(Vector2 m)
         {
