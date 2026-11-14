@@ -44,7 +44,15 @@ def flush_batch():
         me = bpy.data.meshes.new('batch_' + key); bm.to_mesh(me); bm.free()
         o = bpy.data.objects.new('batch_' + key, me); bpy.context.collection.objects.link(o); K.finish(o, m)
     BATCH.clear()
-def export(name): flush_batch(); return K.export(name)
+def export(name): return K.export(name)
+# every model's export flushes the batch first, and a fresh model starts with an empty one (hg_kit is shared by every
+# builder: the gate, the wall and the towers grow tufts too)
+_k_export, _k_clear = K.export, K.clear
+def _export_flushing(name): flush_batch(); return _k_export(name)
+def _clear_batch():
+    for bm, _m in BATCH.values(): bm.free()
+    BATCH.clear(); _k_clear()
+K.export, K.clear = _export_flushing, _clear_batch
 
 def block(loc, size, m, bevel=0.035, rot=0.0):   # a chamfered box, batched into one mesh per material (hg_kit.Blk)
     o = K.Blk(loc, size, m, bevel)
@@ -91,8 +99,8 @@ def tufts(cx, cy, n, spread, mats=('grass', 'grass2', 'grass3')):
     for _ in range(n):
         x, y = cx + R.uniform(-spread[0], spread[0]), cy + R.uniform(-spread[1], spread[1])
         for k in range(3):
-            o = bcone('tuft', R.uniform(0.07, 0.12), R.uniform(0.3, 0.55), (x + R.uniform(-0.12, 0.12), y + R.uniform(-0.12, 0.12), 0.18), M(R.choice(mats)), 4)
-            o.rotation_euler = (R.uniform(-0.35, 0.35), R.uniform(-0.35, 0.35), 0)
+            bcone('tuft', R.uniform(0.07, 0.12), R.uniform(0.3, 0.55), (x + R.uniform(-0.12, 0.12), y + R.uniform(-0.12, 0.12), 0.18), M(R.choice(mats)), 4,
+                  rot=(R.uniform(-0.35, 0.35), R.uniform(-0.35, 0.35), 0))
 
 def moss(x0, x1, y, z=0.05, n=6):   # low dark-green clumps along the foot of a wall
     for _ in range(n):
