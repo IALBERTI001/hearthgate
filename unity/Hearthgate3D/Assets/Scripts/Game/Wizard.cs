@@ -22,7 +22,7 @@ namespace Hearthgate.Game
         public Vector3 Position => pos;
         public const float SCALE = 0.66f, SPEED = 3.4f, RADIUS = 0.32f, REACH = 2.6f, FOUNTAIN_R = 3.4f;
         // in the square, left of the gatehouse's keep as seen from the walls (LayoutCheck: seen from the wall camera)
-        public static readonly Vector3 HOME = new Vector3(0f, 0, -14f);     // a few steps into the town, so the first walk shot is the street, not the wall walk behind him
+        public static readonly Vector3 HOME = new Vector3(-6f, 0, -9f);   // beside the gatehouse's shadow, so the walls camera sees him (LayoutCheck)
         // the walk camera, from his feet: on the gate side looking into the town, the way the wall view looks, so it sees
         // the fronts and doorways (from the town side it looked at the backs and lost him at every door: 159 of 692 spots)
         // lower and further than the first 8 m crane shot (owner, Nov 14 2026: "view of the player walking the town should be
@@ -35,7 +35,7 @@ namespace Hearthgate.Game
         // the way the walk camera looks, on the ground: into the town from the gate at first; at a house it turns to look at
         // that house's front from the square (the houses face the square from all round the ring), and keeps that heading
         // when he walks on
-        public static readonly Vector2 START_HEADING = new Vector2(0, -1);
+        public static readonly Vector2 START_HEADING = new Vector2(-HOME.x, Field.PLAZA.z - HOME.z).normalized;   // from his spot to the fountain: the first walk shot looks up the street at the square
         public static Vector2 HeadingAt(Vector3 p, Vector2 keep)
         {
             int best = -1; float bd = REACH;
