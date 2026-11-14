@@ -433,7 +433,7 @@ namespace Hearthgate.Game
             float now = Time.unscaledTime;
             Show(up, "Upgrade towers", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
             var nb = g.NextBuilding;
-            if (nb != null) { re.icon.sprite = Icon("rebuild") ?? re.icon.sprite; Show(re, $"Rebuild {HG.NameOf(g.P, nb)}", HG.Fmt(g.RestoreCost), g.CanRestore, now); }
+            if (nb != null) { re.icon.sprite = Icon("rebuild") ?? re.icon.sprite; Show(re, $"Rebuild {HG.ById(nb).name}", HG.Fmt(g.RestoreCost), g.CanRestore, now); }
             else
             {   // the city is whole: Ascend, once the run is deep enough
                 re.icon.sprite = Icon("ascend") ?? re.icon.sprite; int need = HG.AscendWave(P), got = System.Math.Max(P.runWave, P.wave);
