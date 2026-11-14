@@ -13,7 +13,7 @@ os.makedirs(OUT, exist_ok=True)
 ICONS = {
     'gate': ('gate', 200, 0.92),
     'rebuild': ('ruin_tavern', 200, 0.95),
-    'upgrade': ('building_bakery', 200, 0.95),
+    'upgrade': ('building_bakery', 205, 0.95),
     'walk': ('wizard', 205, 0.86),
     'tower': ('tower_base', 200, 0.9),
     'gear': (None, 0, 0.9),   # the settings cog, modelled here: a brass wheel with eight teeth and a dark hub
