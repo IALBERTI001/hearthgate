@@ -58,6 +58,10 @@ namespace Hearthgate.Game
 
         Vector2 heading = START_HEADING; Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift, indoors;
         GameObject goal;   // a little gold ring where a tap sent him
+        // the player's own camera in the town (owner, Nov 14 2026: "Players should be able to rotate the camera when in town.
+        // Gives them the ability to watch the fight ... from the ground floor level"): a right or middle drag turns it round
+        // him and tilts it, the wheel raises it over the walls or lowers it to the street; C puts it back
+        float orbit, tilt; Vector2 lastPtr; bool dragging, toldCam;
         Gait gait;
 
         public void Init(ArtSet art)
@@ -76,7 +80,8 @@ namespace Hearthgate.Game
         {
             On = !On; target = null; goal.SetActive(false);
             Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14); Sound.Play("surge", 0.35f);
-            if (On) Hud.Banner("Walk into a building to work on it");
+            if (On) Hud.Banner(toldCam ? "Walk into a building to work on it" : "Walk into a building to work on it. Right-drag turns the camera, the wheel raises it");
+            if (On) toldCam = true;
         }
 
         // a house's footprint, in its own frame (Field.Local: u across its front, v toward its door); the houses face the
@@ -110,6 +115,20 @@ namespace Hearthgate.Game
                 }
                 else if (Ground(Hud.PointerPos, out var at)) { target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
             }
+
+            if (On)
+            {
+                if (Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(2)) { dragging = true; lastPtr = Hud.PointerPos; }
+                if (dragging && (Input.GetMouseButton(1) || Input.GetMouseButton(2)))
+                {
+                    var d = Hud.PointerPos - lastPtr; lastPtr = Hud.PointerPos; float px = 720f / Mathf.Max(1, Screen.height);
+                    orbit = Mathf.Repeat(orbit + d.x * px * 0.35f + 180f, 360f) - 180f; tilt = Mathf.Clamp(tilt - d.y * px * 0.005f, -1f, 1f);
+                }
+                else dragging = false;
+                if (Input.mouseScrollDelta.y != 0) tilt = Mathf.Clamp(tilt + Input.mouseScrollDelta.y * 0.12f, -1f, 1f);
+                if (Input.GetKeyDown(KeyCode.C)) { orbit = 0; tilt = 0; Sound.Click(); }
+            }
+            else { orbit = Mathf.MoveTowardsAngle(orbit, 0, 180f * dt); tilt = Mathf.MoveTowards(tilt, 0, dt); }
 
             // walking: keys move him relative to the camera, a tap sends him
             Vector3 want = Vector3.zero;
@@ -185,9 +204,14 @@ namespace Hearthgate.Game
             float k = Mathf.SmoothStep(0, 1, blend);
             indoors = Mathf.MoveTowards(indoors, Inside >= 0 ? 1 : 0, dt / 0.5f);
             var wantH = On ? HeadingAt(pos, heading) : START_HEADING;   // the camera turns, gently, to the house he is at
-            float ang = Vector2.SignedAngle(heading, wantH); heading = (Quaternion.Euler(0, 0, Mathf.MoveTowards(0, ang, 120f * dt)) * heading); heading.Normalize();
+            wantH = Quaternion.Euler(0, 0, -orbit) * wantH;   // and as far round as the player has turned it
+            float ang = Vector2.SignedAngle(heading, wantH); heading = (Quaternion.Euler(0, 0, Mathf.MoveTowards(0, ang, (dragging ? 900f : 120f) * dt)) * heading); heading.Normalize();
             var lk = Vector3.Lerp(LOOK, new Vector3(0, 0.6f, -0.8f), indoors);   // ahead along the heading (-z of LOOK is "ahead")
             var followLook = pos + new Vector3(heading.x * -lk.z, lk.y, heading.y * -lk.z); var followPos = FollowFrom(pos, Mathf.SmoothStep(0, 1, indoors), heading);
+            // the tilt: up over the rooftops and the walls to watch the fight, or down to the street looking up at it
+            float tUp = Mathf.Max(0, tilt), tDown = Mathf.Max(0, -tilt);
+            followPos += Vector3.up * (tUp * 9f - tDown * Mathf.Max(0, followPos.y - pos.y - 1.3f));
+            followLook += new Vector3(heading.x, 0, heading.y) * (tUp * 10f) + Vector3.up * (tUp * 1.5f + tDown * 1.6f);
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
             var r = Quaternion.Slerp(Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS), Quaternion.LookRotation(followLook - followPos), k);
             Fx.I.camHome = p; cam.transform.rotation = r;

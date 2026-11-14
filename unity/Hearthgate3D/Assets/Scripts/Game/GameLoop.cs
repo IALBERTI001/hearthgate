@@ -70,6 +70,7 @@ namespace Hearthgate.Game
         }
 
         // each tower takes one element of those the city has (fire, frost, storm in restore order), like the 2D game
+        public string[] TowerElements => Elements();
         string[] Elements()
         {   // the elements the city has; Earth joins from the 4th Ascension once a building gives the towers any element
             var e = HG.BUILDINGS.Where(b => b.element != null && P.restored.Contains(b.id)).Select(b => b.element).ToList();
@@ -82,9 +83,10 @@ namespace Hearthgate.Game
             foreach (var tw in towers)
             {
                 if (tw.beacon) continue;
-                tw.el = els.Length > 0 ? els[tw.n % els.Length] : "none";
+                var pick = tw.n < P.towerEl.Count ? P.towerEl[tw.n] : "";   // the player's choice for this tower, if the city has it
+                tw.el = els.Contains(pick) ? pick : els.Length > 0 ? els[tw.n % els.Length] : "none";
                 if (tw.top) Destroy(tw.top.gameObject);
-                tw.top = Art.Spawn(TopFor(tw.el), "top-" + (tw.el == "none" ? "stone" : tw.el), new Vector3(tw.x, Field.TOWER_TOP, tw.z), world).transform;
+                tw.top = Art.Spawn(TopFor(tw.el, tw.n), "top-" + (tw.el == "none" ? "stone" : tw.el), new Vector3(tw.x, Field.TOWER_TOP, tw.z), world).transform;
             }
             RefreshBeacon();
         }
@@ -175,7 +177,8 @@ namespace Hearthgate.Game
                 if (e.burn > 0) { e.burn -= DT; e.hp -= HG.TowerDamage(P, B) * (1 + B["fire"]) * 0.5 * DT * (e.R.weak == "fire" ? 2 : 1); }
                 e.chill = Mathf.Max(0, e.chill - DT); e.flash = Mathf.Max(0, e.flash - DT * 6);
                 e.stun = Mathf.Max(0, e.stun - DT);
-                float slow = e.stun > 0 ? 0f : e.chill > 0 ? (e.R.weak == "frost" ? 0.3f : 0.45f) : 1f;
+                float slow = e.stun > 0 ? 0f : e.chill > 0 ? (e.boss ? 0.75f : e.R.weak == "frost" ? 0.3f : 0.45f) : 1f;   // frost only drags at a boss
+                if (e.boss && !e.enraged && e.dying <= 0 && e.hp > 0 && e.hp < e.max * 0.5) Enrage(e);
                 if (e.z > e.stop) e.z = Mathf.Max(e.stop, e.z - e.speed * slow * DT);
                 else
                 {
@@ -367,12 +370,22 @@ namespace Hearthgate.Game
                 case "earth": Fx.I.Burst(e.Pos - Vector3.up * 0.3f, new Color(0.55f, 0.42f, 0.28f), 8); break;
             }
         }
+        // bosses are Unstoppable (owner, Nov 14 2026: "bosses should be unique, intimidating, and immune to stun lock"): Earth
+        // never stops them and Frost only drags at them; at half health they rage (Enrage)
         void Stun(Enemy e, float t)
         {
             if (Time.time < e.stunCd) return;
-            if (e.boss) { t *= 0.4f; Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.4f), "STUNNED!", Field.EARTH, 30); }
-            e.stun = Mathf.Max(e.stun, t); e.stunCd = Time.time + t + (e.boss ? 3f : 1f);
+            if (e.boss) { e.stunCd = Time.time + 3f; Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.4f), "UNSTOPPABLE", new Color(1f, 0.42f, 0.3f), 30); return; }
+            e.stun = Mathf.Max(e.stun, t); e.stunCd = Time.time + t + 1f;
         }
+        void Enrage(Enemy e)
+        {
+            e.enraged = true; e.speed *= 1.35f; e.Grow(1.12f);
+            Fx.I.Burst(e.Pos + Vector3.up * e.size * 0.5f, new Color(1f, 0.25f, 0.1f), 30); Fx.I.Shake(0.22f); Sound.Play("boss_horn", 0.5f);
+            Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1.2f), "ENRAGED!", new Color(1f, 0.3f, 0.18f), 46, 1.4f);
+            if (!told.Contains("enrage")) { told.Add("enrage"); Hud.Banner($"{e.R.label} is enraged! Bosses rage at half health, and nothing stuns them"); }
+        }
+        public Enemy BossNow => enemies.FirstOrDefault(x => x.boss && x.dying <= 0);
         static string Sfx(string el) => el == "frost" ? "ice" : el == "storm" ? "lightning" : "fire";   // Earth thuds like fire   // the 2D game's file names
         void Combo(string id, Enemy e, string word, Color c)
         {

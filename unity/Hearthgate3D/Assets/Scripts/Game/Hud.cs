@@ -12,7 +12,7 @@ namespace Hearthgate.Game
     public partial class Hud : MonoBehaviour
     {
         static Hud I;
-        Font font, body; Text wave, res, rate, evTxt, banner, gateTxt; Image gateBar; RectTransform forkBox;
+        Font font, body; Text wave, res, rate, evTxt, banner, gateTxt, bossTxt; Image gateBar, bossFill; RectTransform forkBox, bossBox;
         Act up, re, walk, work; RectTransform workCard; double shownRes = -1;
         RectTransform shardRow, perkRow; Text shardTxt, perkTxt; float shardFlash;
         public static void ShardsIn(int n) { if (I) I.shardFlash = 1.2f; }
@@ -149,6 +149,15 @@ namespace Hearthgate.Game
             gateBar.color = new Color(0.52f, 0.85f, 0.36f); gateBar.type = Image.Type.Filled; gateBar.fillMethod = Image.FillMethod.Horizontal;
             gateBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
             gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter);
+
+            // a boss's name and health across the top while one lives (it reads as the event it is)
+            bossBox = Box("BossBar", transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -92), new Vector2(420, 34)); bossBox.pivot = new Vector2(0.5f, 1);
+            var bf = bossBox.gameObject.AddComponent<Image>(); bf.sprite = Panel(INK, new Color(0.78f, 0.22f, 0.16f), 10, 3); bf.type = Image.Type.Sliced; bf.raycastTarget = false;
+            var bfb = Box("FillBox", bossBox, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
+            bossFill = bfb.gameObject.AddComponent<Image>(); bossFill.type = Image.Type.Filled; bossFill.fillMethod = Image.FillMethod.Horizontal; bossFill.raycastTarget = false;
+            bossFill.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
+            bossTxt = Label("BossTxt", bossBox, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 20, TextAnchor.MiddleCenter);
+            bossBox.gameObject.SetActive(false);
 
             // top right, over the far meadow: the city fills the bottom of the view (LayoutCheck keeps it clear)
             // (owner, Nov 14 2026: "Buttons are a mess, doesnt look polished"): one action kit for every button (game-polish
@@ -518,6 +527,13 @@ namespace Hearthgate.Game
             double r = HG.CityRate(P, g.B); rate.text = r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
+            var bo = g.BossNow; if (bossBox.gameObject.activeSelf != (bo != null)) bossBox.gameObject.SetActive(bo != null);
+            if (bo != null)
+            {
+                bossFill.fillAmount = Mathf.Clamp01((float)(bo.hp / bo.max));
+                bossFill.color = bo.enraged ? Color.Lerp(new Color(0.85f, 0.12f, 0.08f), new Color(1f, 0.45f, 0.12f), 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 8f)) : new Color(0.72f, 0.14f, 0.12f);
+                bossTxt.text = bo.enraged ? $"{bo.R.label}  ·  ENRAGED" : bo.R.label;
+            }
             if (g.ev != null) rate.text += (rate.text.Length > 0 ? "  ·  " : "") + $"<color=#FFB8E6>{g.ev.name}</color>";   // the named wave, on the same line
             float now = Time.unscaledTime;
             Show(up, "Upgrade towers", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
@@ -784,7 +800,7 @@ namespace Hearthgate.Game
             string[,] rows = {
                 { "U", "Upgrade the towers" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
                 { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
-                { "X", "Start a Surge at the fountain" }, { "M", "Sound on or off" }, { "P", "This menu" } };
+                { "X", "Start a Surge at the fountain" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
             for (int k = 0; k < rows.GetLength(0); k++)
             {
                 float y = -186 - k * 26;

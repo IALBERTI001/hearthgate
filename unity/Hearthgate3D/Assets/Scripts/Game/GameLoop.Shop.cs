@@ -77,13 +77,36 @@ namespace Hearthgate.Game
             Sound.Click(); ApplyLooks(); Save();
         }
         string Look(string slot) => HG.Equipped(P, slot);
+        // ---------- each tower's own element and design (owner, Nov 14 2026: "I should be able to customize the tower with
+        // purchased designs from the market. As well as which tower element i want to place and where") ----------
+        public string TowerLook(int n, string el)
+        {
+            var mine = n >= 0 && n < P.towerLook.Count ? P.towerLook[n] : "";
+            var l = HG.SHOP.FirstOrDefault(x => x.id == mine);
+            return l != null && l.el == el && Owns(l) ? l.id : Look("tower:" + el);   // its own design if it suits the element, else the Shop's pick
+        }
+        public string TowerEl(int n) => towers.Count > n ? towers[n].el : "none";
+        public void SetTowerEl(int n, string el, bool all = false)
+        {
+            for (int i = 0; i < 4; i++) if (i == n || all) P.towerEl[i] = el;
+            RefreshTowers(); Sound.Play("tier_up", 0.35f);
+            foreach (var tw in towers) if (!tw.beacon && (tw.n == n || all)) Fx.I.Burst(tw.Muzzle, Field.Of(tw.el), 16);
+            Save();
+        }
+        public void SetTowerLook(int n, string id)
+        {
+            var l = HG.SHOP.FirstOrDefault(x => x.id == id); if (l != null && !Owns(l)) { Sound.Dud(); return; }
+            P.towerLook[n] = id; RefreshTowers(); Sound.Play("buy", 0.4f);
+            foreach (var tw in towers) if (tw.n == n) Fx.I.Burst(tw.Muzzle, Field.GOLD, 14);
+            Save();
+        }
         // the tower cap for an element in its equipped look (hg_front.cap_look models)
-        GameObject TopFor(string el)
+        GameObject TopFor(string el, int n = -1)
         {
             if (art == null) return null;
             if (el == "fire" || el == "frost" || el == "storm")
             {
-                var id = Look("tower:" + el);
+                var id = TowerLook(n, el);
                 if (!id.EndsWith("-classic")) foreach (var c in art.capLooks) if (c && c.name == "top_" + id.Replace('-', '_')) return c;
             }
             return art.Top(el);

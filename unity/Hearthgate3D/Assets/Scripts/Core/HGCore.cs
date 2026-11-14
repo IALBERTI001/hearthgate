@@ -159,7 +159,7 @@ namespace Hearthgate.Core
                 ascensions = p.ascensions + (ascend ? 1 : 0), bestWave = p.bestWave, combos = new List<string>(p.combos), firstSession = false, lastSeen = p.lastSeen,
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
                 perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + (ascend ? PerkPtsFor(p) : 0), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
-                shards = p.shards + (ascend && p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(),
+                shards = p.shards + (ascend && p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(), towerEl = new List<string>(p.towerEl), towerLook = new List<string>(p.towerLook),
                 stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars), flies = new List<string>(p.flies), relics = new List<string>(p.relics), steward = p.steward,
                 questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
@@ -285,13 +285,13 @@ namespace Hearthgate.Core
             Bite(Asc(R("leech", "leech", 1.8, 44, 70, "Leeches", "fire"), "Leeches drain the walls three times as fast: burn them first"), 3),
             Resh(Asc(R("knight", "knight", 3, 30, 80, "Knights", "storm"), "Knights raise their shield again: keep Storm on them"), 5),
             Asc(R("hive", "hive", 3.5, 26, 84, "Hives", "storm"), "Hives keep releasing Swarm: Storm chains clear them", summon: 3, summonRole: "swarm"),
-            R("boss", "golem", 90, 28, 190, "Golem King", null, 0.3, true),
-            R("queen", "slime", 70, 30, 190, "Slime Queen", null, 0, true, 6),
-            Asc(R("lord", "beetle", 60, 40, 170, "Swarmlord", null, 0, true), "The Swarmlord calls runners as it walks", summon: 3.5),
+            R("boss", "boss_king", 90, 28, 190, "Golem King", null, 0.3, true),
+            R("queen", "boss_queen", 70, 30, 190, "Slime Queen", null, 0, true, 6),
+            Asc(R("lord", "boss_swarm", 60, 40, 170, "Swarmlord", null, 0, true), "The Swarmlord calls runners as it walks", summon: 3.5),
             // the Ascension bosses join the rotation (2nd, 3rd and 4th Ascension), each first met at wave 20 of that run
-            Asc(R("wraith", "phantom", 70, 34, 180, "Wraith King", null, 0, true), "The Wraith King fades: Storm still finds him", blink: true),
-            Asc(R("titan", "totem", 110, 22, 200, "Totem Titan", null, 0.3, true), "The Totem Titan shields his escort: burn them first", totem: 3),
-            Asc(R("tyrant", "thief", 80, 30, 185, "Thief Tyrant", null, 0, true), "The Thief Tyrant sends thieves for your Resonance", summon: 3, summonRole: "thief"),
+            Asc(R("wraith", "boss_wraith", 70, 34, 180, "Wraith King", null, 0, true), "The Wraith King fades: Storm still finds him", blink: true),
+            Asc(R("titan", "boss_titan", 110, 22, 200, "Totem Titan", null, 0.3, true), "The Totem Titan shields his escort: burn them first", totem: 3),
+            Asc(R("tyrant", "boss_tyrant", 80, 30, 185, "Thief Tyrant", null, 0, true), "The Thief Tyrant sends thieves for your Resonance", summon: 3, summonRole: "thief"),
         }.ToDictionary(r => r.id);
         static Role Asc(Role r, string tip, bool blink = false, bool thief = false, bool bomb = false, double totem = 0, double summon = 0, string summonRole = null)
         { r.tip = tip; r.blink = blink; r.thief = thief; r.bomb = bomb; r.totem = totem; r.summon = summon; r.summonRole = summonRole; return r; }
@@ -535,6 +535,7 @@ namespace Hearthgate.Core
         public int shards; public bool shopOpen;               // Starshards, and whether the Market has opened the Shop
         public List<string> owned = new List<string>();        // looks bought
         public List<KS> equip = new List<KS>();                // slot -> look
+        public List<string> towerEl = new List<string>(), towerLook = new List<string>();   // per tower: its chosen element and design ("" = the city's choice)
         public string questDay = ""; public bool questBonus; public List<QuestState> quests = new List<QuestState>();   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
         public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>(), stars = new List<string>(), relics = new List<string>(), flies = new List<string>(); public bool steward = true;
         [NonSerialized] public string omen;   // lifetime counts and Feats earned (kept by Ascension)
@@ -563,6 +564,8 @@ namespace Hearthgate.Core
             perkPts = Math.Max(0, perkPts); told = (told ?? new List<string>()).Distinct().ToList();
             seenEvents = (seenEvents ?? new List<string>()).Where(id => HG.EVENTS.Any(e => e.id == id)).Distinct().ToList();
             seenRoles = (seenRoles ?? new List<string>()).Distinct().ToList();
+            towerEl = (towerEl ?? new List<string>()).Take(4).Select(e => e == "fire" || e == "frost" || e == "storm" || e == "earth" ? e : "").ToList(); while (towerEl.Count < 4) towerEl.Add("");
+            towerLook = (towerLook ?? new List<string>()).Take(4).Select(e => e ?? "").ToList(); while (towerLook.Count < 4) towerLook.Add("");
             shards = Math.Max(0, shards); owned = (owned ?? new List<string>()).Where(id => HG.SHOP.Any(l => l.id == id)).Distinct().ToList();
             equip = (equip ?? new List<KS>()).Where(e => HG.SHOP.Any(l => l.id == e.s && HG.Slot(l) == e.k)).ToList();
             stats = (stats ?? new List<KV>()).Where(e => HG.STATS.Contains(e.k) && e.v > 0).GroupBy(e => e.k).Select(g => g.First()).ToList();

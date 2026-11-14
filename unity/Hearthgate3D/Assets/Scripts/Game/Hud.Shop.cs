@@ -51,6 +51,46 @@ namespace Hearthgate.Game
             I.perkRefresh();
         }
 
+        // a tower's card (tap a tower): which element it shoots and which of the Market's designs it wears. Any element the
+        // city has may go on any tower (four Storm towers if the player likes); designs are bought at the Market and chosen
+        // here per tower.
+        static string ElName(string el) => el == "fire" ? "Fire" : el == "frost" ? "Frost" : el == "storm" ? "Storm" : el == "earth" ? "Earth" : "Stone";
+        public static void ShowTower(int n)
+        {
+            if (!I || !GameLoop.I) return;
+            var g = GameLoop.I; var P = g.P;
+            var xs = Enumerable.Range(0, 4).OrderBy(i => Field.Tower(i).x).ToList();
+            string[] names = { "Far West Tower", "West Tower", "East Tower", "Far East Tower" };
+            var box = I.Modal(names[xs.IndexOf(n)], new Vector2(720, 560));
+            var els = g.TowerElements; string cur = g.TowerEl(n), pick = P.towerEl[n];
+            I.Line(box, -62, els.Length == 0 ? "Rebuild the Forge, the Frost Spire or the Storm Bell to give the towers an element." : "What it shoots. Any element the city has can go on any tower.", 18, new Color(0.88f, 0.84f, 0.9f));
+            var opts = new List<string> { "" }; opts.AddRange(els);
+            float w = 150, gap = 10, x0 = -(opts.Count - 1) * (w + gap) / 2;
+            for (int k = 0; k < opts.Count; k++)
+            {
+                var el = opts[k]; bool chosen = el == pick;
+                I.BtnAt("El" + k, new Vector2(0.5f, 1), new Vector2(x0 + k * (w + gap), -100), new Vector2(w, 56), () => { g.SetTowerEl(n, el); ShowTower(n); }, () => !chosen, out var lb, box, el == "" ? "tower" : "el_" + el, chosen).rt.pivot = new Vector2(0.5f, 1);
+                lb.text = el == "" ? "Auto" : ElName(el);
+            }
+            if (els.Length > 0)
+            {
+                I.BtnAt("ElAll", new Vector2(0.5f, 1), new Vector2(0, -170), new Vector2(330, 50), () => { g.SetTowerEl(n, pick, true); ShowTower(n); }, () => P.towerEl.Any(e => e != pick), out var al, box).rt.pivot = new Vector2(0.5f, 1);
+                al.text = $"Make all four {(pick == "" ? "Auto" : ElName(pick))}";
+            }
+            var looks = HG.SHOP.Where(l => l.cat == "tower" && l.el == cur).ToArray();
+            I.Line(box, -248, looks.Length == 0 ? $"{ElName(cur)} towers have no designs yet." : $"{ElName(cur)} designs", 20);
+            string worn = cur == "none" ? "" : g.TowerLook(n, cur);
+            for (int k = 0; k < looks.Length; k++)
+            {
+                var l = looks[k]; bool own = g.Owns(l), on = l.id == worn;
+                I.BtnAt("Lk" + k, new Vector2(0.5f, 1), new Vector2((k - (looks.Length - 1) / 2f) * 220, -290), new Vector2(210, 56), () => { g.SetTowerLook(n, l.id); ShowTower(n); }, () => own && !on, out var ll, box,
+                        l.id.EndsWith("-classic") ? "el_" + cur : "look_" + l.id.Replace('-', '_'), on).rt.pivot = new Vector2(0.5f, 1);
+                ll.text = own ? l.name : $"{l.name}: Market";
+            }
+            if (looks.Length > 0) I.Line(box, -372, "New designs are sold at the Market's Starshard counter. Each tower can wear its own.", 16, new Color(0.85f, 0.8f, 0.88f));
+            I.Choice(box, "T_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
+        }
+
         public static bool FeatNews;   // a Feat was earned since the Feats tab was last opened
         static readonly Color[] TIER = { Color.white, new Color(0.85f, 0.58f, 0.35f), new Color(0.86f, 0.88f, 0.92f), new Color(1f, 0.84f, 0.42f) };
         const int PAGE = 6;

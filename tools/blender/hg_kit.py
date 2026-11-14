@@ -28,6 +28,8 @@ PAL = {
     'roof_purple': (0.46, 0.26, 0.64), 'awning': (0.80, 0.18, 0.16),
     # slimes are hot pink: they read against the green ground (fresh-eyes review 2)
     'slime_gloss': (0.96, 0.36, 0.62), 'slime_dk': (0.62, 0.12, 0.38), 'beetle_gloss': (0.34, 0.20, 0.62), 'golem': (0.48, 0.44, 0.40),
+    'amber_gloss': (0.95, 0.62, 0.16), 'lord_gloss': (0.48, 0.07, 0.10), 'leech_gloss': (0.70, 0.08, 0.16), 'queen_gloss': (0.52, 0.14, 0.72),
+    'steel': (0.66, 0.68, 0.74), 'bone': (0.90, 0.86, 0.74),
     'eye': (1.0, 1.0, 1.0), 'pupil': (0.06, 0.04, 0.06), 'white_gloss': (1.0, 1.0, 1.0), 'blush': (1.0, 0.45, 0.45),
     'fire': (1.0, 0.24, 0.04), 'fire_red': (0.88, 0.07, 0.03), 'fire_core': (1.0, 0.45, 0.05),   # red and orange (owner, Nov 13: "not sure why you chose yellow for fire")
     'frost': (0.32, 0.80, 1.0), 'frost_dk': (0.14, 0.52, 0.92),
@@ -344,21 +346,21 @@ if __name__ == '__main__':
     sys.modules['hg_kit'] = sys.modules['__main__']
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import hg_front as F
-    ground, road, wall, gate, tower_base, slime, fountain, top = F.ground, F.road, F.wall, F.gate, F.tower_base, F.slime, F.fountain, F.top
-    beetle, golem = F.beetle, F.golem
+    ground, road, wall, gate, tower_base, fountain, top = F.ground, F.road, F.wall, F.gate, F.tower_base, F.fountain, F.top
     import hg_city as C   # the city's buildings and ruins
     building, ruin = C.building, C.ruin
     clear()
     # every model, in a fixed order; HG_PART="k/n" builds only every n-th from the k-th, so the chain can run n Blenders
     # side by side (one Blender building all 37 took 10 minutes once the town grew)
-    jobs = [(fn.__name__, fn) for fn in (ground, road, wall, gate, tower_base, slime, beetle, golem, ruin, fountain, villager)]
+    jobs = [(fn.__name__, fn) for fn in (ground, road, wall, gate, tower_base, ruin, fountain, villager)]
     jobs += [('top_' + k, (lambda k=k: top(k))) for k in ('stone', 'fire', 'frost', 'storm', 'earth')]
     jobs += [('building_' + b, (lambda b=b: building(b))) for b in ROOF]
     jobs += [('ruin_' + b, (lambda b=b: C.ruin_of(b))) for b in ROOF]
     jobs += [('centre_' + b, (lambda b=b: C.centrepiece(b))) for b in ('watchtower', 'market', 'library')]
     jobs += [('proj_' + k, (lambda k=k: F.projectile(k))) for k in ('fire', 'frost', 'storm', 'earth', 'stone')]
+    jobs += [(k, (lambda k=k: F.monster(k))) for k in F.MONSTERS]   # every enemy and boss (hg_front.monster)
     jobs += [('breach', F.breach), ('rubble_heap', F.rubble_heap), ('puff', F.puff)]
-    jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly)] + [(k, (lambda k=k: F.variant(k))) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem', 'leech', 'knight', 'hive')] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
+    jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly)] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
     k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))
     report = {}
     for i, (nm, fn) in enumerate(jobs):

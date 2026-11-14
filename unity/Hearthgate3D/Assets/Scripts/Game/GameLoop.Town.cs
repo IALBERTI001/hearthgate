@@ -207,6 +207,12 @@ namespace Hearthgate.Game
             var pt = Hud.PointerPos;
             if (TapGold(pt) || TapFly(pt)) return;
             var cam = Camera.main; if (cam == null || (Wizard.I && Wizard.I.On)) return;
+            foreach (var tw in towers)
+            {   // a tap on a tower opens its card: its element and its design
+                if (tw.beacon) continue;
+                var ts = cam.WorldToScreenPoint(tw.Muzzle);
+                if (ts.z > 0 && Vector2.Distance(pt, ts) < 52f * Screen.height / 720f) { Sound.Click(); Hud.ShowTower(tw.n); return; }
+            }
             var s = cam.WorldToScreenPoint(Field.PLAZA + Vector3.up * 1.2f);
             if (s.z > 0 && Vector2.Distance(pt, s) < 46f * Screen.height / 720f) TapSurge();
         }

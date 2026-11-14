@@ -23,6 +23,9 @@ ICONS = {
     'shop': ('building_market', 205, 0.95),   # the Market keeps the Shop
     'quests': ('building_library', 205, 0.95),   # the Library keeps the quests
     'fountain': ('fountain', 200, 0.92),      # the Surge board
+    'el_fire': ('top_fire', 200, 0.9), 'el_frost': ('top_frost', 200, 0.9), 'el_storm': ('top_storm', 200, 0.9), 'el_earth': ('top_earth', 200, 0.9),   # the tower card's elements
+    'look_fire_obsidian': ('top_fire_obsidian', 200, 0.9), 'look_fire_ember': ('top_fire_ember', 200, 0.9), 'look_frost_night': ('top_frost_night', 200, 0.9),
+    'look_frost_aurora': ('top_frost_aurora', 200, 0.9), 'look_storm_void': ('top_storm_void', 200, 0.9), 'look_storm_steel': ('top_storm_steel', 200, 0.9),   # the Market's tower designs
     'perks': ('building_watchtower', 205, 0.95),   # the Watchtower keeps the perks  # Ascend: a five-pointed gold star rising from a ring, modelled here
 }
 

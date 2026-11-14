@@ -32,14 +32,14 @@ def tower_front():
     front = [o for o in blks if o.matrix_world.translation.y > 1.5 and abs(o.matrix_world.translation.x) < 0.6 and 1.0 < o.matrix_world.translation.z < 4.4]
     if len(front) < 6: bad.append(f'tower_base: only {len(front)} stones on the face toward the camera')
 jobs = [(name, fn, extra) for fn, name, extra in ((F.gate, 'gate', None), (F.wall, 'wall', None), (F.tower_base, 'tower_base', tower_front), (F.road, 'road', None),
-                        (F.ground, 'ground', None), (F.fountain, 'fountain', None), (F.slime, 'slime', None), (F.beetle, 'beetle', None),
-                        (F.golem, 'golem', None), (C.ruin, 'ruin', None), (F.wizard, 'wizard', None), (F.butterfly, 'butterfly', None))]
+                        (F.ground, 'ground', None), (F.fountain, 'fountain', None), 
+                        (C.ruin, 'ruin', None), (F.wizard, 'wizard', None), (F.butterfly, 'butterfly', None))]
 jobs += [('top_' + k, (lambda k=k: F.top(k)), None) for k in ('stone', 'fire', 'frost', 'storm', 'earth')]
 jobs += [('centre_' + b, (lambda b=b: C.centrepiece(b)), None) for b in ('watchtower', 'market', 'library')]
 jobs += [('building_' + b, C.BUILDERS[b], None) for b in C.BUILDERS] + [('ruin_' + b, (lambda b=b: C.ruin_of(b)), None) for b in C.SHELLS]
 jobs += [('marker', F.marker, None)] + [('proj_' + k, (lambda k=k: F.projectile(k)), None) for k in ('fire', 'frost', 'storm', 'earth', 'stone')] + [('breach', F.breach, None), ('rubble_heap', F.rubble_heap, None), ('puff', F.puff, None)]
 jobs += [('villager_' + v, (lambda v=v: F.villager(v)), None) for v in 'abc']
-jobs += [(k, (lambda k=k: F.variant(k)), None) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem', 'leech', 'knight', 'hive')]
+jobs += [(k, (lambda k=k: F.monster(k)), None) for k in F.MONSTERS]
 jobs += [('top_' + c, (lambda c=c: F.cap_look(c)), None) for c in F.CAP_LOOKS]
 part, parts = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))   # the chain runs the test in parallel parts
 for i, (name, fn, extra) in enumerate(jobs):
