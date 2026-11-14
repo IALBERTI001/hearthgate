@@ -55,6 +55,7 @@ namespace Hearthgate.Game
         // city has may go on any tower (four Storm towers if the player likes); designs are bought at the Market and chosen
         // here per tower.
         static string ElName(string el) => el == "fire" ? "Fire" : el == "frost" ? "Frost" : el == "storm" ? "Storm" : el == "earth" ? "Earth" : "Stone";
+        // the current choice is lit (the primary style), never faded: a faded button reads as one that cannot be had
         public static void ShowTower(int n)
         {
             if (!I || !GameLoop.I) return;
@@ -69,7 +70,7 @@ namespace Hearthgate.Game
             for (int k = 0; k < opts.Count; k++)
             {
                 var el = opts[k]; bool chosen = el == pick;
-                I.BtnAt("El" + k, new Vector2(0.5f, 1), new Vector2(x0 + k * (w + gap), -100), new Vector2(w, 56), () => { g.SetTowerEl(n, el); ShowTower(n); }, () => !chosen, out var lb, box, el == "" ? "tower" : "el_" + el, chosen).rt.pivot = new Vector2(0.5f, 1);
+                I.BtnAt("El" + k, new Vector2(0.5f, 1), new Vector2(x0 + k * (w + gap), -100), new Vector2(w, 56), () => { if (!chosen) { g.SetTowerEl(n, el); ShowTower(n); } }, null, out var lb, box, el == "" ? "tower" : "el_" + el, chosen).rt.pivot = new Vector2(0.5f, 1);
                 lb.text = el == "" ? "Auto" : ElName(el);
             }
             if (els.Length > 0)
@@ -83,7 +84,7 @@ namespace Hearthgate.Game
             for (int k = 0; k < looks.Length; k++)
             {
                 var l = looks[k]; bool own = g.Owns(l), on = l.id == worn;
-                I.BtnAt("Lk" + k, new Vector2(0.5f, 1), new Vector2((k - (looks.Length - 1) / 2f) * 220, -290), new Vector2(210, 56), () => { g.SetTowerLook(n, l.id); ShowTower(n); }, () => own && !on, out var ll, box,
+                I.BtnAt("Lk" + k, new Vector2(0.5f, 1), new Vector2((k - (looks.Length - 1) / 2f) * 220, -290), new Vector2(210, 56), () => { if (own && !on) { g.SetTowerLook(n, l.id); ShowTower(n); } }, () => own, out var ll, box,
                         l.id.EndsWith("-classic") ? "el_" + cur : "look_" + l.id.Replace('-', '_'), on).rt.pivot = new Vector2(0.5f, 1);
                 ll.text = own ? l.name : $"{l.name} (Market)";
             }
