@@ -480,10 +480,12 @@ def beetle():   # a shiny armoured beetle: domed split shell, horned head, thick
     K.cone('horn', 0.16, 0.75, (0, -1.15, 0.98), M('gold'), 8).rotation_euler = (-0.6, 0, 0)
     for s in (-1, 1):
         o = K.cone('mandible', 0.08, 0.4, (s * 0.2, -1.2, 0.45), M('iron'), 6); o.rotation_euler = (-1.4, 0, s * 0.4)
-        for k in range(3):
+        for k in range(3):   # each leg turns at the shell's edge (a part: the game walks them on alternating tripods)
             y = -0.45 + k * 0.5
-            o = block((s * 0.85, y, 0.42), (0.55, 0.18, 0.18), M('iron'), 0.04); o.rotation_euler = (0, s * -0.5, 0)
-            block((s * 1.12, y, 0.18), (0.18, 0.2, 0.42), M('iron'), 0.04)
+            with Part('leg_%s%d' % ('L' if s < 0 else 'R', k), (s * 0.6, y, 0.48)):
+                o = block((s * 0.85, y, 0.42), (0.55, 0.18, 0.18), M('iron'), 0.04); o.rotation_euler = (0, s * -0.5, 0)
+                block((s * 1.12, y, 0.18), (0.18, 0.2, 0.42), M('iron'), 0.04)
+                K.sphere('claw', 0.1, (s * 1.12, y - 0.06, 0.02), M('iron'), (1, 1.4, 0.6), 1)
     face(-1.08, 0.72, 0.2, 0.13, brows=True, mouth=0)
     return K.export('beetle')
 
@@ -497,11 +499,14 @@ def golem():   # a boss: lumpy boulders bound by glowing cracks, big fists, a sm
     boulder((0, 0, 1.15), 0.8, (1.15, 0.9, 1.0))            # chest
     boulder((0, 0.05, 0.45), 0.55, (1.1, 0.85, 0.7))         # hips
     boulder((0, -0.15, 1.95), 0.38, (1.0, 0.95, 0.85))       # head
-    for s in (-1, 1):
+    for s in (-1, 1):   # arms swing at the shoulder, feet stomp from the hip (parts: the game walks him)
+        side = 'L' if s < 0 else 'R'
         boulder((s * 1.0, 0, 1.35), 0.42, (1, 1, 1))         # shoulder
-        boulder((s * 1.15, -0.1, 0.8), 0.36, (0.9, 0.9, 1.2))  # arm
-        boulder((s * 1.2, -0.2, 0.32), 0.42, (1.1, 1.1, 0.9))  # fist
-        boulder((s * 0.42, 0, 0.2), 0.32, (1, 1.1, 0.75))      # foot
+        with Part('arm_' + side, (s * 1.05, 0, 1.3)):
+            boulder((s * 1.15, -0.1, 0.8), 0.36, (0.9, 0.9, 1.2))  # arm
+            boulder((s * 1.2, -0.2, 0.32), 0.42, (1.1, 1.1, 0.9))  # fist
+        with Part('foot_' + side, (s * 0.42, 0, 0.55)):
+            boulder((s * 0.42, -0.05, 0.2), 0.32, (1, 1.1, 0.75))  # foot
         K.sphere('eye', 0.08, (s * 0.15, -0.5, 2.0), M('storm', 4.0), sub=1)
     for (x, z, rot) in ((0.0, 1.2, 0.3), (-0.35, 1.0, -0.6), (0.4, 1.35, 1.0), (0.1, 0.5, 0.0)):   # glowing cracks on the front
         o = block((x, -0.8, z), (0.5, 0.05, 0.07), M('storm', 3.5), 0.0); o.rotation_euler = (0, rot, 0)
@@ -887,7 +892,7 @@ def fountain():
 # and a star, a long white beard, rosy nose, and a gnarled staff topped with a glowing hearth-orb. About 2.3 m to the
 # hat's tip so he reads beside the 6 m buildings. Front toward Blender -Y, origin between the feet. The game bobs and
 # leans him as he walks.
-def legs(hip_z, x, mat, boot='wood_dk', thigh_r=0.11, shin_r=0.095, foot=0.13):
+def legs(hip_z, x, mat, boot='wood_dk', thigh_r=0.12, shin_r=0.11, foot=0.13):
     """Two jointed legs (owner, Nov 14 2026: "Legs move you know"): a thigh turning at the hip, a shin at the knee, a boot
     on the shin. Faces -y. The game's Gait swings them: the stance leg straight, the swing leg's knee bending."""
     knee = hip_z * 0.56
@@ -1016,18 +1021,30 @@ def variant(kind):
         bcone('spike', 0.18, 0.4, (0, -0.45, 3.15), M('wood_dk'), 6)
     return K.export(kind)
 
-def butterfly():   # the meadow's butterflies (owner, Nov 6 2026: "add some interaction for the user with the butterflies"). Lies
-    # flat, head to -y, about 1 unit across; the wings are white (flower_w) so the game tints each kind; it flaps by
-    # folding its width
+def butterfly():   # the meadow's butterflies (owner, Nov 6 2026: "add some interaction for the user with the butterflies";
+    # Nov 14: "Butterflies can be polished better"). Lies flat, head to -y, about 1 unit across. Each wing is a part hinged at
+    # the body (the game flaps them); the wings are white (flower_w) so the game tints each kind, with dark veins, a dark
+    # rim and pale eye-spots that stay; a segmented body, a round head and clubbed antennae.
+    for sx, side in ((-1, 'L'), (1, 'R')):
+        with Part('wing_' + side, (sx * 0.05, 0, 0.03)):
+            # forewing: a broad rounded blade swept forward, hindwing: a smaller round lobe with a tail
+            bsphere('fore', 0.34, (sx * 0.33, -0.1, 0.03), M('flower_w'), (1.0, 0.68, 0.05), 2, rot=(0, 0, sx * 0.5))
+            bsphere('fore_rim', 0.36, (sx * 0.34, -0.11, 0.025), M('char'), (1.0, 0.7, 0.04), 2, rot=(0, 0, sx * 0.5))
+            bsphere('hind', 0.24, (sx * 0.22, 0.2, 0.03), M('flower_w'), (1.0, 0.92, 0.05), 2, rot=(0, 0, -sx * 0.35))
+            bsphere('hind_rim', 0.26, (sx * 0.23, 0.21, 0.025), M('char'), (1.0, 0.92, 0.04), 2, rot=(0, 0, -sx * 0.35))
+            bcone('tail', 0.05, 0.22, (sx * 0.26, 0.48, 0.03), M('char'), 6, rot=(-math.pi / 2, 0, -sx * 0.25))
+            for (u, v, r) in ((0.42, -0.2, 0.07), (0.25, 0.25, 0.06)):   # pale eye-spots ringed in dark
+                bsphere('spot_ring', r * 1.35, (sx * u, v, 0.05), M('char'), (1, 1, 0.3), 1)
+                bsphere('spot', r, (sx * u, v, 0.06), M('plaster', 0.4), (1, 1, 0.3), 1)
+            for k in range(3):   # veins fanning from the root
+                a = -0.9 + k * 0.45
+                bcyl('vein', 0.008, 0.32, (sx * (0.06 + math.cos(a) * 0.16), -0.06 + math.sin(a) * 0.16, 0.06), M('char'), 4, rot=(0, math.pi / 2, sx * a))
+    for k in range(4):   # the body: a thorax and a tapering abdomen of segments
+        bsphere('seg', 0.07 - k * 0.01, (0, -0.12 + k * 0.1, 0.04), M('char'), (1, 1.2, 1), 1)
+    bsphere('head', 0.065, (0, -0.22, 0.05), M('char'), (1, 1, 1), 1)
     for sx in (-1, 1):
-        bsphere('fore', 0.32, (sx * 0.3, -0.08, 0.0), M('flower_w'), (1.0, 0.72, 0.06), 2, rot=(0, 0, sx * 0.45))
-        bsphere('hind', 0.22, (sx * 0.22, 0.22, 0.0), M('flower_w'), (1.0, 0.9, 0.06), 2, rot=(0, 0, -sx * 0.35))
-        bsphere('spot', 0.08, (sx * 0.36, -0.12, 0.02), M('char'), (1, 1, 0.3), 1)          # an eye-spot on each forewing
-        bsphere('edge', 0.06, (sx * 0.56, -0.2, 0.015), M('char'), (1, 1, 0.3), 1)
-        bcyl('antenna', 0.012, 0.28, (sx * 0.06, -0.42, 0.06), M('char'), 4, rot=(-1.2, sx * 0.35, 0))
-        bsphere('knob', 0.03, (sx * 0.1, -0.53, 0.12), M('char'), (1, 1, 1), 1)
-    bcyl('body', 0.05, 0.6, (0, 0.02, 0.02), M('char'), 8, rot=(math.pi / 2, 0, 0))
-    bsphere('head', 0.07, (0, -0.3, 0.03), M('char'), (1, 1, 1), 1)
+        bcyl('antenna', 0.01, 0.3, (sx * 0.06, -0.36, 0.1), M('char'), 4, rot=(-1.2, sx * 0.35, 0))
+        bsphere('knob', 0.025, (sx * 0.1, -0.48, 0.16), M('char'), (1, 1, 1), 1)
     return K.export('butterfly')
 
 # the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender

@@ -63,7 +63,7 @@ namespace Hearthgate.Game
             float pL = phase, pR = phase + Mathf.PI;
             float thL = amp * Mathf.Sin(pL), thR = amp * Mathf.Sin(pR);
             // the swing leg (its thigh moving forward, cos > 0) bends its knee; the stance leg stays straight
-            float kL = amp * 1.7f * Mathf.Max(0, Mathf.Cos(pL)), kR = amp * 1.7f * Mathf.Max(0, Mathf.Cos(pR));
+            float kL = amp * 1.3f * Mathf.Max(0, Mathf.Cos(pL)), kR = amp * 1.3f * Mathf.Max(0, Mathf.Cos(pR));   // up to about 45 degrees: more read as a kick back (side-view check)
             thighL.localRotation = rThL * Quaternion.Euler(thL * Mathf.Rad2Deg, 0, 0);
             thighR.localRotation = rThR * Quaternion.Euler(thR * Mathf.Rad2Deg, 0, 0);
             shinL.localRotation = rShL * Quaternion.Euler(-kL * Mathf.Rad2Deg, 0, 0);

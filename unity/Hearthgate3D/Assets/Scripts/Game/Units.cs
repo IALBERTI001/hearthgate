@@ -15,6 +15,9 @@ namespace Hearthgate.Game
         public Transform shieldT;   // the rings of force (the model's 'upper' part), gone when Storm breaks the shield
         public float stop = Field.FRONT + Random.Range(0f, Field.STOP_SPREAD);   // where it halts, a crowd at the tower's foot
         Renderer[] rends; Color[] baseCols; static readonly Color GHOST = new Color(0.82f, 0.9f, 1f);
+        float s0; readonly System.Collections.Generic.List<Transform> legs = new System.Collections.Generic.List<Transform>();
+        readonly System.Collections.Generic.List<Quaternion> legRest = new System.Collections.Generic.List<Quaternion>();
+        Transform footL, footR, armL, armR; Quaternion rFL, rFR, rAL, rAR; Vector3 pFL, pFR;
 
         public Enemy(string role, int wave, int lane, float x, float z, Transform parent)
         {
@@ -23,23 +26,59 @@ namespace Hearthgate.Game
             // no two in lockstep (fresh-eyes review: "ten clones"); turned a little either way, so a cheek shows to the camera
             yaw = Quaternion.Euler(0, Random.Range(14f, 30f) * (Random.value < 0.5f ? -1 : 1), 0);
             var g = Art.Spawn(Art.Set ? Art.Set.Enemy(R.model) : null, R.model, Field.Lane(lane, z, x), parent);
-            t = g.transform; body = t.childCount > 0 ? t.GetChild(0) : t;
-            t.localScale = Vector3.one * (size / 1.5f); t.rotation = Field.Facing(lane) * yaw;   // models face Blender -Y; Facing turns them up the lane
+            t = g.transform; body = t; s0 = size / 1.5f;
+            t.localScale = Vector3.one * s0;
+            foreach (var c in g.GetComponentsInChildren<Transform>(true))   // the jointed parts (hg_front.Part): beetle legs, golem feet and arms
+            {
+                if (c.name.StartsWith("leg_") && c.name.Length == 6) { legs.Add(c); legRest.Add(c.localRotation); }
+                else if (c.name == "foot_L") { footL = c; rFL = c.localRotation; pFL = c.localPosition; } else if (c.name == "foot_R") { footR = c; rFR = c.localRotation; pFR = c.localPosition; }
+                else if (c.name == "arm_L") { armL = c; rAL = c.localRotation; } else if (c.name == "arm_R") { armR = c; rAR = c.localRotation; }
+            } t.rotation = Field.Facing(lane) * yaw;   // models face Blender -Y; Facing turns them up the lane
             shield = R.shield; totemT = (float)R.totem; summonT = (float)R.summon; foreach (var c in g.GetComponentsInChildren<Transform>(true)) if (c.name == "upper") shieldT = c;
             rends = g.GetComponentsInChildren<Renderer>(); baseCols = new Color[rends.Length];
             for (int i = 0; i < rends.Length; i++) { var sm = rends[i].sharedMaterial ?? Art.Mat(Color.gray); rends[i].material = new Material(sm); baseCols[i] = rends[i].material.color; }
         }
 
+        public void Grow(float k) { size *= k; s0 *= k; t.localScale *= k; }   // the Giants event
         public Vector3 Pos => Field.Lane(lane, z, x, size * 0.5f);
 
-        // the look of the moment: a hop as it walks, a squash on a hit, a frost tint while chilled, a white flash when struck
+        // the look of the moment: legs that walk (beetles on alternating tripods, golems stomping foot to foot with their fists
+        // swinging, slimes hopping), a squash on a hit, a frost tint while chilled, a white flash when struck
         public void Show(float time)
         {
-            float step = Mathf.Abs(Mathf.Sin((time + born) * (boss ? 3f : 7f)));
+            bool walking = !atGate && dying <= 0 && stun <= 0;
+            float rate = (boss ? 3f : 7f) * (chill > 0 ? 0.5f : 1f), ph = (time + born) * rate;
+            bool jointed = legs.Count > 0 || footL;
+            float step = jointed ? 0f : Mathf.Abs(Mathf.Sin(ph));   // a slime hops; a walker's body rides its legs
+            if (legs.Count > 0)
+            {   // six legs, two tripods (front and back on one side with the middle on the other) out of step: each sweeps
+                // forward lifted, then back planted
+                for (int i = 0; i < legs.Count; i++)
+                {
+                    var n = legs[i].name; float side = n[4] == 'L' ? -1f : 1f; int k = n[5] - '0';
+                    float p = ph + ((k + (side < 0 ? 0 : 1)) % 2 == 0 ? 0 : Mathf.PI);
+                    float sweep = walking ? 22f * Mathf.Sin(p) : Mathf.Sin(time * 9f + i) * 3f, lift = walking ? 20f * Mathf.Max(0, Mathf.Cos(p)) : 0f;
+                    legs[i].localRotation = legRest[i] * Quaternion.Euler(0, sweep * side, lift * side);
+                }
+                step = walking ? Mathf.Abs(Mathf.Cos(ph)) * 0.25f : 0f;   // the shell rides a little on each tripod
+            }
+            if (footL && footR)
+            {   // a golem stomps: one foot swings forward lifted, the other plants; fists swing against the feet; at the walls
+                // both fists pound
+                float a = walking ? 26f * Mathf.Sin(ph) : 0f;
+                footL.localRotation = rFL * Quaternion.Euler(a, 0, 0); footR.localRotation = rFR * Quaternion.Euler(-a, 0, 0);
+                footL.localPosition = pFL + Vector3.up * (walking ? 0.16f * Mathf.Max(0, Mathf.Cos(ph)) : 0f);
+                footR.localPosition = pFR + Vector3.up * (walking ? 0.16f * Mathf.Max(0, -Mathf.Cos(ph)) : 0f);
+                float pound = atGate && dying <= 0 ? 70f * Mathf.Pow(Mathf.Abs(Mathf.Sin(time * 2.6f + born)), 3f) : 0f;
+                if (armL) armL.localRotation = rAL * Quaternion.Euler(-a * 0.8f + pound, 0, 0);
+                if (armR) armR.localRotation = rAR * Quaternion.Euler(a * 0.8f + pound, 0, 0);
+                step = walking ? Mathf.Abs(Mathf.Sin(ph)) * 0.3f : 0f;   // he rises as the feet pass
+            }
             float sq = (1f + flash * 0.15f) * (faded ? 0.92f : 1f);
-            body.localScale = new Vector3(sq, (1f + step * 0.08f) / sq, sq);
+            float roll = footL && walking ? Mathf.Sin(ph) * 5f : 0f;   // a golem rocks onto the planted foot
+            t.localScale = s0 * new Vector3(sq, (1f + (jointed ? 0f : step * 0.08f)) / sq, sq);
             t.position = Field.Lane(lane, z, x, dying > 0 ? -dying * 2f : step * 0.12f * size);
-            t.rotation = Quaternion.RotateTowards(t.rotation, Field.Facing(lane) * (atGate ? Quaternion.identity : yaw), 240f * Time.deltaTime);
+            t.rotation = Quaternion.RotateTowards(t.rotation, Field.Facing(lane) * (atGate ? Quaternion.identity : yaw) * Quaternion.Euler(0, 0, roll), 240f * Time.deltaTime);
             for (int i = 0; i < rends.Length; i++)
             {
                 var c = baseCols[i];

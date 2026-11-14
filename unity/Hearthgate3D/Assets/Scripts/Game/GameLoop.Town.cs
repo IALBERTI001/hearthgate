@@ -239,7 +239,7 @@ namespace Hearthgate.Game
         void EventSpawn(Enemy e)
         {
             if (Ev("bloodmoon")) { e.hp *= 1.5; e.max = e.hp; }
-            if (Ev("giants") && !e.boss) { e.hp *= 2; e.max = e.hp; e.size *= 1.3f; e.t.localScale *= 1.3f; }
+            if (Ev("giants") && !e.boss) { e.hp *= 2; e.max = e.hp; e.Grow(1.3f); }
             if (Ev("stampede") || Ev("eclipse") || Ev("frenzy")) e.speed *= 1.3f; else if (Ev("blizzard")) e.speed *= 0.75f;
             if (Ev("winter")) e.chill = 4f;
             if (Ev("embers")) e.burn = 4f;
