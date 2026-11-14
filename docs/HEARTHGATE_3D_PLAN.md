@@ -32,6 +32,14 @@ together in Unity. The goal is 3D!" All four decisions below were approved the s
    - Every action is in one top-right group: a row in a wide window, a column in a narrow one.
    - Screen shake: the fight's shakes stay at the walls; the town's own are small; routine combos never shake.
 
+9. **The core pass, Nov 14 2026** (owner: "keep polishing the game, we are still not there yet with game core"), ported from the 2D rules:
+   - Kills send their Resonance over the wall into the fountain (paid on landing); the fountain's Surge (x2 for 3 minutes, recharging 15; a board over it or X).
+   - Golden Wisps (twice as often with the Bakery, from its chimney); the Tavern's Cheer meter; the Watchtower's beacon as a fifth tower.
+   - Ascension: Rebuild becomes Ascend at 10/10 and wave 30 + 5 per Ascension; a card says what is lost and kept; x1.5 for good; perk points; seven perks at a board over the Watchtower.
+   - 19 named waves (Golden Wave, Horde, Stampede, Thunderstorm, Blizzard, Inferno, Eclipse, Giants, Rush, Deep Winter, Blood Moon, Gold Rush and more).
+   - Still to port: daily quests and Feats (they pay Starshards, so they come with the Shop), constellations, the Earth element, the Ascended buildings' second abilities, and the 2D game's other enemies (Elite, Sprinter, Splitter, Mender, Ironhide, Bulwark, Phantom, Totem), which need Blender models.
+   - Walls and towers: the health bar reads Walls; the main button is Upgrade towers, with Walk the town always beside it.
+
 ## Quality testing
 - **LayoutCheck** (Unity, runs before every WebGL build and fails it): no overlapping structures, nothing on a lane, plots and fountain inside the ring, each lane ending in front of its own tower, every plot's roof line, the plaza and the lanes seen from the camera, nothing under the HUD or out of the view at 16:9, 2.2:1 and 1.2:1.
 - **tools/layout/town.py:** the search that places the camera, towers, plaza and plots (rows, 6 m streets, signs inside the ring); **gen_field.py** writes the numbers into Field.cs.
@@ -48,8 +56,6 @@ together in Unity. The goal is 3D!" All four decisions below were approved the s
 - **P4, UI and polish** to the game-polish rules.
 - **P5, QA and resubmission.** The pinned CrazyGames note says never upload a rejected game as new: reply in the original support thread with a numbered list of what changed.
 
-## Open question for the owner
-- The health bar still says "Gate" and the button "Upgrade gate", but enemies now attack the wall at the towers. Keep "gate" as the name for the whole defence, or rename it to "walls"?
 
 ## Risks
 - 3D on phones in a browser: the scene is about 175k triangles with soft shadows; check frame rate on the owner's Galaxy Z Fold 6 before release and drop shadows on mobile if needed.
