@@ -65,7 +65,7 @@ namespace Hearthgate.Game
                 case "beetle": Prim(PrimitiveType.Capsule, t, new Vector3(0, 0.45f, 0), new Vector3(0.8f, 0.45f, 1.2f), new Color(0.35f, 0.3f, 0.6f)); break;
                 case "golem": Prim(PrimitiveType.Cube, t, new Vector3(0, 0.6f, 0), new Vector3(1.1f, 1.2f, 0.9f), new Color(0.55f, 0.5f, 0.45f)); break;
                 case "gate": Prim(PrimitiveType.Cube, t, new Vector3(0, 2.5f, 0), new Vector3(4f, 5f, 2f), Field.STONE); break;
-                case "wall": Prim(PrimitiveType.Cube, t, new Vector3(0, 1.4f, 0), new Vector3(2 * Field.HALF_W + 4, 2.8f, 1.2f), Field.STONE * 0.9f); break;
+                case "wall": Prim(PrimitiveType.Cube, t, new Vector3(0, 1.4f, 0), new Vector3(2 * Field.RX, 2.8f, 1.2f), Field.STONE * 0.9f); break;
                 case "towerBase": Prim(PrimitiveType.Cylinder, t, new Vector3(0, 1.8f, 0), new Vector3(1.6f, 1.8f, 1.6f), Field.STONE); break;
                 case "ground": Prim(PrimitiveType.Plane, t, new Vector3(0, 0, 10), new Vector3(8, 1, 8), new Color(0.45f, 0.7f, 0.3f)); break;
                 case "road": Prim(PrimitiveType.Cube, t, new Vector3(0, 0.01f, 20), new Vector3(5, 0.02f, 40), new Color(0.75f, 0.65f, 0.5f)); break;

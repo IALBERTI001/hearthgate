@@ -4,8 +4,8 @@
 #
 # Coordinates are Unity's: x right as seen from the city (the camera stands north, so screen right is world -x), y in
 # Blender = Unity z (north, toward the camera), z up. The camera looks at the +y faces, so those carry the detail.
-# Layout numbers (gate at the origin, wall along y = 0, towers at x = -7.5, -13, -18.5, -24 with their platform at
-# 5.0 m, road centre y = 5.4, plaza at (8.5, -6)) match Assets/Scripts/Game/Field.cs; LayoutCheck verifies them.
+# Layout numbers (the ring wall, the gate at the origin on its front point, the towers, the lanes, the plaza and the
+# plots) live in hg_layout.py, mirrored by Assets/Scripts/Game/Field.cs; LayoutCheck verifies them on the models.
 #
 # Owner's and reviewer's rules this file answers:
 #   - one gatehouse, the hero of the frame (raised keep, red roof, flag, crest); towers spaced on the wall, shorter
@@ -15,6 +15,7 @@
 import bpy, bmesh, math, random
 from mathutils import Vector
 import hg_kit as K
+import hg_layout as L
 
 R = random.Random(13)
 STONES = ('stone', 'stone2', 'stone3')
@@ -75,13 +76,13 @@ def moss(x0, x1, y, z=0.05, n=6):   # low dark-green clumps along the foot of a 
         x = R.uniform(x0, x1)
         K.sphere('moss', R.uniform(0.25, 0.5), (x, y, z), M(R.choice(('moss', 'grass2'))), (1.6, 0.7, 0.45), 1)
 
-def merlons(u0, u1, z, place, w=0.62, gap=0.42, h=0.6, vary=0.0):
+def merlons(u0, u1, z, place, w=0.62, gap=0.42, h=0.6, vary=0.0, rot=0.0):
     n = int((u1 - u0 + gap) // (w + gap)); start = u0 + ((u1 - u0) - (n * w + (n - 1) * gap)) / 2
     for i in range(n):
         u = start + i * (w + gap) + w / 2
         hh = h * (1 + R.uniform(-vary, vary))
         loc, size = place(u, z + hh / 2, w, hh)
-        block(loc, size, M(R.choice(STONES)), 0.045)
+        block(loc, size, M(R.choice(STONES)), 0.045, rot)
 
 def cloth(name, x0, x1, ztop, zbot, y, m, wave=0.08, tail=True, axis='x', nx=6, nz=12):
     """A hanging (axis 'x') or flying (axis 'y' for a flag along +x from a pole) cloth with a gentle wave."""
@@ -241,30 +242,44 @@ def gate():
     return K.export('gate')
 
 # ---------------------------------------------------------------------------------------------------------------------
-# the curtain wall: from rocky hills on the left to rocky hills on the right; stones, a coping course, varied merlons,
-# buttresses between the towers, moss and grass at the foot
-WX0, WX1, WH = -29.5, 21.0, 3.4   # the right end runs into the cave's hillside
-TOWERS = (-7.5, -13.0, -18.5, -24.0)
+# the ring wall (owner, Nov 13 2026: "Close off the loop around town to make a protected town"): an ellipse round the
+# town (hg_layout.RX, RZ), closed at the gatehouse, built as straight runs about 3 m long. Each run: a mortar core, a
+# battered foot, coursed stones on the face the camera sees (the outside of the front arc, the inside of the back arc),
+# a coping course, the wall walk, tall merlons outside and low ones inside, buttresses, and moss, rubble and grass at
+# the outer foot
+WH = L.WALL_H
 def wall():
-    for (a, b) in ((WX0, -GX + 0.02), (GX - 0.02, WX1)):
-        K.cube('core', (b - a, 1.8, WH), ((a + b) / 2, 0, WH / 2), M('mortar'), 0.0)
-        K.cube('batter', (b - a, 2.2, 0.55), ((a + b) / 2, 0.05, 0.27), M('stone_dk'), 0.05)
-        masonry(a, b, 0.55, WH - 0.25, face_y(0.9, 1), lmin=0.7, lmax=1.5)
-        K.cube('coping', (b - a, 2.05, 0.25), ((a + b) / 2, 0.04, WH - 0.12), M('stone3'), 0.04)
-        K.cube('walk', (b - a, 1.9, 0.18), ((a + b) / 2, 0, WH + 0.09), M('stone2'), 0.03)
-        merlons(a + 0.2, b - 0.2, WH + 0.18, lambda u, z, w, h: ((u, 0.72, z), (w, 0.42, h)), w=0.7, gap=0.48, h=0.62, vary=0.12)
-        merlons(a + 0.2, b - 0.2, WH + 0.18, lambda u, z, w, h: ((u, -0.72, z), (w, 0.32, h)), w=0.7, gap=0.48, h=0.42)
-        x = a + 2.2
-        while x < b - 1.5:
-            if all(abs(x - tx) > 2.7 for tx in TOWERS):
-                block((x, 1.12, 1.0), (0.75, 0.48, 2.0), M(R.choice(STONES)), 0.05)
-                block((x, 1.02, 2.12), (0.66, 0.32, 0.35), M('stone_dk'), 0.05)
-            x += R.uniform(4.2, 5.6)
-        moss(a, b, 1.25, n=int((b - a) / 2.5))
-        for _ in range(int((b - a) / 4)):
-            xx = R.uniform(a + 1, b - 1)
-            if R.random() < 0.5: rubble(xx, 1.35, 2, (0.6, 0.15))
-            tufts(xx + R.uniform(-1, 1), 1.45, 2, (0.6, 0.15))
+    cam = (L.CAM_POS[0], L.CAM_POS[2])
+    a0 = math.acos(-(GX - 0.05) / L.RX); a1 = math.acos((GX - 0.05) / L.RX) + math.tau   # from the gate's left side round to its right
+    angles, a = [a0], a0
+    while True:
+        dx, dz = -L.RX * math.sin(a), L.RZ * math.cos(a)
+        a += 3.0 / math.hypot(dx, dz)
+        if a >= a1 - 0.02: angles.append(a1); break
+        angles.append(a)
+    pts = [(L.RX * math.cos(a), -L.RZ + L.RZ * math.sin(a)) for a in angles]
+    for (x0, z0), (x1, z1) in zip(pts, pts[1:]):
+        Lr = math.hypot(x1 - x0, z1 - z0); tx, tz = (x1 - x0) / Lr, (z1 - z0) / Lr
+        mx, mz = (x0 + x1) / 2, (z0 + z1) / 2
+        rot = math.atan2(tz, tx); ny = (-tz, tx)                     # the run's local +y, across the wall
+        nx, nz = L.ring_normal(mx, mz); out = 1 if ny[0] * nx + ny[1] * nz > 0 else -1
+        see = 1 if ny[0] * (cam[0] - mx) + ny[1] * (cam[1] - mz) > 0 else -1
+        def at(u, v, z): return (mx + tx * u + ny[0] * v, mz + tz * u + ny[1] * v, z)
+        Ld = Lr + 0.35                                                 # runs overlap a little at the bends
+        block(at(0, 0, WH / 2), (Ld, 1.8, WH), M('mortar'), 0.0, rot)
+        block(at(0, out * 0.05, 0.27), (Ld, 2.2, 0.55), M('stone_dk'), 0.05, rot)
+        masonry(-Ld / 2, Ld / 2, 0.55, WH - 0.25, lambda u, z, Lb, h: (at(u, see * 0.95, z), (Lb, 0.1, h), rot), lmin=0.7, lmax=1.5)
+        block(at(0, 0, WH - 0.12), (Ld, 2.05, 0.25), M('stone3'), 0.04, rot)
+        block(at(0, 0, WH + 0.09), (Ld, 1.9, 0.18), M('stone2'), 0.03, rot)
+        merlons(-Lr / 2 + 0.1, Lr / 2 - 0.1, WH + 0.18, lambda u, z, w, h: (at(u, out * 0.72, z), (w, 0.42, h)), w=0.7, gap=0.48, h=0.62, vary=0.12, rot=rot)
+        merlons(-Lr / 2 + 0.1, Lr / 2 - 0.1, WH + 0.18, lambda u, z, w, h: (at(u, -out * 0.72, z), (w, 0.32, h)), w=0.7, gap=0.48, h=0.42, rot=rot)
+        if all(math.hypot(mx - tx_, mz - tz_) > 3.2 for tx_, tz_ in L.TOWERS) and abs(mx) > GX + 2 and R.random() < 0.6:
+            block(at(0, out * 1.12, 1.0), (0.75, 0.48, 2.0), M(R.choice(STONES)), 0.05, rot)
+            block(at(0, out * 1.02, 2.12), (0.66, 0.32, 0.35), M('stone_dk'), 0.05, rot)
+        fx, fz = mx + nx * 1.4, mz + nz * 1.4
+        K.sphere('moss', R.uniform(0.25, 0.5), (fx, fz, 0.05), M(R.choice(('moss', 'grass2'))), (1.6, 0.7, 0.45), 1).rotation_euler = (0, 0, rot)
+        if R.random() < 0.5: rubble(fx, fz, 2, (0.4, 0.4))
+        tufts(mx + nx * 1.5 + tx * R.uniform(-1, 1), mz + nz * 1.5 + tz * R.uniform(-1, 1), 2, (0.3, 0.3))
     return K.export('wall')
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -325,7 +340,7 @@ def top(kind):
         prism('crown', 2.0, 1.85, -0.2, 0.55, M('iron'))
         for i in range(TN):   # glowing vents round the crown
             a = (i + 0.5) / TN * math.tau + math.pi / TN
-            o = block((math.cos(a) * 1.93, math.sin(a) * 1.93, 0.18), (0.06, 0.32, 0.22), M('fire', 3.0), 0.0); o.rotation_euler = (0, 0, a)
+            o = block((math.cos(a) * 1.93, math.sin(a) * 1.93, 0.18), (0.06, 0.32, 0.22), M('fire_red', 3.0), 0.0); o.rotation_euler = (0, 0, a)
         for i in range(6):   # iron prongs holding the bowl
             a = i / 6 * math.tau
             o = block((math.cos(a) * 1.35, math.sin(a) * 1.35, 0.95), (0.16, 0.16, 0.9), M('iron'), 0.02)
@@ -335,10 +350,10 @@ def top(kind):
         for i in range(10):
             a = i / 10 * math.tau; r = 0.5 + 0.45 * (i % 2)
             K.sphere('coal', R.uniform(0.22, 0.32), (math.cos(a) * r, math.sin(a) * r, 1.58), M('fire', 3.0), (1, 1, 0.7), 2)
-        K.cone('flame', 1.15, 2.9, (0, 0, 3.0), M('fire', 3.5), 14)
+        K.cone('flame', 1.15, 2.9, (0, 0, 3.0), M('fire_red', 3.5), 14)   # a red flame with orange tongues and core (owner: "red and orange tops")
         for i in range(5):
             a = i / 5 * math.tau + 0.4
-            K.cone('tongue', 0.45, R.uniform(1.4, 2.0), (math.cos(a) * 0.65, math.sin(a) * 0.65, 2.3), M('fire', 3.5), 10)
+            K.cone('tongue', 0.45, R.uniform(1.4, 2.0), (math.cos(a) * 0.65, math.sin(a) * 0.65, 2.3), M('fire_core', 3.0), 10)
         K.cone('core', 0.38, 1.3, (0, 0, 2.25), M('fire_core', 3.0), 12)
         for i in range(7): K.sphere('spark', R.uniform(0.07, 0.12), (R.uniform(-0.9, 0.9), R.uniform(-0.9, 0.9), R.uniform(3.6, 4.8)), M('fire_core', 3.0), sub=1)
     elif kind == 'frost':
@@ -439,102 +454,81 @@ def golem():   # a boss: lumpy boulders bound by glowing cracks, big fists, a sm
     return K.export('golem')
 
 # ---------------------------------------------------------------------------------------------------------------------
-# the road: worn earth along the front of the wall with darker ruts, pebbles and grass along its edges, a cobbled
-# forecourt centred on the gate, a low fence on the meadow side (0.7 m: never hides an enemy)
-ROADY, RHALF = 5.4, 3.0
-CAVE_X = 28.5    # the cave mouth the waves come out of, world x = -CAVE_X (Field.SPAWN_Z 27.5): inside the frame
-def road():
-    K.cube('way', (CAVE_X + 2.5, 2 * RHALF, 0.06), (-(CAVE_X + 2.5) / 2 + 2, ROADY, 0.03), M('dirt'), 0.0)
-    for dy in (-1.05, 1.05):
-        K.cube('rut', (CAVE_X + 2.5, 0.55, 0.02), (-(CAVE_X + 2.5) / 2 + 2, ROADY + dy, 0.065), M('dirt_dk'), 0.0)
-    # setts thinning out from the forecourt into the earth road, so the two meet without a seam
-    for _ in range(60):
-        x = -GX - 1.6 - abs(R.gauss(0, 1.6)); y = ROADY + R.uniform(-RHALF + 0.3, RHALF - 0.3)
-        o = block((x, y, 0.075), (R.uniform(0.28, 0.45), 0.27, 0.08), M(R.choice(('cobble', 'cobble2', 'stone2'))), 0.04); o.rotation_euler = (0, 0, R.uniform(-0.25, 0.25))
-    for _ in range(110):   # pebbles in clusters along both edges, grass bleeding in
-        side = R.choice((-1, 1)); x = R.uniform(-CAVE_X + 1, -GX - 1.0)
-        for k in range(R.randint(1, 3)):
-            s = R.uniform(0.14, 0.3)
-            o = block((x + R.uniform(-0.4, 0.4), ROADY + side * (RHALF - R.uniform(0.05, 0.45)), 0.07), (s * 1.3, s, s * 0.5), M(R.choice(('cobble2', 'rock', 'rock_dk'))), 0.03)
-            o.rotation_euler = (0, 0, R.uniform(0, 3.1))
-    for _ in range(26):
-        tufts(R.uniform(-CAVE_X + 1, -GX - 1.5), ROADY + R.choice((-1, 1)) * (RHALF - 0.1), 2, (0.6, 0.12))
-    cave()
-    # forecourt: rounded cobbles in rows, darker toward its edges, a kerb of dark stones round it
-    y = GY + 0.3
-    while y < ROADY + RHALF - 0.15:   # small rounded setts, warm and dark toward the edges (the big grey slabs read as a car park)
-        x = -GX - 1.6 + R.uniform(0, 0.2)
-        while x < GX + 1.6:
-            L = R.uniform(0.3, 0.52)
-            edge = abs(x + L / 2) > GX + 0.6 or y > ROADY + RHALF - 0.7
-            m = M('cobble2' if edge or R.random() < 0.35 else R.choice(('cobble', 'dirt', 'stone2')))
-            block((x + L / 2, y + 0.15, 0.08), (L - 0.06, 0.28, 0.09), m, 0.045)
-            x += L
-        y += 0.33
-    for x in [-GX - 1.75 + i * 0.5 for i in range(int((2 * GX + 3.5) / 0.5) + 1)]:
-        block((x, ROADY + RHALF - 0.05, 0.1), (0.46, 0.22, 0.14), M('stone_dk'), 0.03)
-    x = -CAVE_X + 2.5
-    while x < -GX - 3.5:
-        K.cyl('post', 0.08, 0.75, (x, ROADY + RHALF + 0.7, 0.37), M('wood_dk'), 6, 0.0)
-        if x + 2.4 < -GX - 3.5:
-            for zz in (0.32, 0.6):
-                o = K.cyl('rail', 0.05, 2.45, (x + 1.2, ROADY + RHALF + 0.7, zz), M('wood'), 6, 0.0); o.rotation_euler = (0, math.pi / 2, R.uniform(-0.05, 0.05))
-        x += 2.4
+# the lanes (owner's sketch, Nov 13 2026: "monsters are walking up to the towers on a route in front of each tower"):
+# four trodden earth paths running up the screen from below the frame to the foot of each tower, a darker worn middle,
+# pebbles and grass along the edges, a trampled apron with rubble where the enemies gather under the tower. They run on
+# past the frame's bottom edge so a taller window never shows their end.
+def lanes():
+    for (fx, fz), (sx, sz) in L.LANES:
+        L0 = math.hypot(sx - fx, sz - fz); dx, dz = (sx - fx) / L0, (sz - fz) / L0; px, pz = -dz, dx
+        u0, u1 = 1.0, L0 + 9.0
+        n = int((u1 - u0) / 1.5) + 1
+        for (half, m, z, jit) in ((L.LANE_HALF, 'dirt', 0.03, 0.18), (0.75, 'dirt_dk', 0.045, 0.22)):
+            left, right = [], []
+            for k in range(n + 1):
+                u = u0 + (u1 - u0) * k / n
+                hl, hr = half + R.uniform(-jit, jit), half + R.uniform(-jit, jit)
+                left.append((fx + dx * u + px * hl, fz + dz * u + pz * hl, z)); right.append((fx + dx * u - px * hr, fz + dz * u - pz * hr, z))
+            vs = left + right; N = n + 1
+            mesh_from('lane', vs, [(N + k, N + k + 1, k + 1, k) for k in range(n)], M(m), 0.0)
+        # the apron at the tower's foot: trampled earth in a rough half disc, rubble from the fighting
+        vs = [(fx, fz, 0.035)]
+        for k in range(13):
+            ang = math.atan2(dz, dx) - math.pi / 2 - 0.35 + (math.pi + 0.7) * k / 12
+            r = 3.0 * R.uniform(0.85, 1.1); vs.append((fx + math.cos(ang) * r, fz + math.sin(ang) * r, 0.035))
+        mesh_from('apron', vs, [(0, k + 1, k + 2) for k in range(12)], M('dirt'), 0.0)
+        rubble(fx + px * 2.2, fz + pz * 2.2, 3, (0.5, 0.5)); rubble(fx - px * 2.2, fz - pz * 2.2, 3, (0.5, 0.5))
+        for _ in range(int(L0 * 1.6)):   # pebbles in clusters along both edges, grass bleeding in
+            u = R.uniform(2.5, u1 - 1); side = R.choice((-1, 1)); off = side * (L.LANE_HALF - R.uniform(0.0, 0.4))
+            for k in range(R.randint(1, 3)):
+                sz_ = R.uniform(0.14, 0.28)
+                o = block((fx + dx * u + px * off + R.uniform(-0.3, 0.3), fz + dz * u + pz * off + R.uniform(-0.3, 0.3), 0.07), (sz_ * 1.3, sz_, sz_ * 0.5), M(R.choice(('cobble2', 'rock', 'rock_dk'))), 0.03)
+                o.rotation_euler = (0, 0, R.uniform(0, 3.1))
+        for _ in range(int(L0 * 0.7)):
+            u = R.uniform(3, u1 - 1); side = R.choice((-1, 1)); off = side * (L.LANE_HALF + 0.1)
+            tufts(fx + dx * u + px * off, fz + dz * u + pz * off, 2, (0.4, 0.4))
     return K.export('road')
+road = lanes   # exported as 'road' (ArtSet.road)
 
-def cave():
-    """The cave the waves come out of: a dark mouth in a rocky hillside where the road begins, framed by big rocks and
-    a broken arch of stones, a faint violet glow inside (fresh-eyes review 2: the road stopped at the frame's edge)."""
-    cx = -CAVE_X - 0.6
-    mesh_from('mouth', [(cx, ROADY - 2.6, 0.0), (cx, ROADY + 2.6, 0.0), (cx, ROADY + 2.2, 3.4), (cx, ROADY - 2.2, 3.4)], [(0, 1, 2, 3)], M('cave'), 0.0)
-    K.sphere('dark', 2.6, (cx - 1.4, ROADY, 1.4), M('cave'), (1.0, 1.25, 0.8), 2)
-    K.sphere('glow', 0.9, (cx - 1.2, ROADY, 1.0), M('storm', 1.2), (0.6, 1.4, 0.7), 2)
-    for (dy, h, r) in ((-3.1, 4.2, 1.5), (3.2, 4.6, 1.6), (-4.6, 2.6, 1.8), (4.8, 3.0, 1.9)):   # the hill's flanks
-        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r, location=(cx + R.uniform(-0.4, 0.6), ROADY + dy, h * 0.42))
-        b = bpy.context.object; b.scale = (1.0, 0.9, h / (2 * r) * 1.3)
-        for v in b.data.vertices: v.co *= R.uniform(0.85, 1.12)
-        K.finish(b, M(R.choice(('rock', 'rock_dk'))), 0.0, smooth=False)
-    for k in range(5):   # the arch: stones along a curve over the mouth
-        a = math.pi * (k + 0.5) / 5
-        o = block((cx + 0.3, ROADY + math.cos(a) * 2.6, 2.4 + math.sin(a) * 1.4), (0.9, 0.85, 0.75), M(R.choice(('rock', 'stone_dk'))), 0.06)
-        o.rotation_euler = (math.cos(a) * 0.5, 0, 0)
-    outcrop(cx + 1.5, ROADY - 4.2, 3, 1.0, 0.7); outcrop(cx + 1.5, ROADY + 4.3, 3, 1.0, 0.7)
-    for k in range(4): K.cone('spike', 0.12, 0.5, (cx + 0.5, ROADY - 1.8 + k * 1.2, 3.35), M('rock_dk'), 5).rotation_euler = (math.pi, 0, 0)
+def spot(x, z, r):
+    """The nearest place to (x, z) where something of radius r keeps off every lane (props never stand on a route)."""
+    for k in range(80):
+        for sx in (1, -1):
+            xx = x + sx * k * 0.25
+            if L.lane_clear(xx, z, r) and not L.inside(xx, z, -2.5 - r): return xx, z
+    raise RuntimeError(f'no clear spot near {x}, {z}')
 
 def props():
-    """Foreground life on the meadow, clear of the road (fresh-eyes review 2: the bottom third was empty): a supply cart,
-    a little camp with a tent and a campfire, haystacks, a signpost pointing at the gate."""
+    """Foreground life on the meadow outside the walls, clear of the lanes: a supply cart, a camp before the gate with a
+    tent and a campfire, haystacks (fresh-eyes review 2: the bottom third was empty)."""
     def cart(x, y, rot):
-        parts = []
-        parts.append(block((x, y, 0.75), (1.8, 1.0, 0.5), M('wood'), 0.03))
+        block((x, y, 0.75), (1.8, 1.0, 0.5), M('wood'), 0.03)
         for s in (-1, 1):
             w = K.cyl('wheel', 0.42, 0.12, (x - 0.4, y + s * 0.58, 0.42), M('wood_dk'), 12, 0.01); w.rotation_euler = (math.pi / 2, 0, 0)
             K.cyl('hub', 0.1, 0.16, (x - 0.4, y + s * 0.6, 0.42), M('iron'), 8, 0.0).rotation_euler = (math.pi / 2, 0, 0)
         o = block((x + 1.3, y, 0.62), (1.1, 0.08, 0.08), M('wood_dk'), 0.0); o.rotation_euler = (0, 0.2, 0)
         for k in range(3): K.sphere('sack', 0.28, (x - 0.5 + k * 0.5, y + R.uniform(-0.2, 0.2), 1.15), M('canvas'), (1, 0.8, 0.8), 1)
         K.cyl('barrel', 0.28, 0.6, (x + 0.55, y + 0.15, 1.3), M('wood'), 10, 0.02)
-    cart(-15.0, ROADY + RHALF + 2.2, 0)
-    # the camp: a canvas tent, a campfire with stones round it, a log to sit on
-    tx, ty = 8.5, 11.6
+    cart(*spot(-12.0, 9.0, 1.4), 0)
+    # the camp before the gate: a canvas tent, a campfire with stones round it, a log to sit on
+    tx, ty = spot(2.6, 11.0, 1.7)
     o = K.cone('tent', 1.6, 2.2, (tx, ty, 1.1), M('canvas'), 4); o.rotation_euler = (0, 0, math.pi / 4)
     mesh_from('flap', [(tx - 0.5, ty - 1.14, 0.02), (tx + 0.5, ty - 1.14, 0.02), (tx, ty - 0.9, 1.3)], [(0, 1, 2)], M('cave'), 0.0)
+    fx, fy = tx - 2.8, ty + 0.6
     for k in range(7):
         a = k / 7 * math.tau
-        K.sphere('ring', 0.18, (tx - 2.6 + math.cos(a) * 0.55, ty - 0.6 + math.sin(a) * 0.55, 0.1), M('stone_dk'), (1, 1, 0.7), 1)
-    K.cone('fire', 0.35, 0.8, (tx - 2.6, ty - 0.6, 0.45), M('fire', 3.0), 8); K.cone('fire_in', 0.18, 0.5, (tx - 2.6, ty - 0.6, 0.35), M('fire_core', 3.0), 6)
-    o = K.cyl('log', 0.22, 1.6, (tx - 2.6, ty + 0.6, 0.22), M('wood'), 8, 0.0); o.rotation_euler = (0, math.pi / 2, 0.3)
-    for (x, y) in ((-3.5, 12.3), (-2.2, 12.9), (-24.0, 11.8)):
+        K.sphere('ring', 0.18, (fx + math.cos(a) * 0.55, fy + math.sin(a) * 0.55, 0.1), M('stone_dk'), (1, 1, 0.7), 1)
+    K.cone('fire', 0.35, 0.8, (fx, fy, 0.45), M('fire', 3.0), 8); K.cone('fire_in', 0.18, 0.5, (fx, fy, 0.35), M('fire_core', 3.0), 6)
+    o = K.cyl('log', 0.22, 1.6, (fx, fy + 1.1, 0.22), M('wood'), 8, 0.0); o.rotation_euler = (0, math.pi / 2, 0.3)
+    for (x, y) in ((-3.2, 14.0), (-2.0, 15.4), (-23.0, 6.0), (24.0, 8.0)):
+        x, y = spot(x, y, 0.9)
         K.cyl('hay', 0.75, 1.0, (x, y, 0.5), M('hay'), 14, 0.04).rotation_euler = (0, math.pi / 2, R.uniform(0, 3))
-    # a signpost at the road's edge pointing to the gate
-    K.cyl('post', 0.08, 1.8, (-7.0, ROADY + RHALF + 0.9, 0.9), M('wood_dk'), 6, 0.0)
-    block((-6.5, ROADY + RHALF + 0.9, 1.55), (0.9, 0.08, 0.28), M('wood'), 0.02)
-    K.cone('arrow', 0.18, 0.3, (-6.0, ROADY + RHALF + 0.9, 1.55), M('wood'), 3).rotation_euler = (0, -math.pi / 2, 0)
 
 # ---------------------------------------------------------------------------------------------------------------------
-# the ground: a valley. Meadow in front of the wall; rocky hills where the wall ends on both sides; a wooded ridge
-# behind the city; the town's packed earth inside the walls; dark tree clumps framing the bottom corners
-PLAZA = (7.0, -8.0)
-PLOTS = [(-4.5, -9.0), (13.5, -6.0), (-7.0, -14.5), (-11.5, -9.5), (-17.0, -12.0), (3.5, -14.5), (-21.0, -19.0), (-12.0, -19.0), (7.5, -20.5), (-1.5, -14.5)]
+# the ground: a valley. Meadow outside the ring wall with the four lanes; the town's packed earth filling the ring;
+# a wooded ridge behind the town; trees and rocks on the slopes either side; dark tree clumps framing the bottom corners
+PLAZA = L.PLAZA
+PLOTS = L.PLOTS
 
 def tree(x, y, s, z=0.0, kind=None, far=False):
     kind = kind or R.choice(('round', 'round', 'pine'))
@@ -556,60 +550,70 @@ def outcrop(x, y, n, spread, scale=1.0):   # a cluster of big angular rocks
         K.finish(b, M(R.choice(('rock', 'rock_dk', 'stone2'))), 0.0, smooth=False)
 
 def ground():
-    bpy.ops.mesh.primitive_grid_add(x_subdivisions=70, y_subdivisions=56, size=1, location=(0, 0, 0))
-    g = bpy.context.object; g.scale = (130, 105, 1); bpy.ops.object.transform_apply(scale=True)
-    g.location = (-10, -10, 0); bpy.ops.object.transform_apply(location=True)
+    bpy.ops.mesh.primitive_grid_add(x_subdivisions=76, y_subdivisions=60, size=1, location=(0, 0, 0))
+    g = bpy.context.object; g.scale = (150, 115, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    g.location = (0, -10, 0); bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
     def height(x, y):
         h = 0.0
-        if y < -23: h += (min(-23 - y, 18) / 18) ** 1.5 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)
-        if y > 11: h += 0.22 * math.sin(x * 0.3) * math.cos(y * 0.35)
-        if x > 21: h += (min(x - 21, 14) / 14) ** 1.4 * 7.0
-        if x < -30: h += (min(-30 - x, 14) / 14) ** 1.4 * 7.0
+        if y < -35: h += (min(-35 - y, 18) / 18) ** 1.5 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)
+        if y > 10: h += 0.22 * math.sin(x * 0.3) * math.cos(y * 0.35)
+        if abs(x) > 31: h += (min(abs(x) - 31, 14) / 14) ** 1.4 * 7.0
         return h - 0.02
     for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
     K.finish(g, M('grass'))
-    # the town's ground inside the walls: packed earth with cobbled yards and a cobbled plaza
-    # an irregular blob hugging the buildings (the review: hard-edged ground read as a stage), with grass eating its rim
-    centre = (-3.0, -12.5); pts = []
-    for i in range(36):
-        a = i / 36 * math.tau
-        rx, ry = 22.0, 10.5
-        r = R.uniform(0.82, 1.0)
-        pts.append((centre[0] + math.cos(a) * rx * r, max(-1.6, centre[1] + math.sin(a) * ry * r)))
+    def free(x, y, r): return not L.inside(x, y, -1.8 - r) and L.lane_clear(x, y, r)   # outside the ring and off the lanes
+    # the town's ground: packed earth filling the ring, its rim ragged under the wall, a cobbled plaza and yards
+    pts = []
+    for i in range(48):
+        a = i / 48 * math.tau; k = R.uniform(0.93, 0.99)
+        pts.append((L.RX * k * math.cos(a), -L.RZ + L.RZ * k * math.sin(a)))
     mesh_from('town', [(x, y, 0.02) for x, y in pts], [tuple(range(len(pts)))], M('dirt'), 0.0)
-    for (x, y) in pts[::2]: tufts(x, y, 2, (0.8, 0.6))
     def patch(cx, cy, r, m, n=9, z=0.035):
         vs = [(cx + math.cos(a) * r * R.uniform(0.8, 1.15), cy + math.sin(a) * r * R.uniform(0.8, 1.15), z) for a in [i / n * math.tau for i in range(n)]]
         mesh_from('patch', vs, [tuple(range(n))], m, 0.0)
     patch(PLAZA[0], PLAZA[1], 4.4, M('cobble'), 12)
     for (px, py) in PLOTS: patch(px, py, 3.0, M('cobble2'), 9, 0.03)
-    for _ in range(40):   # grass creeping over the town's ground and tufts at its edges
-        patch(R.uniform(-28, 19), R.uniform(-23, -2), R.uniform(0.6, 1.6), M(R.choice(('grass2', 'grass'))), 7, 0.03)
-    for _ in range(24): tufts(R.uniform(-28, 19), R.uniform(-23, -2), 2, (0.5, 0.5))
-    # rocky hills where the wall ends, rocks and trees on them
-    for (x, y) in ((22.5, 0.5), (24, -5), (23, 5), (-30.5, 0.2), (-31.5, -5)): outcrop(x, y, 4, 1.8, 1.2)
-    for (x, y) in [(R.uniform(23, 34), R.uniform(-28, 18)) for _ in range(10)]: tree(x, y, R.uniform(1.0, 1.4), height(x, y))
-    for (x, y) in [(R.uniform(-46, -33), R.uniform(-28, 18)) for _ in range(10)]: tree(x, y, R.uniform(1.0, 1.4), height(x, y))
-    # the wooded ridge behind the town: a darker, bluer back row for depth
-    for (x, y) in [(R.uniform(-40, 30), R.uniform(-34, -25)) for _ in range(30)]: tree(x, y, R.uniform(1.0, 1.6), height(x, y), far=True)
-    # the meadow: clustered flowers, rocks with tufts, bush clumps; trees only away from the road
-    for _ in range(26):
-        cx, cy = R.uniform(-48, 20), R.uniform(9.8, 28); c = R.choice(('flower_y', 'flower_w', 'flower_p'))
+    n = 0
+    while n < 40:   # grass creeping over the town's ground, clear of the yards
+        x, y = R.uniform(-L.RX, L.RX), R.uniform(-2 * L.RZ, 0)
+        if L.inside(x, y, 2.5) and all(math.hypot(x - px, y - py) > 3.6 for px, py in PLOTS + [PLAZA]):
+            patch(x, y, R.uniform(0.6, 1.6), M(R.choice(('grass2', 'grass'))), 7, 0.03); n += 1
+            if n % 2: tufts(x, y, 2, (0.5, 0.5))
+    # the slopes either side of the ring and the wooded ridge behind it: a darker, bluer back row for depth
+    for (x, y) in ((31, -8), (32, -20), (-31, -8), (-32, -20), (29, 4), (-29, 4)): outcrop(x, y, 4, 1.8, 1.2)
+    for _ in range(12):
+        x, y = R.choice((1, -1)) * R.uniform(31, 44), R.uniform(-34, 6); tree(x, y, R.uniform(1.0, 1.4), height(x, y))
+    for (x, y) in [(R.uniform(-44, 44), R.uniform(-48, -36)) for _ in range(40)]: tree(x, y, R.uniform(1.0, 1.6), height(x, y), far=True)
+    for _ in range(14):   # trees behind the ring's shoulders, between the wall and the ridge
+        x, y = R.choice((1, -1)) * R.uniform(18, 30), R.uniform(-36, -30)
+        if free(x, y, 1.5): tree(x, y, R.uniform(1.0, 1.4), height(x, y))
+    # the meadow: clustered flowers, rocks with tufts, bush clumps, broad swathes of darker and lighter grass
+    def scatter(n, r, box, make):
+        k = 0
+        while k < n:
+            x, y = R.uniform(*box[0]), R.uniform(*box[1])
+            if free(x, y, r): make(x, y); k += 1
+    box = ((-34, 34), (-2, 30))
+    def flowers(cx, cy):
+        c = R.choice(('flower_y', 'flower_w', 'flower_p'))
         for k in range(R.randint(5, 10)): K.sphere('flower', 0.07, (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.6, 0.6), 0.12), M(c), sub=1)
-    for _ in range(8):
-        cx, cy = R.uniform(-46, 18), R.uniform(11, 26); outcrop(cx, cy, 2, 0.6, 0.35); tufts(cx, cy, 3, (0.9, 0.7))
-    for _ in range(22):
-        cx, cy = R.uniform(-46, 18), R.uniform(12, 26)
+    scatter(30, 1.0, box, flowers)
+    scatter(8, 1.0, box, lambda x, y: (outcrop(x, y, 2, 0.6, 0.35), tufts(x, y, 3, (0.9, 0.7))))
+    def bushes(cx, cy):
         for k in range(R.randint(3, 6)): K.sphere('bush', R.uniform(0.45, 0.95), (cx + R.uniform(-1.0, 1.0), cy + R.uniform(-0.6, 0.6), 0.35), M(R.choice(('bush', 'grass2', 'tree'))), (1, 1, 0.8), 2)
-    for _ in range(30):   # broad, low-contrast swathes of darker and lighter grass, so the meadow is not one flat colour
-        cx, cy = R.uniform(-48, 20), R.uniform(10, 30); n = 9; rr = R.uniform(1.5, 4.0)
+    scatter(22, 1.6, box, bushes)
+    def swathe(cx, cy):
+        n = 9; rr = R.uniform(1.5, 3.0)
         vs = [(cx + math.cos(i / n * math.tau) * rr * R.uniform(0.7, 1.2), cy + math.sin(i / n * math.tau) * rr * R.uniform(0.5, 0.9), 0.025) for i in range(n)]
         mesh_from('swathe', vs, [tuple(range(n))], M(R.choice(('grass2', 'grass3'))), 0.0)
-    for (x, y) in [(R.uniform(-44, 16), R.uniform(20, 30)) for _ in range(7)]: tree(x, y, R.uniform(1.0, 1.3))
+    scatter(34, 3.2, ((-40, 40), (-34, 30)), swathe)
+    scatter(6, 1.8, ((-30, 30), (20, 30)), lambda x, y: tree(x, y, R.uniform(1.0, 1.3)))
     props()
     # dark framing clumps at the bottom corners of the view
-    for (cx, cy) in ((17, 17), (19, 21), (-36, 17), (-39, 21)):
-        for k in range(3): tree(cx + R.uniform(-2, 2), cy + R.uniform(-1.5, 1.5), R.uniform(1.4, 1.8), 0, 'round', far=True)
+    for (cx, cy) in ((22, 17), (24, 21), (-22, 17), (-24, 21)):
+        for k in range(3):
+            x, y = cx + R.uniform(-2, 2), cy + R.uniform(-1.5, 1.5)
+            if free(x, y, 1.6): tree(x, y, R.uniform(1.4, 1.8), 0, 'round', far=True)
     return K.export('ground')
 
 def marker():

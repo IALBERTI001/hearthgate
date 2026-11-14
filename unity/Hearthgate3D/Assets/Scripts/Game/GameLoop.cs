@@ -42,12 +42,12 @@ namespace Hearthgate.Game
         {
             Art.Spawn(art ? art.ground : null, "ground", Vector3.zero, world);
             Art.Spawn(art ? art.road : null, "road", Vector3.zero, world);
-            Art.Spawn(art ? art.wall : null, "wall", new Vector3(0, 0, Field.TOWER_Z), world);
+            Art.Spawn(art ? art.wall : null, "wall", Vector3.zero, world);   // the ring, closed round the town
             Art.Spawn(art ? art.gate : null, "gate", new Vector3(0, 0, Field.GATE_Z), world);
             Art.Spawn(art ? art.fountain : null, "fountain", Field.PLAZA, world);
             for (int i = 0; i < 4; i++)
             {
-                var tw = new Tower { n = i, x = Field.TOWER_X[i], z = Field.TOWER_Z };
+                var at = Field.Tower(i); var tw = new Tower { n = i, x = at.x, z = at.z };
                 tw.t = Art.Spawn(art ? art.towerBase : null, "towerBase", new Vector3(tw.x, 0, tw.z), world).transform;
                 towers.Add(tw);
             }
@@ -102,7 +102,8 @@ namespace Hearthgate.Game
             while (queue.Count > 0 && queue[0].at <= waveT)
             {
                 var role = queue[0].role; queue.RemoveAt(0);
-                enemies.Add(new Enemy(role, P.wave, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, Field.SPAWN_Z, unitsRoot) { born = (float)rnd.NextDouble() * 3 });
+                int lane = rnd.Next(4);   // each walks the lane to one tower (owner's sketch)
+                enemies.Add(new Enemy(role, P.wave, lane, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, Field.SpawnProgress(lane, Camera.main), unitsRoot) { born = (float)rnd.NextDouble() * 3 });
             }
             TickEnemies(); TickTowers(); TickShots();
             // the city hums
@@ -126,7 +127,7 @@ namespace Hearthgate.Game
                 else
                 {
                     e.atGate = true; gateHp -= HG.EnemyBite(P.wave, e.role) * DT;
-                    e.x = Mathf.MoveTowards(e.x, -Field.LANE, e.speed * DT);   // close in on the gatehouse face
+                    e.x = Mathf.MoveTowards(e.x, Mathf.Clamp(e.x * 1.6f, -2.2f, 2.2f), e.speed * 0.3f * DT);   // spread round the tower's foot
                 }
                 if (e.hp <= 0) Kill(e);
             }
@@ -140,7 +141,7 @@ namespace Hearthgate.Game
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); }
-            if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, Mathf.Clamp(e.x + Random.Range(-1.5f, 1.5f), -Field.LANE, Field.LANE), e.z + Random.Range(0, 1.5f), unitsRoot));
+            if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, e.lane, Mathf.Clamp(e.x + Random.Range(-1.5f, 1.5f), -Field.LANE, Field.LANE), e.z + Random.Range(0, 1.5f), unitsRoot));
         }
 
         void GateFell()
@@ -178,7 +179,7 @@ namespace Hearthgate.Game
         // frost picks someone not yet chilled; fire, storm and stone prefer the chilled (that is how combos happen)
         Enemy Pick(string el)
         {
-            var live = enemies.Where(e => e.dying <= 0 && e.z < Field.SPAWN_Z - 1).OrderBy(e => e.z).ToList();
+            var live = enemies.Where(e => e.dying <= 0 && e.z < e.spawn - 1.5f).OrderBy(e => e.z).ToList();   // on screen, nearest the wall first
             if (live.Count == 0) return null;
             if (el == "frost") return live.FirstOrDefault(e => e.chill <= 0.6f) ?? live[0];
             return live.FirstOrDefault(e => e.chill > 0.25f) ?? live[0];

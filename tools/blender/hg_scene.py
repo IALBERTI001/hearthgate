@@ -12,13 +12,16 @@ MODELS, OUT = a[0], a[1]
 HUD = len(a) > 2 and a[2] == '1'
 STATE = a[3] if len(a) > 3 else 'mid'
 
-# ---- Field.cs, mirrored (Unity x, z) -> Blender (x, y)
-TOWER_X = [-7.5, -13.0, -18.5, -24.0]; TOWER_TOP = 5.0
-PLAZA = (7.0, -8.0)
-PLOTS = [(-4.5, -9.0), (13.5, -6.0), (-7.0, -14.5), (-11.5, -9.5), (-17.0, -12.0), (3.5, -14.5), (-21.0, -19.0), (-12.0, -19.0), (7.5, -20.5), (-1.5, -14.5)]
-IDS = ['forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower']
-ROAD_Z = 5.4
-CAM_LOOK = Vector((-7.5, -3.5, 0.0)); CAM_POS = CAM_LOOK + Vector((0, 46 * 0.7660, 46 * 0.6428)); CAM_FOV = 38.0
+# ---- the layout (hg_layout.py, mirrored by Field.cs); Unity (x, z) -> Blender (x, y)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hg_layout as L
+TOWER_TOP = L.TOWER_TOP; PLAZA = L.PLAZA; PLOTS = L.PLOTS; IDS = L.IDS
+CAM_LOOK = Vector((L.CAM_LOOK[0], L.CAM_LOOK[2], L.CAM_LOOK[1])); CAM_POS = Vector((L.CAM_POS[0], L.CAM_POS[2], L.CAM_POS[1])); CAM_FOV = L.CAM_FOV
+def lane_at(k, prog, lat):   # Field.Lane
+    (fx, fz), (sx, sz) = L.LANES[k]; d = Vector((sx - fx, sz - fz)).normalized()
+    return (fx + d.x * prog - d.y * lat, fz + d.y * prog + d.x * lat)
+def facing(k):   # Field.Facing, as a Unity yaw in degrees
+    (fx, fz), (sx, sz) = L.LANES[k]; return math.degrees(math.atan2(sx - fx, sz - fz))
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
@@ -38,19 +41,21 @@ def place(name, loc, yaw_deg=0.0, scale=1.0):
 place('ground', (0, 0, 0)); place('road', (0, 0, 0)); place('wall', (0, 0, 0)); place('gate', (0, 0, 0))
 place('fountain', (PLAZA[0], PLAZA[1], 0))
 els = ['fire', 'frost', 'storm', 'fire'] if STATE == 'mid' else ['stone'] * 4
-for x, el in zip(TOWER_X, els):
-    place('tower_base', (x, 0, 0)); place('top_' + el, (x, 0, TOWER_TOP))
+for (x, z), el in zip(L.TOWERS, els):
+    place('tower_base', (x, z, 0)); place('top_' + el, (x, z, TOWER_TOP))
 built = {'forge', 'frostSpire', 'stormBell', 'bakery', 'cottages'} if STATE == 'mid' else set()
 for (x, y), bid in zip(PLOTS, IDS):
-    place('building_' + bid if bid in built else 'ruin', (x, y, 0), 180)   # Field.PLOT_FACING: fronts to the camera
+    place('building_' + bid if bid in built else 'ruin_' + bid, (x, y, 0), 180)   # Field.PLOT_FACING: fronts to the camera
 if STATE == 'mid':
-    # a wave on the road: slimes walking toward the gate three-quarters to the camera (Field.WALK = 240 deg), a few biting
-    for i, p in enumerate((3.0, 6.5, 9.0, 12.5, 16.0, 19.5, 23.0)):
-        lat = (-1.6, 1.2, -0.4, 1.8, -1.9, 0.6, -0.8)[i]
-        place('slime', (-p, ROAD_Z + lat, 0), 240, 1.2)
-    for p, lat in ((-0.5, -2.3), (1.2, -2.2)):
-        place('slime', (-p, ROAD_Z + lat, 0), 200, 1.2)
-    place('beetle', (-14.5, ROAD_Z + 0.5, 0), 240, 1.1); place('golem', (-21.0, ROAD_Z - 0.6, 0), 240, 1.2)
+    # a wave on the lanes: slimes walking up to the towers, a few gathered at a tower's foot, a beetle and a golem
+    import random as _r; rr = _r.Random(5)
+    for k in range(4):
+        for prog in (4.0 + rr.uniform(0, 2), 9.0 + rr.uniform(0, 3), 14.0 + rr.uniform(0, 2)):
+            x, y = lane_at(k, prog, rr.uniform(-1.3, 1.3)); place('slime', (x, y, 0), facing(k) + rr.choice((-1, 1)) * rr.uniform(14, 30), 1.47)
+    for lat in (-1.6, 0.4, 2.0):
+        x, y = lane_at(0, 1.4 + abs(lat) * 0.4, lat); place('slime', (x, y, 0), facing(0), 1.47)
+    x, y = lane_at(1, 7.0, 0.3); place('beetle', (x, y, 0), facing(1), 1.1)
+    x, y = lane_at(3, 17.0, -0.4); place('golem', (x, y, 0), facing(3), 1.2)
 
 # ---- light like the game: a warm sun from the camera's front right (world -x, +y, high), a soft blue sky
 sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 3.2; sun.angle = math.radians(8); sun.color = (1.0, 0.93, 0.82)
@@ -67,7 +72,7 @@ if os.environ.get('HG_CAM'):   # a close-up for inspection: "x,y,z,lookx,looky,l
     v = [float(q) for q in os.environ['HG_CAM'].split(',')]
     co.location = Vector(v[:3]); co.rotation_euler = (Vector(v[3:6]) - Vector(v[:3])).to_track_quat('-Z', 'Y').to_euler(); cam.angle_y = math.radians(v[6])
 if os.environ.get('HG_TOP'):   # a plan view of the whole layout, for finding stray geometry (north up)
-    cam.type = 'ORTHO'; cam.ortho_scale = 90; co.location = (-8, -2, 80); co.rotation_euler = (0, 0, math.pi)
+    cam.type = 'ORTHO'; cam.ortho_scale = 90; co.location = (0, -8, 80); co.rotation_euler = (0, 0, math.pi)
 
 eng = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items]
 sc.render.engine = 'BLENDER_EEVEE' if 'BLENDER_EEVEE' in eng else 'BLENDER_EEVEE_NEXT'

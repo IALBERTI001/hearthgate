@@ -2,10 +2,13 @@
 // entrance ... where is the quality testing?"). The gate's drum towers stood inside two element towers and no check
 // looked. This places every structure where the game places it, measures the models' bounds, and fails when:
 //   - two structures' footprints overlap (gatehouse, towers, buildings and ruins on every plot, fountain), or one stands
-//     on the road
-//   - a structure or the enemy road leaves the game camera's view, at 16:9, 2.2:1 (phone landscape) and 1.2:1 (Fold)
-//   - a structure or the road sits under the HUD (labels top left, buttons top right, gate bar bottom centre)
-//   - a plot's roof line, the plaza or any stretch of the road is hidden behind the gatehouse, the wall or a tower
+//     on a lane, or a plot or the fountain is not inside the ring wall with room to spare (owner, Nov 13 2026: "Close off
+//     the loop around town to make a protected town")
+//   - a structure or a lane leaves the game camera's view, at 16:9, 2.2:1 (phone landscape) and 1.2:1 (Fold)
+//   - a structure or a lane sits under the HUD (labels top left, buttons top right, gate bar bottom centre)
+//   - a plot's roof line, the plaza or any stretch of a lane is hidden behind the gatehouse, the wall or a tower
+//   - a lane does not end at the foot of its own tower (owner: "monsters are walking up to the towers on a route in front
+//     of each tower")
 // Batch:  Unity -batchmode -quit -projectPath . -executeMethod Hearthgate.EditorTools.LayoutCheck.Run
 using System.Collections.Generic;
 using System.Linq;
@@ -58,7 +61,7 @@ namespace Hearthgate.EditorTools
             items.Add(new Item { name = "gatehouse", b = Measure(art.gate, new Vector3(0, 0, Field.GATE_Z), Quaternion.identity), pts = Pts() });
             for (int i = 0; i < 4; i++)
             {
-                var at = new Vector3(Field.TOWER_X[i], 0, Field.TOWER_Z);
+                var at = Field.Tower(i);
                 var tb = Measure(art.towerBase, at, Quaternion.identity); var tp = Pts();
                 foreach (var top in new[] { art.topStone, art.topFire, art.topFrost, art.topStorm })
                 { tb.Encapsulate(Measure(top, new Vector3(at.x, Field.TOWER_TOP, at.z), Quaternion.identity)); tp.AddRange(lastPts); }
@@ -72,25 +75,36 @@ namespace Hearthgate.EditorTools
                 var b = Measure(art.buildings[i], at, rot); var pp = Pts(); b.Encapsulate(Measure(art.Ruin(i), at, rot)); pp.AddRange(lastPts);
                 items.Add(new Item { name = "plot " + Hearthgate.Core.HG.BUILDING_IDS[i], b = b, pts = pp });
             }
-            // the road in front of the wall is open ground
-            // (the strip next to the wall, where foot rubble and grass sit, is left out)
-            var roadBox = new Bounds(new Vector3(-(Field.SPAWN_Z - 2) / 2, 0.5f, Field.ROAD_Z + 0.5f), new Vector3(Field.SPAWN_Z + 2, 1, 2 * Field.ROAD_HALF - 1f));
+            // the lanes are open ground: centre-line points from just past the tower's foot to 9 m past the 16:9 start
+            var laneGround = new List<(int, Vector3)>();
+            for (int k = 0; k < 4; k++)
+                for (float pr = 3f; pr <= Field.LaneLen(k) + 8f; pr += 1f) laneGround.Add((k, Field.Lane(k, pr, 0)));
+            bool OnLane(Bounds b) => laneGround.Any(q => q.Item2.x > b.min.x - 1.8f && q.Item2.x < b.max.x + 1.8f && q.Item2.z > b.min.z - 1.8f && q.Item2.z < b.max.z + 1.8f);
+            bool InRing(Vector3 p, float margin) => Mathf.Pow(p.x / (Field.RX - margin), 2) + Mathf.Pow((p.z + Field.RZ) / (Field.RZ - margin), 2) < 1f;
 
             // 1. footprints
             for (int i = 0; i < items.Count; i++)
             {
                 for (int j = i + 1; j < items.Count; j++)
                     if (Overlap(items[i].b, items[j].b)) bad.Add($"{items[i].name} overlaps {items[j].name} ({R(items[i].b)} / {R(items[j].b)})");
-                if (Overlap(items[i].b, roadBox)) bad.Add($"{items[i].name} stands on the road");
+                if (OnLane(items[i].b)) bad.Add($"{items[i].name} stands on a lane ({R(items[i].b)})");
             }
-            var wall = Measure(art.wall, new Vector3(0, 0, Field.TOWER_Z), Quaternion.identity);
             foreach (var it in items.Where(x => x.name.StartsWith("plot") || x.name == "fountain"))
-                if (Overlap(it.b, wall)) bad.Add($"{it.name} overlaps the wall");
+                if (Corners(it.b).Any(c => !InRing(c, 1.4f))) bad.Add($"{it.name} is not inside the ring wall ({R(it.b)})");
+            // each lane ends at the foot of its own tower, in front of it (outside the ring)
+            for (int k = 0; k < 4; k++)
+            {
+                var foot = Field.Lane(k, 0, 0); var tw = Field.Tower(k);
+                float d = Vector2.Distance(new Vector2(foot.x, foot.z), new Vector2(tw.x, tw.z));
+                if (d > 3.2f || InRing(foot, 0f)) bad.Add($"lane {k} does not end in front of tower {k} ({d:0.0} m from it)");
+                for (int j = 0; j < 4; j++) if (j != k && Vector3.Distance(Field.Lane(k, 0, 0), Field.Tower(j)) < Vector3.Distance(foot, tw)) bad.Add($"lane {k} ends nearer tower {j}");
+            }
 
             // 2 and 3. on screen and clear of the HUD, at three window shapes
             var road = new List<Vector3>();
-            for (float z = Field.FRONT_Z - 3f; z <= Field.SPAWN_Z; z += 1.5f)
-                foreach (float x in new[] { -Field.LANE, Field.LANE }) { road.Add(Field.Road(z, x)); road.Add(Field.Road(z, x, 1.8f)); }
+            for (int k = 0; k < 4; k++)   // the part of each lane in view at 16:9 (it begins 1.5 m below the frame)
+                for (float pr = 0f; pr <= Field.LaneLen(k) - 3f; pr += 1.5f)
+                    foreach (float x in new[] { -Field.LANE, Field.LANE }) { road.Add(Field.Lane(k, pr, x)); road.Add(Field.Lane(k, pr, x, 1.8f)); }
             foreach (var (w, h) in new[] { (1280, 720), (1600, 727), (1080, 900) })
             {
                 var cam = new GameObject("check cam").AddComponent<Camera>();
@@ -110,9 +124,9 @@ namespace Hearthgate.EditorTools
                 }
                 foreach (var p in road.Select(p => (Vector2)cam.WorldToViewportPoint(p)))
                 {
-                    if (p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) { bad.Add($"{w}x{h}: the road leaves the view at {p}"); break; }
+                    if (p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) { bad.Add($"{w}x{h}: a lane leaves the view at {p}"); break; }
                     var hit = hud.FirstOrDefault(x => x.Item2.Contains(p));
-                    if (hit.Item1 != null) { bad.Add($"{w}x{h}: the road runs under the {hit.Item1} at {p}"); break; }
+                    if (hit.Item1 != null) { bad.Add($"{w}x{h}: a lane runs under the {hit.Item1} at {p}"); break; }
                 }
                 Object.DestroyImmediate(cam.gameObject);
             }
@@ -121,11 +135,11 @@ namespace Hearthgate.EditorTools
             // the wall and the towers (the city shows over the wall; nothing stands between the camera and the fight)
             // solid copies of the gatehouse, the towers (with their tallest cap), the wall and every built plot
             PlaceSolid(art.gate, new Vector3(0, 0, Field.GATE_Z), Quaternion.identity);
-            PlaceSolid(art.wall, new Vector3(0, 0, Field.TOWER_Z), Quaternion.identity);
+            PlaceSolid(art.wall, Vector3.zero, Quaternion.identity);
             for (int i = 0; i < 4; i++)
             {
-                PlaceSolid(art.towerBase, new Vector3(Field.TOWER_X[i], 0, Field.TOWER_Z), Quaternion.identity);
-                PlaceSolid(art.topFrost, new Vector3(Field.TOWER_X[i], Field.TOWER_TOP, Field.TOWER_Z), Quaternion.identity);
+                PlaceSolid(art.towerBase, Field.Tower(i), Quaternion.identity);
+                PlaceSolid(art.topFrost, Field.Tower(i) + Vector3.up * Field.TOWER_TOP, Quaternion.identity);
             }
             for (int i = 0; i < art.buildings.Length; i++) PlaceSolid(art.buildings[i], Field.Plot(i), Field.PLOT_FACING);
             Physics.SyncTransforms();
@@ -145,7 +159,7 @@ namespace Hearthgate.EditorTools
                 if (seen < 2) bad.Add($"{it.name}'s roof line is hidden behind {by} ({seen} of 3 points seen)");
             }
             if (Hidden(Field.PLAZA + new Vector3(0, 1.2f, 1.5f))) bad.Add("the plaza is hidden behind the gatehouse or the wall");
-            foreach (var p in road) if (p.y > 1f && Hidden(p)) { bad.Add($"the road is hidden at {p}"); break; }
+            foreach (var p in road) if (p.y > 1f && Hidden(p)) { bad.Add($"a lane is hidden behind {blocker} at {p}"); break; }
 
             foreach (var g in placed) Object.DestroyImmediate(g); placed.Clear();
             if (bad.Count == 0) { Debug.Log($"[Hearthgate] layout check passed ({items.Count} structures, 3 window shapes)"); return; }
