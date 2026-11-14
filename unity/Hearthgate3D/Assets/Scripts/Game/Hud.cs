@@ -148,6 +148,9 @@ namespace Hearthgate.Game
             work = Action("Work", tr, new Vector2(-16, -202), new Vector2(280, 56), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
+            // Magister Bram's card, bottom left, his portrait in the medallion (the wizard); a tap skips the line
+            guide = Action("Guide", new Vector2(0, 0), new Vector2(16, 70), new Vector2(430, 72), "walk", null, () => Guide.Skip(), null, false);
+            guide.title.fontSize = 22; guide.p.rt.gameObject.SetActive(false);
 
             // settings (game-polish rule 19: the controls inside the game, the music and sound switches): a small brass
             // medallion with a cog rendered in Blender, inside the top-left label block, right of the wave
@@ -182,7 +185,7 @@ namespace Hearthgate.Game
             perksTag = perksAct.p.rt; perksTag.pivot = new Vector2(0.5f, 0); perksTag.SetSiblingIndex(1); perksTag.gameObject.SetActive(false);
         }
         RectTransform perksTag; Act surgeAct, perksAct;
-        RectTransform surgeTag, cheerTag; Image cheerFill;
+        RectTransform surgeTag, cheerTag; Image cheerFill; Act guide;
         // a HUD element pinned over a point in the world; false when that point is off screen
         bool Pin(RectTransform r, Vector3 at, float near = 9999f)
         {
@@ -324,11 +327,10 @@ namespace Hearthgate.Game
         {
             var a = new Act { primary = primary };
             var r = Box(n, parent ?? transform, anchor, anchor, pos, size); r.pivot = anchor;
-            if (primary)
-            {   // the breathing gold glow behind the primary action
+            {   // the breathing gold glow: behind the primary action, or the one the Magister points at
                 var g = Box("Glow", r, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(14, 14));
                 a.glow = g.gameObject.AddComponent<Image>(); a.glow.sprite = Panel(new Color(1f, 0.8f, 0.35f, 0.0f), new Color(1f, 0.8f, 0.35f, 0.55f), 18, 7);
-                a.glow.type = Image.Type.Sliced; a.glow.raycastTarget = false;
+                a.glow.type = Image.Type.Sliced; a.glow.raycastTarget = false; a.glow.color = new Color(1, 1, 1, primary ? 1 : 0);   // dark until lit
             }
             var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, primary ? BRASS_HI : BRASS, 14, primary ? 4 : 3); img.type = Image.Type.Sliced;
             float h = size.y, m = h - 12;
@@ -379,7 +381,7 @@ namespace Hearthgate.Game
             tr.anchoredPosition = new Vector2(tr.anchoredPosition.x, hasCost ? h * 0.18f : 0);
             if (hasCost) { a.cost.text = cost; a.cost.color = can ? RES : SHORT; }
             if (a.icon) a.icon.color = can || !hasCost ? Color.white : new Color(0.75f, 0.72f, 0.78f, 0.85f);
-            if (a.glow) { var c = a.glow.color; c.a = can && hasCost ? 0.55f + 0.45f * Mathf.Sin(t * 3.2f) : 0f; a.glow.color = c; }
+            if (a.glow) { var c = a.glow.color; c.a = a.primary && can && hasCost ? 0.55f + 0.45f * Mathf.Sin(t * 3.2f) : 0f; a.glow.color = c; }
         }
         Pressable BtnAt(string n, Vector2 anchor, Vector2 pos, Vector2 size, System.Action act, System.Func<bool> on, out Text lbl, Transform parent = null, string icon = null, bool primary = false)
         {
@@ -431,7 +433,11 @@ namespace Hearthgate.Game
                 else if (HG.RestoreOffer(P).Contains(id)) { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, now); }
                 else { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"The {b.name} lies in ruins", null, false, now); }
             }
-            foreach (var a in acts) if (a.glow && a.p.rt) { var c = a.glow.color; c.a = 0.4f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f); a.glow.color = c; }
+            foreach (var a in acts) if (a.glow && a.p.rt) { var c = a.glow.color; c.a = a.primary ? 0.4f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f) : 0f; a.glow.color = c; }
+            // the Magister: his line on the card, and the button he names lit up bright
+            Guide.Tick(Time.unscaledDeltaTime, txt => { guide.title.text = txt; guide.p.rt.gameObject.SetActive(true); }, () => guide.p.rt.gameObject.SetActive(false));
+            var pt = Guide.Pressing == "up" ? up : Guide.Pressing == "re" ? re : Guide.Pressing == "walk" ? walk : null;
+            if (pt != null && pt.glow) { var c = pt.glow.color; c.a = 0.7f + 0.3f * Mathf.Sin(Time.unscaledTime * 7f); pt.glow.color = c; }
             LayoutActions();
             Refit();
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);

@@ -129,6 +129,31 @@ namespace Hearthgate.Game
         // a hidden tab or a lost focus is silent (the 2D game paused on visibilitychange; the page runs in the background)
         void OnApplicationFocus(bool f) { AudioListener.pause = !f; }
         void OnApplicationPause(bool p) { AudioListener.pause = p; }
+        // ---------- the Magister's voice: the owner's recordings (assets/voice), streamed when first needed; the music steps
+        // back while he speaks (js/audio.js voice())
+        readonly Dictionary<string, AudioClip> voices = new Dictionary<string, AudioClip>();
+        AudioSource voiceSrc;
+        public static void Voice(string n) { if (I && SfxOn) I.StartCoroutine(I.VoiceCo(n)); }
+        IEnumerator VoiceCo(string n)
+        {
+            if (!voices.TryGetValue(n, out var clip))
+            {
+                using (var rq = UnityWebRequestMultimedia.GetAudioClip(Application.streamingAssetsPath + "/Voice/" + n + ".mp3", AudioType.MPEG))
+                {
+                    yield return rq.SendWebRequest();
+                    if (rq.result != UnityWebRequest.Result.Success) yield break;
+                    clip = DownloadHandlerAudioClip.GetContent(rq); clip.LoadAudioData();
+                    while (clip.loadState == AudioDataLoadState.Loading) yield return null;
+                    if (clip.loadState != AudioDataLoadState.Loaded) yield break;
+                    voices[n] = clip;
+                }
+            }
+            if (!voiceSrc) { voiceSrc = gameObject.AddComponent<AudioSource>(); voiceSrc.playOnAwake = false; }
+            voiceSrc.Stop(); voiceSrc.clip = clip; voiceSrc.volume = 0.9f; voiceSrc.Play();
+            float was = song.volume; if (song.isPlaying) Fade(song, VOL * 0.4f, 0.25f);
+            yield return new WaitForSecondsRealtime(clip.length);
+            if (song.isPlaying && MusicOn) Fade(song, VOL, 0.8f);
+        }
         public static string State => I ? I.mode + (I.song.isPlaying ? ":" + I.song.clip?.name : "") : "none";
     }
 }

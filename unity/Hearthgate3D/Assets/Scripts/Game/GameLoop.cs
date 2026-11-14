@@ -34,6 +34,7 @@ namespace Hearthgate.Game
             var off = HG.OfflineEarnings(P, B, Now());
             if (off.res > 0) { P.res += off.res; Hud.Toast($"While you were away: +{HG.Fmt(off.res)}"); }
             StartWave();
+            if (P.ascensions == 0 && P.restored.Count == 0 && P.wave <= 2) Guide.Say("intro");
         }
 
         static long Now() => System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -101,7 +102,7 @@ namespace Hearthgate.Game
             list = list.OrderBy(_ => rnd.Next()).ToList();
             float gap = Mathf.Max(0.35f, 1.4f - P.wave * 0.02f) * (Ev("rush") ? 0.5f : 1f);
             for (int i = 0; i < list.Count; i++) queue.Add((list[i], 0.8f + i * gap));
-            Sound.Boss(HG.IsBoss(P.wave)); if (HG.IsBoss(P.wave)) Sound.Play("boss_horn", 0.5f);
+            Sound.Boss(HG.IsBoss(P.wave)); if (HG.IsBoss(P.wave)) { Sound.Play("boss_horn", 0.5f); Guide.Say("boss"); }
             if (ev != null) { Hud.Banner($"{(evNew ? "NEW! " : "")}{ev.name}: {ev.line}"); Sound.Play(evNew ? "feat" : "surge", evNew ? 0.45f : 0.3f); }
             else Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave)].label}!" : $"Wave {P.wave}");
         }
@@ -148,6 +149,7 @@ namespace Hearthgate.Game
                 if (e.hp <= 0) Kill(e);
             }
             if (gateHp <= 0) GateFell();
+            else if (P.wave > 2 && gateHp < HG.GateMax(P, B) * 0.6) Guide.Say("gate");
         }
 
         void Kill(Enemy e)
@@ -170,7 +172,7 @@ namespace Hearthgate.Game
             foreach (var e in enemies) Destroy(e.t.gameObject);
             enemies.Clear(); queue.Clear(); waveLive = false; betweenT = 2f;
             P.wave = Mathf.Max(1, P.wave - 1); gateHp = HG.GateMax(P, B);
-            Hud.Banner("The walls fell. Back a wave: upgrade the towers!"); Fx.I.Shake(0.4f); Sound.Play("boss_horn", 0.4f);
+            Hud.Banner("The walls fell. Back a wave: upgrade the towers!"); Guide.Say("fell"); Fx.I.Shake(0.4f); Sound.Play("boss_horn", 0.4f);
         }
 
         void WaveWon()
@@ -302,6 +304,7 @@ namespace Hearthgate.Game
             int i = System.Array.IndexOf(HG.BUILDING_IDS, id); RefreshPlot(i); RefreshTowers();
             Fx.I.Burst(Field.Plot(i) + Vector3.up * 2, Field.GOLD, 30); Fx.I.Shake(0.15f, true); Sound.Play("feat", 0.55f);
             Hud.Banner($"{HG.ById(id).name} rebuilt! {HG.ById(id).line}"); Save();
+            Guide.Say(id); if (HG.CityWhole(P)) Guide.Say("whole", HG.AscendWave(P).ToString());
         }
 
         // the town walk: the wizard works on the plot he stands at. A restored building goes up a level (its output grows,
@@ -342,6 +345,9 @@ namespace Hearthgate.Game
         {
             var wz = Wizard.I;
             TickTown(Time.deltaTime); TapWorld();
+            if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
+            if (CanAscend) Guide.Say("ascend");
+            if (SurgeReady && !P.firstSession && P.wave >= 4) Guide.Say("surge");
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.X)) TapSurge();
             for (int i = 0; i < plots.Length; i++) if (uppers[i]) uppers[i].gameObject.SetActive(!(wz && wz.Inside == i));
             // the next plot to rebuild, marked in the world: a gold ring and arrow that bob, brighter when affordable
