@@ -286,6 +286,10 @@ namespace Hearthgate.Game
         void Show(Act a, string title, string cost, bool can, float t)
         {
             a.title.text = title;
+            // the title never runs under the keycap or off the button (game-polish 5; QA Nov 14 2026: "Rebuild Frost Spi")
+            float room = a.p.rt.sizeDelta.x - a.title.rectTransform.anchoredPosition.x - (a.cap ? 32 : 12);
+            int fs = a.p.rt.sizeDelta.y >= 60 ? 22 : 20; a.title.fontSize = fs;
+            while (fs > 13 && a.title.preferredWidth > room) a.title.fontSize = --fs;
             bool hasCost = !string.IsNullOrEmpty(cost); a.costRow.gameObject.SetActive(hasCost);
             var tr = a.title.rectTransform; float h = a.p.rt.sizeDelta.y;
             tr.anchoredPosition = new Vector2(tr.anchoredPosition.x, hasCost ? h * 0.18f : 0);
@@ -318,7 +322,7 @@ namespace Hearthgate.Game
             shownRes = shownRes < 0 ? P.res : shownRes + (P.res - shownRes) * Mathf.Min(1f, Time.deltaTime * 9f);   // the number counts toward the truth (game-polish 14)
             if (System.Math.Abs(P.res - shownRes) < 1) shownRes = P.res;
             res.text = HG.Fmt(shownRes);
-            double r = HG.CityRate(P, g.B); rate.text = r > 0 ? $"+{HG.Fmt(r)}/s from the city" : "";
+            double r = HG.CityRate(P, g.B); rate.text = r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Gate {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
             float now = Time.unscaledTime;
@@ -333,7 +337,7 @@ namespace Hearthgate.Game
             if (showWork)
             {
                 var id = HG.BUILDING_IDS[wz.Near]; var b = HG.ById(id);
-                bool can = g.CanWork(wz.Near); work.title.fontSize = 22;
+                bool can = g.CanWork(wz.Near);
                 if (P.restored.Contains(id))
                 {
                     int L = HG.LevelOf(P, id); double cur = HG.BuildingRate(P, id, g.B), next = HG.BuildingRate(P, id, g.B, L + 1); double gain = next - cur;
@@ -341,7 +345,7 @@ namespace Hearthgate.Game
                     Show(work, $"{b.name}: level {L + 1}", $"{HG.Fmt(g.LevelCost(wz.Near))}     <color=#CFE9B0>+{(gain < 10 ? gain.ToString("0.##") : HG.Fmt(gain))}/s</color>", can, now);
                 }
                 else if (HG.RestoreOffer(P).Contains(id)) { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, now); }
-                else { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"The {b.name} lies in ruins", null, false, now); work.title.fontSize = 18; }
+                else { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"The {b.name} lies in ruins", null, false, now); }
             }
             Refit();
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
