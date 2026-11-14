@@ -1,5 +1,7 @@
 // The HUD, built in code on a Canvas so the slice needs no hand-made scene. Kept to the 2D game's budget (game-polish
-// rule 1): wave and Resonance top left, the two actions bottom right with their keys, one banner line, the fork choice.
+// rule 1): wave and Resonance top left, the two actions top right with their keys, one banner line, the fork choice.
+// Style from art/STYLE.md: Lilita One for display, Nunito for body text, plum #4a2a4f panels with a brass #c9a24a rim,
+// cream #fff4dc ink with a dark plum outline; readouts are plain text (game-polish rule 3), only pressables get a panel.
 using UnityEngine;
 using UnityEngine.UI;
 using Hearthgate.Core;
@@ -9,7 +11,7 @@ namespace Hearthgate.Game
     public class Hud : MonoBehaviour
     {
         static Hud I;
-        Font font; Text wave, res, rate, banner, upLbl, reLbl, gateTxt; Image gateBar; RectTransform forkBox;
+        Font font, body; Text wave, res, rate, banner, upLbl, reLbl, gateTxt; Image gateBar; RectTransform forkBox;
         Pressable up, re;
 
         // A control this HUD answers itself, from the raw pointer. uGUI's event system drops pointer input whenever the page
@@ -42,12 +44,33 @@ namespace Hearthgate.Game
             }
         }
         float bannerT;
-        static readonly Color INK = new Color(0.12f, 0.07f, 0.1f, 0.92f), CREAM = new Color(1f, 0.96f, 0.86f);
+        static readonly Color INK = new Color(0.16f, 0.08f, 0.19f, 0.95f), CREAM = new Color(1f, 0.957f, 0.863f),
+            PLUM = new Color(0.29f, 0.165f, 0.31f, 0.96f), BRASS = new Color(0.79f, 0.635f, 0.29f), RES = new Color(1f, 0.84f, 0.42f);
+
+        // a rounded panel with a rim and a soft top light, nine-sliced so it scales to any box
+        static Sprite Panel(Color fill, Color rim, int radius = 14, int border = 3)
+        {
+            const int S = 64; var t = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            var px = new Color[S * S];
+            for (int y = 0; y < S; y++)
+                for (int x = 0; x < S; x++)
+                {
+                    float dx = Mathf.Max(radius - x - 0.5f, x + 0.5f - (S - radius), 0), dy = Mathf.Max(radius - y - 0.5f, y + 0.5f - (S - radius), 0);
+                    float d = Mathf.Sqrt(dx * dx + dy * dy) - radius;            // signed distance to the rounded edge (inside < 0)
+                    float a = Mathf.Clamp01(0.5f - d);
+                    var c = d > -border ? rim : Color.Lerp(fill, Color.Lerp(fill, Color.white, 0.12f), Mathf.Clamp01((y - S * 0.55f) / (S * 0.45f)));
+                    c.a *= a; px[y * S + x] = c;
+                }
+            t.SetPixels(px); t.Apply();
+            int b = radius + 2;
+            return Sprite.Create(t, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(b, b, b, b));
+        }
 
         public void Init()
         {
             I = this;
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var fallback = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = Resources.Load<Font>("Fonts/LilitaOne-Regular") ?? fallback; body = Resources.Load<Font>("Fonts/Nunito-Variable") ?? fallback;
             var canvas = gameObject.AddComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var sc = gameObject.AddComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             sc.referenceResolution = new Vector2(1280, 720); sc.matchWidthOrHeight = 0.5f;
@@ -57,17 +80,18 @@ namespace Hearthgate.Game
             gameObject.AddComponent<Fx>().Init(pops, font);
 
             wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(24, -18), 30, TextAnchor.UpperLeft);
-            res = Label("Res", transform, new Vector2(0, 1), new Vector2(24, -58), 40, TextAnchor.UpperLeft); res.color = Field.GOLD;
-            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -104), 20, TextAnchor.UpperLeft);
-            banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -24), 30, TextAnchor.UpperCenter);
+            res = Label("Res", transform, new Vector2(0, 1), new Vector2(24, -56), 44, TextAnchor.UpperLeft); res.color = RES;
+            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(26, -108), 19, TextAnchor.UpperLeft); rate.font = body;
+            banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -22), 34, TextAnchor.UpperCenter); banner.color = RES;
 
             // the gate's health, centred over the bottom of the view
             var bar = Box("GateBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(360, 18));
-            bar.gameObject.AddComponent<Image>().color = INK;
-            gateBar = Box("Fill", bar, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero).gameObject.AddComponent<Image>();
-            gateBar.color = new Color(0.48f, 0.82f, 0.35f); gateBar.type = Image.Type.Filled; gateBar.fillMethod = Image.FillMethod.Horizontal;
+            var frame = bar.gameObject.AddComponent<Image>(); frame.sprite = Panel(INK, BRASS, 8, 2); frame.type = Image.Type.Sliced;
+            var fillBox = Box("FillBox", bar, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-6, -6));
+            gateBar = fillBox.gameObject.AddComponent<Image>();
+            gateBar.color = new Color(0.52f, 0.85f, 0.36f); gateBar.type = Image.Type.Filled; gateBar.fillMethod = Image.FillMethod.Horizontal;
             gateBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
-            gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), Vector2.zero, 16, TextAnchor.MiddleCenter);
+            gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 15, TextAnchor.MiddleCenter); gateTxt.font = body;
 
             // top right, over the far meadow: the city fills the bottom of the view (LayoutCheck keeps it clear)
             up = Btn("Upgrade", new Vector2(-24, -24), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
@@ -114,7 +138,7 @@ namespace Hearthgate.Game
         Pressable Btn(string n, Vector2 pos, System.Action act, System.Func<bool> on, out Text lbl)
         {
             var r = Box(n, transform, new Vector2(1, 1), new Vector2(1, 1), pos, new Vector2(300, 68)); r.pivot = new Vector2(1, 1);
-            var img = r.gameObject.AddComponent<Image>(); img.color = new Color(0.27f, 0.15f, 0.2f, 0.95f);
+            var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, BRASS); img.type = Image.Type.Sliced; img.color = Color.white;
             lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 22, TextAnchor.MiddleCenter);
             Fit(lbl, r.sizeDelta - new Vector2(20, 8), 12);
             return Press(r, act, on);
@@ -128,9 +152,9 @@ namespace Hearthgate.Game
             res.text = HG.Fmt(P.res);
             double r = HG.CityRate(P, g.B); rate.text = r > 0 ? $"+{HG.Fmt(r)}/s from the city" : "";
             double gm = HG.GateMax(P, g.B); gateBar.fillAmount = Mathf.Clamp01((float)(g.gateHp / gm)); gateTxt.text = $"Gate {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
-            upLbl.text = $"Upgrade gate\n{HG.Fmt(g.UpgradeCost)}   [U]"; 
+            upLbl.text = $"Upgrade gate\n<color=#FFD56B>{HG.Fmt(g.UpgradeCost)}</color>   <color=#D9C9A8>[U]</color>"; 
             var nb = g.NextBuilding;
-            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n{HG.Fmt(g.RestoreCost)}   [R]"; 
+            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n<color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>   <color=#D9C9A8>[R]</color>"; 
             Refit();
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
         }
@@ -143,18 +167,18 @@ namespace Hearthgate.Game
         {
             if (!I || I.forkBox) return;
             var box = I.Box("Fork", I.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(640, 260));
-            box.gameObject.AddComponent<Image>().color = new Color(0.16f, 0.09f, 0.12f, 0.96f); I.forkBox = box;
+            var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced; I.forkBox = box;
             I.Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 28, TextAnchor.UpperCenter).text = "The gate grows. Choose one:";
             var opts = HG.FORKS[stage];
             for (int k = 0; k < opts.Length; k++)
             {
                 var f = opts[k];
                 var r = I.Box(f.id, box, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(k == 0 ? -150 : 150, 30), new Vector2(280, 150)); r.pivot = new Vector2(0.5f, 0);
-                r.gameObject.AddComponent<Image>().color = new Color(0.3f, 0.18f, 0.24f);
+                var ri = r.gameObject.AddComponent<Image>(); ri.sprite = Panel(PLUM, BRASS); ri.type = Image.Type.Sliced;
                 I.Press(r, () => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); });
                 I.Label("N", r, new Vector2(0.5f, 1), new Vector2(0, -14), 24, TextAnchor.UpperCenter).text = f.name;
                 var n = r.GetChild(r.childCount - 1).GetComponent<Text>(); Fit(n, new Vector2(260, 34), 14); n.rectTransform.anchoredPosition = new Vector2(0, -30);
-                var d = I.Label("D", r, new Vector2(0.5f, 0.5f), new Vector2(0, -16), 18, TextAnchor.MiddleCenter); d.text = f.line; d.color = Field.GOLD; Fit(d, new Vector2(256, 80), 12); d.rectTransform.anchoredPosition = new Vector2(0, -14);
+                var d = I.Label("D", r, new Vector2(0.5f, 0.5f), new Vector2(0, -16), 18, TextAnchor.MiddleCenter); d.text = f.line; d.color = Field.GOLD; d.font = I.body; Fit(d, new Vector2(256, 80), 12); d.rectTransform.anchoredPosition = new Vector2(0, -14);
             }
         }
     }

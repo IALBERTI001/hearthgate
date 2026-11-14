@@ -54,9 +54,9 @@ namespace Hearthgate.Game
             RefreshTowers();
             for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
             var sun = new GameObject("Sun").AddComponent<Light>(); sun.type = LightType.Directional;
-            // a warm sun from the camera's front right and above: the faces the camera sees are lit, shadows fall back and
-            // to the left; a cool sky fill keeps the shadows coloured rather than grey
-            sun.transform.rotation = Quaternion.LookRotation(new Vector3(0.45f, -0.8f, -0.4f));
+            // a warm sun from the upper left of the screen, in front (art/STYLE.md: "warm golden light from the upper left"):
+            // the faces the camera sees are lit, shadows fall back and to the right; a cool sky fill keeps shadows coloured
+            sun.transform.rotation = Quaternion.LookRotation(new Vector3(-0.45f, -0.8f, -0.4f));
             sun.color = new Color(1f, 0.92f, 0.8f); sun.intensity = 1.55f; sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.72f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.5f, 0.6f, 0.8f); RenderSettings.ambientEquatorColor = new Color(0.52f, 0.52f, 0.46f); RenderSettings.ambientGroundColor = new Color(0.28f, 0.25f, 0.2f);

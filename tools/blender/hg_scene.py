@@ -55,7 +55,7 @@ if STATE == 'mid':
 # ---- light like the game: a warm sun from the camera's front right (world -x, +y, high), a soft blue sky
 sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 3.2; sun.angle = math.radians(8); sun.color = (1.0, 0.93, 0.82)
 so = bpy.data.objects.new('sun', sun); sc.collection.objects.link(so)
-d = Vector((0.45, -0.4, -0.8)).normalized()                    # the direction the light travels (Blender axes)
+d = Vector((-0.45, -0.4, -0.8)).normalized()                   # the direction the light travels (Blender axes): from the upper left of the screen
 so.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
 w = bpy.data.worlds.new('sky'); sc.world = w; w.use_nodes = True
 bg = w.node_tree.nodes['Background']; bg.inputs['Color'].default_value = (0.55, 0.7, 0.92, 1); bg.inputs['Strength'].default_value = 0.9
