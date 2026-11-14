@@ -188,9 +188,9 @@ namespace Hearthgate.Game
             // the centrepiece and turned to them (within 50 degrees)
             Looking = -1;
             if (On)
-                for (int k = 0; k <= HG.BUILDING_IDS.Length; k++)
+                for (int ki = 0; ki <= HG.BUILDING_IDS.Length; ki++)
                 {
-                    int i = k == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : k;
+                    int i = ki == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : ki;
                     if (i == GameLoop.TRAINER ? !GameLoop.I.TrainerHere : (!GameLoop.I.CentreOn(i) || !InFootprint(i, pos, 0.2f))) continue;
                     var c = GameLoop.TalkAt(i); var to = new Vector3(c.x - pos.x, 0, c.z - pos.z); float reach = GameLoop.TalkReach(i);
                     if (to.magnitude < reach && want.sqrMagnitude > 0.01f && Vector3.Angle(want, to) < 70f)   // pressing toward them: he turns to face them squarely
