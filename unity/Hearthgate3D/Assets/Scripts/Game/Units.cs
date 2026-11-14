@@ -18,7 +18,7 @@ namespace Hearthgate.Game
         float s0; readonly System.Collections.Generic.List<Transform> legs = new System.Collections.Generic.List<Transform>();
         readonly System.Collections.Generic.List<Quaternion> legRest = new System.Collections.Generic.List<Quaternion>();
         Transform footL, footR, armL, armR; Quaternion rFL, rFR, rAL, rAR; Vector3 pFL, pFR;
-        Quaternion baseRot; int lastStrike = -1;
+        Quaternion baseRot; int lastStrike = -1; readonly float bornAt = Time.time;
 
         public Enemy(string role, int wave, int lane, float x, float z, Transform parent)
         {
@@ -96,7 +96,8 @@ namespace Hearthgate.Game
             float sq = (1f + flash * 0.15f) * (faded ? 0.92f : 1f);
             float roll = footL && walking ? Mathf.Sin(ph) * 5f : 0f;   // a golem rocks onto the planted foot
             float squash = slime ? 1f - 0.22f * Mathf.Max(0, -atk) + 0.12f * Mathf.Max(0, atk) : 1f;   // a slime gathers itself, then slams
-            t.localScale = s0 * new Vector3(sq / Mathf.Sqrt(squash), (1f + (jointed ? 0f : step * 0.08f)) * squash / sq, sq / Mathf.Sqrt(squash));
+            float grow = Mathf.SmoothStep(0.15f, 1f, Mathf.Clamp01((Time.time - bornAt) / 0.45f));   // stepping out of its rift
+            t.localScale = grow * s0 * new Vector3(sq / Mathf.Sqrt(squash), (1f + (jointed ? 0f : step * 0.08f)) * squash / sq, sq / Mathf.Sqrt(squash));
             var lungeAt = baseRot * Vector3.back * (Mathf.Max(0, atk) * 0.35f * size);
             t.position = Field.Lane(lane, z, x, dying > 0 ? -dying * 2f : step * 0.12f * size) + lungeAt;
             baseRot = Quaternion.RotateTowards(baseRot, Field.Facing(lane) * (atGate ? Quaternion.identity : yaw) * Quaternion.Euler(0, 0, roll), 240f * Time.deltaTime);

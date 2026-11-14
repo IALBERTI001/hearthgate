@@ -27,14 +27,14 @@ namespace Hearthgate.Game
                 case "siege":   // enemies that live at the walls, and walls that hold: to watch the attack at the gate
                     gateHp = 1e30;
                     foreach (var kind in new[] { "slime", "armoured", "boss" }.Where(HG.ROLES.ContainsKey)) for (int k = 0; k < 4; k++)
-                    { var en = new Enemy(kind, P.wave, k, 0, Field.SpawnProgress(k, Camera.main) * 0.01f, unitsRoot); en.hp = en.max = 1e30; enemies.Add(en); }
+                    { var en = new Enemy(kind, P.wave, k, 0, SpawnZ(k) * 0.01f, unitsRoot); en.hp = en.max = 1e30; enemies.Add(en); }
                     break;
                 case "rise": if (P.fallen) StartOver(); break;
                 case "pause": Time.timeScale = a[1] == "1" ? 0 : 1; break;
                 case "shop": foreach (var id in HG.BUILDING_IDS.Where(id => !P.restored.Contains(id)).ToArray()) { P.res += RestoreCost; Restore(id); } break;
                 case "spawn": if (!HG.ROLES.ContainsKey(a[1])) { Debug.Log("[dev] no such kind: " + a[1]); break; }
                     for (int k = 0; k < (a.Length > 2 ? int.Parse(a[2]) : 1); k++)
-                    { var en = new Enemy(a[1], P.wave, k % 4, 0, Field.SpawnProgress(k % 4, Camera.main) * (a.Length > 3 ? float.Parse(a[3]) : 1f), unitsRoot); EventSpawn(en); enemies.Add(en); }
+                    { var en = new Enemy(a[1], P.wave, k % 4, 0, SpawnZ(k % 4) * (a.Length > 3 ? float.Parse(a[3]) : 1f), unitsRoot); EventSpawn(en); enemies.Add(en); }
                     break;
             }
             Save(); Debug.Log("[dev] " + cmd);

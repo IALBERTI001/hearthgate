@@ -816,7 +816,7 @@ def lanes():
             tufts(fx + dx * u + px * off, fz + dz * u + pz * off, 2, (0.4, 0.4))
     # the road to the gate: a cobbled way straight up the middle from beyond the frame to the gatehouse's step, kerbed,
     # worn smoother down its middle, with milestones; traders' road, not a lane (the monsters keep to their four)
-    z0, z1 = 2.2, 34.0; n = 30
+    z0, z1 = 2.2, 66.0; n = 60   # on through the meadow and into the forest (owner, Nov 14 2026: "the end of a road that leads to nowhere")
     left, right = [], []   # the bed: dark mortar showing between the stones
     for k in range(n + 1):
         zz = z0 + (z1 - z0) * k / n
@@ -848,10 +848,14 @@ def lanes():
             L0 = R.uniform(0.6, 0.85)
             block((s * (L.ROAD_HALF + 0.1), zz + L0 / 2, 0.1), (0.26, L0 - 0.05, 0.2), M(R.choice(('stone2', 'stone3', 'stone_dk'))), 0.03)
             zz += L0
-        for zz in (9.0, 20.0):   # milestones
+        for zz in (9.0, 20.0, 34.0, 48.0):   # milestones
             block((s * (L.ROAD_HALF + 0.7), zz, 0.45), (0.36, 0.26, 0.9), M('stone3'), 0.06)
             K.sphere('cap', 0.2, (s * (L.ROAD_HALF + 0.7), zz, 0.95), M('stone2'), (1, 0.8, 0.6), 1)
-    for k in range(10): tufts(R.choice((-1, 1)) * (L.ROAD_HALF + 0.45), R.uniform(3, 30), 2, (0.2, 0.4))
+    for k in range(18): tufts(R.choice((-1, 1)) * (L.ROAD_HALF + 0.45), R.uniform(3, 60), 2, (0.2, 0.4))
+    # a waypost where the road leaves the meadow for the forest: a post with two pointing arms
+    block((L.ROAD_HALF + 1.1, 38.0, 1.2), (0.2, 0.2, 2.4), M('wood_dk'), 0.02)
+    for k, (zz, rot) in enumerate(((2.05, 0.15), (1.6, -0.2))):
+        block((L.ROAD_HALF + 1.1 + (0.45 if k == 0 else -0.45), 38.0, zz), (0.95, 0.08, 0.26), M('wood'), 0.02).rotation_euler = (0, 0, rot)
     return export('road')
 road = lanes   # exported as 'road' (ArtSet.road)
 
@@ -1064,13 +1068,16 @@ def town():
         for c in L.corners(i, 0.2): tufts(c[0], c[1], 2, (0.3, 0.3))
 
 def ground():
-    bpy.ops.mesh.primitive_grid_add(x_subdivisions=76, y_subdivisions=76, size=1, location=(0, 0, 0))
-    g = bpy.context.object; g.scale = (190, 180, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    g.location = (0, -35, 0); bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
+    bpy.ops.mesh.primitive_grid_add(x_subdivisions=128, y_subdivisions=128, size=1, location=(0, 0, 0))
+    g = bpy.context.object; g.scale = (460, 460, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    g.location = (0, -20, 0); bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
     def height(x, y):   # flat where the lanes run (a rolling meadow poked through them: fresh-eyes review 4)
         h = 0.0
         if y < -2 * L.RZ - 4: h += (min(-2 * L.RZ - 4 - y, 40) / 18) ** 1.4 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)   # the ridge climbs on past the top of a tall window
         if abs(x) > L.RX + 6: h += (min(abs(x) - L.RX - 6, 14) / 14) ** 1.4 * 7.0
+        if y > 68: h += (min(y - 68, 60) / 26) ** 1.3 * 12.0 + 1.2 * math.sin(x * 0.07)   # the hills beyond the forest
+        d = math.hypot(x, y + L.RZ)
+        if d > 115: h += (min(d - 115, 90) / 40) ** 1.2 * 14.0 * (0.8 + 0.2 * math.sin(math.atan2(y, x) * 5))   # a ring of hills: no edge to the world
         return h - 0.02
     for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
     K.finish(g, M('grass'))
@@ -1106,6 +1113,15 @@ def ground():
         mesh_from('swathe', vs, [tuple(range(n))], M(R.choice(('grass2', 'grass3'))), 0.0)
     scatter(40, 3.2, ((-L.RX - 14, L.RX + 14), (-2 * L.RZ - 2, 30)), swathe)
     # no trees in the near meadow: in a tall window they stood between the camera and the lanes (Nov 13 2026)
+    # the forest on the field side, where the road goes and the rifts open: dense from 40 m out, then the hills
+    k = 0
+    while k < 150:
+        x, y = R.uniform(-95, 95), R.uniform(40, 80)
+        if abs(x) < L.ROAD_HALF + 2.0 + (0 if y < 66 else -10): continue   # the road runs in among the trees
+        tree(x, y, R.uniform(1.3, 2.1), height(x, y), R.choice(('pine', 'pine', 'round')), far=y > 54); k += 1
+    for _ in range(70):   # and on the hills all round the town, darker with distance
+        a = R.uniform(0, math.tau); d = R.uniform(110, 160); x, y = math.cos(a) * d, math.sin(a) * d - L.RZ
+        if y > 30 or True: tree(x, y, R.uniform(1.6, 2.4), height(x, y), 'pine', far=True)
     props()
     # dark framing clumps at the bottom corners of the view
     for (cx, cy) in ((24, 17), (27, 21), (-24, 17), (-27, 21)):
@@ -1470,6 +1486,25 @@ def npc(kind):
         K.cone('hood_tip', 0.2, 0.4, (0, 0.34, 1.9), M(robe), 10).rotation_euler = (0.9, 0, 0)
         for sx in (-1, 1): block((sx * 0.12, -0.29, 1.71), (0.15, 0.07, 0.05), M('beard'), 0.02).rotation_euler = (0, -sx * 0.25, 0)   # white brows
     return K.export('npc_' + kind)
+
+def rift():
+    """A time rift (owner, Nov 14 2026: the monsters' "weird spawn" seen in 3D): where each lane begins, a tear in the air
+    standing upright facing -y: a dark violet void ringed with crackling storm light and torn edges, shards of broken
+    time circling it (a part the game turns), and scorched grass at its foot."""
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.6, minor_radius=0.13, major_segments=48, minor_segments=8, location=(0, 0, 2.0), rotation=(math.pi / 2, 0, 0))
+    o = bpy.context.object; o.scale = (0.75, 1.0, 1.25); bpy.ops.object.transform_apply(scale=True); K.finish(o, M('storm', 3.0))
+    K.sphere('void', 1.45, (0, 0.02, 2.0), M('cave'), (0.72, 0.12, 1.2), 3)
+    K.sphere('glow', 1.1, (0, -0.08, 2.0), M('roof_purple', 1.6), (0.55, 0.06, 0.95), 2)
+    for k in range(14):   # torn edges: jagged spikes of light round the tear
+        a = k * math.tau / 14; x, z = math.cos(a) * 1.2, 2.0 + math.sin(a) * 2.0
+        K.cone('tear', 0.09, 0.5, (x, 0, z), M('storm', 3.5), 4).rotation_euler = _aim((math.cos(a), 0, math.sin(a) * 1.4))
+    with Part('swirl', (0, 0, 2.0)):
+        for k in range(9):
+            a = k * math.tau / 9; r = 2.0 + (k % 3) * 0.25
+            K.cone('shard', 0.1, 0.4, (math.cos(a) * r * 0.75, -0.1, 2.0 + math.sin(a) * r), M(('snow', 'storm', 'frost')[k % 3], 2.5), 4).rotation_euler = (0, a, 0)
+    K.cyl('scorch', 1.6, 0.03, (0, 0, 0.02), M('char'), 20, 0.0)
+    for k in range(6): K.sphere('ember', 0.08, (R.uniform(-1.2, 1.2), R.uniform(-0.6, 0.6), 0.1), M('storm', 2.5), sub=1)
+    return K.export('rift')
 
 # the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender
 CAP_LOOKS = {

@@ -38,6 +38,7 @@ namespace Hearthgate.Game
         void TickNpcs(float dt)
         {
             if (art == null) return;
+            TickRifts(dt);
             if (keepers == null) { keepers = new GameObject[HG.BUILDING_IDS.Length]; marks = new Transform[HG.BUILDING_IDS.Length + 1]; markKind = new string[marks.Length]; }
             npcT += dt;
             for (int i = 0; i < keepers.Length; i++)
@@ -110,6 +111,37 @@ namespace Hearthgate.Game
                 case "chronomancer": return CanTrain ? "!" : null;
             }
             return null;
+        }
+
+        // ---------- the time rifts: where each lane begins (owner, Nov 14 2026: "players are able to see angles such as the weird
+        // spawn of monsters"). Enemies step out of a rift just below the walls view's bottom edge. Where that is depends on
+        // the walls camera, so it is measured only while that camera is up (the town walk's camera would move it) ----------
+        readonly float[] spawnZ = new float[4]; readonly Transform[] rifts = new Transform[4]; Transform[] riftSwirl = new Transform[4]; int spawnW = -1, spawnH = -1;
+        public float SpawnZ(int k)
+        {
+            bool walls = !(Wizard.I && (Wizard.I.On || Wizard.I.Blending));
+            if (walls && (Screen.width != spawnW || Screen.height != spawnH || spawnZ[k] <= 0))
+            {
+                for (int i = 0; i < 4; i++) spawnZ[i] = Field.SpawnProgress(i, Camera.main);
+                spawnW = Screen.width; spawnH = Screen.height;
+            }
+            return spawnZ[k] > 0 ? spawnZ[k] : Field.LaneLen(k) + 4f;
+        }
+        void TickRifts(float dt)
+        {
+            if (art == null || art.rift == null) return;
+            for (int k = 0; k < 4; k++)
+            {
+                if (!rifts[k])
+                {
+                    var g = Instantiate(art.rift, world); rifts[k] = g.transform; g.name = "rift " + k;
+                    foreach (var c in g.GetComponentsInChildren<Transform>()) if (c.name == "swirl") riftSwirl[k] = c;
+                    foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
+                rifts[k].position = Field.Lane(k, SpawnZ(k) + 0.6f, 0); rifts[k].rotation = Field.Facing(k);   // its face (-Z) toward the walls
+                rifts[k].localScale = Vector3.one * (1f + 0.04f * Mathf.Sin(Time.time * 3f + k));
+                if (riftSwirl[k]) riftSwirl[k].Rotate(rifts[k].forward, 40f * dt, Space.World);
+            }
         }
 
         // ---------- Time Stop ----------

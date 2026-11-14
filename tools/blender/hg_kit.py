@@ -359,6 +359,7 @@ if __name__ == '__main__':
     jobs += [('centre_' + b, (lambda b=b: C.centrepiece(b))) for b in ('watchtower', 'market', 'library')]
     jobs += [('proj_' + k, (lambda k=k: F.projectile(k))) for k in ('fire', 'frost', 'storm', 'earth', 'stone')]
     jobs += [(k, (lambda k=k: F.monster(k))) for k in F.MONSTERS]   # every enemy and boss (hg_front.monster)
+    jobs += [('rift', F.rift)]
     jobs += [('time_dial', F.time_dial), ('hourglass', F.hourglass_model), ('mark_excl', lambda: F.marker_sign('excl')), ('mark_quest', lambda: F.marker_sign('quest'))]
     jobs += [('npc_' + k, (lambda k=k: F.npc(k))) for k in ('astronomer', 'merchant', 'librarian', 'chronomancer')]
     jobs += [('breach', F.breach), ('rubble_heap', F.rubble_heap), ('puff', F.puff)]
