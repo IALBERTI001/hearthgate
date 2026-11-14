@@ -170,8 +170,8 @@ namespace Hearthgate.Game
             blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
             indoors = Mathf.MoveTowards(indoors, Inside >= 0 ? 1 : 0, dt / 0.5f);
-            var want = On ? HeadingAt(pos, heading) : START_HEADING;   // the camera turns, gently, to the house he is at
-            float ang = Vector2.SignedAngle(heading, want); heading = (Quaternion.Euler(0, 0, Mathf.MoveTowards(0, ang, 120f * dt)) * heading); heading.Normalize();
+            var wantH = On ? HeadingAt(pos, heading) : START_HEADING;   // the camera turns, gently, to the house he is at
+            float ang = Vector2.SignedAngle(heading, wantH); heading = (Quaternion.Euler(0, 0, Mathf.MoveTowards(0, ang, 120f * dt)) * heading); heading.Normalize();
             var lk = Vector3.Lerp(LOOK, new Vector3(0, 0.6f, -0.8f), indoors);   // ahead along the heading (-z of LOOK is "ahead")
             var followLook = pos + new Vector3(heading.x * -lk.z, lk.y, heading.y * -lk.z); var followPos = FollowFrom(pos, Mathf.SmoothStep(0, 1, indoors), heading);
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
