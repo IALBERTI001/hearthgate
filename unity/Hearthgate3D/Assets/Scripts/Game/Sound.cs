@@ -21,6 +21,7 @@ namespace Hearthgate.Game
 
         readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>(), music = new Dictionary<string, AudioClip>();
         readonly Dictionary<string, float> last = new Dictionary<string, float>();
+        readonly HashSet<AudioClip> ready = new HashSet<AudioClip>(); readonly Dictionary<AudioClip, float> askAt = new Dictionary<AudioClip, float>();
         AudioSource[] pool; int next;
         AudioSource song, amb;   // two music players so songs, ambience and the battle theme cross-fade
         AudioClip click, dud, knock, step;
@@ -59,8 +60,12 @@ namespace Hearthgate.Game
         public static void Step() { if (I) I.Shot("step", I.step, 0.13f, true); }
         void Shot(string name, AudioClip c, float vol, bool jitter)
         {
-            if (!SfxOn || c == null) return;
-            if (c.loadState != AudioDataLoadState.Loaded) { if (c.loadState == AudioDataLoadState.Unloaded) c.LoadAudioData(); return; }   // still decoding: skip (asking an unloaded clip floods the WebGL console)
+            if (!SfxOn || c == null || !unlocked) return;   // before the first tap the browser plays nothing, and asking a clip then floods the console
+            if (!ready.Contains(c))
+            {   // still decoding: ask again at most twice a second (each question logs a line in a WebGL build)
+                float at = Time.unscaledTime; if (askAt.TryGetValue(c, out var nextAsk) && at < nextAsk) return; askAt[c] = at + 0.5f;
+                if (c.loadState == AudioDataLoadState.Loaded) ready.Add(c); else { if (c.loadState == AudioDataLoadState.Unloaded) c.LoadAudioData(); return; }
+            }
             float now = Time.unscaledTime; if (last.TryGetValue(name, out var t) && now - t < 0.07f) return; last[name] = now;
             var s = pool[next = (next + 1) % pool.Length];
             s.pitch = jitter ? 0.94f + (float)rnd.NextDouble() * 0.12f : 1f; s.PlayOneShot(c, vol * SFX_VOL);
