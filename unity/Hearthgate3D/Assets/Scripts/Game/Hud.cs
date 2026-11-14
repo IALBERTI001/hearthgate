@@ -489,11 +489,12 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I || !GameLoop.I.CanAscend) return;
             var g = GameLoop.I; var P = g.P; int n = P.ascensions + 1;
-            var box = I.Modal($"Ascend to Ascension {n}?", new Vector2(620, 380));
+            var box = I.Modal($"Ascend to Ascension {n}?", new Vector2(640, 430));
             I.Line(box, -74, "The city returns to ruins and the waves start again from wave 1.", 19);
             I.Line(box, -128, $"<color=#FFD56B>For good:</color> towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, n):0.##} (now x{g.B.ascend:0.##})", 19);
             I.Line(box, -168, $"<color=#FFD56B>+{HG.PerkPtsFor(P)} perk points</color> to spend at the Watchtower", 19);
-            I.Line(box, -208, "Kept: your best wave, the combos you found, perks and settings.", 17, new Color(0.85f, 0.8f, 0.88f));
+            I.Line(box, -208, "Kept: your best wave, combos, perks, stars, Feats, looks and settings.", 17, new Color(0.85f, 0.8f, 0.88f));
+            var nu = HG.NextUnlock(P); if (nu != null) I.Line(box, -248, $"<color=#FFD56B>New: {nu.name}.</color> {nu.line}", 17);
             I.Choice(box, "A_No", new Vector2(-130, 26), new Vector2(230, 56), "Not yet", () => I.ShowSettings(false));
             I.Choice(box, "A_Yes", new Vector2(130, 26), new Vector2(230, 56), "Ascend", () => { I.ShowSettings(false); g.Ascend(); }, null, true);
         }
@@ -504,15 +505,16 @@ namespace Hearthgate.Game
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
             var box = I.Modal("The Watchtower", new Vector2(700, 236 + HG.PERKS.Length * 64));   // room for the close button under the last row
-            var tabs = new (string id, string label)[] { ("perks", "Perks"), ("stars", $"Stars {P.stars.Count}/{HG.STARS.Length}") };
-            for (int k = 0; k < tabs.Length; k++)
+            var tabs = new System.Collections.Generic.List<(string id, string label)> { ("perks", "Perks"), ("stars", $"Stars {P.stars.Count}/{HG.STARS.Length}") };
+            if (HG.Unlocked(P, "relics")) tabs.Add(("relics", $"Relics {P.relics.Count}/2"));
+            for (int k = 0; k < tabs.Count; k++)
             {
-                var t = tabs[k];
-                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-115 + k * 230, -70), new Vector2(220, 56), () => ShowPerks(t.id), () => t.id != tab, out var tl, box).rt.pivot = new Vector2(0.5f, 1);
+                var t = tabs[k]; float x = (k - (tabs.Count - 1) / 2f) * 220;
+                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(x, -70), new Vector2(210, 56), () => ShowPerks(t.id), () => t.id != tab, out var tl, box).rt.pivot = new Vector2(0.5f, 1);
                 tl.text = t.label;
             }
             I.perkRefresh = null;
-            if (tab == "stars") StarsTab(box, P); else PerksTab(box, g);
+            if (tab == "stars") StarsTab(box, P); else if (tab == "relics") RelicsTab(box, g); else PerksTab(box, g);
             I.Choice(box, "P_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
         }
         static void PerksTab(RectTransform box, GameLoop g)
@@ -540,6 +542,39 @@ namespace Hearthgate.Game
                     lv.text = k.max == int.MaxValue ? $"level {L}" : $"{L} / {k.max}";
                     cost.text = max ? "Maxed" : $"Buy · {HG.PerkCost(g.P, k.id)}";
                 }
+            };
+            I.perkRefresh();
+        }
+        // Relics (3rd Ascension): two at a time; the Steward's switch lives here too once he comes (6th Ascension)
+        static void RelicsTab(RectTransform box, GameLoop g)
+        {
+            I.Line(box, -136, "Equip two. They stay with you through every Ascension.", 18, RES);
+            var rows = new System.Collections.Generic.List<(HG.Relic r, Text b)>();
+            for (int i = 0; i < HG.RELICS.Length; i++)
+            {
+                var r = HG.RELICS[i]; float y = -172 - i * 64;
+                var name = I.Label("N" + i, box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = r.name;
+                name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
+                var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = r.line; line.color = new Color(0.85f, 0.8f, 0.88f);
+                line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(420, 22);
+                var id = r.id;
+                I.BtnAt("R_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => g.EquipRelic(id), null, out var bt, box);
+                rows.Add((r, bt));
+            }
+            Text stew = null;
+            if (HG.Unlocked(g.P, "steward"))
+            {
+                float y = -172 - HG.RELICS.Length * 64;
+                var name = I.Label("NS", box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = "The Steward";
+                name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
+                var line = I.Label("DS", box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = "Levels your cheapest building by himself"; line.color = new Color(0.85f, 0.8f, 0.88f);
+                line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(420, 22);
+                I.BtnAt("R_stew", new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.P.steward = !g.P.steward; Sound.Click(); g.Save(); I.perkRefresh?.Invoke(); }, null, out stew, box);
+            }
+            I.perkRefresh = () =>
+            {
+                foreach (var (r, b) in rows) b.text = g.P.relics.Contains(r.id) ? "Equipped" : "Equip";
+                if (stew) stew.text = g.P.steward ? "On" : "Off";
             };
             I.perkRefresh();
         }

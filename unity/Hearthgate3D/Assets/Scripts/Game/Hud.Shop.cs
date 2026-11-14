@@ -135,7 +135,8 @@ namespace Hearthgate.Game
         }
         static void QuestsTab(RectTransform box, GameLoop g)
         {
-            I.Line(box, -136, $"{HG.SHARDS["quest"]} Starshards each, {HG.SHARDS["questBonus"]} more for all three. New quests tomorrow.", 16, new Color(0.85f, 0.8f, 0.88f));
+            var om = g.P.omen != null ? HG.OMENS.First(o => o.id == g.P.omen) : null;
+            I.Line(box, -136, (om != null ? $"<color=#FFD56B>Today's omen: {om.name}</color> · {om.line}\n" : "") + $"{HG.SHARDS["quest"]} Starshards each, {HG.SHARDS["questBonus"]} more for all three. New quests tomorrow.", 16, new Color(0.85f, 0.8f, 0.88f));
             var rows = new List<(int i, Text prog, Text b)>();
             for (int i = 0; i < g.P.quests.Count; i++)
             {

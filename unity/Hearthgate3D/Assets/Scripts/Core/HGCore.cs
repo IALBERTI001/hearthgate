@@ -132,6 +132,8 @@ namespace Hearthgate.Core
             foreach (var k in PERKS) { int n = p.PerkAt(k.id); if (n > 0) foreach (var kv in k.per) b[kv.Key] += kv.Value * n; }
             if (p.ascensions >= 1) foreach (var id in p.restored) if (RANK2.TryGetValue(id, out var r2)) b.Add(r2.bonus);
             foreach (var id in p.stars) { var st = STARS.FirstOrDefault(x => x.id == id); if (st != null) b.Add(st.bonus); }
+            foreach (var id in p.relics) { var r = RELICS.FirstOrDefault(x => x.id == id); if (r != null) b.Add(r.bonus); }
+            if (p.omen != null) { var o = OMENS.FirstOrDefault(x => x.id == p.omen); if (o != null) b.Add(o.bonus); }   // set each day by the game, never saved
             b.ascend = Math.Pow(ASCEND_MULT, p.ascensions);
             return b;
         }
@@ -152,12 +154,55 @@ namespace Hearthgate.Core
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
                 perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
                 shards = p.shards + (p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(),
-                stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars),
+                stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars), relics = new List<string>(p.relics), steward = p.steward,
                 questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
             return q;
         }
+
+        // ---------- what each Ascension brings (js/core.js ASCEND_UNLOCKS): a fixed table, so every loop brings something new ----------
+        public class Unlock { public int at; public string id, name, line; }
+        public static readonly Unlock[] UNLOCKS =
+        {
+            new Unlock { at = 1, id = "perks", name = "Perks and the stars", line = "Spend perk points at the Watchtower; five stars light on the way" },
+            new Unlock { at = 2, id = "trials", name = "Challenge Trials", line = "Every 5th wave is a Trial: tougher enemies, Starshards if you win" },
+            new Unlock { at = 3, id = "relics", name = "Relics", line = "Equip two Relics at the Watchtower" },
+            new Unlock { at = 4, id = "earth", name = "The Earth element", line = "A fourth element: Earth stuns, and QUAKE shakes frozen enemies apart" },
+            new Unlock { at = 5, id = "ranks", name = "Boss ranks", line = "Bosses gain a rank each Ascension, with bigger rewards" },
+            new Unlock { at = 6, id = "steward", name = "The Steward", line = "A steward levels your cheapest building by itself" },
+        };
+        public static bool Unlocked(Profile p, string id) { var u = UNLOCKS.FirstOrDefault(x => x.id == id); return u != null && p.ascensions >= u.at; }
+        public static Unlock NextUnlock(Profile p) => UNLOCKS.FirstOrDefault(u => u.at == p.ascensions + 1);
+        public static bool IsTrial(Profile p, int w) => Unlocked(p, "trials") && w % 5 == 0 && !IsBoss(w);
+        public static int BossRank(Profile p) => Math.Max(0, p.ascensions - 4);   // from the 5th Ascension, a rank each time
+
+        // ---------- Relics (3rd Ascension): equip two ----------
+        public class Relic { public string id, name, line; public Dictionary<string, double> bonus = new Dictionary<string, double>(); }
+        static Relic Rl(string id, string name, string line, string k, double v) { var r = new Relic { id = id, name = name, line = line }; r.bonus[k] = v; return r; }
+        public static readonly Relic[] RELICS =
+        {
+            Rl("ember", "Ember Heart", "Fire hits 40% harder", "fire", 0.4), Rl("rime", "Rime Crown", "Frost hits 40% harder", "frost", 0.4),
+            Rl("thunder", "Thunder Seal", "Storm hits 40% harder", "storm", 0.4), Rl("chalice", "Golden Chalice", "Golden Wisps pay triple", "wispX", 2),
+            Rl("hearth", "Hearthstone", "The city makes 40% more", "city", 0.4), Rl("crown", "Slayer Crown", "Bosses take 60% more damage", "bossDmg", 0.6),
+        };
+        public static bool EquipRelic(Profile p, string id)
+        {
+            if (!Unlocked(p, "relics") || !RELICS.Any(r => r.id == id)) return false;
+            if (p.relics.Contains(id)) { p.relics.Remove(id); return true; }
+            if (p.relics.Count >= 2) p.relics.RemoveAt(0);
+            p.relics.Add(id); return true;
+        }
+
+        // ---------- the daily Omen: one small, always-good twist a day, the same for everyone that day ----------
+        public static readonly Relic[] OMENS =
+        {
+            Rl("ember", "Ember Day", "Fire hits 30% harder", "fire", 0.3), Rl("rime", "Rime Day", "Frost hits 30% harder", "frost", 0.3),
+            Rl("thunder", "Thunder Day", "Storm hits 30% harder", "storm", 0.3), Rl("harvest", "Harvest Moon", "+25% Resonance from every enemy", "res", 0.25),
+            Rl("hum", "Humming Stones", "The city makes 50% more Resonance", "city", 0.5), Rl("bounty", "Bounty Day", "Bosses pay double Starshards", "bossShards", 1),
+            Rl("confluence", "Confluence", "Combos hit 50% harder", "combo", 0.5), Rl("drums", "War Drums", "Towers fire 15% faster", "fireRate", 0.15),
+        };
+        public static Relic OmenFor(string day) { uint a = 11; foreach (var c in day) a = unchecked(a * 33 + c); return OMENS[a % OMENS.Length]; }
 
         // ---------- perks: bought with the points each Ascension pays; each level costs one more than the last ----------
         public class Perk { public string id, name, line; public int max, cost; public Dictionary<string, double> per = new Dictionary<string, double>(); }
@@ -170,6 +215,7 @@ namespace Hearthgate.Core
             K("rich", "Rich Veins", "+15% Resonance from enemies", 4, 0, ("res", 0.15)),
             K("night", "Night Watch", "Offline earnings last 2 hours longer", 4, 0, ("offlineH", 2)),
             K("surge", "Quick Surge", "The Surge recharges 3 minutes sooner", 3, 0, ("surgeCd", 3)),
+            K("lucky", "Lucky Stars", "+1 Starshard from every boss", 3, 0, ("bossPlus", 1)),
             K("start", "Head Start", "Each new city starts 5 waves and 5 tower levels ahead", 3, 0, ("start", 5)),
             K("flame", "Eternal Flame", "Towers hit 10% harder and enemies pay 10% more", int.MaxValue, 3, ("damage", 0.1), ("res", 0.1)),
         };
@@ -449,7 +495,8 @@ namespace Hearthgate.Core
         public List<string> owned = new List<string>();        // looks bought
         public List<KS> equip = new List<KS>();                // slot -> look
         public string questDay = ""; public bool questBonus; public List<QuestState> quests = new List<QuestState>();   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
-        public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>(), stars = new List<string>();   // lifetime counts and Feats earned (kept by Ascension)
+        public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>(), stars = new List<string>(), relics = new List<string>(); public bool steward = true;
+        [NonSerialized] public string omen;   // lifetime counts and Feats earned (kept by Ascension)
         public int Stat(string k) { var e = stats.Find(x => x.k == k); return e == null ? 0 : e.v; }
         public void AddStat(string k, int n) { var e = stats.Find(x => x.k == k); if (e == null) stats.Add(new KV { k = k, v = n }); else e.v = (int)Math.Min(int.MaxValue, (long)e.v + n); }
         public bool firstSession = true;
@@ -478,6 +525,7 @@ namespace Hearthgate.Core
             shards = Math.Max(0, shards); owned = (owned ?? new List<string>()).Where(id => HG.SHOP.Any(l => l.id == id)).Distinct().ToList();
             equip = (equip ?? new List<KS>()).Where(e => HG.SHOP.Any(l => l.id == e.s && HG.Slot(l) == e.k)).ToList();
             stats = (stats ?? new List<KV>()).Where(e => HG.STATS.Contains(e.k) && e.v > 0).GroupBy(e => e.k).Select(g => g.First()).ToList();
+            relics = (relics ?? new List<string>()).Where(id => HG.RELICS.Any(r => r.id == id)).Distinct().Take(2).ToList();
             stars = (stars ?? new List<string>()).Where(id => HG.STARS.Any(x => x.id == id)).Distinct().ToList();
             foreach (var st in HG.STARS) if (st.asc < ascensions && !stars.Contains(st.id)) stars.Add(st.id);   // a finished run's constellation is whole
             feats = (feats ?? new List<string>()).Where(id => HG.FEATS.Any(f => f.id == id)).Distinct().ToList();

@@ -28,7 +28,7 @@ namespace Hearthgate.Game
         void Awake()
         {
             I = this; if (art == null) art = Art.Set; else Art.Set = art; Time.fixedDeltaTime = DT; Application.targetFrameRate = 60;
-            P = Load(); B = HG.Bonuses(P); gateHp = HG.GateMax(P, B);
+            P = Load(); Refresh(); gateHp = HG.GateMax(P, B);
             world = new GameObject("World").transform; unitsRoot = new GameObject("Units").transform;
             BuildWorld();
             var off = HG.OfflineEarnings(P, B, Now());
@@ -94,9 +94,12 @@ namespace Hearthgate.Game
         }
 
         // ---------- waves ----------
+        bool trial, omenTold;
+        // the bonuses, with today's Omen (one small, always-good twist a day; none in the very first session)
+        public void Refresh() { P.omen = P.firstSession ? null : HG.OmenFor(Today()).id; B = HG.Bonuses(P); }
         void StartWave()
         {
-            queue.Clear(); waveT = 0; waveLive = true;
+            queue.Clear(); waveT = 0; waveLive = true; trial = HG.IsTrial(P, P.wave);
             ev = HG.EventFor(P, P.wave); bool evNew = ev != null && !P.seenEvents.Contains(ev.id); if (evNew) P.seenEvents.Add(ev.id);
             var mix = HG.EventMix(HG.WaveMix(P.wave, P.ascensions), ev); var list = new List<string>();
             foreach (var (role, n) in mix) for (int k = 0; k < n; k++) list.Add(role);
@@ -104,8 +107,11 @@ namespace Hearthgate.Game
             float gap = Mathf.Max(0.35f, 1.4f - P.wave * 0.02f) * (Ev("rush") ? 0.5f : 1f);
             for (int i = 0; i < list.Count; i++) queue.Add((list[i], 0.8f + i * gap));
             Sound.Boss(HG.IsBoss(P.wave)); if (HG.IsBoss(P.wave)) { Sound.Play("boss_horn", 0.5f); Guide.Say("boss"); }
-            if (ev != null) { Hud.Banner($"{(evNew ? "NEW! " : "")}{ev.name}: {ev.line}"); Sound.Play(evNew ? "feat" : "surge", evNew ? 0.45f : 0.3f); }
-            else Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave, P.ascensions)].label}!" : $"Wave {P.wave}");
+            var om = !omenTold && P.omen != null ? HG.OMENS.First(o => o.id == P.omen) : null; if (om != null) omenTold = true;
+            if (om != null) Hud.Banner($"Today's omen: {om.name}! {om.line}");
+            else if (trial) { Hud.Banner($"TRIAL WAVE {P.wave}! Win it for Starshards"); Sound.Play("boss_horn", 0.35f); }
+            else if (ev != null) { Hud.Banner($"{(evNew ? "NEW! " : "")}{ev.name}: {ev.line}"); Sound.Play(evNew ? "feat" : "surge", evNew ? 0.45f : 0.3f); }
+            else Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave, P.ascensions)].label}{(HG.BossRank(P) > 0 ? $", rank {HG.BossRank(P)}" : "")}!" : $"Wave {P.wave}");
         }
 
         void FixedUpdate()
@@ -116,6 +122,7 @@ namespace Hearthgate.Game
                 var role = queue[0].role; queue.RemoveAt(0);
                 int lane = rnd.Next(4);   // each walks the lane to one tower (owner's sketch)
                 var en = new Enemy(role, P.wave, lane, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, Field.SpawnProgress(lane, Camera.main), unitsRoot) { born = (float)rnd.NextDouble() * 3 };
+                double hx = (trial ? 1.6 : 1) * (en.boss ? 1 + 0.5 * HG.BossRank(P) : 1); en.hp = en.max *= hx;   // a Trial's enemies and a ranked boss are tougher
                 EventSpawn(en); enemies.Add(en);
                 if (!P.seenRoles.Contains(role)) { P.seenRoles.Add(role); if (en.R.tip != null) Hud.Banner("New: " + en.R.tip); }   // each kind's counter, said once
             }
@@ -184,11 +191,11 @@ namespace Hearthgate.Game
         void Kill(Enemy e)
         {
             e.dying = 0.0001f;
-            double pay = HG.KillRes(P.wave, e.boss, B) * SurgeX * (Ev("golden") || Ev("giants") ? 2 : Ev("bloodmoon") ? 3 : 1); SendWisps(e.Pos, pay);   // paid when it reaches the fountain
+            double pay = HG.KillRes(P.wave, e.boss, B) * SurgeX * (e.boss ? 1 + HG.BossRank(P) : 1) * (Ev("golden") || Ev("giants") ? 2 : Ev("bloodmoon") ? 3 : 1); SendWisps(e.Pos, pay);   // paid when it reaches the fountain
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8); Sound.Play(e.boss ? "ascension" : "golem_death", e.boss ? 0.55f : 0.28f);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             Quest("kills");
-            if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); Quest("boss"); GiveShards(HG.SHARDS["boss"] + (int)B["bossPlus"], e.Pos + Vector3.up * (e.size + 2.5f)); }
+            if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); Quest("boss"); GiveShards((HG.SHARDS["boss"] + (int)B["bossPlus"]) * (1 + (int)B["bossShards"]), e.Pos + Vector3.up * (e.size + 2.5f)); }
             if (B["molten"] > 0 && e.burn > 0 && !e.boss)
             {   // the Molten Forge: a burning enemy bursts and sets its friends alight
                 Fx.I.Burst(e.Pos, Field.FIRE, 18); Sound.Play("fire_contact_0", 0.3f);
@@ -226,6 +233,7 @@ namespace Hearthgate.Game
                 double amt = (HG.FightRate(P, B) * 1.6 + HG.CityRate(P, B)) * B["harvest"] * SurgeX; P.res += amt;
                 int gi = System.Array.IndexOf(HG.BUILDING_IDS, "granary"); Fx.I.Pop(Field.Plot(gi) + Vector3.up * (Field.PlotHeight(gi) + 2f), $"Harvest +{HG.Fmt(amt)}", Field.GOLD, 32, 1.1f);
             }
+            if (trial) { int n = 3 + P.wave / 20; GiveShards(n, Field.PLAZA + Vector3.up * 8f); Hud.Banner(P.shopOpen ? $"TRIAL WON! +{n} Starshards" : "TRIAL WON!"); Sound.Play("feat", 0.5f); }
             LightStars();
         }
 
@@ -378,13 +386,22 @@ namespace Hearthgate.Game
             }
             Fx.I.Burst(Field.SignPoint(i), Field.GOLD, n / 2);
         }
-        public void WorkOn(int i)
+        // the Steward (6th Ascension): every 3 s, levels the cheapest building if that leaves two thirds of the Resonance
+        float stewT;
+        void Steward(float dt)
+        {
+            if (!HG.Unlocked(P, "steward") || !P.steward || (stewT += dt) < 3f) return; stewT = 0;
+            int best = -1; double c = double.MaxValue;
+            for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && LevelCost(i) < c) { c = LevelCost(i); best = i; }
+            if (best >= 0 && P.res - c >= P.res * 2 / 3) WorkOn(best, true);
+        }
+        public void WorkOn(int i, bool quiet = false)
         {
             var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
             if (!P.restored.Contains(id)) { if (HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost) { Restore(id); Glow(i, 30); } return; }
             double cost = LevelCost(i); if (P.res < cost) return;
             P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P); Quest("level");
-            bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0; Sound.Play(big ? "tier_up" : "level_up", big ? 0.5f : 0.42f);
+            bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0; if (!quiet || big) Sound.Play(big ? "tier_up" : "level_up", big ? 0.5f : 0.42f);
             Glow(i, big ? 28 : 10);
             Fx.I.Pop(Field.Door(i, 0f, 3.8f), $"Level {L}", Field.GOLD, 34);   // over the door, in view inside and out
             if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f, true); }
@@ -394,7 +411,7 @@ namespace Hearthgate.Game
         void Update()
         {
             var wz = Wizard.I;
-            TickTown(Time.deltaTime); TapWorld(); CheckFeats();
+            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime);
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
             if (CanAscend) Guide.Say("ascend");
             if (SurgeReady && SurgeOpen && !Guide.Busy) Guide.Say("surge");

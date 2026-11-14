@@ -217,7 +217,7 @@ namespace Hearthgate.Game
         {
             if (!CanAscend) return;
             int pts = HG.PerkPtsFor(P); FlushWisps();
-            P = HG.Ascend(P); B = HG.Bonuses(P); gateHp = HG.GateMax(P, B); cheer = cheerT = 0;
+            P = HG.Ascend(P); Refresh(); gateHp = HG.GateMax(P, B); cheer = cheerT = 0;
             foreach (var e in enemies) Destroy(e.t.gameObject); enemies.Clear(); queue.Clear();
             foreach (var s in shots) Destroy(s.t.gameObject); shots.Clear();
             for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
@@ -228,6 +228,7 @@ namespace Hearthgate.Game
             Hud.Banner($"Ascension {P.ascensions}! Towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, P.ascensions):0.##} for good. +{pts} perk points");
             Save();
         }
+        public void EquipRelic(string id) { if (HG.EquipRelic(P, id)) { B = HG.Bonuses(P); Sound.Play("claim", 0.45f); Save(); } else Sound.Dud(); }
         public void BuyPerk(string id) { if (HG.BuyPerk(P, id)) { B = HG.Bonuses(P); Sound.Play("level_up", 0.45f); Save(); } else Sound.Dud(); }
 
         // ---------- the named wave running now (HG.EventFor) ----------
