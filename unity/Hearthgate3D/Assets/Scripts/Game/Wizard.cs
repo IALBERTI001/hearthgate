@@ -57,7 +57,6 @@ namespace Hearthgate.Game
 
         Vector2 heading = START_HEADING; Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift, indoors;
         GameObject goal;   // a little gold ring where a tap sent him
-        int log;
 
         public void Init(ArtSet art)
         {
@@ -96,11 +95,6 @@ namespace Hearthgate.Game
             float dt = Time.deltaTime; idle += dt;
             if (Hud.Paused) return;
             if (Input.GetKeyDown(KeyCode.T)) { Sound.Click(); Toggle(); }
-            if (Input.GetMouseButtonDown(0) && Debug.isDebugBuild == false && Application.isEditor == false && log < 12)
-            {   // QA trace of taps (Nov 13 2026: taps in the browser pane sent him the wrong way); the first dozen only
-                log++; Ground(Hud.PointerPos, out var g0);
-                Debug.Log($"[Hearthgate] tap {Hud.PointerPos} screen {Screen.width}x{Screen.height} onHud {Hud.OnHud(Hud.PointerPos)} ground {g0} wizard {pos} cam {cam.transform.position}");
-            }
             if (Input.GetMouseButtonDown(0) && !Hud.OnHud(Hud.PointerPos))
             {
                 if (!On)
