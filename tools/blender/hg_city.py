@@ -190,6 +190,29 @@ def bed(x, y):
 def sacks(x, y, n=4):
     for k in range(n): K.sphere('sack', 0.3, (x + (k % 2) * 0.55, y + (k // 2 % 2) * 0.5, z0 + 0.28 + (0.4 if k > 3 else 0)), M('canvas'), (1, 0.85, 1.05), 1)
 
+def rug(x, y, w, d, m='awning'):   # a woven rug with a border
+    block((x, y, z0 + 0.012), (w, d, 0.02), M('wood_dk'), 0.0)
+    block((x, y, z0 + 0.022), (w - 0.2, d - 0.2, 0.02), M(m), 0.0)
+    block((x, y, z0 + 0.03), (w - 0.6, d - 0.6, 0.02), M('hay'), 0.0)
+def sconce(x, y, z, face):   # a candle on an iron bracket on an inner wall; face = direction into the room (dx, dy)
+    fx, fy = face
+    block((x - fx * 0.02, y - fy * 0.02, z), (0.12 if fx == 0 else 0.04, 0.04 if fx == 0 else 0.12, 0.2), M('iron'), 0.0)
+    K.cyl('candle', 0.04, 0.16, (x + fx * 0.12, y + fy * 0.12, z + 0.12), M('plaster'), 6, 0.0)
+    K.cone('wick', 0.035, 0.1, (x + fx * 0.12, y + fy * 0.12, z + 0.25), M('fire_core', 3.0), 6)
+def hanging(x, y, z, w, m='banner', face='x'):   # a cloth hanging on an inner wall, with a gold rod
+    block((x, y, z), (w, 0.03, 1.4) if face == 'x' else (0.03, w, 1.4), M(m), 0.0)
+    block((x, y, z + 0.72), (w + 0.2, 0.05, 0.05) if face == 'x' else (0.05, w + 0.2, 0.05), M('gold'), 0.0)
+def pots(x, y, n=3):
+    for k in range(n): K.cyl('pot', 0.16 + 0.04 * (k % 2), 0.3 + 0.08 * (k % 3), (x + k * 0.36, y, z0 + 0.18), M(R.choice(('roof_terra', 'stone3', 'roof_blue'))), 10, 0.02, r2=0.1)
+def inner_walls(w, d, h=ST):   # a plaster skin and a timber dado on the inside faces, so a room reads warm, not like the outside
+    a0, a1 = -w / 2 + T, w / 2 - T
+    for (y, sg) in ((-d / 2 + T + 0.01, 1), (d / 2 - T - 0.01, -1)):
+        runs = [(a0, -DW / 2), (DW / 2, a1)] if sg > 0 else [(a0, a1)]   # the front wall leaves the doorway clear
+        for (u0, u1) in runs:
+            block(((u0 + u1) / 2, y, z0 + 0.45), (u1 - u0, 0.02, 0.9), M('wood'), 0.0); block(((u0 + u1) / 2, y + sg * 0.012, z0 + 0.92), (u1 - u0, 0.04, 0.06), M('wood_dk'), 0.0)
+    for (x, sg) in ((-w / 2 + T + 0.01, 1), (w / 2 - T - 0.01, -1)):
+        block((x, 0, z0 + 0.45), (0.02, d - 2 * T, 0.9), M('wood'), 0.0); block((x + sg * 0.012, 0, z0 + 0.92), (0.04, d - 2 * T, 0.06), M('wood_dk'), 0.0)
+
 # ------------------------------------------------------------------------------------------------- the ten buildings
 def b_forge():
     w, d = LY.SIZES['forge']; top = room(w, d, 3.4, 'stone2', 'cobble2'); top_rail(w, d, top)
@@ -200,6 +223,7 @@ def b_forge():
     block((-w / 2 + T + 0.08, 0.5, z0 + 1.5), (0.06, 2.4, 1.2), M('wood'), 0.0)   # tool rack
     for k in range(5): block((-w / 2 + T + 0.16, -0.4 + k * 0.45, z0 + 1.5), (0.05, 0.08, 0.9), M('iron'), 0.0)
     sign(-2.4, -d / 2, 2.9, M('fire', 1.5))
+    inner_walls(w, d); sconce(-w / 2 + T, -1.6, z0 + 1.9, (1, 0)); sconce(w / 2 - T, -1.6, z0 + 1.9, (-1, 0)); pots(1.6, -2.6, 2)
     with Up():
         ceiling(w, d, top); gable_roof(top + 0.36, w / 2, d / 2, 3.0, 'roof_red', True)
         chimney(-0.6, d / 2 - 0.75, top + 0.36, top + 4.6, glow=True)
@@ -210,6 +234,7 @@ def b_frostSpire():
         K.cyl('ice', r, h, (x, y, z0 + 0.6 + h / 2), M('frost', 1.8), 6, 0.0); K.cone('ice_tip', r, r * 2.2, (x, y, z0 + 0.6 + h + r * 1.1), M('frost', 1.8), 6)
     shelf(0, d / 2 - T - 0.25, 3.0, True, ('frost', 'frost_dk', 'roof_blue', 'snow'))
     lantern(-2.0, -d / 2, 2.6); lantern(2.0, -d / 2, 2.6)
+    inner_walls(w, d); rug(0, -0.6, 3.0, 2.0, 'roof_blue'); hanging(-w / 2 + T + 0.03, -0.2, z0 + 1.9, 1.2, 'roof_blue', 'y'); sconce(w / 2 - T, -1.4, z0 + 1.9, (-1, 0))
     with Up():
         ceiling(w, d, top); block((0, 0, top + 0.4), (w + 0.4, d + 0.4, 0.2), M('roof_slate'), 0.02)
         zb = top + 0.5
@@ -224,6 +249,7 @@ def b_stormBell():
     w, d = LY.SIZES['stormBell']; top = room(w, d, 3.4, 'stone2', 'cobble2'); top_rail(w, d, top)
     K.cyl('rope', 0.04, 3.0, (0, 0.5, z0 + 1.9), M('canvas'), 6, 0.0)
     block((-1.1, d / 2 - T - 0.4, z0 + 0.4), (1.8, 0.5, 0.8), M('wood'), 0.02)
+    inner_walls(w, d); rug(0, -0.3, 2.4, 1.8, 'roof_purple'); hanging(w / 2 - T - 0.03, -0.2, z0 + 1.9, 1.0, 'roof_purple', 'y'); sconce(-w / 2 + T, -1.2, z0 + 1.9, (1, 0)); pots(1.0, d / 2 - T - 0.35, 2)
     for k in range(3):   # jars of caught lightning on the bench
         K.cyl('jar', 0.16, 0.36, (-1.6 + k * 0.5, d / 2 - T - 0.4, z0 + 0.98), M('water_gloss', 0.2), 10, 0.0)
         K.sphere('spark', 0.08, (-1.6 + k * 0.5, d / 2 - T - 0.4, z0 + 0.98), M('storm', 3.0), sub=1)
@@ -244,6 +270,7 @@ def b_bakery():
     for k in range(5): K.sphere('loaf', 0.16, (-2.6 + k * 0.5, -0.6, z0 + 1.08), M('hay'), (1.4, 0.8, 0.6), 1)
     sacks(-3.0, 1.6, 4)
     sign(-2.4, -d / 2, 2.7, M('gold', 1.5))
+    inner_walls(w, d); rug(-1.4, -2.0, 2.2, 1.2, 'awning'); sconce(-w / 2 + T, -1.6, z0 + 1.9, (1, 0)); pots(-0.4, d / 2 - T - 0.35, 3)
     with Up():
         ceiling(w, d, top); zt, hx, hy = upper_floor(w, d, top + 0.36)
         gable_roof(zt, hx, hy, 3.4, 'roof_terra', ridge_x=False); chimney(1.7, d / 2 - 1.5, zt - 1, zt + 3.2)
@@ -268,6 +295,8 @@ def b_tavern():
     for (x, y) in ((-2.4, -1.0), (-2.4, 1.4), (1.0, -0.8)):
         table(x, y, 1.6, 0.9, ('hay', 'gold')); stool(x - 1.0, y); stool(x + 1.0, y)
     hearth(-w / 2 + T + 0.36, 1.4, along_x=False, big=True)
+    inner_walls(w, d); rug(-2.4, 0.2, 3.0, 4.0, 'awning'); hanging(0.0, d / 2 - T - 0.03, z0 + 2.0, 1.4, 'banner')
+    for (x, y, f) in ((-w / 2 + T, -2.2, (1, 0)), (w / 2 - T, -2.2, (-1, 0)), (w / 2 - T, 1.6, (-1, 0))): sconce(x, y, z0 + 1.9, f)
     sign(-3.4, -d / 2, 2.7, M('gold', 1.5)); lantern(1.6, -d / 2, 2.7)
     with Up():
         ceiling(w, d, top); zt, hx, hy = upper_floor(w, d, top + 0.36, plaster='plaster2')
@@ -282,6 +311,8 @@ def b_granary():
     sacks(1.4, 1.4, 6)
     for k in range(6): block((2.8, -1.0, z0 + 0.3 + k * 0.55), (0.6, 0.06, 0.06), M('wood'), 0.0)   # ladder to the loft
     for s in (-1, 1): block((2.8 + s * 0.3, -1.0, z0 + 1.6), (0.06, 0.06, 3.2), M('wood'), 0.0)
+    for k in range(5): K.sphere('straw', 0.5, (R.uniform(-3, 1), R.uniform(-2.5, 0.5), z0 + 0.05), M('hay'), (1.4, 1.1, 0.2), 1)   # loose straw
+    barrel(-3.1, -2.6); crate(-2.3, -2.8)
     with Up():
         ceiling(w, d, top); gable_roof(top + 0.36, w / 2, d / 2, 4.0, 'roof_red', ridge_x=False, gable_m='wood')
         block((0, -d / 2 - 0.05, top + 1.4), (1.4, 0.1, 1.6), M('wood_dk'), 0.0)   # the hayloft door
@@ -291,6 +322,9 @@ def b_library():
     shelf(0, d / 2 - T - 0.25, 4.0, True)
     table(0, 0.4, 2.4, 1.1, ('plaster', 'roof_red')); stool(-0.8, -0.5); stool(0.8, -0.5)
     K.sphere('globe', 0.35, (2.3, -1.6, z0 + 1.15), M('roof_blue'), sub=2); block((2.3, -1.6, z0 + 0.4), (0.12, 0.12, 0.8), M('wood_dk'), 0.0)
+    inner_walls(w, d); rug(0, 0.2, 4.0, 3.0, 'banner')
+    for (x, y, f) in ((-w / 2 + T, -1.2, (1, 0)), (w / 2 - T, -1.2, (-1, 0))): sconce(x, y, z0 + 2.2, f)
+    for k in range(3): K.cyl('candle', 0.05, 0.22, (-0.6 + k * 0.4, 0.4, z0 + 0.92), M('plaster'), 6, 0.0); K.cone('wick', 0.04, 0.1, (-0.6 + k * 0.4, 0.4, z0 + 1.07), M('fire_core', 3.0), 6)
     K.cyl('rose_frame', 0.8, 0.12, (0, -d / 2 - 0.02, FLOOR + 3.6), M('stone2'), 20, 0.02).rotation_euler = (math.pi / 2, 0, 0)
     K.cyl('rose', 0.66, 0.08, (0, -d / 2 - 0.05, FLOOR + 3.6), M('window', 2.0), 20, 0.0).rotation_euler = (math.pi / 2, 0, 0)
     with Up():
@@ -300,6 +334,7 @@ def b_cottages():
     block((0, 0.9, z0 + 1.5), (0.16, d - 2 * T - 1.8, 3.0), M('timber'), 0.0)   # the party wall between the two homes, open at the front
     bed(-3.4, 1.0); bed(3.4, 1.0); table(-2.0, -0.9, 1.2, 0.8); table(2.0, -0.9, 1.2, 0.8); stool(-2.0, -1.6); stool(2.0, -1.6)
     hearth(-1.2, d / 2 - T - 0.36); hearth(1.2, d / 2 - T - 0.36)
+    inner_walls(w, d, 3.0); rug(-2.6, -0.4, 1.8, 1.4, 'roof_blue'); rug(2.6, -0.4, 1.8, 1.4, 'awning'); pots(-4.3, -2.2, 2); pots(3.6, -2.2, 2)
     for k in range(4): F.cloth('wash', -1.2 + k * 0.6, -0.8 + k * 0.6, 2.2, 1.6, -d / 2 - 1.2, M(R.choice(('plaster', 'cloth', 'blush'))), 0.02, False, 'x', 2, 2)
     for s in (-1, 1): block((s * 1.6, -d / 2 - 1.2, 1.15), (0.06, 0.06, 2.3), M('wood'), 0.0)
     block((0, -d / 2 - 1.2, 2.25), (3.3, 0.02, 0.02), M('canvas'), 0.0)
@@ -318,6 +353,7 @@ def b_watchtower():
     for k in range(7): block((w / 2 - T - 0.5, -1.6 + k * 0.45, z0 + 0.2 + k * 0.4), (0.9, 0.45, 0.4), M('stone3'), 0.02)   # stairs up
     block((-w / 2 + T + 0.08, 0, z0 + 1.4), (0.06, 2.4, 1.6), M('wood'), 0.0)   # a weapon rack with spears
     for k in range(5): block((-w / 2 + T + 0.2, -0.9 + k * 0.45, z0 + 1.2), (0.05, 0.05, 2.2), M('wood_dk'), 0.0)
+    inner_walls(w, d); hanging(0.0, d / 2 - T - 0.03, z0 + 1.9, 1.2, 'banner'); barrel(-1.8, 2.0); crate(-1.0, 2.2); sconce(-w / 2 + T, 1.6, z0 + 1.9, (1, 0))
     with Up():
         ceiling(w, d, top); zb = top + 0.36
         F.prism('wt_body', 2.4, 2.1, zb, zb + 4.5, M('stone2'), n=4)
