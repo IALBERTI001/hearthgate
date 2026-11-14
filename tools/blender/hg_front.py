@@ -489,13 +489,31 @@ def lanes():
     # the road to the gate: a cobbled way straight up the middle from beyond the frame to the gatehouse's step, kerbed,
     # worn smoother down its middle, with milestones; traders' road, not a lane (the monsters keep to their four)
     z0, z1 = 2.2, 34.0; n = 30
-    for (half, m, z, jit) in ((L.ROAD_HALF, 'cobble', 0.035, 0.12), (1.1, 'cobble2', 0.05, 0.15)):
-        left, right = [], []
-        for k in range(n + 1):
-            zz = z0 + (z1 - z0) * k / n
-            left.append((half + R.uniform(-jit, jit), zz, z)); right.append((-half + R.uniform(-jit, jit), zz, z))
-        vs = left + right; N = n + 1
-        mesh_from('road', vs, [(k, k + 1, N + k + 1, N + k) for k in range(n)], M(m), 0.0)
+    left, right = [], []   # the bed: dark mortar showing between the stones
+    for k in range(n + 1):
+        zz = z0 + (z1 - z0) * k / n
+        left.append((L.ROAD_HALF + R.uniform(-0.06, 0.06), zz, 0.03)); right.append((-L.ROAD_HALF + R.uniform(-0.06, 0.06), zz, 0.03))
+    N = n + 1; mesh_from('road', left + right, [(k, k + 1, N + k + 1, N + k) for k in range(n)], M('mortar'), 0.0)
+    # the setts: courses 0.42 m deep laid across the road, each stone a raised top with its camera-facing edge, joints
+    # 6 cm, every course offset like brickwork; four tones, lighter down the worn middle (owner, Nov 14 2026: the first
+    # road read as a flat grey strip)
+    faces = {m: ([], []) for m in ('cobble', 'cobble2', 'stone2', 'stone3', 'stone_dk')}
+    zz, row = z0 + 0.05, 0
+    while zz < z1 - 0.3:
+        d = R.uniform(0.36, 0.46); x = -L.ROAD_HALF + 0.04 + (0.25 if row % 2 else 0.0) * R.uniform(0.6, 1.0)
+        while x < L.ROAD_HALF - 0.12:
+            w = min(R.uniform(0.38, 0.62), L.ROAD_HALF - 0.04 - x)
+            a_, b_, c_, e_ = x, x + w - 0.06, zz, zz + d - 0.06
+            mid = abs(x + w / 2) < 1.0
+            m = R.choice(('cobble', 'cobble', 'stone3', 'cobble2') if mid else ('cobble', 'cobble2', 'cobble2', 'stone2', 'stone_dk'))
+            top = 0.03 + R.uniform(0.05, 0.09); vs, fs = faces[m]; i = len(vs)
+            j = R.uniform(-0.015, 0.015)   # a hand-laid stone is never quite square
+            vs += [(b_ + j, c_, top), (b_, e_ + j, top), (a_ - j, e_, top), (a_, c_ - j, top), (a_ - j, e_, 0.03), (b_, e_ + j, 0.03)]
+            fs += [(i, i + 1, i + 2, i + 3), (i + 2, i + 1, i + 5, i + 4)]
+            x += w
+        zz += d; row += 1
+    for m, (vs, fs) in faces.items():
+        if vs: mesh_from('setts', vs, fs, M(m), 0.0)
     for s in (-1, 1):   # kerbs, a stone every 0.9 m
         zz = z0 + 0.3
         while zz < z1:

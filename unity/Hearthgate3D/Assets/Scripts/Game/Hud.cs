@@ -266,6 +266,8 @@ namespace Hearthgate.Game
             a.gem = gm.gameObject.AddComponent<Image>(); a.gem.sprite = gemSprite; a.gem.raycastTarget = false;
             a.cost = Label("C", a.costRow, new Vector2(0, 0.5f), new Vector2(20, 0), 17, TextAnchor.MiddleLeft); a.cost.font = body;
             a.cost.rectTransform.pivot = new Vector2(0, 0.5f); a.cost.rectTransform.sizeDelta = new Vector2(w - 20, h * 0.4f);
+            // a line taller than its box draws nothing in uGUI (Truncate): the cost row was blank in the browser (Nov 14 2026)
+            a.cost.verticalOverflow = a.title.verticalOverflow = VerticalWrapMode.Overflow;
             if (!Application.isMobilePlatform)
             {   // the key, as a keycap on the corner (desktop only)
                 a.cap = Box("Key", r, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-4, -4), new Vector2(24, 21)); a.cap.pivot = new Vector2(1, 1);

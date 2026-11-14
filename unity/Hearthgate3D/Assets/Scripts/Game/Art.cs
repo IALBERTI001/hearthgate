@@ -26,6 +26,17 @@ namespace Hearthgate.Game
             return m;
         }
 
+        // an unlit colour (the particle template): shots and their trails keep their element's hue instead of the lit glow
+        // material's light plus emission, which bloomed every shot to a white streak (owner, Nov 14 2026, browser check)
+        static readonly Dictionary<Color, Material> flats = new Dictionary<Color, Material>();
+        public static Material Flat(Color c)
+        {
+            if (flats.TryGetValue(c, out var m)) return m;
+            m = Set != null && Set.particle != null ? new Material(Set.particle) : new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c); m.color = c;
+            return flats[c] = m;
+        }
+
         // an instance of the model, or a labelled stand-in made of primitives
         public static GameObject Spawn(GameObject prefab, string what, Vector3 at, Transform parent = null)
         {

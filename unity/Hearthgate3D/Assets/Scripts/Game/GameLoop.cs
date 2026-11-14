@@ -173,11 +173,11 @@ namespace Hearthgate.Game
                 var tg = Pick(tw); if (tg == null) continue;
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f);
                 var go = new GameObject("shot");
-                var mr = Art.Shape(PrimitiveType.Sphere, Art.Mat(Field.Of(tw.el), true));
+                var col = Field.Of(tw.el); var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
                 // fat, glowing shots with long trails: the fight has to read across the screen (fresh-eyes review 2)
                 mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : 0.65f);
-                var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.3f; tr.startWidth = 0.55f; tr.endWidth = 0f;
-                tr.material = Art.Mat(Field.Of(tw.el), true);
+                var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f; tr.endWidth = 0f;
+                tr.material = Art.Flat(Color.Lerp(col, Color.black, 0.15f)); tr.numCapVertices = 3;
                 go.transform.position = tw.Muzzle; Sound.Play(Sfx(tw.el) + "_launch_0", 0.16f);
                 shots.Add(new Shot { p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
             }

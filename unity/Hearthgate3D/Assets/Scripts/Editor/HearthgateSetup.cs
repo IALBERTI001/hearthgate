@@ -144,6 +144,8 @@ namespace Hearthgate.EditorTools
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
             PlayerSettings.WebGL.decompressionFallback = true;      // works on hosts that do not send Content-Encoding
             PlayerSettings.WebGL.dataCaching = true;
+            PlayerSettings.WebGL.nameFilesAsHashes = true;   // a new build gets new file names: a browser that cached the last build's engine
+                                                             // with this build's data crashed with a stack overflow (Nov 14 2026)
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
             PlayerSettings.stripEngineCode = true;
             PlayerSettings.SetManagedStrippingLevel(UnityEditor.Build.NamedBuildTarget.WebGL, ManagedStrippingLevel.High);
