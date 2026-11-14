@@ -116,7 +116,7 @@ namespace Hearthgate.Game
 
             // the stats, top left (owner, Nov 14 2026: "this is too bunched up"): the wave, Resonance and its rate, and a row of
             // the other currencies with room between them; the settings cog moved to the bottom right
-            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(400, 172)); shade.pivot = new Vector2(0, 1);
+            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(350, 172)); shade.pivot = new Vector2(0, 1);
             var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.78f); si.raycastTarget = false;   // reads over bright roofs
             wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -10), 28, TextAnchor.UpperLeft);
             var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -52), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
@@ -125,16 +125,16 @@ namespace Hearthgate.Game
             rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -98), 17, TextAnchor.UpperLeft); rate.font = body;
             // every currency in sight (owner, Nov 14 2026: "all the different currencies should be displayed"): Starshards (the
             // gold star) and, after an Ascension, perk points (the rose crystal); a tap on one says where it comes from
-            shardRow = Box("Shards", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(18, -132), new Vector2(178, 32)); shardRow.pivot = new Vector2(0, 1);
+            shardRow = Box("Shards", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(18, -132), new Vector2(150, 32)); shardRow.pivot = new Vector2(0, 1);
             var shi = Box("Icon", shardRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(32, 32)); shi.pivot = new Vector2(0, 0.5f);
             var shImg = shi.gameObject.AddComponent<Image>(); shImg.sprite = Icon("starshard"); shImg.preserveAspect = true; shImg.raycastTarget = false;
-            shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); shardTxt.color = ROSE_TXT;
-            shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(150, 30);
-            perkRow = Box("PerkPts", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(210, -132), new Vector2(178, 32)); perkRow.pivot = new Vector2(0, 1);
+            shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); shardTxt.color = new Color(1f, 0.9f, 0.55f);   // the star's pale gold
+            shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(110, 30);
+            perkRow = Box("PerkPts", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(176, -132), new Vector2(150, 32)); perkRow.pivot = new Vector2(0, 1);
             var pki = Box("Icon", perkRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(32, 32)); pki.pivot = new Vector2(0, 0.5f);
             var pkImg = pki.gameObject.AddComponent<Image>(); pkImg.sprite = Icon("shard"); pkImg.preserveAspect = true; pkImg.raycastTarget = false;
-            perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); perkTxt.color = RES;
-            perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(150, 30);
+            perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); perkTxt.color = ROSE_TXT;   // the crystal's rose
+            perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(110, 30);
             evTxt = Label("Event", transform, new Vector2(0, 1), new Vector2(24, -98), 18, TextAnchor.UpperLeft); evTxt.gameObject.SetActive(false);   // the named wave rides on the rate line
             // the banner sits under the top row of the HUD, never across it (QA, Nov 14 2026: in a portrait window the walk
             // banner ran under the cog and the Upgrade button), and wraps to the window's width
@@ -503,7 +503,7 @@ namespace Hearthgate.Game
             if (System.Math.Abs(P.res - shownRes) < 1) shownRes = P.res;
             res.text = HG.Fmt(shownRes);
             shardTxt.text = $"{P.shards} Starshard{(P.shards == 1 ? "" : "s")}";
-            shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(ROSE_TXT, Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
+            shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(new Color(1f, 0.9f, 0.55f), Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
             bool pk = P.ascensions > 0; if (perkRow.gameObject.activeSelf != pk) perkRow.gameObject.SetActive(pk);
             if (pk) perkTxt.text = $"{P.perkPts} perk point{(P.perkPts == 1 ? "" : "s")}";
             if (Input.GetMouseButtonDown(0) && !Paused)
