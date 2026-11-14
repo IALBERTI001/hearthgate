@@ -921,7 +921,7 @@ def _remap(remap):
 def _shield(r, z):   # two glowing rings of force round it (the materials are opaque: a bubble would hide the enemy)
     for k, tilt in enumerate((0.35, -0.35)):
         bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.05, major_segments=40, minor_segments=8, location=(0, 0, z + k * 0.15))
-        o = bpy.context.object; o.name = 'UP_shield%d' % k; o.rotation_euler = (tilt, 0, k * 1.2); K.finish(o, M('water', 1.6))
+        o = bpy.context.object; o.name = 'UP_shield%d' % k; o.rotation_euler = (tilt, 0, k * 1.2); K.finish(o, M('water_gloss', 1.6))
 
 def variant(kind):
     base = {'elite': beetle, 'shielded': beetle, 'sprinter': beetle, 'splitter': slime, 'mender': slime, 'ironhide': golem, 'bulwark': golem}[kind]
