@@ -347,7 +347,7 @@ namespace Hearthgate.Game
             TickTown(Time.deltaTime); TapWorld();
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
             if (CanAscend) Guide.Say("ascend");
-            if (SurgeReady && !P.firstSession && P.wave >= 4) Guide.Say("surge");
+            if (SurgeReady && SurgeOpen && !Guide.Busy) Guide.Say("surge");
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.X)) TapSurge();
             for (int i = 0; i < plots.Length; i++) if (uppers[i]) uppers[i].gameObject.SetActive(!(wz && wz.Inside == i));
             // the next plot to rebuild, marked in the world: a gold ring and arrow that bob, brighter when affordable

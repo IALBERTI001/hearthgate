@@ -199,7 +199,7 @@ namespace Hearthgate.Game
         }
         void TownTags(GameLoop g, Profile P)
         {
-            bool tagOn = !P.firstSession && (g.SurgeOn || g.SurgeReady);
+            bool tagOn = g.SurgeOpen && (g.SurgeOn || g.SurgeReady);
             if (tagOn && Pin(surgeTag, Field.PLAZA + new Vector3(0, 4.2f, 0)))
             { Show(surgeAct, g.SurgeOn ? "Surge x2" : "Surge ready", g.SurgeOn ? $"{GameLoop.Mmss(g.SurgeLeftMs)} left" : "x2 for 3 min", !g.SurgeOn, Time.unscaledTime); surgeAct.gem.enabled = false; }
             else if (!tagOn && surgeTag.gameObject.activeSelf) surgeTag.gameObject.SetActive(false);
@@ -336,7 +336,7 @@ namespace Hearthgate.Game
             float h = size.y, m = h - 12;
             bool hasIcon = icon != null && size.x > m + 24;
             var med = Box("Medal", r, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(6 + m / 2, 0), new Vector2(m, m));
-            if (icon != null && size.x <= m + 24) med.anchorMin = med.anchorMax = new Vector2(0.5f, 0.5f);   // an icon-only button: the medallion centred
+            if (icon != null && size.x <= m + 24) { med.anchorMin = med.anchorMax = med.pivot = new Vector2(0.5f, 0.5f); med.anchoredPosition = Vector2.zero; }   // an icon-only button: the medallion centred
             var mi = med.gameObject.AddComponent<Image>(); mi.sprite = Panel(INK, BRASS, (int)(m / 2) - 1, 3); mi.type = Image.Type.Sliced; mi.raycastTarget = false;
             var ic = Box("Icon", med, Vector2.zero, Vector2.one, new Vector2(0, 1), new Vector2(2, 2));
             a.icon = ic.gameObject.AddComponent<Image>(); a.icon.sprite = Icon(icon); a.icon.preserveAspect = true; a.icon.raycastTarget = false;

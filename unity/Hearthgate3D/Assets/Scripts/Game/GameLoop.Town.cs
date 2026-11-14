@@ -22,6 +22,7 @@ namespace Hearthgate.Game
         long goldSurgeUntil;   // a Golden Wisp's 15 s of double pay (not saved)
         public float SurgeX => SurgeOn || Now() < goldSurgeUntil ? 2f : 1f;
         public bool SurgeOn => Now() < P.surgeUntil;
+        public bool SurgeOpen => P.ascensions > 0 || P.restored.Count >= 1;   // the fountain wakes once the first building stands (one thing at a time)
         long SurgeCdMs => SURGE_CD_MS - (long)(B["surgeCd"] * 60000);   // Quick Surge perk: 3 minutes sooner a level
         public bool SurgeReady => !SurgeOn && Now() >= P.surgeUntil + SurgeCdMs;
         public long SurgeLeftMs => System.Math.Max(0, P.surgeUntil - Now());
@@ -67,6 +68,7 @@ namespace Hearthgate.Game
         // ---------- the Surge ----------
         public void TapSurge()
         {
+            if (!SurgeOpen) return;
             if (SurgeOn) { Hud.Toast($"Surge: double pay for {Mmss(SurgeLeftMs)} more"); return; }
             if (!SurgeReady) { Sound.Dud(); Hud.Toast($"The fountain refills in {Mmss(SurgeWaitMs)}"); return; }
             P.surgeUntil = Now() + SURGE_MS; Sound.Play("surge", 0.6f); Fx.I.Shake(0.12f, true);
@@ -80,7 +82,7 @@ namespace Hearthgate.Game
             fountainGlow = Mathf.Max(0, fountainGlow - dt * 2f);
             if ((surgeFxT -= dt) > 0) return;
             if (SurgeOn) { surgeFxT = 0.12f; Fx.I.Burst(Field.PLAZA + FOUNTAIN_TOP + Random.insideUnitSphere * 0.8f, ROSE, 3); }        // it sprays rose light
-            else if (SurgeReady && !P.firstSession) { surgeFxT = 0.45f; Fx.I.Burst(Field.PLAZA + FOUNTAIN_TOP + Random.insideUnitSphere * 1.2f, ROSE, 1); }   // ready: motes rise
+            else if (SurgeReady && SurgeOpen) { surgeFxT = 0.45f; Fx.I.Burst(Field.PLAZA + FOUNTAIN_TOP + Random.insideUnitSphere * 1.2f, ROSE, 1); }   // ready: motes rise
             else surgeFxT = 0.5f;
         }
 
