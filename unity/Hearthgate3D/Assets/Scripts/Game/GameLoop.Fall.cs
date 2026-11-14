@@ -125,7 +125,7 @@ namespace Hearthgate.Game
         }
         void Rise(string line)
         {
-            P.fallen = false; gateHp = HG.GateMax(P, B); betweenT = 2.5f;
+            P.fallen = false; gateHp = HG.GateMax(P, B); betweenT = 2.5f; Hud.CloseCard();   // whatever closed the loss (a button, an ad, a test hook)
             ShowShambles(false); RefreshTowers();
             Sound.Play("tier_up", 0.5f); Fx.I.Shake(0.25f, true);
             Fx.I.Burst(new Vector3(0, 3f, Field.GATE_Z), Field.GOLD, 40);

@@ -617,6 +617,7 @@ namespace Hearthgate.Game
         // the walls fell (GameLoop.Fall): the card sits at the foot of the screen with the shambles in view above it, the
         // world kept moving (smoke rises) though the fight waits. Restore for Starshards; without enough, an ad where one
         // can be shown; or start again from wave 1, asked twice.
+        public static void CloseCard() { if (I) I.ShowSettings(false); }
         public static void ShowFallen(bool confirm = false)
         {
             if (!I || !GameLoop.I || !GameLoop.I.Fallen) return;
