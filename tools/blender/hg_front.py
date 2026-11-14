@@ -583,11 +583,14 @@ def beetle(kind='beetle'):
         o = K.cone('mandible', 0.08 if kind != 'swarm' else 0.13, 0.4 if kind != 'swarm' else 0.65, (s * 0.2, -1.2, 0.42), M('iron'), 6); o.rotation_euler = (-1.4, 0, s * 0.4)
         for k in range(3):   # each leg turns at the shell's edge (a part: the game walks them on alternating tripods)
             y = -0.45 + k * 0.5
-            with Part('leg_%s%d' % ('L' if s < 0 else 'R', k), (s * 0.6, y, 0.48)):
-                o = block((s * 0.85, y, 0.42), (0.55, 0.18, 0.18), M('iron'), 0.04); o.rotation_euler = (0, s * -0.5, 0)
-                block((s * 1.12, y, 0.18), (0.18, 0.2, 0.42), M('iron'), 0.04)
-                K.sphere('claw', 0.1, (s * 1.12, y - 0.06, 0.02), M('iron'), (1, 1.4, 0.6), 1)
-                if kind == 'swarm': K.cone('spur', 0.06, 0.3, (s * 1.0, y, 0.55), M('lord_gloss'), 6).rotation_euler = _aim((s, 0, 1))
+            # fanned like an insect's: the front pair reaches forward, the back pair back (three parallel legs read as a
+            # railing from behind, Nov 14 2026)
+            a = (k - 1) * 0.6; dx, dy = s * math.cos(a), math.sin(a); px = s * 0.6
+            with Part('leg_%s%d' % ('L' if s < 0 else 'R', k), (px, y, 0.48)):
+                o = block((px + dx * 0.25, y + dy * 0.25, 0.42), (0.55, 0.18, 0.18), M('iron'), 0.04); o.rotation_euler = (0, s * -0.5, s * a)
+                block((px + dx * 0.52, y + dy * 0.52, 0.18), (0.18, 0.2, 0.42), M('iron'), 0.04).rotation_euler = (0, 0, s * a)
+                K.sphere('claw', 0.1, (px + dx * 0.56, y + dy * 0.56, 0.02), M('iron'), (1, 1.4, 0.6), 1)
+                if kind == 'swarm': K.cone('spur', 0.06, 0.3, (px + dx * 0.4, y + dy * 0.4, 0.55), M('lord_gloss'), 6).rotation_euler = _aim((dx, dy, 1))
     if kind == 'hive':   # its wing cases are honeycomb: dark six-sided cells across the amber
         for s in (-1, 1):
             for u in (0.2, 0.55, 0.85):
@@ -1265,12 +1268,18 @@ def _remap(remap):
             base = m.name[3:].replace('_glow', '') if m.name.startswith('HG_') else m.name
             if base in remap: o.data.materials[k] = M(*remap[base]) if isinstance(remap[base], tuple) else M(remap[base])
 
-def _shield(r, z):   # two glowing rings of force round it (the materials are opaque: a bubble would hide the enemy)
-    for k, tilt in enumerate((0.35, -0.35)):
-        bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.05, major_segments=40, minor_segments=8, location=(0, 0, z + k * 0.15))
-        o = bpy.context.object; o.name = 'UP_shield%d' % k; o.rotation_euler = (tilt, 0, k * 1.2)
-        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)   # baked: a joined part keeps no turn of its own
-        K.finish(o, M('water_gloss', 1.6))
+def _shield(r, z):   # a ward of glowing rune-stones circling it on a band of force (the materials are opaque: a bubble
+    # would hide the enemy; two bare thin rings read as an editor gizmo, Nov 14 2026)
+    t = 0.28
+    bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.045, major_segments=48, minor_segments=8, location=(0, 0, z))
+    o = bpy.context.object; o.name = 'UP_shield0'; o.rotation_euler = (t, 0, 0)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)   # baked: a joined part keeps no turn of its own
+    K.finish(o, M('water_gloss', 1.2))
+    for k in range(7):
+        th = k * 2 * math.pi / 7; c, sn = math.cos(th), math.sin(th)
+        o = block((r * c, r * sn * math.cos(t), z + r * sn * math.sin(t)), (0.3, 0.09, 0.42), M('water_gloss', 2.4), 0.03)
+        o.up = True   # batched into the spinning 'upper' part with the band
+        o.rotation_euler = tuple((Matrix.Rotation(t, 3, 'X') @ Matrix.Rotation(th + math.pi / 2, 3, 'Z')).to_euler('XYZ'))   # along the band, tilted with it
 
 def butterfly():   # the meadow's butterflies (owner, Nov 6 2026: "add some interaction for the user with the butterflies";
     # Nov 14: "Butterflies can be polished better"). Lies flat, head to -y, about 1 unit across. Each wing is a part hinged at
