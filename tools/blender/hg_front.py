@@ -488,15 +488,20 @@ def menace(y, z, spread, r, glow='fire_red', brow='pupil'):   # a boss's eyes: n
 def slime(kind='slime'):
     """1.5 m: a glossy pink dome with a sheen, two little stubs for arms and drips at its foot, an angry-cute face."""
     body, dark = 'slime_gloss', 'slime_dk'
-    if kind == 'splitter':   # it bursts into two: two domes already pulling apart, each with its own eye
-        for s in (-1, 1): blob(s * 0.4, 0.04 * s, 0.62, 1.2, body, 'lobe')
-        K.sphere('pinch', 0.5, (0, 0, 0.42), M(body), (0.9, 1.0, 0.75), 2)
-        for s in (-1, 1):   # one big eye on each lobe
-            K.sphere('eye', 0.19, (s * 0.4, -0.56, 0.82), M('eye'), (1, 0.62, 1.12), 3)
-            K.sphere('pupil', 0.14, (s * 0.37, -0.65, 0.81), M('pupil'), (1, 0.55, 1.15), 2)
-            K.sphere('catch', 0.04, (s * 0.33, -0.73, 0.88), M('white_gloss', 0.5), sub=1)
-            o = block((s * 0.4, -0.52, 1.05), (0.32, 0.11, 0.08), M('slime_dk'), 0.03); o.rotation_euler = (0, -s * 0.38, 0)
-        K.sphere('mouth', 0.1, (0, -0.66, 0.52), M('pupil'), (1.6, 0.5, 0.8), 2)
+    if kind == 'splitter':   # it bursts into two: one dome split by a glowing crack from crown to foot, two faces either side
+        blob(0, 0, 0.92, 1.35, body)
+        K.sphere('shine', 0.18, (-0.3, -0.4, 1.17), M('white_gloss', 0.4), (1.5, 1.0, 0.45), 2)
+        pts = [(0.0, -0.86, 0.15), (0.06, -0.9, 0.42), (-0.05, -0.88, 0.7), (0.05, -0.75, 0.98), (-0.03, -0.45, 1.25), (0.02, 0.0, 1.36), (-0.04, 0.45, 1.25)]
+        for (x0, y0, z0), (x1, y1, z1) in zip(pts, pts[1:]):   # the crack: a jagged glowing line over the front and crown
+            mid = Vector(((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)); d = Vector((x1 - x0, y1 - y0, z1 - z0))
+            K.cyl('crack', 0.045, d.length + 0.04, tuple(mid), M('rose', 3.0), 6, 0.0).rotation_euler = _aim(d)
+        for s in (-1, 1):   # one eye each side of the crack, glaring at the other
+            K.sphere('eye', 0.17, (s * 0.34, -0.8, 0.86), M('eye'), (1, 0.62, 1.12), 3)
+            K.sphere('pupil', 0.12, (s * 0.3, -0.88, 0.85), M('pupil'), (1, 0.55, 1.15), 2)
+            K.sphere('catch', 0.035, (s * 0.27, -0.95, 0.91), M('white_gloss', 0.5), sub=1)
+            o = block((s * 0.36, -0.78, 1.06), (0.3, 0.1, 0.08), M(dark), 0.03); o.rotation_euler = (0, -s * 0.38, 0)
+        for (a, sz) in ((0.4, 0.17), (2.9, 0.19), (5.3, 0.16)):
+            K.sphere('drip', sz, (math.cos(a) * 0.86, math.sin(a) * 0.86, sz * 0.32), M(body), (1.3, 1.3, 0.45), 2)
         return
     big = kind == 'queen'
     r, h = (1.0, 1.55) if big else (0.92, 1.35)
@@ -504,7 +509,7 @@ def slime(kind='slime'):
     K.sphere('shine', 0.2 * r, (-0.32 * r, -0.42 * r, h * 0.86), M('white_gloss', 0.4), (1.5, 1.0, 0.45), 2)   # the wet sheen
     for s in (-1, 1): K.sphere('stub', 0.22, (s * r * 0.92, -0.1, 0.42), M(body), (1.0, 0.9, 0.8), 2)   # little arms
     for (a, sz) in ((0.4, 0.17), (1.9, 0.15), (2.9, 0.19), (4.1, 0.14), (5.3, 0.16)):   # drips settled at its foot
-        K.sphere('drip', sz, (math.cos(a) * r * 1.02, math.sin(a) * r * 1.02, sz * 0.32), M(body), (1.3, 1.3, 0.45), 2)
+        K.sphere('drip', sz, (math.cos(a) * r * 0.9, math.sin(a) * r * 0.9, sz * 0.32), M(body), (1.5, 1.5, 0.45), 2)
     if kind == 'leech':   # a round sucking mouth ringed with teeth instead of a smile
         face(-0.8, 0.98, 0.25, 0.17, brows=True, mouth=0)
         bpy.ops.mesh.primitive_torus_add(major_radius=0.2, minor_radius=0.07, location=(0, -0.86, 0.55), rotation=(math.pi / 2, 0, 0))
@@ -534,7 +539,7 @@ def slime(kind='slime'):
         return
     face(-0.84, 0.86, 0.26, 0.21, mouth=0.12)
 
-def _shell(side, u, v, cx=0.27, cy=0.2, cz=0.68, a=0.39, b=0.94, c=0.51):
+def _shell(side, u, v, cx=0.0, cy=0.2, cz=0.62, a=0.6, b=0.98, c=0.55):
     """A point on one wing case (side -1/1, u across 0..1 from the seam outward, v along -1..1 head to tail) and its normal."""
     dx = side * (0.05 + 0.9 * u) * a; dy = v * b * 0.95
     q = max(0.0, 1 - (dx / a) ** 2 - (dy / b) ** 2); dz = c * math.sqrt(q)
@@ -545,7 +550,19 @@ def beetle(kind='beetle'):
     """A shiny armoured beetle: two domed wing cases meeting in a groove (no bar along the back), a plated collar, and a
     battering-ram horn: an iron-shod beam that it drives into the walls. Thick jointed legs."""
     shell = {'elite': 'gold', 'hive': 'amber_gloss', 'tyrant': 'robe_dk', 'swarm': 'lord_gloss', 'sprinter': 'stone3', 'shielded': 'cloth', 'thief': 'robe_dk', 'phantom': 'beetle_gloss'}.get(kind, 'beetle_gloss')
-    for s in (-1, 1): K.sphere('case', 0.75, (s * 0.27, 0.2, 0.68), M(shell), (0.52, 1.25, 0.68), 3)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1.0, location=(0, 0, 0))
+    o = bpy.context.object; o.name = 'shell'
+    for v in o.data.vertices:   # one long domed shell, narrowing to the tail, its top ridged by a shallow seam (no lobes)
+        x, y, z = v.co.x, v.co.y, v.co.z
+        taper = 1.0 - 0.28 * max(0.0, y)                      # +y is the tail
+        seam = 1.0 - 0.06 * math.exp(-(x / 0.08) ** 2) * max(0.0, z)
+        v.co = Vector((x * 0.68 * taper, 0.2 + y * 0.98, 0.62 + z * 0.55 * seam))
+    o.data.update(); K.finish(o, M(shell))
+    for side in (-1, 1):   # three fine grooves down each wing case
+        for u in (0.35, 0.65):
+            for v in (-0.55, -0.25, 0.05, 0.35, 0.62):
+                p, n = _shell(side, u, v, cx=0.0, cz=0.62, a=0.68 * (1 - 0.28 * max(0, v)), b=0.98, c=0.55)
+                K.sphere('groove', 0.045, tuple(p), M('pupil'), (0.6, 2.2, 0.35), 1).rotation_euler = _aim(n)
     K.sphere('collar', 0.5, (0, -0.58, 0.7), M('iron'), (1.15, 0.75, 0.68), 3)
     K.sphere('head', 0.36, (0, -0.95, 0.62), M('iron'), (1, 0.9, 0.85), 2)
     def ram(base, d, ln, rr):   # an iron-shod beam: the shaft, two gold bands, a blunt flared ram face
@@ -625,7 +642,8 @@ def golem(kind='golem'):
             boulder((s * 0.42, -0.05, 0.2), 0.32, (1, 1.1, 0.75))  # foot
             if heavy: block((s * 0.42, -0.2, 0.42), (0.5, 0.3, 0.42), M(arm), 0.05)   # greaves
         # the pauldron: a domed iron guard over the shoulder, gold rivets round its rim
-        K.sphere('pauldron', 0.52 if not heavy else 0.62, (s * 1.02, 0, 1.62), M(arm), (1.12, 1.05, 0.62), 3)
+        for k, (r0, z0) in enumerate(((0.46, 1.72), (0.4, 1.55), (0.34, 1.4))):   # three overlapping lames, angled outward
+            o = K.sphere('pauldron', r0 * (1.2 if heavy else 1.0), (s * (1.0 + 0.08 * k), -0.02, z0), M(arm), (1.05, 1.0, 0.36), 2); o.rotation_euler = (0, s * 0.35, 0)
         for k in range(4):
             t = 0.45 + k * 0.75; K.sphere('rivet', 0.055, (s * (1.02 + 0.5 * math.cos(t)), -0.52 * math.sin(t), 1.5), M(trim), sub=1)
         if kind == 'king':
@@ -637,9 +655,10 @@ def golem(kind='golem'):
     for s in (-1, 1): K.sphere('eye', 0.06, (s * 0.13, -0.63, 2.0), M(*glow), (1.4, 0.6, 0.7), 1)
     block((0, -0.15, 2.42), (0.1, 0.8, 0.12), M(trim), 0.02)   # the helm's crest ridge
     # the breastplate: a broad plate with a trim and a glowing boss at its heart (the old cracks show at its edges)
-    block((0, -0.78, 1.2), (1.45 if not heavy else 1.65, 0.24, 1.0), M(arm), 0.09)
-    block((0, -0.9, 1.69), (1.5 if not heavy else 1.7, 0.1, 0.08), M(trim), 0.02)
-    K.sphere('boss', 0.15, (0, -0.92, 1.25), M(*glow), (1, 0.5, 1), 2)
+    K.sphere('cuirass', 0.78, (0, -0.5, 1.22), M(arm), (1.0 if not heavy else 1.12, 0.42, 0.72), 3)   # a rounded breastplate
+    block((0, -0.82, 1.22), (0.08, 0.1, 0.95), M(trim), 0.02)                                       # its centre ridge
+    for s in (-1, 1): block((s * 0.4, -0.78, 1.68), (0.55, 0.1, 0.08), M(trim), 0.02).rotation_euler = (0, s * 0.25, 0)   # the collar's edge
+    K.sphere('boss', 0.09, (0, -0.86, 1.6), M(*glow), (1, 0.5, 1), 2)                                # a small glowing stone at the throat
     for (x, z, rot) in ((-0.85, 0.85, -0.6), (0.88, 1.05, 0.9)): o = block((x, -0.66, z), (0.3, 0.05, 0.06), M(*glow), 0.0); o.rotation_euler = (0, rot, 0)
     block((0, -0.6, 0.66), (1.3, 0.24, 0.2), M('wood_dk' if kind != 'king' else 'iron'), 0.03); block((0, -0.73, 0.66), (0.24, 0.06, 0.24), M(trim), 0.02)   # belt and buckle
     if kind == 'bulwark':   # layered stone slabs on the body itself: a wall that walks
@@ -657,7 +676,7 @@ def golem(kind='golem'):
             for k in range(5):   # each horn a curve of shrinking segments, out, back and up
                 t = k / 4; p = (s * (0.45 + 0.5 * t), 0.05 + 0.35 * t * t, 2.15 + 0.55 * t)
                 K.sphere('horn', 0.17 - 0.03 * k, p, M('bone' if k < 4 else 'gold'), (1, 1, 1.25), 2)
-        block((0, -0.92, 1.15), (0.12, 0.06, 0.8), M('fire', 3.0), 0.0)   # the plate split over a molten heart
+        for (x, z, rot) in ((0.12, 1.3, 0.3), (-0.1, 1.05, -0.4), (0.05, 0.85, 0.2)): block((x, -0.84, z), (0.08, 0.06, 0.32), M('fire', 3.0), 0.0).rotation_euler = (0, rot, 0)   # the plate cracked over a molten heart
         cloth('cape', -0.95, 0.95, 1.95, 0.25, 0.72, M('banner'), wave=0.12, tail=True)
     if kind in ('ironhide', 'knight'): _shield(1.9, 1.3)
 
@@ -667,7 +686,9 @@ def totem_titan():
     for i, (m, z) in enumerate((('wood_dk', 0.95), ('wood', 1.95), ('timber', 2.95))):
         w = 1.45 - i * 0.12
         block((0, 0, z), (w, 1.05, 0.95), M(m), 0.07)
-        block((0, -0.5, z + 0.27), (w * 0.95, 0.16, 0.16), M('wood_dk'), 0.03)   # the brow
+        block((0, -0.6, z + 0.27), (w * 1.04, 0.36, 0.2), M('wood_dk'), 0.03)   # the brow, overhanging
+        K.cone('nose', 0.13, 0.4, (0, -0.62, z - 0.02), M(m), 4).rotation_euler = (math.pi / 2, 0, 0)
+        for s in (-1, 1): K.cone('fang', 0.06, 0.24, (s * 0.2, -0.6, z - 0.4), M('canvas'), 5).rotation_euler = (math.pi, 0, 0)
         for s in (-1, 1): K.sphere('eye', 0.12, (s * 0.26, -0.56, z + 0.1), M('tree2', 3.5), (1.4, 0.5, 0.8), 2)
         block((0, -0.54, z - 0.25), (w * 0.5, 0.1, 0.18), M('char'), 0.02)        # the mouth
         for s in (-1, 1): block((s * 0.15, -0.58, z - 0.25), (0.07, 0.06, 0.16), M('canvas'), 0.0)
@@ -677,6 +698,8 @@ def totem_titan():
         o = block((s * 1.1, 0, 3.3), (1.2, 0.18, 0.6), M('roof_red'), 0.04); o.rotation_euler = (0, s * 0.45, 0)
         o = block((s * 1.5, 0, 3.55), (0.6, 0.16, 0.4), M('roof_blue'), 0.04); o.rotation_euler = (0, s * 0.7, 0)
     K.cone('spike', 0.28, 0.75, (0, 0, 3.8), M('wood_dk'), 6)
+    for k in range(7):   # a crest of carved feathers fanned behind the top face
+        a = -0.9 + k * 0.3; block((math.sin(a) * 0.9, 0.35, 3.55 + math.cos(a) * 0.6), (0.22, 0.12, 0.9), M(('roof_red', 'roof_blue', 'flower_y')[k % 3]), 0.03).rotation_euler = (0, a, 0)
     for s in (-1, 1):
         side = 'L' if s < 0 else 'R'
         with Part('arm_' + side, (s * 0.85, 0, 2.2)):
@@ -693,8 +716,9 @@ def wraith_king():
         a = k * math.tau / 14; K.cone('rag', 0.16, 0.5, (math.cos(a) * 0.88, math.sin(a) * 0.88, 0.15), M('robe_dk'), 5).rotation_euler = (math.pi, 0, 0)
     K.cyl('mist', 1.0, 0.04, (0, 0, 0.03), M('frost', 1.5), 24, 0.0)
     K.sphere('hood', 0.56, (0, 0.02, 2.25), M('robe_dk'), (1.0, 1.1, 1.1), 3)
-    K.sphere('void', 0.4, (0, -0.32, 2.2), M('cave'), (1.0, 0.55, 1.1), 2)
-    for s in (-1, 1): K.sphere('eye', 0.07, (s * 0.13, -0.52, 2.25), M('frost', 4.0), (1.5, 0.6, 0.7), 1)
+    K.cone('peak', 0.42, 0.7, (0, 0.12, 2.75), M('robe_dk'), 12).rotation_euler = (0.35, 0, 0)
+    K.sphere('void', 0.38, (0, -0.42, 2.2), M('cave'), (1.0, 0.45, 1.15), 2)
+    for s in (-1, 1): K.sphere('eye', 0.09, (s * 0.14, -0.6, 2.24), M('frost', 4.5), (1.6, 0.5, 0.7), 1)
     for k in range(5):
         a = math.pi * 0.15 + k * math.pi * 0.175; K.cone('crown', 0.07, 0.42 + 0.12 * (k == 2), (math.cos(a) * 0.4, -math.sin(a) * 0.2 + 0.05, 2.8), M('frost', 2.5), 5)
     for s in (-1, 1):
