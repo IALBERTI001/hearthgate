@@ -869,21 +869,37 @@ def marker():
 # ---------------------------------------------------------------------------------------------------------------------
 # the fountain: the town's centrepiece. An octagonal basin on steps, water, a two-tier column, a gold hearth flame.
 def fountain():
+    """The square's fountain (owner, Nov 14 2026: "base of fountain should have water too"): a stepped octagonal base, a
+    low basin whose stone rim is a ring of eight coping stones round a pool you can see into, the column and upper bowl,
+    and eight streams arcing out of the bowl's lip into the pool, each a run of droplets that widens as it falls, with a
+    splash of foam and ripples where it lands. (The basin was a solid drum standing taller than its water.)"""
     K.cyl('step', 2.95, 0.22, (0, 0, 0.11), M('stone_dk'), 8, 0.04)
     K.cyl('step2', 2.7, 0.2, (0, 0, 0.3), M('stone2'), 8, 0.04)
-    K.cyl('basin', 2.4, 0.55, (0, 0, 0.66), M('stone'), 8, 0.05)
-    K.cyl('rim', 2.5, 0.14, (0, 0, 0.98), M('stone3'), 8, 0.03)
-    K.cyl('water', 2.2, 0.06, (0, 0, 0.88), M('water_gloss', 0.3), 32, 0.0)
+    K.cyl('basin_floor', 2.45, 0.32, (0, 0, 0.56), M('stone'), 8, 0.03)             # the pool's floor, below the water
+    for k in range(8):   # the rim: eight coping stones, an octagon round the pool
+        a = (k + 0.5) / 8 * math.tau; r = 2.3
+        block((math.cos(a) * r, math.sin(a) * r, 0.86), (1.92, 0.36, 0.56), M('stone'), 0.05, rot=a + math.pi / 2)
+        block((math.cos(a) * (r + 0.03), math.sin(a) * (r + 0.03), 1.18), (2.02, 0.48, 0.1), M('stone3'), 0.03, rot=a + math.pi / 2)
+    K.cyl('water', 2.16, 0.06, (0, 0, 0.92), M('water_gloss', 0.35), 32, 0.0)        # the pool, a hand below the rim
+    for (r, w) in ((1.75, 0.05), (1.25, 0.04)):   # light rings on the water
+        K.cyl('glint', r, 0.01, (0, 0, 0.955), M('frost', 0.6), 32, 0.0); K.cyl('glint_in', r - w, 0.012, (0, 0, 0.958), M('water_gloss', 0.35), 32, 0.0)
     prism('column', 0.38, 0.3, 0.9, 2.3, M('stone2'), n=8)
     K.cyl('bowl', 1.05, 0.36, (0, 0, 2.45), M('stone'), 16, 0.03, r2=0.55)
-    K.cyl('bowl_water', 0.92, 0.05, (0, 0, 2.62), M('water_gloss', 0.3), 16, 0.0)
+    K.cyl('bowl_water', 0.92, 0.05, (0, 0, 2.62), M('water_gloss', 0.35), 16, 0.0)
     K.cyl('neck', 0.18, 0.6, (0, 0, 2.95), M('stone2'), 10, 0.02)
     K.cyl('cup', 0.34, 0.22, (0, 0, 3.32), M('gold'), 12, 0.02, r2=0.2)
     K.cone('flame', 0.24, 0.75, (0, 0, 3.8), M('fire', 3.0), 10)
     K.cone('flame_core', 0.12, 0.45, (0, 0, 3.7), M('gold', 4.0), 8)
-    for i in range(8):
-        a = i / 8 * math.tau
-        K.cyl('fall', 0.05, 1.4, (math.cos(a) * 1.0, math.sin(a) * 1.0, 1.85), M('water_gloss', 0.5), 6, 0.0)
+    for i in range(8):   # streams arcing out of the bowl's lip: droplets along a falling curve, wider as they fall
+        a = (i + 0.5) / 8 * math.tau; ca, sa = math.cos(a), math.sin(a)
+        n = 14
+        for k in range(n + 1):
+            u = k / n; rr = 1.02 + 0.55 * math.sqrt(u); z = 2.6 - 1.7 * u * u - 0.05 * u
+            bsphere('drop', 0.075 + 0.05 * u, (ca * rr, sa * rr, z), M('water_gloss', 0.6), (1.0, 1.0, 1.5), 1)
+            if k % 2 == 0: bsphere('sheen', 0.04 + 0.02 * u, (ca * (rr + 0.04), sa * (rr + 0.04), z + 0.02), M('frost', 0.8), (1, 1, 1.4), 1)
+        for (dr, dz, sc) in ((0.0, 0.0, 1.0), (0.18, 0.02, 0.6), (-0.15, 0.02, 0.55)):   # foam where it lands
+            bsphere('foam', 0.2 * sc, (ca * (1.6 + dr), sa * (1.6 + dr), 0.96 + dz), M('snow', 0.4), (1.3, 1.3, 0.4), 1)
+        K.cyl('ripple', 0.38, 0.012, (ca * 1.6, sa * 1.6, 0.952), M('frost', 0.5), 16, 0.0)
     return K.export('fountain')
 
 # ---------------------------------------------------------------------------------------------------------------------

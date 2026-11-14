@@ -23,7 +23,7 @@ namespace Hearthgate.Game
         readonly List<Flier> meadow = new List<Flier>(), garden = new List<Flier>();
         float flyT = 12f;
         readonly System.Random flyRnd = new System.Random();
-        const float MEADOW_SCALE = 3.0f, GARDEN_SCALE = 1.6f;
+        const float MEADOW_SCALE = 3.0f, GARDEN_SCALE = 0.75f;   // the Garden is seen close from the town walk: 1.6 filled the camera (owner, Nov 14 2026)
 
         Flier MakeFly(HG.Fly k, float scale)
         {
@@ -117,7 +117,7 @@ namespace Hearthgate.Game
                 }
                 if (f.t > f.nextPerch && f.perchAt == default)
                 {   // the fountain's rim
-                    float a = Random.value * Mathf.PI * 2; f.perchAt = Field.PLAZA + new Vector3(Mathf.Cos(a) * (Wizard.FOUNTAIN_R - 0.4f), 1.05f, Mathf.Sin(a) * (Wizard.FOUNTAIN_R - 0.4f));
+                    float a = Random.value * Mathf.PI * 2; f.perchAt = Field.PLAZA + new Vector3(Mathf.Cos(a) * 2.3f, 1.27f, Mathf.Sin(a) * 2.3f);   // on the rim's coping (hg_front.fountain)
                 }
                 if (f.perchAt != default)
                 {
