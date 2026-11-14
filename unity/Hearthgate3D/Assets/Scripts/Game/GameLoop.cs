@@ -281,7 +281,7 @@ namespace Hearthgate.Game
             P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P);
             bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0;
             Glow(i, big ? 28 : 10);
-            Fx.I.Pop(Field.SignPoint(i) + Vector3.up * 0.8f, $"Level {L}", Field.GOLD, 34);
+            Fx.I.Pop(Field.Plot(i) + new Vector3(0, 3.8f, Field.PlotSize(i).y / 2), $"Level {L}", Field.GOLD, 34);   // over the door, in view inside and out
             if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f); }
             Save();
         }
