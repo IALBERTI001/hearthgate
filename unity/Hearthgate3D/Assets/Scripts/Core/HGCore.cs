@@ -206,7 +206,7 @@ namespace Hearthgate.Core
         }
 
         // ---------- enemy roles ----------
-        public class Role { public string id, model, label, weak, tip; public double hp, speed, size, armour, heal, comboWeak; public bool boss, chest, shield; public int split; }
+        public class Role { public string id, model, label, weak, tip, summonRole; public double hp, speed, size, armour, heal, comboWeak, totem, summon; public bool boss, chest, shield, blink, thief, bomb; public int split; }
         static Role R(string id, string model, double hp, double speed, double size, string label, string weak = null, double armour = 0, bool boss = false, int split = 0)
             => new Role { id = id, model = model, hp = hp, speed = speed, size = size, label = label, weak = weak, armour = armour, boss = boss, split = split };
         // speed and size are in the 2D stage's px (the field was 414 px deep); the 3D field converts them (Field.cs)
@@ -224,21 +224,51 @@ namespace Hearthgate.Core
             Tip(R("ironhide", "ironhide", 3.4, 32, 80, "Ironhide", "storm", 0.5), "Ironhide: Storm breaks the shield, then Fire burns the armour", shield: true),
             Tip(R("sprinter", "sprinter", 0.8, 128, 56, "Sprinters", "frost"), "Sprinters dash for the walls: Frost slows them"),
             Tip(R("bulwark", "bulwark", 6, 26, 86, "Bulwarks"), "Bulwarks shrug off hits: combos crack them for double", comboWeak: 2),
+            // the Ascension enemies (js/core.js ROLES): each later loop meets new kinds, with a counter to learn
+            Asc(R("phantom", "phantom", 1.2, 66, 62, "Phantoms", "storm"), "Phantoms fade in and out: hits land only when they show", blink: true),
+            Asc(R("thief", "thief", 1, 110, 54, "Thieves", "frost"), "Thieves grab Resonance at the walls: stop them first", thief: true),
+            Asc(R("bomber", "bomber", 2, 34, 78, "Bombers", "fire"), "Bombers blow up: pop them in a crowd, never at the walls", bomb: true),
+            Asc(R("totem", "totem", 4, 24, 84, "Totems", "fire", 0.3), "Totems shield their friends: burn them down first", totem: 4),
             R("boss", "golem", 90, 28, 190, "Golem King", null, 0.3, true),
             R("queen", "slime", 70, 30, 190, "Slime Queen", null, 0, true, 6),
-            R("lord", "beetle", 60, 40, 170, "Swarmlord", null, 0, true),
+            Asc(R("lord", "beetle", 60, 40, 170, "Swarmlord", null, 0, true), "The Swarmlord calls runners as it walks", summon: 3.5),
+            // the Ascension bosses join the rotation (2nd, 3rd and 4th Ascension), each first met at wave 20 of that run
+            Asc(R("wraith", "phantom", 70, 34, 180, "Wraith King", null, 0, true), "The Wraith King fades: Storm still finds him", blink: true),
+            Asc(R("titan", "totem", 110, 22, 200, "Totem Titan", null, 0.3, true), "The Totem Titan shields his escort: burn them first", totem: 3),
+            Asc(R("tyrant", "thief", 80, 30, 185, "Thief Tyrant", null, 0, true), "The Thief Tyrant sends thieves for your Resonance", summon: 3, summonRole: "thief"),
         }.ToDictionary(r => r.id);
+        static Role Asc(Role r, string tip, bool blink = false, bool thief = false, bool bomb = false, double totem = 0, double summon = 0, string summonRole = null)
+        { r.tip = tip; r.blink = blink; r.thief = thief; r.bomb = bomb; r.totem = totem; r.summon = summon; r.summonRole = summonRole; return r; }
         static Role Tip(Role r, string tip, bool chest = false, bool shield = false, double heal = 0, double comboWeak = 0)
         { r.tip = tip; r.chest = chest; r.shield = shield; r.heal = heal; r.comboWeak = comboWeak; return r; }
         public static readonly Dictionary<string, int> VARIANT_FROM = new Dictionary<string, int> { { "elite", 12 }, { "shielded", 14 }, { "splitter", 16 }, { "mender", 19 }, { "ironhide", 26 }, { "sprinter", 33 }, { "bulwark", 37 } };
         public static bool IsBoss(int w) => w % 10 == 0;
-        public static string BossOf(int w) { var list = new[] { "boss", "queen", "lord" }; return list[((w / 10) - 1) % list.Length]; }
+        // the newest unlocked Ascension boss takes wave 20, the others follow the first three in the rotation
+        static readonly (string role, int asc)[] ASC_BOSSES = { ("wraith", 2), ("titan", 3), ("tyrant", 4) };
+        public static string BossOf(int w, int asc = 0)
+        {
+            var extra = ASC_BOSSES.Where(b => asc >= b.asc).Select(b => b.role).Reverse().ToList();
+            var list = new List<string> { "boss" }; list.AddRange(extra.Take(1)); list.Add("queen"); list.Add("lord"); list.AddRange(extra.Skip(1));
+            return list[((w / 10) - 1) % list.Count];
+        }
+        // Ascension enemies: (Ascensions needed, first wave in that run)
+        public static readonly Dictionary<string, (int asc, int from)> ASC_ROLES = new Dictionary<string, (int, int)> { { "phantom", (1, 15) }, { "thief", (2, 8) }, { "bomber", (2, 26) }, { "totem", (3, 16) } };
 
         // the wave's make-up as (role, count): runners from wave 3, armoured from 6, swarm from 12, a boss every 10
-        public static List<(string role, int n)> WaveMix(int w)
+        public static List<(string role, int n)> WaveMix(int w, int asc = 0)
+        {
+            var mix = BaseMix(w, asc); if (IsBoss(w)) return mix;
+            foreach (var kv in ASC_ROLES)
+            {
+                var (a, from) = kv.Value;
+                if (asc >= a && w >= from && (w == from || w % 3 == from % 3)) mix.Add((kv.Key, kv.Key == "totem" ? 1 : 2 + (w - from) / 15));
+            }
+            return mix;
+        }
+        static List<(string role, int n)> BaseMix(int w, int asc)
         {
             var mix = new List<(string, int)>();
-            if (IsBoss(w)) { mix.Add((BossOf(w), 1)); mix.Add(("slime", Math.Min(8, 2 + w / 10))); return mix; }
+            if (IsBoss(w)) { mix.Add((BossOf(w, asc), 1)); mix.Add(("slime", Math.Min(8, 2 + w / 10))); if (w >= 40) mix.Add(("mender", 2)); return mix; }
             int n = 6 + Math.Min(14, w * 2);
             int runners = w >= 3 ? (int)Math.Floor(n * (w % 3 == 0 ? 0.5 : 0.25)) : 0;
             int armoured = w >= 6 ? Math.Max(1, (int)Math.Floor(n * (w % 4 == 2 ? 0.3 : 0.12))) : 0;
@@ -375,7 +405,8 @@ namespace Hearthgate.Core
             return got;
         }
         // the Bestiary: every kind, in the order a player meets them
-        public static readonly string[] BESTIARY = { "slime", "runner", "armoured", "swarm", "boss", "elite", "shielded", "splitter", "queen", "mender", "lord", "ironhide", "sprinter", "bulwark" };
+        public static readonly string[] BESTIARY = { "slime", "runner", "armoured", "swarm", "boss", "elite", "shielded", "splitter", "queen", "mender", "lord", "ironhide", "sprinter", "bulwark",
+            "phantom", "thief", "wraith", "bomber", "totem", "titan", "tyrant" };
         public static string About(Role r) => r.tip ?? (r.id == "slime" ? "The common foe: anything beats them" : r.id == "runner" ? "Fast on their feet: Frost slows them"
             : r.id == "armoured" ? "Half damage from most hits: Fire melts armour" : r.id == "swarm" ? "Many and small: Storm chains through them"
             : r.id == "boss" ? "Every few boss waves: a slow giant of stone" : r.id == "queen" ? "Bursts into a brood of slimes when she falls" : r.id == "lord" ? "Calls beetles to its side" : "");

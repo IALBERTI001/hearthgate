@@ -11,10 +11,10 @@ namespace Hearthgate.Game
         // lane is which tower it walks to; z is progress out along that lane from the tower's foot (spawn down to stop), x is
         // lateral across it; Field.Lane maps them to the world
         public int lane; public double hp, max; public float speed, size, x, z, spawn, chill, burn, flash, hop, born, dying;
-        public bool boss, atGate, shield, bigHit; Quaternion yaw = Quaternion.identity;
+        public bool boss, atGate, shield, bigHit, faded; public float blinkT = Random.Range(0f, 2.4f), totemT, summonT; Quaternion yaw = Quaternion.identity;
         public Transform shieldT;   // the rings of force (the model's 'upper' part), gone when Storm breaks the shield
         public float stop = Field.FRONT + Random.Range(0f, Field.STOP_SPREAD);   // where it halts, a crowd at the tower's foot
-        Renderer[] rends; Color[] baseCols;
+        Renderer[] rends; Color[] baseCols; static readonly Color GHOST = new Color(0.82f, 0.9f, 1f);
 
         public Enemy(string role, int wave, int lane, float x, float z, Transform parent)
         {
@@ -25,7 +25,7 @@ namespace Hearthgate.Game
             var g = Art.Spawn(Art.Set ? Art.Set.Enemy(R.model) : null, R.model, Field.Lane(lane, z, x), parent);
             t = g.transform; body = t.childCount > 0 ? t.GetChild(0) : t;
             t.localScale = Vector3.one * (size / 1.5f); t.rotation = Field.Facing(lane) * yaw;   // models face Blender -Y; Facing turns them up the lane
-            shield = R.shield; foreach (var c in g.GetComponentsInChildren<Transform>(true)) if (c.name == "upper") shieldT = c;
+            shield = R.shield; totemT = (float)R.totem; summonT = (float)R.summon; foreach (var c in g.GetComponentsInChildren<Transform>(true)) if (c.name == "upper") shieldT = c;
             rends = g.GetComponentsInChildren<Renderer>(); baseCols = new Color[rends.Length];
             for (int i = 0; i < rends.Length; i++) { var sm = rends[i].sharedMaterial ?? Art.Mat(Color.gray); rends[i].material = new Material(sm); baseCols[i] = rends[i].material.color; }
         }
@@ -36,7 +36,7 @@ namespace Hearthgate.Game
         public void Show(float time)
         {
             float step = Mathf.Abs(Mathf.Sin((time + born) * (boss ? 3f : 7f)));
-            float sq = 1f + flash * 0.15f;
+            float sq = (1f + flash * 0.15f) * (faded ? 0.92f : 1f);
             body.localScale = new Vector3(sq, (1f + step * 0.08f) / sq, sq);
             t.position = Field.Lane(lane, z, x, dying > 0 ? -dying * 2f : step * 0.12f * size);
             t.rotation = Quaternion.RotateTowards(t.rotation, Field.Facing(lane) * (atGate ? Quaternion.identity : yaw), 240f * Time.deltaTime);
@@ -45,6 +45,8 @@ namespace Hearthgate.Game
                 var c = baseCols[i];
                 if (chill > 0) c = Color.Lerp(c, Field.FROST, 0.55f);
                 if (burn > 0) c = Color.Lerp(c, Field.FIRE, 0.25f * (0.5f + 0.5f * Mathf.Sin(time * 20)));
+                if (faded) c = Color.Lerp(c, GHOST, 0.75f);                          // a Phantom washed out: only Storm finds it
+                else if (shield && shieldT == null) c = Color.Lerp(c, GHOST, 0.3f);   // a Totem's ward on a kind without rings
                 if (flash > 0) c = Color.Lerp(c, Color.white, flash);
                 rends[i].material.color = c;
             }

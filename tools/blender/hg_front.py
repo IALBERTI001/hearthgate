@@ -926,7 +926,8 @@ def _shield(r, z):   # two glowing rings of force round it (the materials are op
         K.finish(o, M('water_gloss', 1.6))
 
 def variant(kind):
-    base = {'elite': beetle, 'shielded': beetle, 'sprinter': beetle, 'splitter': slime, 'mender': slime, 'ironhide': golem, 'bulwark': golem}[kind]
+    base = {'elite': beetle, 'shielded': beetle, 'sprinter': beetle, 'splitter': slime, 'mender': slime, 'ironhide': golem, 'bulwark': golem,
+            'phantom': beetle, 'thief': beetle, 'bomber': slime, 'totem': golem}[kind]
     real = K.export; K.export = lambda name: 0
     try: base()
     finally: K.export = real
@@ -950,6 +951,25 @@ def variant(kind):
     elif kind == 'bulwark':   # grey stone with a great slab carried in front: combos crack it for double
         _remap({'golem': 'stone3', 'rock': 'stone2', 'rock_dk': 'stone_dk', 'storm': ('fire_core', 2.0)})   # pale stone, ember cracks
         block((0, -1.05, 1.3), (1.6, 0.25, 1.9), M('stone3'), 0.06); block((0, -1.2, 1.3), (0.3, 0.1, 1.2), M('iron'), 0.02)
+    elif kind == 'phantom':   # the Ascension enemies (js/core.js ROLES): a pale glowing ghost-beetle that fades in and out
+        _remap({'beetle_gloss': ('snow', 1.4), 'iron': ('frost_dk', 0.8), 'gold': ('water_gloss', 2.0), 'pupil': ('frost', 2.5)})
+        for k in range(3): bsphere('wisp', 0.16 - k * 0.04, (0, 0.95 + k * 0.35, 0.75 + k * 0.12), M('snow', 1.6), (1, 1, 1), 2)   # a fading tail
+    elif kind == 'thief':     # a dark-shelled beetle with a fat sack of stolen coin on its back
+        _remap({'beetle_gloss': 'robe_dk', 'gold': 'wood_dk'})
+        bsphere('sack', 0.48, (0, 0.55, 1.35), M('canvas'), (1, 1, 1.05), 3); bcyl('tie', 0.14, 0.12, (0, 0.55, 1.86), M('wood_dk'), 10, 0.0)
+        for (x, y, z) in ((0.24, 0.1, 1.55), (-0.18, 0.25, 1.75), (0.05, 0.05, 1.82)): bcyl('coin', 0.1, 0.03, (x, y, z), M('gold', 0.6), 12, 0.0)
+    elif kind == 'bomber':    # a black slime with a lit fuse: it bursts when it falls
+        _remap({'slime_gloss': 'pupil', 'slime_dk': 'char'})
+        bcyl('cap', 0.18, 0.14, (0, 0, 1.78), M('iron'), 12, 0.0)
+        bcyl('fuse', 0.04, 0.32, (0.05, 0, 1.98), M('canvas'), 6, 0.0)
+        bsphere('spark', 0.12, (0.08, 0, 2.17), M('fire_core', 3.0), (1, 1, 1), 2)
+        for k in range(4): bsphere('rivet', 0.05, (math.cos(k * 1.571) * 0.7, math.sin(k * 1.571) * 0.7, 1.0), M('iron'), (1, 1, 1), 1)
+    elif kind == 'totem':     # carved wood, a painted face and a glowing rune: it shields its friends
+        _remap({'golem': 'wood', 'rock': 'wood_dk', 'rock_dk': 'timber', 'storm': ('tree2', 2.2)})
+        block((0, -0.55, 2.35), (0.7, 0.5, 0.8), M('wood'), 0.06)                         # the carved head-post
+        for sx in (-1, 1): block((sx * 0.18, -0.81, 2.45), (0.14, 0.04, 0.1), M('tree2', 2.5), 0.01)   # glowing eyes
+        block((0, -0.81, 2.18), (0.36, 0.04, 0.08), M('char'), 0.01)                       # the mouth
+        for sx in (-1, 1): block((sx * 0.5, -0.55, 2.55), (0.3, 0.12, 0.5), M('roof_red'), 0.03).rotation_euler = (0, sx * 0.5, 0)   # painted wings
     return K.export(kind)
 
 # the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender

@@ -98,14 +98,14 @@ namespace Hearthgate.Game
         {
             queue.Clear(); waveT = 0; waveLive = true;
             ev = HG.EventFor(P, P.wave); bool evNew = ev != null && !P.seenEvents.Contains(ev.id); if (evNew) P.seenEvents.Add(ev.id);
-            var mix = HG.EventMix(HG.WaveMix(P.wave), ev); var list = new List<string>();
+            var mix = HG.EventMix(HG.WaveMix(P.wave, P.ascensions), ev); var list = new List<string>();
             foreach (var (role, n) in mix) for (int k = 0; k < n; k++) list.Add(role);
             list = list.OrderBy(_ => rnd.Next()).ToList();
             float gap = Mathf.Max(0.35f, 1.4f - P.wave * 0.02f) * (Ev("rush") ? 0.5f : 1f);
             for (int i = 0; i < list.Count; i++) queue.Add((list[i], 0.8f + i * gap));
             Sound.Boss(HG.IsBoss(P.wave)); if (HG.IsBoss(P.wave)) { Sound.Play("boss_horn", 0.5f); Guide.Say("boss"); }
             if (ev != null) { Hud.Banner($"{(evNew ? "NEW! " : "")}{ev.name}: {ev.line}"); Sound.Play(evNew ? "feat" : "surge", evNew ? 0.45f : 0.3f); }
-            else Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave)].label}!" : $"Wave {P.wave}");
+            else Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave, P.ascensions)].label}!" : $"Wave {P.wave}");
         }
 
         void FixedUpdate()
@@ -138,13 +138,40 @@ namespace Hearthgate.Game
                 {   // a Mender heals its friends nearby until it burns
                     foreach (var o in enemies) if (o != e && o.dying <= 0 && o.hp < o.max && (o.Pos - e.Pos).sqrMagnitude < 16f) { o.hp = System.Math.Min(o.max, o.hp + o.max * e.R.heal * DT); if (Random.value < DT * 2) Fx.I.Burst(o.Pos, new Color(0.5f, 0.95f, 0.5f), 1); }
                 }
+                if (e.R.blink) { e.blinkT = (e.blinkT + DT) % 2.4f; e.faded = e.blinkT > 1.4f; }   // Phantoms: 1.4 s seen, 1 s faded
+                if (e.R.totem > 0 && (e.totemT -= DT) <= 0)
+                {   // a Totem wards up to three friends near it
+                    e.totemT = (float)e.R.totem; Fx.I.Burst(e.Pos + Vector3.up * e.size * 0.6f, new Color(0.75f, 0.9f, 1f), 14);
+                    foreach (var o in enemies.Where(o => o != e && o.dying <= 0 && !o.shield && !o.boss && (o.Pos - e.Pos).sqrMagnitude < 25f).Take(3).ToList())
+                    { o.shield = true; if (o.shieldT) o.shieldT.gameObject.SetActive(true); Fx.I.Burst(o.Pos, new Color(0.75f, 0.9f, 1f), 6); }
+                }
+                if (e.R.summon > 0 && e.atGate == false && (e.summonT -= DT) <= 0)
+                {   // the Swarmlord calls runners; the Thief Tyrant sends thieves from well up the field so they can be stopped
+                    e.summonT = (float)e.R.summon; string sr = e.R.summonRole ?? "runner";
+                    for (int k = -1; k <= 1; k += 2)
+                    {
+                        var en = new Enemy(sr, P.wave, e.lane, Mathf.Clamp(e.x + k * 1.6f, -Field.LANE, Field.LANE), e.z + (e.R.summonRole != null ? 6f : 0.5f), unitsRoot);
+                        EventSpawn(en); enemies.Add(en);
+                    }
+                }
                 if (e.burn > 0) { e.burn -= DT; e.hp -= HG.TowerDamage(P, B) * (1 + B["fire"]) * 0.5 * DT * (e.R.weak == "fire" ? 2 : 1); }
                 e.chill = Mathf.Max(0, e.chill - DT); e.flash = Mathf.Max(0, e.flash - DT * 6);
                 float slow = e.chill > 0 ? (e.R.weak == "frost" ? 0.3f : 0.45f) : 1f;
                 if (e.z > e.stop) e.z = Mathf.Max(e.stop, e.z - e.speed * slow * DT);
                 else
                 {
-                    e.atGate = true; gateHp -= HG.EnemyBite(P.wave, e.role) * DT;
+                    e.atGate = true;
+                    if (e.R.thief)
+                    {   // a Thief reaching the walls grabs Resonance and is gone
+                        double amt = System.Math.Min(P.res * 0.5, (HG.FightRate(P, B) * 1.6 + HG.CityRate(P, B)) * 6); P.res -= amt; e.dying = 0.0001f; e.hp = 0;
+                        Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1f), $"Stolen -{HG.Fmt(amt)}", new Color(1f, 0.54f, 0.42f), 34, 1.3f); Sound.Dud(); continue;
+                    }
+                    if (e.R.bomb)
+                    {   // a Bomber reaching the walls blows a piece out of them
+                        gateHp -= HG.EnemyBite(P.wave, e.role) * 10; e.dying = 0.0001f; e.hp = 0; Fx.I.Burst(e.Pos, new Color(1f, 0.6f, 0.23f), 26); Fx.I.Shake(0.25f);
+                        Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1f), "BOOM!", new Color(1f, 0.6f, 0.23f), 44); Sound.Play("shatter_combo", 0.4f); continue;
+                    }
+                    gateHp -= HG.EnemyBite(P.wave, e.role) * DT;
                     e.x = Mathf.MoveTowards(e.x, Mathf.Clamp(e.x * 1.6f, -2.2f, 2.2f), e.speed * 0.3f * DT);   // spread round the tower's foot
                 }
                 if (e.hp <= 0) Kill(e);
@@ -171,6 +198,12 @@ namespace Hearthgate.Game
             {   // an Elite's treasure chest
                 double amt = HG.FightRate(P, B) * 1.6 * 5 * SurgeX * (1 + B["chestX"]); P.res += amt; Sound.Play("claim", 0.5f);
                 Fx.I.Burst(e.Pos, Field.GOLD, 26); Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1.5f), $"Treasure! +{HG.Fmt(amt)}", Field.GOLD, 40, 1.3f);
+            }
+            if (e.R.bomb)
+            {   // a Bomber popped in the field takes its friends with it
+                Fx.I.Burst(e.Pos, new Color(1f, 0.6f, 0.23f), 26); Fx.I.Shake(0.15f); Sound.Play("shatter_combo", 0.4f);
+                Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.6f), "BOOM!", new Color(1f, 0.6f, 0.23f), 44);
+                foreach (var o in enemies) if (o != e && o.dying <= 0 && (o.Pos - e.Pos).sqrMagnitude < 20f) { o.hp -= HG.TowerDamage(P, B) * 4; o.flash = 1; }
             }
             if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, e.lane, Mathf.Clamp(e.x + Random.Range(-1.5f, 1.5f), -Field.LANE, Field.LANE), e.z + Random.Range(0, 1.5f), unitsRoot));
         }
@@ -264,6 +297,7 @@ namespace Hearthgate.Game
             double cm = (1 + B["combo"]) * (Ev("eclipse") ? 2 : 1);
             d *= (Ev("thunder") && el == "storm") || (Ev("blizzard") && el == "frost") || (Ev("inferno") && el == "fire") ? 2 : (Ev("hail") && (el == "frost" || el == "storm")) ? 1.5 : 1;
             if (e.R.armour > 0 && el != "fire") d *= 1 - e.R.armour;
+            if (e.faded && el != "storm") d *= 0.25;   // a faded Phantom: only Storm finds it
             if (e.shield)
             {   // a shield takes most of a hit; Storm breaks it
                 if (el == "storm") { e.shield = false; if (e.shieldT) e.shieldT.gameObject.SetActive(false); Fx.I.Burst(e.Pos, Field.STORM, 16); Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.5f), "SHIELD BROKEN", new Color(0.75f, 0.9f, 1f), 30); Sound.Play("lightning_contact_0", 0.35f); }

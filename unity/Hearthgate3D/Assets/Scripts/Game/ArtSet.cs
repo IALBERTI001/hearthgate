@@ -28,7 +28,7 @@ namespace Hearthgate.Game
         public GameObject Enemy(string model)
         {
             foreach (var v in variants) if (v && v.name == model) return v;
-            return model == "beetle" || model == "elite" || model == "shielded" || model == "sprinter" ? beetle : model == "golem" || model == "ironhide" || model == "bulwark" ? golem : slime;
+            return model == "beetle" || model == "elite" || model == "shielded" || model == "sprinter" || model == "phantom" || model == "thief" ? beetle : model == "golem" || model == "ironhide" || model == "bulwark" || model == "totem" ? golem : slime;
         }
         public GameObject Top(string el) => el == "fire" ? topFire : el == "frost" ? topFrost : el == "storm" ? topStorm : topStone;
     }

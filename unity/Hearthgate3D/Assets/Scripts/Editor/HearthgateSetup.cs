@@ -69,7 +69,7 @@ namespace Hearthgate.EditorTools
             art.buildings = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("building_" + id)).ToArray();
             art.ruins = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("ruin_" + id)).ToArray(); art.marker = M("marker"); art.wizard = M("wizard"); art.villagers = new[] { M("villager_a"), M("villager_b"), M("villager_c") }.Where(x => x).ToArray();
             art.capLooks = new[] { "top_fire_obsidian", "top_fire_ember", "top_frost_night", "top_frost_aurora", "top_storm_void", "top_storm_steel" }.Select(M).Where(x => x).ToArray();
-            art.variants = new[] { "elite", "shielded", "sprinter", "splitter", "mender", "ironhide", "bulwark" }.Select(M).Where(x => x).ToArray();
+            art.variants = new[] { "elite", "shielded", "sprinter", "splitter", "mender", "ironhide", "bulwark", "phantom", "thief", "bomber", "totem" }.Select(M).Where(x => x).ToArray();
             EditorUtility.SetDirty(art);
             int have = new[] { art.ground, art.road, art.gate, art.wall, art.towerBase, art.topStone, art.topFire, art.topFrost, art.topStorm, art.slime, art.beetle, art.golem, art.ruin, art.fountain, art.wizard }.Count(x => x) + art.buildings.Count(x => x);
             Debug.Log($"[Hearthgate] art set: {have} of 25 models found in {MODELS}");
