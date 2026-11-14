@@ -75,16 +75,17 @@ namespace Hearthgate.Game
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P; HG.QuestsFor(P, GameLoop.Today());
             var box = I.Modal("The Library", new Vector2(720, 680));
-            var tabs = new (string id, string label)[] { ("quests", "Quests"), ("feats", $"Feats {P.feats.Count}/{HG.FEATS.Count}"), ("beasts", $"Beasts {HG.BESTIARY.Count(r => P.seenRoles.Contains(r))}/{HG.BESTIARY.Length}") };
+            var tabs = new (string id, string label)[] { ("quests", "Quests"), ("feats", $"Feats {P.feats.Count}/{HG.FEATS.Count}"), ("beasts", $"Beasts {HG.BESTIARY.Count(r => P.seenRoles.Contains(r))}/{HG.BESTIARY.Length}"), ("garden", $"Garden {P.flies.Count}/{HG.BUTTERFLIES.Length}") };
             for (int k = 0; k < tabs.Length; k++)
             {
                 var t = tabs[k];
-                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-220 + k * 220, -70), new Vector2(210, 56), () => ShowQuests(t.id), null, out var tl, box, null, t.id == tab).rt.pivot = new Vector2(0.5f, 1);
+                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-246 + k * 164, -70), new Vector2(158, 56), () => ShowQuests(t.id), null, out var tl, box, null, t.id == tab).rt.pivot = new Vector2(0.5f, 1);
                 tl.text = t.label;
             }
             I.perkRefresh = null;
             if (tab == "feats") { FeatNews = false; FeatsTab(box, P, page); }
             else if (tab == "beasts") BeastsTab(box, P, page);
+            else if (tab == "garden") GardenTab(box, P, page);
             else QuestsTab(box, g);
             I.Choice(box, "Q_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
         }
@@ -132,6 +133,18 @@ namespace Hearthgate.Game
                     seen ? HG.About(R) : "Not met yet", seen ? weak : null, R.weak == "fire" ? new Color(1f, 0.6f, 0.35f) : R.weak == "frost" ? new Color(0.55f, 0.85f, 1f) : new Color(0.85f, 0.7f, 1f));
             }
             I.Pager(box, "beasts", page, pages);
+        }
+        static void GardenTab(RectTransform box, Profile P, int page)
+        {
+            var list = HG.BUTTERFLIES; int pages = (list.Length + PAGE - 1) / PAGE; page = Mathf.Clamp(page, 0, pages - 1);
+            I.Line(box, -136, $"Caught {P.Stat("flies")}  ·  every kind you catch flutters round the fountain", 16, new Color(0.85f, 0.8f, 0.88f));
+            for (int i = 0; i < PAGE && page * PAGE + i < list.Length; i++)
+            {
+                var k = list[page * PAGE + i]; bool got = P.flies.Contains(k.id), open = HG.FlyOpen(P, k);
+                I.Row(box, i, got ? k.name : "???", got ? new Color(k.r, k.g, k.b) : new Color(0.6f, 0.55f, 0.62f),
+                    got ? k.line : open && !k.rare ? "On the meadow now: tap one to catch it" : k.line, got ? "Caught" : null, RES);
+            }
+            I.Pager(box, "garden", page, pages);
         }
         static void QuestsTab(RectTransform box, GameLoop g)
         {

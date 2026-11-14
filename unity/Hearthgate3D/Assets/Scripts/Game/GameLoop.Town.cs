@@ -205,7 +205,7 @@ namespace Hearthgate.Game
         {
             if (!Input.GetMouseButtonDown(0) || Hud.OnHud(Hud.PointerPos) || Hud.Paused) return;
             var pt = Hud.PointerPos;
-            if (TapGold(pt)) return;
+            if (TapGold(pt) || TapFly(pt)) return;
             var cam = Camera.main; if (cam == null || (Wizard.I && Wizard.I.On)) return;
             var s = cam.WorldToScreenPoint(Field.PLAZA + Vector3.up * 1.2f);
             if (s.z > 0 && Vector2.Distance(pt, s) < 46f * Screen.height / 720f) TapSurge();

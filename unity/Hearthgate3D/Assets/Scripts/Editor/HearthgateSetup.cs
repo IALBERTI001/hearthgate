@@ -64,7 +64,7 @@ namespace Hearthgate.EditorTools
             art.cylinderMesh = Builtin(PrimitiveType.Cylinder); art.planeMesh = Builtin(PrimitiveType.Plane);
             GameObject M(string n) => AssetDatabase.LoadAssetAtPath<GameObject>($"{MODELS}/{n}.fbx");
             art.ground = M("ground"); art.road = M("road"); art.gate = M("gate"); art.wall = M("wall"); art.towerBase = M("tower_base");
-            art.topStone = M("top_stone"); art.topFire = M("top_fire"); art.topFrost = M("top_frost"); art.topStorm = M("top_storm"); art.topEarth = M("top_earth");
+            art.topStone = M("top_stone"); art.topFire = M("top_fire"); art.topFrost = M("top_frost"); art.topStorm = M("top_storm"); art.topEarth = M("top_earth"); art.butterfly = M("butterfly");
             art.slime = M("slime"); art.beetle = M("beetle"); art.golem = M("golem"); art.ruin = M("ruin"); art.villager = M("villager"); art.fountain = M("fountain");
             art.buildings = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("building_" + id)).ToArray();
             art.ruins = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("ruin_" + id)).ToArray(); art.marker = M("marker"); art.wizard = M("wizard"); art.villagers = new[] { M("villager_a"), M("villager_b"), M("villager_c") }.Where(x => x).ToArray();

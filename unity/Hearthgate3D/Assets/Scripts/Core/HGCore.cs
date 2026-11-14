@@ -154,7 +154,7 @@ namespace Hearthgate.Core
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
                 perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
                 shards = p.shards + (p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(),
-                stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars), relics = new List<string>(p.relics), steward = p.steward,
+                stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars), flies = new List<string>(p.flies), relics = new List<string>(p.relics), steward = p.steward,
                 questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
@@ -417,10 +417,11 @@ namespace Hearthgate.Core
         public static string QuestText(QuestState q) => QUESTS.First(x => x.id == q.id).text.Replace("{n}", q.need.ToString());
         // ---------- Feats (js/core.js FEATS): a long collection from lifetime stats that survive Ascension, each paying
         // Starshards once. Tier 1 bronze, 2 silver, 3 gold. (Stars, butterflies and the daily streak join when those systems do.)
-        public static readonly string[] STATS = { "kills", "bosses", "combos", "shatter", "upgrades", "levels", "surges", "quests" };
+        public static readonly string[] STATS = { "kills", "bosses", "combos", "shatter", "upgrades", "levels", "surges", "quests", "flies" };
         public class Feat { public string id, name, text; public int tier; public double need; public Func<Profile, double> get; }
         public static readonly int[] FEAT_PAY = { 0, 2, 4, 8 };
-        public static readonly List<Feat> FEATS = MakeFeats();
+        static List<Feat> feats;
+        public static List<Feat> FEATS => feats ??= MakeFeats();   // built on first use: it reads tables declared further down
         static List<Feat> MakeFeats()
         {
             var L = new List<Feat>();
@@ -434,6 +435,8 @@ namespace Hearthgate.Core
             foreach (var (n, nm, t) in new[] { (5, "Rebuilder", 1), (10, "Hearth Restored", 2) }) F("city" + n, nm, t, $"Rebuild {n} buildings in one city", p => p.restored.Count, n);
             foreach (var (n, nm, t) in new[] { (1, "Reborn", 2), (3, "Thrice Risen", 2), (10, "Eternal City", 3) }) F("ascend" + n, nm, t, n == 1 ? "Ascend once" : $"Ascend {n} times", p => p.ascensions, n);
             foreach (var (n, nm, t) in new[] { (5, "First Light", 1), (20, "Stargazer", 2), (40, "Full Sky", 3) }) F("stars" + n, nm, t, $"Light {n} constellation stars", p => p.stars.Count, n);
+            foreach (var (n, nm, t) in new[] { (25, "Butterfly Net", 1), (200, "Meadow Keeper", 2) }) F("flies" + n, nm, t, $"Catch {n} butterflies", p => p.Stat("flies"), n);
+            F("garden", "Butterfly Garden", 3, "Catch every kind of butterfly", p => p.flies.Count, BUTTERFLIES.Length);
             F("bestiary", "Monster Scholar", 2, "Meet every kind of enemy", p => p.seenRoles.Count(r => ROLES.ContainsKey(r)), ROLES.Count);
             foreach (var (n, nm, t) in new[] { (25, "Iron Ramparts", 1), (50, "Steel Ramparts", 2), (100, "Starforged Ramparts", 3) }) F("gate" + n, nm, t, $"Upgrade the towers to level {n}", p => p.gateLevel, n);
             foreach (var (n, nm, t) in new[] { (10, "Humming Halls", 1), (25, "Resonant", 2), (50, "Heart of the City", 3) }) F("blvl" + n, nm, t, $"Get one building to level {n}", p => p.restored.Count == 0 ? 0 : p.restored.Max(id => p.LevelAt(id)), n);
@@ -450,6 +453,30 @@ namespace Hearthgate.Core
             var got = FEATS.Where(f => !p.feats.Contains(f.id) && FeatProgress(p, f) >= f.need).ToList();
             foreach (var f in got) { p.feats.Add(f.id); p.shards += FEAT_PAY[f.tier]; }
             return got;
+        }
+        // ---------- butterflies (js/core.js BUTTERFLIES): tap one on the meadow to catch it; kinds come with the city and with
+        // Ascension, the Golden Monarch is rare; caught kinds live in the Garden and flutter round the fountain ----------
+        public class Fly { public string id, name, line, needs; public int asc; public bool rare; public float r, g, b; }
+        static Fly Fl(string id, string name, string hex, string line, string needs = null, int asc = 0, bool rare = false)
+        {
+            int v = Convert.ToInt32(hex, 16);
+            return new Fly { id = id, name = name, line = line, needs = needs, asc = asc, rare = rare, r = ((v >> 16) & 255) / 255f, g = ((v >> 8) & 255) / 255f, b = (v & 255) / 255f };
+        }
+        public static readonly Fly[] BUTTERFLIES =
+        {
+            Fl("sun", "Sunwing", "ffe28c", "Loves the warm meadow"), Fl("sky", "Skyblue", "bfe8ff", "Rides the morning breeze"),
+            Fl("rose", "Rosepetal", "ffb3e6", "Rests on the wildflowers"), Fl("snow", "Snowdrop", "ffffff", "Pale as the first frost"),
+            Fl("ember", "Emberwing", "ff9a4a", "Comes when the Forge burns", "forge"), Fl("frost", "Frostwing", "7fdcff", "Comes when the Frost Spire shines", "frostSpire"),
+            Fl("storm", "Stormwing", "c98bff", "Comes when the Storm Bell rings", "stormBell"), Fl("moon", "Moonmoth", "d8d0ff", "Seen only after an Ascension", null, 1),
+            Fl("jewel", "Jewelwing", "7bd15a", "Seen only after the 3rd Ascension", null, 3), Fl("gold", "Golden Monarch", "ffd56b", "Rare: pays Starshards", null, 0, true),
+        };
+        public static bool FlyOpen(Profile p, Fly f) => (f.needs == null || p.restored.Contains(f.needs)) && p.ascensions >= f.asc;
+        // the next to appear: the Golden Monarch 1 time in 30 once five buildings stand, else any open kind, new kinds favoured
+        public static Fly FlyPick(Profile p, Random rnd)
+        {
+            if (p.restored.Count >= 5 && rnd.NextDouble() < 1 / 30.0) return BUTTERFLIES.First(f => f.rare);
+            var open = BUTTERFLIES.Where(f => !f.rare && FlyOpen(p, f)).ToList(); var fresh = open.Where(f => !p.flies.Contains(f.id)).ToList();
+            var pool = fresh.Count > 0 && rnd.NextDouble() < 0.5 ? fresh : open; return pool[rnd.Next(pool.Count)];
         }
         // the Bestiary: every kind, in the order a player meets them
         public static readonly string[] BESTIARY = { "slime", "runner", "armoured", "swarm", "boss", "elite", "shielded", "splitter", "queen", "mender", "lord", "ironhide", "sprinter", "bulwark",
@@ -496,7 +523,7 @@ namespace Hearthgate.Core
         public List<string> owned = new List<string>();        // looks bought
         public List<KS> equip = new List<KS>();                // slot -> look
         public string questDay = ""; public bool questBonus; public List<QuestState> quests = new List<QuestState>();   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
-        public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>(), stars = new List<string>(), relics = new List<string>(); public bool steward = true;
+        public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>(), stars = new List<string>(), relics = new List<string>(), flies = new List<string>(); public bool steward = true;
         [NonSerialized] public string omen;   // lifetime counts and Feats earned (kept by Ascension)
         public int Stat(string k) { var e = stats.Find(x => x.k == k); return e == null ? 0 : e.v; }
         public void AddStat(string k, int n) { var e = stats.Find(x => x.k == k); if (e == null) stats.Add(new KV { k = k, v = n }); else e.v = (int)Math.Min(int.MaxValue, (long)e.v + n); }
@@ -526,6 +553,7 @@ namespace Hearthgate.Core
             shards = Math.Max(0, shards); owned = (owned ?? new List<string>()).Where(id => HG.SHOP.Any(l => l.id == id)).Distinct().ToList();
             equip = (equip ?? new List<KS>()).Where(e => HG.SHOP.Any(l => l.id == e.s && HG.Slot(l) == e.k)).ToList();
             stats = (stats ?? new List<KV>()).Where(e => HG.STATS.Contains(e.k) && e.v > 0).GroupBy(e => e.k).Select(g => g.First()).ToList();
+            flies = (flies ?? new List<string>()).Where(id => HG.BUTTERFLIES.Any(f => f.id == id)).Distinct().ToList();
             relics = (relics ?? new List<string>()).Where(id => HG.RELICS.Any(r => r.id == id)).Distinct().Take(2).ToList();
             stars = (stars ?? new List<string>()).Where(id => HG.STARS.Any(x => x.id == id)).Distinct().ToList();
             foreach (var st in HG.STARS) if (st.asc < ascensions && !stars.Contains(st.id)) stars.Add(st.id);   // a finished run's constellation is whole

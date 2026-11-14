@@ -428,7 +428,7 @@ namespace Hearthgate.Game
         void Update()
         {
             var wz = Wizard.I;
-            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime);
+            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime);
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
             if (CanAscend) Guide.Say("ascend");
             if (SurgeReady && SurgeOpen && !Guide.Busy) Guide.Say("surge");

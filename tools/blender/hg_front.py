@@ -415,20 +415,22 @@ def top(kind):
         for k in range(3):
             bpy.ops.mesh.primitive_torus_add(major_radius=0.92, minor_radius=0.05, location=(0, 0, 4.45), rotation=(k * 1.05, k * 0.7, 0))
             K.finish(bpy.context.object, M('storm', 2.5), 0.0)
-    elif kind == 'earth':   # the 4th Ascension's element: a ring of standing stones with amber runes, a boulder held aloft
-        prism('ring', 1.5, 1.4, -0.1, 0.45, M('stone_dk'))
+    elif kind == 'earth':   # the 4th Ascension's element: a ring of standing stones with amber runes, an earth boulder held aloft
+        prism('ring', 1.5, 1.4, -0.1, 0.45, M('dirt_dk'))
         for i in range(6):
             a = i / 6 * math.tau + 0.26; h = 1.5 + 0.35 * (i % 2)
-            o = block((math.cos(a) * 1.12, math.sin(a) * 1.12, 0.4 + h / 2), (0.42, 0.3, h), M('rock'), 0.06); o.rotation_euler = (-math.sin(a) * 0.12, math.cos(a) * 0.12, a)
-            o = block((math.cos(a) * 1.29, math.sin(a) * 1.29, 0.5 + h * 0.55), (0.18, 0.03, 0.42), M('amber', 2.6), 0.0); o.rotation_euler = (-math.sin(a) * 0.12, math.cos(a) * 0.12, a + math.pi / 2)   # a glowing rune on its face
+            o = block((math.cos(a) * 1.12, math.sin(a) * 1.12, 0.4 + h / 2), (0.46, 0.34, h), M('dirt'), 0.06); o.rotation_euler = (-math.sin(a) * 0.12, math.cos(a) * 0.12, a)
+            o = block((math.cos(a) * 1.31, math.sin(a) * 1.31, 0.5 + h * 0.55), (0.22, 0.05, 0.56), M('amber', 3.0), 0.0); o.rotation_euler = (-math.sin(a) * 0.12, math.cos(a) * 0.12, a + math.pi / 2)   # a glowing rune
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.85, location=(0, 0, 3.0))
         b = bpy.context.object; b.scale = (1.0, 0.92, 0.8)
         for v in b.data.vertices: v.co *= R.uniform(0.86, 1.1)
-        b.data.update(); bpy.ops.object.transform_apply(scale=True); K.finish(b, M('rock_dk'), 0.0, smooth=False)
-        for i in range(4):   # amber veins through the boulder
-            a = i / 4 * math.tau
-            K.sphere('vein', 0.2, (math.cos(a) * 0.72, math.sin(a) * 0.68, 3.0 + (i % 2) * 0.25), M('amber', 3.0), (1, 1, 0.5), 1)
-        for i in range(5): K.sphere('pebble', R.uniform(0.1, 0.16), (math.cos(i * 1.26) * 1.0, math.sin(i * 1.26) * 1.0, 2.1 + (i % 3) * 0.3), M('rock'), sub=1)
+        b.data.update(); bpy.ops.object.transform_apply(scale=True); K.finish(b, M('dirt_dk'), 0.0, smooth=False)
+        for i in range(6):   # amber crystals breaking out of the boulder
+            a = i / 6 * math.tau
+            o = K.cone('crystal', 0.17, 0.62, (math.cos(a) * 0.62, math.sin(a) * 0.58, 3.1 + (i % 2) * 0.2), M('amber', 3.0), 6)
+            o.rotation_euler = (-math.sin(a) * 0.9, math.cos(a) * 0.9, 0)
+        K.cone('crown', 0.24, 0.9, (0, 0, 3.95), M('amber', 3.2), 6)
+        for i in range(5): K.sphere('pebble', R.uniform(0.1, 0.16), (math.cos(i * 1.26) * 1.0, math.sin(i * 1.26) * 1.0, 2.1 + (i % 3) * 0.3), M('dirt'), sub=1)
     return K.export('top_' + kind)
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -980,11 +982,29 @@ def variant(kind):
         for k in range(4): bsphere('rivet', 0.05, (math.cos(k * 1.571) * 0.7, math.sin(k * 1.571) * 0.7, 1.0), M('iron'), (1, 1, 1), 1)
     elif kind == 'totem':     # carved wood, a painted face and a glowing rune: it shields its friends
         _remap({'golem': 'wood', 'rock': 'wood_dk', 'rock_dk': 'timber', 'storm': ('tree2', 2.2)})
-        block((0, -0.55, 2.35), (0.7, 0.5, 0.8), M('wood'), 0.06)                         # the carved head-post
-        for sx in (-1, 1): block((sx * 0.18, -0.81, 2.45), (0.14, 0.04, 0.1), M('tree2', 2.5), 0.01)   # glowing eyes
-        block((0, -0.81, 2.18), (0.36, 0.04, 0.08), M('char'), 0.01)                       # the mouth
-        for sx in (-1, 1): block((sx * 0.5, -0.55, 2.55), (0.3, 0.12, 0.5), M('roof_red'), 0.03).rotation_euler = (0, sx * 0.5, 0)   # painted wings
+        block((0, -0.45, 2.45), (0.86, 0.7, 1.0), M('wood'), 0.06)                                     # the carved head-post
+        block((0, -0.82, 2.72), (0.9, 0.12, 0.16), M('wood_dk'), 0.03)                                 # a heavy carved brow
+        for sx in (-1, 1): bsphere('eye', 0.13, (sx * 0.2, -0.82, 2.52), M('tree2', 3.0), (1.2, 0.6, 1), 2)   # glowing eyes
+        block((0, -0.84, 2.18), (0.5, 0.1, 0.16), M('char'), 0.02)                                     # the mouth
+        for sx in (-1, 1): block((sx * 0.14, -0.86, 2.18), (0.06, 0.08, 0.14), M('canvas'), 0.0)       # two carved teeth
+        block((0, -0.81, 2.92), (0.9, 0.05, 0.08), M('roof_red'), 0.0)                                 # a painted stripe
+        for sx in (-1, 1): block((sx * 0.62, -0.45, 2.7), (0.4, 0.14, 0.62), M('roof_red'), 0.03).rotation_euler = (0, sx * 0.55, 0)   # painted wings
+        bcone('spike', 0.18, 0.4, (0, -0.45, 3.15), M('wood_dk'), 6)
     return K.export(kind)
+
+def butterfly():   # the meadow's butterflies (owner, Nov 6 2026: "add some interaction for the user with the butterflies"). Lies
+    # flat, head to -y, about 1 unit across; the wings are white (flower_w) so the game tints each kind; it flaps by
+    # folding its width
+    for sx in (-1, 1):
+        bsphere('fore', 0.32, (sx * 0.3, -0.08, 0.0), M('flower_w'), (1.0, 0.72, 0.06), 2, rot=(0, 0, sx * 0.45))
+        bsphere('hind', 0.22, (sx * 0.22, 0.22, 0.0), M('flower_w'), (1.0, 0.9, 0.06), 2, rot=(0, 0, -sx * 0.35))
+        bsphere('spot', 0.08, (sx * 0.36, -0.12, 0.02), M('char'), (1, 1, 0.3), 1)          # an eye-spot on each forewing
+        bsphere('edge', 0.06, (sx * 0.56, -0.2, 0.015), M('char'), (1, 1, 0.3), 1)
+        bcyl('antenna', 0.012, 0.28, (sx * 0.06, -0.42, 0.06), M('char'), 4, rot=(-1.2, sx * 0.35, 0))
+        bsphere('knob', 0.03, (sx * 0.1, -0.53, 0.12), M('char'), (1, 1, 1), 1)
+    bcyl('body', 0.05, 0.6, (0, 0.02, 0.02), M('char'), 8, rot=(math.pi / 2, 0, 0))
+    bsphere('head', 0.07, (0, -0.3, 0.03), M('char'), (1, 1, 1), 1)
+    return K.export('butterfly')
 
 # the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender
 CAP_LOOKS = {

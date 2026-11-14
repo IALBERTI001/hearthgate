@@ -9,7 +9,7 @@ namespace Hearthgate.Game
     public class ArtSet : ScriptableObject
     {
         public GameObject ground, road, gate, wall, towerBase, topStone, topFire, topFrost, topStorm, topEarth;
-        public GameObject slime, beetle, golem, ruin, villager, fountain;
+        public GameObject slime, beetle, golem, ruin, villager, fountain, butterfly;
         public GameObject[] buildings = new GameObject[10];   // in the order of HG.BUILDINGS
         public GameObject[] ruins = new GameObject[10];       // each plot's own burnt shell, same order
         public GameObject marker;                             // where to rebuild next
