@@ -126,6 +126,7 @@ namespace Hearthgate.EditorTools
         public static void BuildWebGL()
         {
             SetupAll();
+            LayoutCheck.Run();   // fails the batch build on an overlap, a hidden plot, the HUD over the world, or the view cropping
             var opts = new BuildPlayerOptions { scenes = new[] { SCENE }, locationPathName = "Builds/WebGL", target = BuildTarget.WebGL, options = BuildOptions.None };
             var r = BuildPipeline.BuildPlayer(opts);
             Debug.Log($"[Hearthgate] WebGL build: {r.summary.result}, {r.summary.totalSize / 1048576f:0.0} MB, {r.summary.totalErrors} errors");

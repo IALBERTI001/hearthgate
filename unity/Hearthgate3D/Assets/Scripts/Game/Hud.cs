@@ -69,8 +69,9 @@ namespace Hearthgate.Game
             gateBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
             gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), Vector2.zero, 16, TextAnchor.MiddleCenter);
 
-            up = Btn("Upgrade", new Vector2(-24, 104), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
-            re = Btn("Rebuild", new Vector2(-24, 24), () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, out reLbl);
+            // top right, over the far meadow: the city fills the bottom of the view (LayoutCheck keeps it clear)
+            up = Btn("Upgrade", new Vector2(-24, -24), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
+            re = Btn("Rebuild", new Vector2(-24, -104), () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, out reLbl);
         }
 
         RectTransform Box(string n, Transform p, Vector2 aMin, Vector2 aMax, Vector2 pos, Vector2 size)
@@ -112,7 +113,7 @@ namespace Hearthgate.Game
         }
         Pressable Btn(string n, Vector2 pos, System.Action act, System.Func<bool> on, out Text lbl)
         {
-            var r = Box(n, transform, new Vector2(1, 0), new Vector2(1, 0), pos, new Vector2(300, 68)); r.pivot = new Vector2(1, 0);
+            var r = Box(n, transform, new Vector2(1, 1), new Vector2(1, 1), pos, new Vector2(300, 68)); r.pivot = new Vector2(1, 1);
             var img = r.gameObject.AddComponent<Image>(); img.color = new Color(0.27f, 0.15f, 0.2f, 0.95f);
             lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 22, TextAnchor.MiddleCenter);
             Fit(lbl, r.sizeDelta - new Vector2(20, 8), 12);

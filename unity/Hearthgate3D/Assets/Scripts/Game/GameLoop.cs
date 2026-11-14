@@ -77,7 +77,7 @@ namespace Hearthgate.Game
             bool up = P.restored.Contains(HG.BUILDINGS[i].id);
             var prefab = art == null ? null : up ? art.buildings[i] : art.ruin;
             plots[i] = Art.Spawn(prefab, up ? HG.BUILDINGS[i].id : "ruin", Field.Plot(i), world);
-            plots[i].transform.LookAt(new Vector3(Field.PLAZA.x, 0, Field.PLAZA.z));
+            plots[i].transform.rotation = Field.PLOT_FACING;
         }
 
         // ---------- waves ----------
@@ -118,8 +118,12 @@ namespace Hearthgate.Game
                 if (e.burn > 0) { e.burn -= DT; e.hp -= HG.TowerDamage(P, B) * (1 + B["fire"]) * 0.5 * DT * (e.R.weak == "fire" ? 2 : 1); }
                 e.chill = Mathf.Max(0, e.chill - DT); e.flash = Mathf.Max(0, e.flash - DT * 6);
                 float slow = e.chill > 0 ? (e.R.weak == "frost" ? 0.3f : 0.45f) : 1f;
-                if (e.z > Field.FRONT_Z) e.z = Mathf.Max(Field.FRONT_Z, e.z - e.speed * slow * DT);
-                else { e.atGate = true; gateHp -= HG.EnemyBite(P.wave, e.role) * DT; }
+                if (e.z > e.stop) e.z = Mathf.Max(e.stop, e.z - e.speed * slow * DT);
+                else
+                {
+                    e.atGate = true; gateHp -= HG.EnemyBite(P.wave, e.role) * DT;
+                    e.x = Mathf.MoveTowards(e.x, -Field.LANE, e.speed * DT);   // close in on the gatehouse face
+                }
                 if (e.hp <= 0) Kill(e);
             }
             if (gateHp <= 0) GateFell();
