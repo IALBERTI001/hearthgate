@@ -571,13 +571,13 @@ def beetle(kind='beetle'):
         for t in (0.35, 0.7): K.cyl('band', rr * 1.18, 0.07, tuple(Vector(base) + d * ln * t), M('gold'), 12, 0.0).rotation_euler = e
         K.cyl('ramface', rr * 1.45, 0.16, tuple(Vector(base) + d * (ln + 0.02)), M('iron'), 10, 0.02, r2=rr * 1.05).rotation_euler = _aim(-d)
     if kind in ('swarm',):   # three rams, the middle one longest
-        ram((0, -1.15, 0.78), (0, -0.85, 0.5), 0.95, 0.15)
-        for s in (-1, 1): ram((s * 0.22, -1.08, 0.72), (s * 0.45, -0.8, 0.3), 0.6, 0.1)
+        ram((0, -1.15, 0.7), (0, -1, 0.22), 0.95, 0.15)   # low and level: from behind (the game camera) a raised ram read as a pole
+        for s in (-1, 1): ram((s * 0.22, -1.08, 0.66), (s * 0.45, -0.9, 0.12), 0.6, 0.1)
     elif kind == 'elite':    # a gold rhino horn, branched like antlers: the treasure-bearer's crest
         K.cone('horn', 0.17, 0.8, (0, -1.2, 1.0), M('gold'), 8).rotation_euler = _aim((0, -0.5, 1))
         for s in (-1, 1): K.cone('tine', 0.07, 0.4, (s * 0.15, -1.25, 1.15), M('gold'), 6).rotation_euler = _aim((s * 0.8, -0.3, 1))
     elif kind not in ('tyrant', 'phantom', 'thief'):
-        ram((0, -1.15, 0.72), (0, -0.85, 0.45), 0.7, 0.13)
+        ram((0, -1.15, 0.66), (0, -1, 0.18), 0.7, 0.13)
     for s in (-1, 1):
         o = K.cone('mandible', 0.08 if kind != 'swarm' else 0.13, 0.4 if kind != 'swarm' else 0.65, (s * 0.2, -1.2, 0.42), M('iron'), 6); o.rotation_euler = (-1.4, 0, s * 0.4)
         for k in range(3):   # each leg turns at the shell's edge (a part: the game walks them on alternating tripods)
@@ -676,7 +676,9 @@ def golem(kind='golem'):
                 t = k / 4; p = (s * (0.45 + 0.5 * t), 0.05 + 0.35 * t * t, 2.15 + 0.55 * t)
                 K.sphere('horn', 0.17 - 0.03 * k, p, M('bone' if k < 4 else 'gold'), (1, 1, 1.25), 2)
         for (x, z, rot) in ((0.12, 1.3, 0.3), (-0.1, 1.05, -0.4), (0.05, 0.85, 0.2)): block((x, -0.84, z), (0.08, 0.06, 0.32), M('fire', 3.0), 0.0).rotation_euler = (0, rot, 0)   # the plate cracked over a molten heart
-        cloth('cape', -0.5, 0.5, 1.85, 0.75, 0.78, M('banner'), wave=0.1, tail=True)   # short and narrow: from behind (the game camera) his spiked back still shows
+        # his back is what the game camera sees as he marches on the walls: a ridged backplate and a row of spikes down the spine
+        K.sphere('backplate', 0.78, (0, 0.42, 1.25), M('iron'), (1.05, 0.42, 0.72), 3)
+        for k in range(5): K.cone('spine', 0.12 - 0.012 * k, 0.55 - 0.05 * k, (0, 0.78, 1.75 - k * 0.24), M('gold' if k == 0 else 'iron'), 6).rotation_euler = _aim((0, 1, 0.5))
     if kind in ('ironhide', 'knight'): _shield(1.9, 1.3)
 
 def totem_titan():
@@ -685,6 +687,11 @@ def totem_titan():
     for i, (m, z) in enumerate((('wood_dk', 0.95), ('wood', 1.95), ('timber', 2.95))):
         w = 1.45 - i * 0.12
         block((0, 0, z), (w, 1.05, 0.95), M(m), 0.07)
+        # the back of each block: a second carved face (a totem is carved all round; the game camera sees his back)
+        block((0, 0.6, z + 0.27), (w * 1.04, 0.36, 0.2), M('wood_dk'), 0.03)
+        for s in (-1, 1): K.sphere('eye', 0.12, (s * 0.26, 0.56, z + 0.1), M('tree2', 3.5), (1.4, 0.5, 0.8), 2)
+        block((0, 0.54, z - 0.25), (w * 0.5, 0.1, 0.18), M('char'), 0.02)
+        block((0, 0.53, z + 0.43), (w * 0.98, 0.04, 0.07), M('roof_blue'), 0.0)
         block((0, -0.6, z + 0.27), (w * 1.04, 0.36, 0.2), M('wood_dk'), 0.03)   # the brow, overhanging
         K.cone('nose', 0.13, 0.4, (0, -0.62, z - 0.02), M(m), 4).rotation_euler = (math.pi / 2, 0, 0)
         for s in (-1, 1): K.cone('fang', 0.06, 0.24, (s * 0.2, -0.6, z - 0.4), M('canvas'), 5).rotation_euler = (math.pi, 0, 0)
