@@ -367,9 +367,20 @@ def b_watchtower():
 BUILDERS = {'forge': b_forge, 'frostSpire': b_frostSpire, 'stormBell': b_stormBell, 'bakery': b_bakery, 'market': b_market,
             'tavern': b_tavern, 'granary': b_granary, 'library': b_library, 'cottages': b_cottages, 'watchtower': b_watchtower}
 
+def signpost(w, d, ruined=False):
+    """The building's sign by its yard (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
+    buildings"): a post and a board facing the street; the game writes the name, level and output over the board."""
+    x, y = w / 2 - 0.7, -d / 2 - 1.4
+    block((x, y, 1.1), (0.14, 0.14, 2.2), M('char' if ruined else 'wood_dk'), 0.0)
+    o = block((x, y - 0.1, 2.0), (1.5, 0.08, 0.8), M('wood' if not ruined else 'char'), 0.02)
+    if ruined: o.rotation_euler = (0, 0.18, 0)
+    block((x, y - 0.15, 2.42), (1.6, 0.06, 0.08), M('gold' if not ruined else 'iron'), 0.0)
+    rubble(x, y, 2, (0.2, 0.2)); tufts(x + 0.3, y + 0.1, 2, (0.2, 0.2))
+
 def building(bid):
     BUILDERS[bid]()
     w, d = LY.SIZES[bid]
+    signpost(w, d)
     tufts(-w / 2 - 0.2, -d / 2 - 0.3, 2, (0.3, 0.2)); tufts(w / 2 + 0.2, -d / 2 - 0.2, 2, (0.3, 0.2)); tufts(w / 2 + 0.2, d / 2 + 0.2, 2, (0.3, 0.2))
     return K.export('building_' + bid)
 
@@ -413,11 +424,12 @@ def ruin_of(bid):
     for k in range(6): K.sphere('ember', 0.08, (R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.12), M('fire', 2.5), sub=1)
     for k, (dz, r) in enumerate(((2.2, 0.45), (3.2, 0.6), (4.4, 0.72))):
         K.sphere('smoke', r, (0.4 + k * 0.35, 1.0, dz), M('rock'), (1, 1, 0.85), 1)
-    for (x, y) in ((hx - 0.2, -hy - 0.5), (hx - 2.2, -hy - 0.5)): block((x, y, 1.6), (0.1, 0.1, 3.2), M('wood'), 0.0)   # scaffolding
-    for z in (1.2, 2.6): block((hx - 1.2, -hy - 0.5, z), (2.2, 0.1, 0.1), M('wood'), 0.0)
-    block((hx - 1.2, -hy - 0.32, 2.65), (2.2, 0.45, 0.08), M('wood'), 0.0)
-    for k in range(4): block((-hx + 1.4, -hy - 0.7, 0.14 + k * 0.16), (2.0, 0.18, 0.15), M('wood'), 0.0)   # fresh timber
+    for (x, y) in ((-hx + 0.2, -hy - 0.5), (-hx + 2.2, -hy - 0.5)): block((x, y, 1.6), (0.1, 0.1, 3.2), M('wood'), 0.0)   # scaffolding
+    for z in (1.2, 2.6): block((-hx + 1.2, -hy - 0.5, z), (2.2, 0.1, 0.1), M('wood'), 0.0)
+    block((-hx + 1.2, -hy - 0.32, 2.65), (2.2, 0.45, 0.08), M('wood'), 0.0)
+    for k in range(4): block((hx - 2.6, -hy - 1.0, 0.14 + k * 0.16), (1.6, 0.18, 0.15), M('wood'), 0.0)   # fresh timber
     tufts(-hx, -hy - 0.4, 2, (0.3, 0.2)); tufts(hx, hy, 2, (0.3, 0.2))
+    signpost(w, d, ruined=True)
     return K.export('ruin_' + bid)
 
 def ruin():   # the generic ruin, a stand-in if a plot's own shell were missing

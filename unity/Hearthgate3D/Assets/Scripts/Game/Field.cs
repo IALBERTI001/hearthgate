@@ -25,17 +25,17 @@ namespace Hearthgate.Game
         public const float PX = DEPTH / 414f;                 // one 2D stage px of travel, in metres
         public static float Size(double px) => (float)px / 66f * 2.2f;   // a slime (66 px) is 2.2 m tall: the fight reads first (review 2)
 
-        public const float RX = 36f, RZ = 24f;                // the ring wall's half axes; its centre is (0, 0, -RZ)
+        public const float RX = 42f, RZ = 28f;                // the ring wall's half axes; its centre is (0, 0, -RZ)
         public const float GATE_Z = 0f, GATE_HALF = 4f;
 
         // the four towers on the ring's front arc: 0 and 1 beside the gatehouse, 2 and 3 further out (screen left is +x)
-        static readonly Vector2[] TOWERS = { new Vector2(9.000f, -0.762f), new Vector2(-9.000f, -0.762f), new Vector2(21.600f, -4.800f), new Vector2(-21.600f, -4.800f) };
+        static readonly Vector2[] TOWERS = { new Vector2(9.000f, -0.650f), new Vector2(-9.000f, -0.650f), new Vector2(25.200f, -5.600f), new Vector2(-25.200f, -5.600f) };
         public const float TOWER_TOP = 5.0f;   // the platform; the gatehouse (keep and roof to 9.7 m) outranks the towers
         public static Vector3 Tower(int i) => new Vector3(TOWERS[i].x, 0, TOWERS[i].y);
 
         // each lane: from the foot of its tower (on the ring's outward normal) to its start below the frame at 16:9
-        static readonly Vector2[] FEET = { new Vector2(9.441f, 1.800f), new Vector2(-9.441f, 1.800f), new Vector2(22.763f, -2.474f), new Vector2(-22.763f, -2.474f) };
-        static readonly Vector2[] STARTS = { new Vector2(8.275f, 21.000f), new Vector2(-8.275f, 21.000f), new Vector2(14.144f, 21.000f), new Vector2(-14.144f, 21.000f) };
+        static readonly Vector2[] FEET = { new Vector2(9.376f, 1.922f), new Vector2(-9.376f, 1.922f), new Vector2(26.363f, -3.274f), new Vector2(-26.363f, -3.274f) };
+        static readonly Vector2[] STARTS = { new Vector2(8.344f, 22.500f), new Vector2(-8.344f, 22.500f), new Vector2(16.026f, 22.500f), new Vector2(-16.026f, 22.500f) };
         public static float LaneLen(int k) => Vector2.Distance(FEET[k], STARTS[k]);
         static Vector2 Dir(int k) => (STARTS[k] - FEET[k]).normalized;            // out along the lane, away from the wall
         // a point on lane k: progress metres out from the tower's foot, lateral across the lane (+ is the lane's left)
@@ -58,26 +58,28 @@ namespace Hearthgate.Game
             var d = Dir(k); float prog = Vector2.Dot(new Vector2(g.x, g.z) - FEET[k], d) + 1.5f;
             return Mathf.Clamp(Mathf.Max(far, prog), far, far + 8f);   // the lane art runs 9 m past its 16:9 start
         }
-        public static readonly Vector3 PLAZA = new Vector3(0f, 0, -10f);   // straight behind the gatehouse: the town's square
+        public static readonly Vector3 PLAZA = new Vector3(0.000f, 0, -10.000f);   // straight behind the gatehouse: the town's square
 
         // the ten building plots inside the ring, in the order of HG.BUILDINGS (tools/layout/ring.py: every roof line seen
         // over the front wall, the gatehouse and the towers; the tall ones where they hide nothing behind them)
         static readonly Vector2[] PLOTS = {
-            new Vector2(11.5f, -17.28f), new Vector2(-23.5f, -30.72f), new Vector2(1.5f, -30.72f), new Vector2(13.0f, -39.0f), new Vector2(-12.5f, -17.28f),
-            new Vector2(14.0f, -28.22f), new Vector2(-13.0f, -38.5f), new Vector2(0.0f, -41.0f), new Vector2(24.5f, -17.28f), new Vector2(26.5f, -30.72f) };
+            new Vector2(-31.000f, -20.160f), new Vector2(-29.000f, -35.840f), new Vector2(1.500f, -35.840f), new Vector2(15.500f, -46.500f), new Vector2(-15.500f, -20.160f),
+            new Vector2(17.000f, -32.840f), new Vector2(-15.500f, -46.000f), new Vector2(0.000f, -49.000f), new Vector2(30.000f, -19.660f), new Vector2(32.500f, -35.840f) };
         public static Vector3 Plot(int i) => new Vector3(PLOTS[i].x, 0, PLOTS[i].y);
         // each building's footprint (across its front x deep) and height, at human scale (tools/blender/hg_layout.py):
         // a room with its doorway centred on the front, which faces the gate (+z)
-        static readonly Vector2[] SIZES = { new Vector2(8.0f, 7.0f), new Vector2(7.0f, 7.0f), new Vector2(6.0f, 6.0f), new Vector2(8.0f, 7.0f), new Vector2(10.0f, 7.0f), new Vector2(10.0f, 8.0f), new Vector2(8.0f, 8.0f), new Vector2(10.0f, 8.0f), new Vector2(10.0f, 6.0f), new Vector2(6.0f, 6.0f) };
-        static readonly float[] HEIGHTS = { 7.6f, 14.8f, 12.9f, 10.4f, 6.6f, 10.6f, 8.8f, 9.0f, 6.8f, 13.2f };
+        static readonly Vector2[] SIZES = { new Vector2(8.000f, 7.000f), new Vector2(7.000f, 7.000f), new Vector2(6.000f, 6.000f), new Vector2(8.000f, 7.000f), new Vector2(10.000f, 7.000f), new Vector2(10.000f, 8.000f), new Vector2(8.000f, 8.000f), new Vector2(10.000f, 8.000f), new Vector2(10.000f, 6.000f), new Vector2(6.000f, 6.000f) };
+        static readonly float[] HEIGHTS = { 7.600f, 14.800f, 12.900f, 10.400f, 6.600f, 10.600f, 8.800f, 9.000f, 6.800f, 13.200f };
         public static Vector2 PlotSize(int i) => SIZES[i];
         public static float PlotHeight(int i) => HEIGHTS[i];
+        // the board of a building's sign (hg_city.signpost): by the yard, right of the door as seen from the gate side
+        public static Vector3 SignPoint(int i) => Plot(i) + new Vector3(-(SIZES[i].x / 2 - 0.7f), 2.0f, SIZES[i].y / 2 + 1.5f);
         public const float DOOR_W = 1.2f, WALL_T = 0.3f, FLOOR = 0.34f;   // every door 1.2 x 2.4 m; the room floor on its plinth
         public static readonly Quaternion PLOT_FACING = Quaternion.Euler(0, 180, 0);   // fronts toward the wall and the camera
 
         // the one steady camera (owner's rule: "one steady art and working area")
-        public static readonly Vector3 CAM_LOOK = new Vector3(0, 0, -3f);
-        public static readonly Vector3 CAM_POS = CAM_LOOK + new Vector3(0, 48f * 0.5f, 48f * 0.86603f);   // 48 m away, 30 degrees down
+        public static readonly Vector3 CAM_LOOK = new Vector3(0.000f, 0, -2.000f);
+        public static readonly Vector3 CAM_POS = CAM_LOOK + new Vector3(0, 25.000f, 43.301f);   // 50 m away, 30 degrees down
         public const float CAM_FOV = 42f, CAM_ASPECT = 16f / 9f;
         // on a narrower screen the camera widens its view so the sides of the field never crop
         public static float FovFor(float aspect)

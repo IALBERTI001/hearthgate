@@ -13,6 +13,7 @@ import hg_layout as LY
 HEIGHT = {'forge': 7.6, 'frostSpire': 14.8, 'stormBell': 12.9, 'bakery': 10.4, 'market': 6.6, 'tavern': 10.6,
           'granary': 8.8, 'library': 9.0, 'cottages': 6.8, 'watchtower': 13.2}   # hg_city.py, ground to the top
 WALL_H = 4.0
+STREET = 6.0
 SHAPES = [(1280, 720), (1600, 727), (1080, 900)]
 
 def cam(pos, look, fov, aspect=16 / 9):
@@ -101,8 +102,8 @@ def solve(RX, RZ, TX):
             if not all(inside(x + a * w / 2, z + b * d / 2, 2.5) for a in (-1, 1) for b in (-1, 1)): return False
             if abs(x) < 4.4 + w / 2 + 3 and z + d / 2 > -2.5 - 3: return False                   # the gatehouse and its yard
             if any(abs(x - tx) < 2.2 + w / 2 + 2 and abs(z - tz) < 2.2 + d / 2 + 2 for tx, tz in TOW): return False
-            for p in placed:   # 3 m streets
-                if abs(x - p[0]) < (w + p[2]) / 2 + 3 and abs(z - p[1]) < (d + p[3]) / 2 + 3: return False
+            for p in placed:   # 6 m streets (owner, Nov 13 2026: "more separation on the buildings ... for easy movement")
+                if abs(x - p[0]) < (w + p[2]) / 2 + STREET and abs(z - p[1]) < (d + p[3]) / 2 + STREET: return False
             return True
         # the plaza (fountain 3 m, room round it) behind the gatehouse, slightly off the keep's line
         plaza = None
@@ -144,7 +145,7 @@ def solve(RX, RZ, TX):
     return last
 
 if __name__ == '__main__':
-    for RX, RZ in ((30, 20), (32, 22), (34, 22), (34, 24), (36, 24), (38, 26)):
+    for RX, RZ in ((38, 26), (40, 26), (40, 28), (42, 28), (44, 30)):
         TX = [9.0, -9.0, round(RX * 0.6, 1), -round(RX * 0.6, 1)]
         r = solve(RX, RZ, TX)
         if r is None: print(RX, RZ, 'no camera or plaza'); continue

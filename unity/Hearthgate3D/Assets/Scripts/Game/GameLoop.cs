@@ -18,7 +18,7 @@ namespace Hearthgate.Game
         readonly List<Tower> towers = new List<Tower>();
         readonly List<Shot> shots = new List<Shot>();
         readonly List<(string role, float at)> queue = new List<(string, float)>();
-        readonly GameObject[] plots = new GameObject[10]; readonly float[] punch = new float[10];
+        readonly GameObject[] plots = new GameObject[10];
         readonly Transform[] uppers = new Transform[10];   // each building's upper storey and roof, hidden while the wizard is inside
         Transform world, unitsRoot, marker;
         float waveT, saveT, betweenT; bool waveLive; System.Random rnd = new System.Random();
@@ -261,15 +261,27 @@ namespace Hearthgate.Game
             if (P.restored.Contains(id)) return P.res >= LevelCost(i);
             return HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost;
         }
+        // the building stays still when worked on (owner, Nov 13 2026: "There shouldnt be a hop since people can be in the
+        // building"): gold sparks rise from its walls and sign instead
+        void Glow(int i, int n)
+        {
+            var c = Field.Plot(i); var s = Field.PlotSize(i);
+            for (int k = 0; k < 6; k++)
+            {
+                float a = k / 6f * Mathf.PI * 2;
+                Fx.I.Burst(c + new Vector3(Mathf.Cos(a) * s.x * 0.5f, 1.2f + (k % 2) * 1.4f, Mathf.Sin(a) * s.y * 0.5f), Field.GOLD, Mathf.Max(3, n / 6));
+            }
+            Fx.I.Burst(Field.SignPoint(i), Field.GOLD, n / 2);
+        }
         public void WorkOn(int i)
         {
             var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
-            if (!P.restored.Contains(id)) { if (HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost) { Restore(id); punch[i] = 1; } return; }
+            if (!P.restored.Contains(id)) { if (HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost) { Restore(id); Glow(i, 30); } return; }
             double cost = LevelCost(i); if (P.res < cost) return;
             P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P);
-            var top = Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 0.6f); punch[i] = 1;
-            Fx.I.Burst(top - Vector3.up * 2, Field.GOLD, System.Array.IndexOf(HG.MILESTONES, L) >= 0 ? 34 : 12);
-            Fx.I.Pop(top, $"Lv {L}", Field.GOLD, 34);
+            bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0;
+            Glow(i, big ? 28 : 10);
+            Fx.I.Pop(Field.SignPoint(i) + Vector3.up * 0.8f, $"Level {L}", Field.GOLD, 34);
             if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f); }
             Save();
         }
@@ -278,12 +290,6 @@ namespace Hearthgate.Game
         {
             var wz = Wizard.I;
             for (int i = 0; i < plots.Length; i++) if (uppers[i]) uppers[i].gameObject.SetActive(!(wz && wz.Inside == i));
-            for (int i = 0; i < plots.Length; i++)   // a building squashes and springs back when worked on
-                if (punch[i] > 0 && plots[i])
-                {
-                    punch[i] = Mathf.Max(0, punch[i] - Time.deltaTime * 2.2f); float q = Mathf.Sin(punch[i] * Mathf.PI * 2.5f) * punch[i] * 0.12f;
-                    plots[i].transform.localScale = new Vector3(1 + q, 1 - q, 1 + q);
-                }
             // the next plot to rebuild, marked in the world: a gold ring and arrow that bob, brighter when affordable
             if (marker)
             {

@@ -13,6 +13,7 @@ namespace Hearthgate.Game
         static Hud I;
         Font font, body; Text wave, res, rate, banner, upLbl, reLbl, gateTxt; Image gateBar; RectTransform forkBox;
         Pressable up, re, walk, work; Text walkLbl, workLbl; RectTransform workCard;
+        readonly RectTransform[] signs = new RectTransform[10]; readonly Text[] signTxt = new Text[10];   // the buildings' signs, written over their boards
 
         // A control this HUD answers itself, from the raw pointer. uGUI's event system drops pointer input whenever the page
         // does not report focus to Unity (Windows hosts), which left the buttons dead in a browser pane while the keys
@@ -132,11 +133,50 @@ namespace Hearthgate.Game
             work = BtnAt("Work", new Vector2(0.5f, 0), new Vector2(0, 122), new Vector2(430, 78), () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), out workLbl);
             workCard = work.rt; workCard.gameObject.SetActive(false);
+
+            // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
+            // buildings"): a small plum board with its name, level and output, pinned over the signpost in its yard while
+            // the wizard walks the town; behind the HUD controls, so the cards and buttons stay on top
+            for (int i = 0; i < signs.Length; i++)
+            {
+                var r = Box("Sign" + i, transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(210, 58)); r.pivot = new Vector2(0.5f, 0.5f);
+                var im = r.gameObject.AddComponent<Image>(); im.sprite = Panel(PLUM, BRASS, 10, 3); im.type = Image.Type.Sliced; im.raycastTarget = false;
+                signTxt[i] = Label("T", r, new Vector2(0.5f, 0.5f), Vector2.zero, 17, TextAnchor.MiddleCenter);
+                signTxt[i].font = body; Fit(signTxt[i], new Vector2(196, 52), 11);
+                r.SetSiblingIndex(1); r.gameObject.SetActive(false); signs[i] = r;
+            }
         }
 
         // where the pointer is: a touch's own position when there is one (the mouse position Unity simulates from a touch can
         // lag a frame), else the mouse (QA, Nov 13 2026: a click with no mouse move before it reported (0, 0))
         public static Vector2 PointerPos => Input.touchCount > 0 ? Input.GetTouch(0).position : (Vector2)Input.mousePosition;
+        void Signs(GameLoop g, Profile P)
+        {
+            var wz = Wizard.I; var cam = Camera.main; var canvas = (RectTransform)transform;
+            for (int i = 0; i < signs.Length; i++)
+            {
+                var at = Field.SignPoint(i); bool show = wz && wz.On && cam;
+                Vector3 sp = default; float dist = 0;
+                if (show)
+                {
+                    dist = Vector3.Distance(cam.transform.position, at); sp = cam.WorldToScreenPoint(at);
+                    show = sp.z > 0 && dist < 22f && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height;
+                }
+                if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
+                if (!show) continue;
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp);
+                signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f;
+                signs[i].localScale = Vector3.one * Mathf.Clamp(14f / dist, 0.55f, 1.05f);
+                var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
+                if (P.restored.Contains(id))
+                {
+                    double r = HG.BuildingRate(P, id, g.B); string rs = r < 10 ? r.ToString("0.##") : HG.Fmt(r);
+                    signTxt[i].text = $"<b>{b.name}</b>  ·  level {HG.LevelOf(P, id)}\n<color=#FFD56B>+{rs}/s</color>";
+                }
+                else signTxt[i].text = HG.RestoreOffer(P).Contains(id) ? $"<b>{b.name}</b>  ·  ruined\n<color=#FFD56B>rebuild {HG.Fmt(g.RestoreCost)}</color>" : $"<b>{b.name}</b>  ·  ruined\n<color=#D9C9A8>not yet</color>";
+            }
+        }
+
         // true when the pointer is over a pressable control (the town walk ignores those taps)
         public static bool OnHud(Vector2 m)
         {
@@ -213,6 +253,7 @@ namespace Hearthgate.Game
             upLbl.text = $"Upgrade gate\n<color=#FFD56B>{HG.Fmt(g.UpgradeCost)}</color>{keyU}";
             var nb = g.NextBuilding;
             reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n<color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>{keyR}";
+            Signs(g, P);
             // the town walk
             var wz = Wizard.I; string keyT = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[T]</color>", keyE = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[E]</color>";
             walkLbl.text = (wz && wz.On ? "Back to the walls" : "Walk the town") + keyT;

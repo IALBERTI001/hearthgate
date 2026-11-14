@@ -561,12 +561,12 @@ def outcrop(x, y, n, spread, scale=1.0):   # a cluster of big angular rocks
 
 def ground():
     bpy.ops.mesh.primitive_grid_add(x_subdivisions=76, y_subdivisions=76, size=1, location=(0, 0, 0))
-    g = bpy.context.object; g.scale = (160, 160, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    g.location = (0, -28, 0); bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
+    g = bpy.context.object; g.scale = (190, 180, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    g.location = (0, -35, 0); bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
     def height(x, y):   # flat where the lanes run (a rolling meadow poked through them: fresh-eyes review 4)
         h = 0.0
-        if y < -52: h += (min(-52 - y, 40) / 18) ** 1.4 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)   # the ridge climbs on past the top of a tall window
-        if abs(x) > 42: h += (min(abs(x) - 42, 14) / 14) ** 1.4 * 7.0
+        if y < -2 * L.RZ - 4: h += (min(-2 * L.RZ - 4 - y, 40) / 18) ** 1.4 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)   # the ridge climbs on past the top of a tall window
+        if abs(x) > L.RX + 6: h += (min(abs(x) - L.RX - 6, 14) / 14) ** 1.4 * 7.0
         return h - 0.02
     for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
     K.finish(g, M('grass'))
@@ -594,13 +594,13 @@ def ground():
             patch(x, y, R.uniform(0.6, 1.6), M(R.choice(('grass2', 'grass'))), 7, 0.03); n += 1
             if n % 2: tufts(x, y, 2, (0.5, 0.5))
     # the slopes either side of the ring and the wooded ridge behind it: a darker, bluer back row for depth
-    for (x, y) in ((41, -12), (42, -28), (-41, -12), (-42, -28), (39, 2), (-39, 2)): outcrop(x, y, 4, 1.8, 1.2)
+    for (x, y) in ((L.RX + 5, -12), (L.RX + 6, -L.RZ - 4), (-L.RX - 5, -12), (-L.RX - 6, -L.RZ - 4), (L.RX + 3, 2), (-L.RX - 3, 2)): outcrop(x, y, 4, 1.8, 1.2)
     for _ in range(12):
-        x, y = R.choice((1, -1)) * R.uniform(40, 54), R.uniform(-50, 6); tree(x, y, R.uniform(1.0, 1.4), height(x, y))
-    for (x, y) in [(R.uniform(-58, 58), R.uniform(-64, -53)) for _ in range(40)] + [(R.uniform(-70, 70), R.uniform(-95, -64)) for _ in range(45)]:
+        x, y = R.choice((1, -1)) * R.uniform(L.RX + 4, L.RX + 18), R.uniform(-2 * L.RZ, 6); tree(x, y, R.uniform(1.0, 1.4), height(x, y))
+    for (x, y) in [(R.uniform(-L.RX - 16, L.RX + 16), R.uniform(-2 * L.RZ - 16, -2 * L.RZ - 5)) for _ in range(40)] + [(R.uniform(-L.RX - 28, L.RX + 28), R.uniform(-2 * L.RZ - 45, -2 * L.RZ - 16)) for _ in range(45)]:
         tree(x, y, R.uniform(1.1, 1.8), height(x, y), far=True)
     for _ in range(14):   # trees behind the ring's shoulders, between the wall and the ridge
-        x, y = R.choice((1, -1)) * R.uniform(26, 40), R.uniform(-52, -40)
+        x, y = R.choice((1, -1)) * R.uniform(L.RX * 0.7, L.RX + 4), R.uniform(-2 * L.RZ - 4, -1.6 * L.RZ)
         if free(x, y, 1.5): tree(x, y, R.uniform(1.0, 1.4), height(x, y))
     # the meadow: clustered flowers, rocks with tufts, bush clumps, broad swathes of darker and lighter grass
     def scatter(n, r, box, make):
@@ -608,7 +608,7 @@ def ground():
         while k < n:
             x, y = R.uniform(*box[0]), R.uniform(*box[1])
             if free(x, y, r): make(x, y); k += 1
-    box = ((-44, 44), (-2, 30))
+    box = ((-L.RX - 8, L.RX + 8), (-2, 30))
     def flowers(cx, cy):
         c = R.choice(('flower_y', 'flower_w', 'flower_p'))
         for k in range(R.randint(5, 10)): K.sphere('flower', 0.07, (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.6, 0.6), 0.12), M(c), sub=1)
@@ -621,7 +621,7 @@ def ground():
         n = 9; rr = R.uniform(1.5, 3.0)
         vs = [(cx + math.cos(i / n * math.tau) * rr * R.uniform(0.7, 1.2), cy + math.sin(i / n * math.tau) * rr * R.uniform(0.5, 0.9), 0.025) for i in range(n)]
         mesh_from('swathe', vs, [tuple(range(n))], M(R.choice(('grass2', 'grass3'))), 0.0)
-    scatter(40, 3.2, ((-50, 50), (-50, 30)), swathe)
+    scatter(40, 3.2, ((-L.RX - 14, L.RX + 14), (-2 * L.RZ - 2, 30)), swathe)
     scatter(6, 1.8, ((-30, 30), (20, 30)), lambda x, y: tree(x, y, R.uniform(1.0, 1.3)))
     props()
     # dark framing clumps at the bottom corners of the view
