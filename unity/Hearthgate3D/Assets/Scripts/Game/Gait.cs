@@ -24,6 +24,7 @@ namespace Hearthgate.Game
         public float Phase => phase;
         public System.Action Step;          // a foot strikes the ground
         float phase, amp, hatVel, hatAng, lastSpeed;
+        Vector3 hipL, hipR, kneeL, kneeR, ankL, ankR;   // the joints at rest, in the model's own space (every part hangs off the body)
         bool ok;
 
         void Awake()
@@ -43,6 +44,8 @@ namespace Hearthgate.Game
             if (armL) rArL = armL.localRotation; if (armR) rArR = armR.localRotation;
             if (hat) rHat = hat.localRotation;
             if (bootL) rBoL = bootL.localRotation; if (bootR) rBoR = bootR.localRotation;
+            if (ok) { hipL = thighL.localPosition; hipR = thighR.localPosition; kneeL = shinL.localPosition; kneeR = shinR.localPosition; }
+            if (bootL) ankL = bootL.localPosition; if (bootR) ankR = bootR.localPosition;
         }
         public bool HasLegs => ok;
 
@@ -66,14 +69,10 @@ namespace Hearthgate.Game
             float thL = amp * Mathf.Sin(pL), thR = amp * Mathf.Sin(pR);
             // the swing leg (its thigh moving forward, cos > 0) bends its knee; the stance leg stays straight
             float kL = amp * 1.3f * Mathf.Max(0, Mathf.Cos(pL)), kR = amp * 1.3f * Mathf.Max(0, Mathf.Cos(pR));   // up to about 45 degrees: more read as a kick back (side-view check)
-            thighL.localRotation = rThL * Quaternion.Euler(thL * Mathf.Rad2Deg, 0, 0);
-            thighR.localRotation = rThR * Quaternion.Euler(thR * Mathf.Rad2Deg, 0, 0);
-            shinL.localRotation = rShL * Quaternion.Euler(-kL * Mathf.Rad2Deg, 0, 0);
-            shinR.localRotation = rShR * Quaternion.Euler(-kR * Mathf.Rad2Deg, 0, 0);
-            // the ankles keep each sole flat: the boot turns back by the shin's own tilt (its thigh less its knee); in the
-            // swing the toe hangs a little (fresh-eyes review: a sole turned up behind him read as a broken leg)
-            if (bootL) bootL.localRotation = rBoL * Quaternion.Euler((-(thL - kL) - (Mathf.Cos(pL) > 0 ? 0.25f * amp : 0f)) * Mathf.Rad2Deg, 0, 0);
-            if (bootR) bootR.localRotation = rBoR * Quaternion.Euler((-(thR - kR) - (Mathf.Cos(pR) > 0 ? 0.25f * amp : 0f)) * Mathf.Rad2Deg, 0, 0);
+            // a chain worked in the model's space: the thigh turns at the hip, the knee rides on it and the shin turns at the
+            // knee by the thigh less the bend, the ankle rides on the shin
+            Leg(thighL, shinL, bootL, rThL, rShL, rBoL, hipL, kneeL, ankL, thL, kL, Mathf.Cos(pL) > 0);
+            Leg(thighR, shinR, bootR, rThR, rShR, rBoR, hipR, kneeR, ankR, thR, kR, Mathf.Cos(pR) > 0);
             // the hips sit on the straight stance leg: lowest when the legs are widest apart (planted feet: rule 2)
             float stance = Mathf.Cos(pL) <= 0 ? thL : thR;
             Drop = LegLength * (Mathf.Cos(stance) - 1f) - (speed > 0.05f ? 0.01f : 0f);
@@ -87,6 +86,19 @@ namespace Hearthgate.Game
                 float target = Mathf.Clamp(speed * 5f, 0, 18f) + Mathf.Clamp(accel * 1.5f, -12f, 12f) + Mathf.Cos(phase * 2f) * amp * 10f;   // + is back
                 hatVel += ((target - hatAng) * 90f - hatVel * 9f) * dt; hatAng += hatVel * dt;
                 hat.localRotation = rHat * Quaternion.Euler(hatAng, 0, Mathf.Sin(phase) * amp * 8f);
+            }
+        }
+        void Leg(Transform thigh, Transform shin, Transform boot, Quaternion rT, Quaternion rS, Quaternion rB, Vector3 hip, Vector3 knee, Vector3 ank, float th, float k, bool swing)
+        {
+            var qT = Quaternion.Euler(th * Mathf.Rad2Deg, 0, 0); var qS = Quaternion.Euler((th - k) * Mathf.Rad2Deg, 0, 0);
+            thigh.localRotation = qT * rT;
+            var kneeAt = hip + qT * (knee - hip);
+            shin.localPosition = kneeAt; shin.localRotation = qS * rS;
+            if (boot)
+            {   // the sole stays flat on the ground (the boot turns back by the shin's tilt); in the swing the toe hangs a
+                // little (fresh-eyes review: a sole turned up behind him read as a broken leg)
+                boot.localPosition = kneeAt + qS * (ank - knee);
+                boot.localRotation = Quaternion.Euler(swing ? -0.25f * amp * Mathf.Rad2Deg : 0f, 0, 0) * rB;
             }
         }
         // the body's turn against the hips, in degrees about up, for the owner to add to the model's yaw

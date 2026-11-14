@@ -915,11 +915,11 @@ def legs(hip_z, x, mat, boot='wood_dk', thigh_r=0.12, shin_r=0.11, foot=0.13):
     for sx, side in ((-1, 'L'), (1, 'R')):
         with Part('thigh_' + side, (sx * x, 0, hip_z)):
             K.cyl('thigh', thigh_r, hip_z - knee + 0.04, (sx * x, 0, (hip_z + knee) / 2), M(mat), 10, 0.02)
-        with Part('shin_' + side, (sx * x, 0, knee), 'thigh_' + side):
+        with Part('shin_' + side, (sx * x, 0, knee)):   # flat under the body: FBX misplaces a nested part (Gait chains them)
             K.cyl('shin', shin_r, knee - 0.1, (sx * x, 0, knee / 2 + 0.05), M(mat), 10, 0.02)
             K.sphere('knee', shin_r * 1.05, (sx * x, 0, knee), M(mat), sub=2)
             K.cyl('cuff', shin_r * 1.25, 0.08, (sx * x, 0, 0.17), M(boot), 10, 0.02)
-        with Part('boot_' + side, (sx * x, 0, 0.12), 'shin_' + side):   # the ankle: Gait keeps the sole flat on the ground
+        with Part('boot_' + side, (sx * x, 0, 0.12)):   # the ankle: Gait keeps the sole flat on the ground
             K.sphere('boot', foot, (sx * x, -0.07, 0.075), M(boot), (1, 1.55, 0.62), 2)
 
 def wizard():

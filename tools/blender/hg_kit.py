@@ -127,7 +127,9 @@ def sphere(name, r, loc, m, scale=(1, 1, 1), sub=3):
 
 # moving parts (Nov 14 2026, owner: "Improve walking animations ... Legs move you know"): objects named 'P_<part>__*' are
 # joined into a child object <part> whose origin is its pivot (a hip, a knee, a shoulder), parented to PARTS[part][1] or
-# to the model, so the game can turn it about that joint. hg_front.Part names them.
+# to the model, so the game can turn it about that joint. hg_front.Part names them. Keep parts one level deep: the FBX
+# export put a part nested under another part on the wrong axis (a shin 0.44 m sideways, Nov 14 2026); the game chains
+# joints itself.
 PARTS = {}
 
 def export(name):
