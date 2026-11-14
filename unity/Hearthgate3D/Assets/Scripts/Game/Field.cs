@@ -63,8 +63,8 @@ namespace Hearthgate.Game
         // the ten building plots inside the ring, in the order of HG.BUILDINGS (tools/layout/ring.py: every roof line seen
         // over the front wall, the gatehouse and the towers; the tall ones where they hide nothing behind them)
         static readonly Vector2[] PLOTS = {
-            new Vector2(5.0f, -8.0f), new Vector2(5.0f, -19.5f), new Vector2(-5.0f, -19.5f), new Vector2(-5.0f, -7.5f), new Vector2(13.0f, -9.5f),
-            new Vector2(-13.0f, -9.5f), new Vector2(-16.0f, -21.0f), new Vector2(0.0f, -23.0f), new Vector2(8.5f, -26.5f), new Vector2(16.0f, -21.0f) };
+            new Vector2(5.0f, -8.0f), new Vector2(5.0f, -19.5f), new Vector2(-5.0f, -19.5f), new Vector2(13.0f, -9.5f), new Vector2(-13.0f, -9.5f),
+            new Vector2(-16.0f, -21.0f), new Vector2(0.0f, -23.0f), new Vector2(8.5f, -26.5f), new Vector2(-8.5f, -26.5f), new Vector2(16.0f, -21.0f) };
         public static Vector3 Plot(int i) => new Vector3(PLOTS[i].x, 0, PLOTS[i].y);
         public static readonly Quaternion PLOT_FACING = Quaternion.Euler(0, 180, 0);   // fronts toward the wall and the camera
 

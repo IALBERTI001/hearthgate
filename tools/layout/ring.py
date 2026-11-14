@@ -122,12 +122,18 @@ print(len(cands),'candidate spots')
 pl=[(x,z) for z in np.arange(-6,-20,-0.5) for x in np.arange(-8,8.5,0.5) if inside(x,z,4) and clear_of_structures(x,z,3.0) and seen(x,z,1.2,3.0) and framed(x,z,3.0,3.8)]
 pl.sort(key=lambda p:(abs(p[0])*0.5+abs(p[1]+9)))
 plaza=pl[0]; print('plaza',plaza)
+def plaza_seen(others):
+    tgt=np.array([plaza[0],1.2,plaza[1]+1.5]); d=tgt-o; L=np.linalg.norm(d); dn=d/L
+    if not wall_ok(o,tgt) or any(ray_hits(o,dn,b,L-0.4) for n,b in B): return False
+    return not any(ray_hits(o,dn,(q[0]-2.4,q[0]+2.4,q[1]-2.4,q[1]+2.4,0,8.2),L-0.4) for q in others)
+print('plaza seen alone', plaza_seen([]))
 cands.sort(key=lambda p:abs(p[1]+8)+abs(p[0])*0.12)
 chosen=[]
 for c in cands:
     if max(abs(c[0]-plaza[0]),abs(c[1]-plaza[1]))<3.0+2.4+0.5: continue
     if not all(max(abs(c[0]-q[0]),abs(c[1]-q[1]))>=5.0 for q in chosen): continue
     if not seen(*c,others=chosen): continue
+    if not plaza_seen(chosen+[c]): continue   # LayoutCheck: the plaza point (1.2 m up, 1.5 m in front) seen past every building
     if not all(seen(*q,others=[c]+[r for r in chosen if r!=q]) for q in chosen): continue
     chosen.append(c)
     if len(chosen)==10: break
