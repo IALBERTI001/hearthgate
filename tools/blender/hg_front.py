@@ -1418,7 +1418,7 @@ def npc(kind):
       librarian: the Library's keeper: a plum robe, grey hair in a bun, gold spectacles, an open book;
       chronomancer: the old time-master by the fountain who trains the wizard: a teal hooded robe, a long beard, an hourglass."""
     robe, trim, skin_hair = {'astronomer': ('roof_slate', 'gold', 'beard'), 'merchant': ('tunic_g', 'gold', 'hair'),
-                             'librarian': ('robe', 'gold', 'smoke'), 'chronomancer': ('frost_dk', 'gold', 'beard')}[kind]
+                             'librarian': ('robe', 'gold', 'smoke'), 'chronomancer': ('teal', 'gold', 'beard')}[kind]
     K.cyl('robe', 0.46, 1.0, (0, 0, 0.5), M(robe), 20, 0.03, r2=0.34)
     K.cyl('hem', 0.48, 0.07, (0, 0, 0.04), M(trim), 20, 0.0)
     K.sphere('chest', 0.38, (0, 0, 1.12), M(robe), (1, 0.85, 0.85), 3)
@@ -1466,8 +1466,9 @@ def npc(kind):
         K.cone('hat', 0.32, 0.8, (0, 0.04, 2.2), M(robe), 16).rotation_euler = (-0.15, 0, 0)
         K.sphere('moon', 0.1, (0, -0.28, 2.0), M('gold', 1.4), (1, 0.4, 1), 2); K.sphere('bite', 0.08, (0.05, -0.31, 2.03), M(robe), (1, 0.45, 1), 2)
     else:   # the Chronomancer's deep hood
-        K.sphere('hood', 0.37, (0, 0.06, 1.62), M(robe), (1, 1.05, 1.08), 3)
-        K.cone('hood_tip', 0.22, 0.4, (0, 0.2, 1.92), M(robe), 10).rotation_euler = (0.6, 0, 0)
+        K.sphere('hood', 0.36, (0, 0.16, 1.64), M(robe), (1.08, 1.0, 1.08), 3)   # drawn back off his face
+        K.cone('hood_tip', 0.2, 0.4, (0, 0.34, 1.9), M(robe), 10).rotation_euler = (0.9, 0, 0)
+        for sx in (-1, 1): block((sx * 0.12, -0.29, 1.71), (0.15, 0.07, 0.05), M('beard'), 0.02).rotation_euler = (0, -sx * 0.25, 0)   # white brows
     return K.export('npc_' + kind)
 
 # the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender

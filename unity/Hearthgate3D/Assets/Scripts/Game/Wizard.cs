@@ -74,6 +74,7 @@ namespace Hearthgate.Game
         }
 
         public void Teleport(Vector3 p) { pos = new Vector3(p.x, 0, p.z); Stop(); }   // test hooks only (GameLoop.Dev)
+        public Vector3 Pos => pos;
         public Vector3 StaffTip => model ? model.position + model.rotation * new Vector3(0.45f * SCALE, 2.4f * SCALE, -0.25f * SCALE) : pos + Vector3.up * 1.6f;
         public void Stop() { target = null; goal.SetActive(false); vel = Vector3.zero; }
 

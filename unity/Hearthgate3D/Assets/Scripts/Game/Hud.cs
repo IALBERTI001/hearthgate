@@ -280,6 +280,15 @@ namespace Hearthgate.Game
         void Signs(GameLoop g, Profile P)
         {
             var wz = Wizard.I; var cam = Camera.main; var canvas = (RectTransform)transform;
+            // only the boards of the buildings he is near (the two nearest, within 10 m): every board in view at once stacked
+            // into a wall across the top of the screen (owner, Nov 14 2026: the town walk "is an important impression")
+            int n1 = -1, n2 = -1; float d1 = 10f, d2 = 10f;
+            if (wz && wz.On)
+                for (int i = 0; i < signs.Length; i++)
+                {
+                    var sa = Field.SignPoint(i); float d = Vector2.Distance(new Vector2(sa.x, sa.z), new Vector2(wz.Pos.x, wz.Pos.z));
+                    if (d < d1) { n2 = n1; d2 = d1; n1 = i; d1 = d; } else if (d < d2) { n2 = i; d2 = d; }
+                }
             for (int i = 0; i < signs.Length; i++)
             {
                 var at = Field.SignPoint(i); bool show = wz && wz.On && cam; bool docked = show && wz.Inside == i;
@@ -287,7 +296,7 @@ namespace Hearthgate.Game
                 if (show)
                 {
                     dist = Vector3.Distance(cam.transform.position, at); sp = cam.WorldToScreenPoint(at);
-                    show = docked || sp.z > 0 && dist < 32f && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height;
+                    show = docked || (wz.Inside < 0 && (i == n1 || i == n2)) && sp.z > 0 && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height * 0.8f;
                 }
                 if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
                 if (!show) continue;

@@ -148,9 +148,9 @@ namespace Hearthgate.Game
         System.Collections.IEnumerator Rewind(bool toAscension)
         {
             rewinding = true; Hud.CloseCard(); if (Wizard.I && Wizard.I.On) Wizard.I.Toggle();
-            var dialAt = new Vector3(0, 13f, (Field.PLAZA.z + Field.GATE_Z) * 0.5f);
+            var dialAt = new Vector3(0, 15f, (Field.PLAZA.z + Field.GATE_Z) * 0.5f);
             Sound.Play("surge", 0.6f); Sound.Play("ascension", 0.5f);
-            StartCoroutine(Dial(dialAt, 2.4f, 1.7f, false));
+            StartCoroutine(Dial(dialAt, 2.4f, 2.6f, false));
             var order = new System.Collections.Generic.List<int>();
             if (!toAscension) for (int i = HG.BUILDINGS.Length - 1; i >= 0; i--) if (P.restored.Contains(HG.BUILDINGS[i].id)) order.Add(i);
             float t = 0, boltT = 0; int next = 0;

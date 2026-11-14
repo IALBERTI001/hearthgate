@@ -29,7 +29,7 @@ PAL = {
     # slimes are hot pink: they read against the green ground (fresh-eyes review 2)
     'slime_gloss': (0.96, 0.36, 0.62), 'slime_dk': (0.62, 0.12, 0.38), 'beetle_gloss': (0.34, 0.20, 0.62), 'golem': (0.48, 0.44, 0.40),
     'amber_gloss': (0.95, 0.62, 0.16), 'lord_gloss': (0.48, 0.07, 0.10), 'leech_gloss': (0.70, 0.08, 0.16), 'queen_gloss': (0.52, 0.14, 0.72),
-    'steel': (0.66, 0.68, 0.74), 'bone': (0.90, 0.86, 0.74),
+    'steel': (0.66, 0.68, 0.74), 'teal': (0.10, 0.40, 0.46), 'bone': (0.90, 0.86, 0.74),
     'eye': (1.0, 1.0, 1.0), 'pupil': (0.06, 0.04, 0.06), 'white_gloss': (1.0, 1.0, 1.0), 'blush': (1.0, 0.45, 0.45),
     'fire': (1.0, 0.24, 0.04), 'fire_red': (0.88, 0.07, 0.03), 'fire_core': (1.0, 0.45, 0.05),   # red and orange (owner, Nov 13: "not sure why you chose yellow for fire")
     'frost': (0.32, 0.80, 1.0), 'frost_dk': (0.14, 0.52, 0.92),
