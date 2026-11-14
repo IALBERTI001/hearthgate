@@ -231,8 +231,9 @@ def star_table(x, y):   # the Watchtower: a captain's table with a star orb on a
 def shard_counter(x, y):   # the Market: the Starshard seller's counter, rose crystals on a velvet cushion
     table(x, y, 2.0, 1.0)
     block((x, y, z0 + 0.85), (0.9, 0.6, 0.1), M('banner'), 0.03)
-    for (dx, dy, h, r) in ((0, 0, 0.62, 0.11), (-0.2, 0.08, 0.42, 0.08), (0.2, -0.06, 0.48, 0.08), (0.08, 0.15, 0.3, 0.06), (-0.12, -0.14, 0.32, 0.06)):
-        K.cone('shard', r, h, (x + dx, y + dy, z0 + 0.9 + h / 2), M('rose', 2.6), 6)
+    for (dx, dy, h, r) in ((0, 0, 1.0, 0.18), (-0.3, 0.1, 0.68, 0.13), (0.3, -0.08, 0.76, 0.13), (0.12, 0.22, 0.5, 0.1), (-0.18, -0.2, 0.52, 0.1)):   # big enough to find from the door
+        K.cone('shard', r, h, (x + dx, y + dy, z0 + 0.9 + h / 2), M('rose', 2.8), 6)
+    K.sphere('halo', 0.5, (x, y, z0 + 0.92), M('rose', 1.2), (1.6, 1.1, 0.08), 2)   # a glow on the velvet round them
     for s in (-1, 1): K.cyl('coin_stack', 0.08, 0.12 + 0.06 * (s > 0), (x + s * 0.7, y + 0.2, z0 + 0.86), M('gold', 0.6), 10, 0.0)
 def book_lectern(x, y):   # the Library: a lectern with the great book of quests lying open, its pages lit
     block((x, y, z0 + 0.5), (0.3, 0.3, 1.0), M('wood_dk'), 0.02)
@@ -251,7 +252,10 @@ def centrepiece(bid):
 def b_forge():
     w, d = LY.SIZES['forge']; top = room(w, d, 3.4, 'stone2', 'cobble2'); top_rail(w, d, top)
     hearth(-0.6, d / 2 - T - 0.36, big=True)                                    # the forge fire against the back wall
-    block((-0.6, d / 2 - 0.75, z0 + 2.0), (2.4, 1.0, 0.25), M('iron'), 0.02)    # its hood
+    block((-0.6, d / 2 - 0.42, z0 + 2.3), (2.4, 0.35, 0.25), M('iron'), 0.02)   # its hood, back against the wall so the fire shows from above
+    block((-0.6, d / 2 - T - 0.85, z0 + 0.12), (1.8, 0.7, 0.2), M('stone3'), 0.02)   # the hearthstone, coals glowing on it
+    for k in range(9): K.sphere('coal', R.uniform(0.09, 0.15), (-1.3 + k * 0.17, d / 2 - T - 0.85 + R.uniform(-0.2, 0.2), z0 + 0.24), M(R.choice(('fire', 'fire_core', 'char')), 2.6), (1, 1, 0.6), 1)
+    for k in range(5): K.sphere('ember', 0.035, (-1.2 + k * 0.3, d / 2 - T - 0.9 + R.uniform(-0.3, 0.3), z0 + 0.9 + k * 0.25), M('fire_core', 3.5), sub=1)   # sparks rising
     block((0.6, 0.3, z0 + 0.65), (0.9, 0.4, 0.3), M('iron'), 0.02); block((0.6, 0.3, z0 + 0.3), (0.35, 0.35, 0.6), M('wood_dk'), 0.0)   # anvil
     barrel(2.6, 2.2); K.cyl('quench', 0.3, 0.02, (2.6, 2.2, z0 + 0.81), M('water_gloss', 0.3), 10, 0.0)
     block((-w / 2 + T + 0.08, 0.5, z0 + 1.5), (0.06, 2.4, 1.2), M('wood'), 0.0)   # tool rack

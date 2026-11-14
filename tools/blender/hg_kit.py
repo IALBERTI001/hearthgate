@@ -163,7 +163,8 @@ def export(name):
     if up:
         u = join(up, 'upper'); u.parent = o; parts.append(u)
     made = {}
-    for pn in sorted(moving, key=lambda n: PARTS[n][1] is not None):   # parents before their children
+    def depth(n): return 0 if PARTS[n][1] is None else 1 + depth(PARTS[n][1])
+    for pn in sorted(moving, key=depth):   # parents before their children
         pv, par = PARTS[pn]
         j = join(moving[pn], pn)
         bpy.context.scene.cursor.location = (-pv[0], -pv[1], pv[2])   # the pivot, turned with the model (see join)

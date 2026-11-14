@@ -15,8 +15,8 @@ namespace Hearthgate.Game
 {
     public class Gait : MonoBehaviour
     {
-        Transform thighL, thighR, shinL, shinR, armL, armR, hat;
-        Quaternion rThL, rThR, rShL, rShR, rArL, rArR, rHat;
+        Transform thighL, thighR, shinL, shinR, bootL, bootR, armL, armR, hat;
+        Quaternion rThL, rThR, rShL, rShR, rBoL, rBoR, rArL, rArR, rHat;
         public float LegLength = 0.45f;     // hip to sole in world metres (set by the owner of the model)
         public float MaxCadence = 2.6f;     // strides (two steps) a second at most
         public float ArmSwing = 0.85f, StaffArm = 0.45f;   // the right arm holds the wizard's staff, so it swings less
@@ -35,12 +35,14 @@ namespace Hearthgate.Game
                     case "shin_L": shinL = t; break; case "shin_R": shinR = t; break;
                     case "arm_L": armL = t; break; case "arm_R": armR = t; break;
                     case "hat_tip": hat = t; break;
+                    case "boot_L": bootL = t; break; case "boot_R": bootR = t; break;
                 }
             ok = thighL && thighR && shinL && shinR;
             if (thighL) rThL = thighL.localRotation; if (thighR) rThR = thighR.localRotation;
             if (shinL) rShL = shinL.localRotation; if (shinR) rShR = shinR.localRotation;
             if (armL) rArL = armL.localRotation; if (armR) rArR = armR.localRotation;
             if (hat) rHat = hat.localRotation;
+            if (bootL) rBoL = bootL.localRotation; if (bootR) rBoR = bootR.localRotation;
         }
         public bool HasLegs => ok;
 
@@ -68,6 +70,10 @@ namespace Hearthgate.Game
             thighR.localRotation = rThR * Quaternion.Euler(thR * Mathf.Rad2Deg, 0, 0);
             shinL.localRotation = rShL * Quaternion.Euler(-kL * Mathf.Rad2Deg, 0, 0);
             shinR.localRotation = rShR * Quaternion.Euler(-kR * Mathf.Rad2Deg, 0, 0);
+            // the ankles keep each sole flat: the boot turns back by the shin's own tilt (its thigh less its knee); in the
+            // swing the toe hangs a little (fresh-eyes review: a sole turned up behind him read as a broken leg)
+            if (bootL) bootL.localRotation = rBoL * Quaternion.Euler((-(thL - kL) - (Mathf.Cos(pL) > 0 ? 0.25f * amp : 0f)) * Mathf.Rad2Deg, 0, 0);
+            if (bootR) bootR.localRotation = rBoR * Quaternion.Euler((-(thR - kR) - (Mathf.Cos(pR) > 0 ? 0.25f * amp : 0f)) * Mathf.Rad2Deg, 0, 0);
             // the hips sit on the straight stance leg: lowest when the legs are widest apart (planted feet: rule 2)
             float stance = Mathf.Cos(pL) <= 0 ? thL : thR;
             Drop = LegLength * (Mathf.Cos(stance) - 1f) - (speed > 0.05f ? 0.01f : 0f);

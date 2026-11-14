@@ -115,7 +115,7 @@ namespace Hearthgate.Game
             gameObject.AddComponent<Fx>().Init(pops, font);
 
             var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(380, 150)); shade.pivot = new Vector2(0, 1);
-            var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.55f); si.raycastTarget = false;
+            var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.78f);   // the stats read over bright roofs (fresh-eyes review) si.raycastTarget = false;
             wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -12), 28, TextAnchor.UpperLeft);
             var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -52), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
             gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
@@ -181,18 +181,18 @@ namespace Hearthgate.Game
             // the wizard walks the town; behind the HUD controls, so the cards and buttons stay on top
             for (int i = 0; i < signs.Length; i++)
             {
-                var r = Box("Sign" + i, transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(320, 84)); r.pivot = new Vector2(0.5f, 0f);
+                var r = Box("Sign" + i, transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(380, 84)); r.pivot = new Vector2(0.5f, 0f);
                 var gl = Box("Glow", r, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(16, 16));
                 signGlow[i] = gl.gameObject.AddComponent<Image>(); signGlow[i].sprite = Panel(new Color(1f, 0.8f, 0.35f, 0f), new Color(1f, 0.8f, 0.35f, 0.6f), 18, 7);
                 signGlow[i].type = Image.Type.Sliced; signGlow[i].raycastTarget = false;
                 var im = r.gameObject.AddComponent<Image>(); im.sprite = Panel(PLUM, BRASS, 10, 3); im.type = Image.Type.Sliced; im.raycastTarget = false;
                 signHead[i] = Label("H", r, new Vector2(0.5f, 1f), new Vector2(0, -8), 22, TextAnchor.UpperCenter);
-                signHead[i].rectTransform.pivot = new Vector2(0.5f, 1f); signHead[i].rectTransform.sizeDelta = new Vector2(300, 28);
+                signHead[i].rectTransform.pivot = new Vector2(0.5f, 1f); signHead[i].rectTransform.sizeDelta = new Vector2(360, 28);
                 signTxt[i] = Label("T", r, new Vector2(0.5f, 1f), new Vector2(0, -38), 17, TextAnchor.UpperCenter);
-                signTxt[i].font = body; signTxt[i].rectTransform.pivot = new Vector2(0.5f, 1f); signTxt[i].rectTransform.sizeDelta = new Vector2(300, 90);
+                signTxt[i].font = body; signTxt[i].rectTransform.pivot = new Vector2(0.5f, 1f); signTxt[i].rectTransform.sizeDelta = new Vector2(360, 90);
                 signTxt[i].horizontalOverflow = HorizontalWrapMode.Wrap; signTxt[i].verticalOverflow = VerticalWrapMode.Overflow;
                 int bi = i;   // the building's own upgrade (or rebuild) button, on its board: shown when the wizard is at it
-                signBtn[i] = Action("SignBtn" + i, new Vector2(0.5f, 0f), new Vector2(0, 12), new Vector2(296, 56), "upgrade", "E",
+                signBtn[i] = Action("SignBtn" + i, new Vector2(0.5f, 0f), new Vector2(0, 12), new Vector2(340, 56), "upgrade", "E",
                     () => { if (GameLoop.I.CanWork(bi)) GameLoop.I.WorkOn(bi); else Sound.Dud(); }, () => GameLoop.I.CanWork(bi), true, r);
                 signBtn[i].p.rt.gameObject.SetActive(false);
                 r.SetSiblingIndex(1); r.gameObject.SetActive(false); signs[i] = r;
@@ -208,7 +208,7 @@ namespace Hearthgate.Game
             var cf = Box("Fill", cheerTag, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
             cheerFill = cf.gameObject.AddComponent<Image>(); cheerFill.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
             cheerFill.type = Image.Type.Filled; cheerFill.fillMethod = Image.FillMethod.Horizontal; cheerFill.raycastTarget = false;
-            var ct = Label("T", cheerTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 15, TextAnchor.MiddleCenter); ct.text = "Cheer"; ct.font = body;
+            var ct = Label("T", cheerTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 15, TextAnchor.MiddleCenter); ct.text = "Tavern cheer"; ct.font = body;
             ct.rectTransform.pivot = new Vector2(0.5f, 0.5f); ct.rectTransform.sizeDelta = new Vector2(110, 26);
             cheerTag.SetSiblingIndex(1); cheerTag.gameObject.SetActive(false);
         }
@@ -279,7 +279,7 @@ namespace Hearthgate.Game
                 if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
                 if (!show) continue;
                 // inside, the steep room camera put the yard's board over the room and the wizard: it docks above the walls bar
-                if (docked) signs[i].anchoredPosition = new Vector2(canvas.rect.width * 0.5f, 96f);   // clear of the walls bar
+                if (docked) signs[i].anchoredPosition = new Vector2(canvas.rect.width - 206f, 96f);   // bottom right: clear of the walls bar and the doorway (fresh-eyes review)
                 else { RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp); signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f; }
                 signs[i].localScale = Vector3.one;   // never scaled: scaled text is blurry (owner, Nov 14 2026); its font is sized to read
                 // the building's board (owner, Nov 14 2026: "Everything to do with this building should be at player level to
@@ -320,7 +320,12 @@ namespace Hearthgate.Game
                     else { signBtn[i].icon.sprite = Icon("rebuild") ?? signBtn[i].icon.sprite; Show(signBtn[i], $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, Time.unscaledTime); }
                 }
                 float textH = signTxt[i].preferredHeight;
-                signs[i].sizeDelta = new Vector2(320, 46 + textH + (btn ? 78 : 10));
+                signs[i].sizeDelta = new Vector2(380, 46 + textH + (btn ? 78 : 10));
+                {   // never off the screen's edge (fresh-eyes review: a board cut at the left edge)
+                    var ap = signs[i].anchoredPosition; var cs = canvas.rect.size; float hw = 198f;
+                    ap.x = Mathf.Clamp(ap.x, hw, Mathf.Max(hw, cs.x - hw)); ap.y = Mathf.Clamp(ap.y, 70f, Mathf.Max(70f, cs.y - signs[i].sizeDelta.y - 180f));
+                    signs[i].anchoredPosition = ap;
+                }
                 var gc = signGlow[i].color; gc.a = up && can ? 0.45f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f) : 0f; signGlow[i].color = gc;
             }
         }
@@ -504,6 +509,8 @@ namespace Hearthgate.Game
             {   // a tap on a counter: where it comes from and what it buys
                 if (RectTransformUtility.RectangleContainsScreenPoint(shardRow, PointerPos, null))
                     Banner(P.shopOpen ? "Starshards: from bosses, Trials, Feats, quests and rare butterflies. Spend them at the Market's Starshard counter" : "Starshards: from bosses, Trials, Feats and rare butterflies. The Market's Shop takes them once it is rebuilt");
+                else if (g.ev != null && RectTransformUtility.RectangleContainsScreenPoint(rate.rectTransform, PointerPos, null))
+                    Banner($"{g.ev.name}: {g.ev.line}");   // the named wave explains itself
                 else if (pk && RectTransformUtility.RectangleContainsScreenPoint(perkRow, PointerPos, null))
                     Banner("Perk points: each Ascension pays them. Spend them at the Watchtower's star table");
             }
