@@ -103,13 +103,13 @@ namespace Hearthgate.Game
             var pops = Box("Pops", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             gameObject.AddComponent<Fx>().Init(pops, font);
 
-            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(420, 150)); shade.pivot = new Vector2(0, 1);
+            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(380, 130)); shade.pivot = new Vector2(0, 1);
             var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.55f); si.raycastTarget = false;
-            wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(24, -16), 30, TextAnchor.UpperLeft);
-            var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(22, -60), new Vector2(38, 38)); gem.pivot = new Vector2(0, 1);
+            wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -12), 28, TextAnchor.UpperLeft);
+            var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -52), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
             var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = Gem(); gi.raycastTarget = false;
-            res = Label("Res", transform, new Vector2(0, 1), new Vector2(66, -54), 44, TextAnchor.UpperLeft); res.color = RES;
-            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(26, -108), 19, TextAnchor.UpperLeft); rate.font = body;
+            res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -46), 40, TextAnchor.UpperLeft); res.color = RES;
+            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -94), 18, TextAnchor.UpperLeft); rate.font = body;
             banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -22), 34, TextAnchor.UpperCenter); banner.color = RES;
 
             // the gate's health, centred over the bottom of the view
@@ -122,8 +122,8 @@ namespace Hearthgate.Game
             gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter);
 
             // top right, over the far meadow: the city fills the bottom of the view (LayoutCheck keeps it clear)
-            up = Btn("Upgrade", new Vector2(-20, -20), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
-            re = Btn("Rebuild", new Vector2(-20, -90), () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, out reLbl);
+            up = Btn("Upgrade", new Vector2(-16, -16), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
+            re = Btn("Rebuild", new Vector2(-16, -78), () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, out reLbl);
         }
 
         RectTransform Box(string n, Transform p, Vector2 aMin, Vector2 aMax, Vector2 pos, Vector2 size)
@@ -165,9 +165,9 @@ namespace Hearthgate.Game
         }
         Pressable Btn(string n, Vector2 pos, System.Action act, System.Func<bool> on, out Text lbl)
         {
-            var r = Box(n, transform, new Vector2(1, 1), new Vector2(1, 1), pos, new Vector2(260, 62)); r.pivot = new Vector2(1, 1);
+            var r = Box(n, transform, new Vector2(1, 1), new Vector2(1, 1), pos, new Vector2(230, 56)); r.pivot = new Vector2(1, 1);   // slimmer (Nov 13 2026): the ring's outer towers stand under the corners
             var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, BRASS); img.type = Image.Type.Sliced; img.color = Color.white;
-            lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 22, TextAnchor.MiddleCenter);
+            lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 20, TextAnchor.MiddleCenter);
             Fit(lbl, r.sizeDelta - new Vector2(20, 8), 12);
             return Press(r, act, on);
         }

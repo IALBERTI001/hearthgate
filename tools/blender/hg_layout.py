@@ -13,17 +13,17 @@ import math
 
 RX, RZ = 25.0, 16.0                    # ring half axes; centre (0, -RZ), so the ring's front point is the gate at (0, 0)
 WALL_H = 3.4                           # wall walk; merlons to about 4.0
-TOWER_X = (8.5, -8.5, 18.0, -18.0)     # tower 0 and 1 beside the gate, 2 and 3 further out (Field.TOWER_X, same order)
+TOWER_X = (8.5, -8.5, 17.0, -17.0)     # tower 0 and 1 beside the gate, 2 and 3 further out (Field.TOWER_X, same order)
 TOWER_TOP = 5.0
 TOWER_FOOT = 2.6                       # from a tower's centre to the foot of its lane (base radius 2.15 plus a margin)
 LANE_HALF = 1.8                        # each lane is 3.6 m wide; enemies keep within +-1.3 of its centre line
-LANE_FAR_Z = 19.5                      # lanes begin just below the frame's bottom edge (ground z about 18 there)
-PLAZA = (-5.5, -12.0)
-PLOTS = [(5.0, -8.0), (0.0, -17.5), (8.5, -17.0), (12.5, -8.0), (-12.5, -8.0), (-5.0, -5.0), (-5.0, -19.0), (13.5, -18.5), (-15.0, -18.5), (-10.0, -17.0)]
+LANE_FAR_Z = 21.0                      # lanes begin just below the frame's bottom edge (ground z about 18 there)
+PLAZA = (-5.5, -13.5)
+PLOTS = [(5.0, -8.0), (5.0, -19.5), (-5.0, -19.5), (-5.0, -7.5), (13.0, -9.5), (-13.0, -9.5), (-16.0, -21.0), (0.0, -23.0), (8.5, -26.5), (16.0, -21.0)]
 IDS = ['forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower']
 
-CAM_PITCH, CAM_FOV, CAM_DIST = 34.0, 34.0, 53.0
-CAM_LOOK = (0.0, 0.0, -2.0)
+CAM_PITCH, CAM_FOV, CAM_DIST = 30.0, 40.0, 50.0
+CAM_LOOK = (0.0, 0.0, -3.0)
 CAM_POS = (0.0, CAM_DIST * math.sin(math.radians(CAM_PITCH)), CAM_LOOK[2] + CAM_DIST * math.cos(math.radians(CAM_PITCH)))
 
 def ring_z(x):
@@ -71,7 +71,8 @@ def lane(i):
     tx, tz = TOWERS[i]; nx, nz = ring_normal(tx, tz)
     foot = (tx + nx * TOWER_FOOT, tz + nz * TOWER_FOOT)
     sx = project((foot[0], 0, foot[1]))[0]
-    sx += -0.025 if sx < 0.5 else 0.025                 # a slight outward splay
+    sp = 0.065 if i < 2 else 0.03                        # a slight outward splay; the inner pair clear of the gate bar
+    sx += -sp if sx < 0.5 else sp
     start = (_ground_x_at(sx, LANE_FAR_Z), LANE_FAR_Z)
     return foot, start
 

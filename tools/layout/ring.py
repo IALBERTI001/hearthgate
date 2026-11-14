@@ -27,10 +27,17 @@ def ray_hits(o,d,b,tmax):
 
 RX,RZ=25.0,16.0                     # ring half axes; the ring's centre is (0, -RZ) so its front point is the gate at (0, 0)
 WALL_H=4.0                          # wall with merlons
-TX=[18.0,8.5,-8.5,-18.0]            # towers along the front arc, screen left to right
+TX=[17.0,8.5,-8.5,-17.0]            # towers along the front arc, screen left to right
 def ring_z(x): return -RZ+RZ*math.sqrt(max(0.0,1-(x/RX)**2))
 TOWERS=[(x,ring_z(x)) for x in TX]
-HUD=[(0,0.235,0.8,1,'labels'),(1-280/1280,1-20/1280,1-152/720,1-20/720,'buttons'),(0.5-180/1280,0.5+180/1280,27/720,53/720,'gate bar')]
+def HUDFOR(w,h):
+    sc=math.sqrt(w/1280*h/720)
+    return [(0,250*sc/w,1-118*sc/h,1,'labels'),(1-246*sc/w,1-16*sc/w,1-134*sc/h,1-16*sc/h,'buttons'),(0.5-180*sc/w,0.5+180*sc/w,27*sc/h,53*sc/h,'gate bar')]
+HUD=HUDFOR(1280,720)
+SHAPES=[(1280,720),(1600,727),(1080,900)]
+def fov_for(fov,aspect):
+    if aspect>=16/9: return fov
+    return 2*math.degrees(math.atan(math.tan(math.radians(fov/2))*(16/9)/aspect))
 
 def inside(x,z,m=0.0): return (x/(RX-m))**2+((z+RZ)/(RZ-m))**2<1
 def wall_ok(o,tgt):   # the sight line clears the ring wall where it enters the town
@@ -45,24 +52,31 @@ def wall_ok(o,tgt):   # the sight line clears the ring wall where it enters the 
             return y>WALL_H+0.2
     return True
 def blockers():
-    B=[('gate',(-4.2,4.2,-2.3,2.3,0,6.2)),('keep',(-3.1,3.1,-2.0,2.0,0,9.4))]
-    B+=[(f't{x:.0f}',(x-2.0,x+2.0,z-2.0,z+2.0,0,8.8)) for x,z in TOWERS]
+    B=[('gate',(-4.3,4.3,-2.4,2.4,0,6.2)),('keep',(-3.2,3.2,-2.1,2.1,0,10.0))]
+    B+=[(f't{x:.0f}',(x-2.2,x+2.2,z-2.2,z+2.2,0,10.5)) for x,z in TOWERS]
     return B
 
 def setup(pitch,fov,dist,lookz):
     th=math.radians(pitch); look=(0,0,lookz)
     camp=(0,dist*math.sin(th),lookz+dist*math.cos(th))
     return camp,look,cam(camp,look,fov)
-def frame_ok(P):
-    pts=[(x,8.8,z) for x,z in TOWERS]+[(x,0,z) for x,z in TOWERS]
+def frame_ok(P,hud=None):
+    hud=hud or HUD
+    pts=[(x,10.5,z) for x,z in TOWERS]+[(x,0,z) for x,z in TOWERS]
     pts+=[(RX,WALL_H,-RZ),(-RX,WALL_H,-RZ),(0,WALL_H,-2*RZ),(RX*0.7,WALL_H,-RZ-RZ*0.71),(-RX*0.7,WALL_H,-RZ-RZ*0.71),(0,9.4,0)]
     for p in pts:
         x,y=P(p)
         if not(0.015<x<0.985 and 0.02<y<0.97): return False
-    for x,z in TOWERS:   # tower tops clear of the HUD
-        for p in ((x-2,8.8,z),(x+2,8.8,z)):
+    for x,z in TOWERS:   # whole towers with their tallest cap clear of the HUD
+        for p in [(x+dx,y,z+dz) for dx in (-2.2,0,2.2) for dz in (-2.2,2.2) for y in (0,5,8,10.5)]:
             sx,sy=P(p)
-            if any(a<sx<b and c<sy<d for a,b,c,d,n in HUD): return False
+            if any(a<sx<b and c<sy<d for a,b,c,d,n in hud): return False
+    return True
+def all_shapes_ok(pitch,fov,dist,lookz):
+    th=math.radians(pitch); look=(0,0,lookz); camp=(0,dist*math.sin(th),lookz+dist*math.cos(th))
+    for w,h in SHAPES:
+        a=w/h
+        if not frame_ok(cam(camp,look,fov_for(fov,a),a),HUDFOR(w,h)): return False
     return True
 def lane_start(P,camp,look,fov):   # the ground z at the bottom edge of the frame (+1.5 m, so they walk in)
     lo,hi=-5.0,camp[2]-0.5
@@ -73,16 +87,16 @@ def lane_start(P,camp,look,fov):   # the ground z at the bottom edge of the fram
     return lo+1.5
 
 best=None
-for pitch in range(34,52,2):
-    for fov in (34,38,42):
+for pitch in range(30,48,2):
+    for fov in (32,34,36,38,40):
         for lookz in (-4,-3,-2,-1,0,1,2):
             for dist in np.arange(30,80,1.0):
                 camp,look,P=setup(pitch,fov,dist,lookz)
-                if not frame_ok(P): continue
+                if not all_shapes_ok(pitch,fov,dist,lookz): continue
                 ppm=(P((8.5,1.8,4))[1]-P((8.5,0,4))[1])*720/1.8
                 zs=lane_start(P,camp,look,fov)
                 # the owner's sketch: the wall sits in the upper part of the screen and the lanes fill the lower half
-                if P((8.5,0,TOWERS[1][1]))[1]<0.48 or zs-TOWERS[1][1]<16: continue
+                if P((8.5,0,TOWERS[1][1]))[1]<0.46 or zs-TOWERS[1][1]<15.5: continue
                 if best is None or ppm>best[0]: best=(ppm,pitch,fov,lookz,dist,camp,zs)
                 break
 ppm,pitch,fov,lookz,dist,camp,zs=best
@@ -100,15 +114,18 @@ def framed(x,z,r=2.3,h=6):
     xs=[c[0] for c in cs]; ys=[c[1] for c in cs]
     if min(xs)<0.01 or max(xs)>0.99 or min(ys)<0.01 or max(ys)>0.99: return False
     return not any(max(xs)>a and min(xs)<b and max(ys)>c and min(ys)<d for a,b,c,d,n in HUD)
-cands=[(x,z) for z in np.arange(-4.5,-2*RZ+3,-0.5) for x in np.arange(RX-3,-RX+3,-0.5) if inside(x,z,3.2) and seen(x,z) and framed(x,z)]
+def clear_of_structures(x,z,r=2.4):
+    if any(max(abs(x-tx),abs(z-tz))<2.3+r+0.4 for tx,tz in TOWERS): return False
+    return not (abs(x)<4.4+r+0.4 and z>-2.5-r-0.4)
+cands=[(x,z) for z in np.arange(-4.5,-2*RZ+3,-0.5) for x in np.arange(RX-3,-RX+3,-0.5) if inside(x,z,3.2) and clear_of_structures(x,z) and seen(x,z) and framed(x,z)]
 print(len(cands),'candidate spots')
-pl=[(x,z) for z in np.arange(-6,-20,-0.5) for x in np.arange(-6,6.5,0.5) if inside(x,z,4) and seen(x,z,1.2,3.0) and framed(x,z,3.0,3.8)]
+pl=[(x,z) for z in np.arange(-6,-20,-0.5) for x in np.arange(-8,8.5,0.5) if inside(x,z,4) and clear_of_structures(x,z,3.0) and seen(x,z,1.2,3.0) and framed(x,z,3.0,3.8)]
 pl.sort(key=lambda p:(abs(p[0])*0.5+abs(p[1]+9)))
 plaza=pl[0]; print('plaza',plaza)
 cands.sort(key=lambda p:abs(p[1]+8)+abs(p[0])*0.12)
 chosen=[]
 for c in cands:
-    if math.dist(c,plaza)<6.6: continue
+    if max(abs(c[0]-plaza[0]),abs(c[1]-plaza[1]))<3.0+2.4+0.5: continue
     if not all(max(abs(c[0]-q[0]),abs(c[1]-q[1]))>=5.0 for q in chosen): continue
     if not seen(*c,others=chosen): continue
     if not all(seen(*q,others=[c]+[r for r in chosen if r!=q]) for q in chosen): continue
