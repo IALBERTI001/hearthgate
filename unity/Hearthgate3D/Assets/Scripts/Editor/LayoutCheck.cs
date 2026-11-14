@@ -195,7 +195,7 @@ namespace Hearthgate.EditorTools
             return new List<(string, Rect)> {
                 ("labels", TopLeft(420, 124)),                       // wave with Starshards and perk points beside it, Resonance, the rate and the named wave
                 actions,                                             // Hud.LayoutActions: Upgrade, Rebuild and Walk as a row or a column
-                ("time stop", Rect.MinMaxRect(1 - 206 * s / w, 80 * s / h, 1 - 16 * s / w, 136 * s / h)),   // Hud.TickTimeStop
+                ("time stop", Rect.MinMaxRect(1 - 404 * s / w, 16 * s / h, 1 - 214 * s / w, 72 * s / h)),   // Hud.TickTimeStop
                 ("settings", Rect.MinMaxRect(1 - 206 * s / w, 16 * s / h, 1 - 16 * s / w, 72 * s / h)),   // the Settings button, bottom right
                 ("boss bar", Rect.MinMaxRect(0.5f - 180 * s / w, 76 * s / h, 0.5f + 180 * s / w, 108 * s / h)),   // Hud: a boss's name and health
                 ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 27 * s / h, 0.5f + 180 * s / w, 53 * s / h)),

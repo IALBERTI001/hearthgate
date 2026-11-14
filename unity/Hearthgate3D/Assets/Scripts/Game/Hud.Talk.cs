@@ -100,14 +100,14 @@ namespace Hearthgate.Game
             I.tint.color = c; I.tint.enabled = c.a > 0.001f;
         }
 
-        // the Time Stop button, over Settings in the bottom-right corner (a lane runs under any spot beside the walls' bar),
+        // the Time Stop button, left of Settings along the bottom edge (a lane runs under any spot beside the walls' bar or above),
         // once Aurelian has taught it
         Act tsAct;
         void TickTimeStop(GameLoop g)
         {
             if (tsAct == null)
             {
-                tsAct = Action("TimeStop", new Vector2(1, 0), new Vector2(-16, 80), new Vector2(190, 56), "timestop", "F", () => g.UseTimeStop(), () => g.TimeStopReady, false);
+                tsAct = Action("TimeStop", new Vector2(1, 0), new Vector2(-214, 16), new Vector2(190, 56), "timestop", "F", () => g.UseTimeStop(), () => g.TimeStopReady, false);
                 tsAct.gem.enabled = false;
             }
             bool on = g.TimeStopLevel > 0 && !(Wizard.I && Wizard.I.On);
