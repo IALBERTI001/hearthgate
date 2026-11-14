@@ -186,8 +186,8 @@ namespace Hearthgate.Game
             // settings (game-polish rule 19: the controls inside the game, the music and sound levels): a full button of the
             // kit like every other, its cog, its word and its key, in the bottom-right corner (owner, Nov 14 2026: "settings
             // button does not have settings written on it. It should match the other buttons. Consistency")
-            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-16, 16), new Vector2(190, 56), "gear", "P", () => ShowSettings(true), null, false);
-            gear.title.text = "Settings";
+            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-12, 12), new Vector2(150, 50), "gear", null, () => ShowSettings(true), null, false);   // no keycap: P is listed inside, and the corner stays clear of the lanes (LayoutCheck)
+            gear.title.text = "Settings"; gear.title.fontSize = 19;
 
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
             // buildings"): a small plum board with its name, level and output, pinned over the signpost in its yard while
