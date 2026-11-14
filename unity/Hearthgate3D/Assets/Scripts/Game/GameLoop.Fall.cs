@@ -86,7 +86,7 @@ namespace Hearthgate.Game
                 if (!p.t || p.age > p.life) { if (p.t) Destroy(p.t.gameObject); puffs.RemoveAt(k); continue; }
                 float u = p.age / p.life;
                 p.t.position += (Vector3.up * 2.4f + p.drift) * dt;
-                p.t.localScale = puffUnit * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0.7f, 1f, u));
+                p.t.localScale = puffUnit * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0f, 1f, (u - 0.7f) / 0.3f));   // Unity's SmoothStep(a, b, t) blends a to b; it is not GLSL's smoothstep(edge0, edge1, x);
                 p.t.Rotate(0, 20f * dt, 0); puffs[k] = p;
             }
             if ((smokeT -= dt) > 0) return;
