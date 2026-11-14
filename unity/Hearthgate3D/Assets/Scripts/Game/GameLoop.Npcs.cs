@@ -72,7 +72,7 @@ namespace Hearthgate.Game
                 var wz = Wizard.I; bool near = wz && wz.On && (i == TRAINER || wz.Inside == i);
                 // over the head when the wizard is with them; over the roof (big enough to see from the walls) otherwise
                 var at = near || i == TRAINER ? TalkAt(i) + Vector3.up * (2.5f + (i == TRAINER ? 0 : Field.FLOOR)) : Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 1.6f);
-                float sc = near ? 1.0f : wz && wz.On ? 1.7f : 2.4f;
+                float sc = near ? 1.0f : wz && wz.On ? 1.7f : 3.4f;
                 marks[k].position = at + Vector3.up * Mathf.Sin(npcT * 2.4f + k) * 0.15f * sc;
                 var cam = Camera.main; if (cam) { var d = marks[k].position - cam.transform.position; d.y = 0; if (d.sqrMagnitude > 0.01f) marks[k].rotation = Quaternion.LookRotation(d); }
                 marks[k].localScale = Vector3.one * sc * (1f + 0.05f * Mathf.Sin(npcT * 5f));
@@ -127,6 +127,7 @@ namespace Hearthgate.Game
             }
             return spawnZ[k] > 0 ? spawnZ[k] : Field.LaneLen(k) + 4f;
         }
+        public const float RIFT_OUT = 6f;   // the rifts stand this far out past the walls view's bottom edge, out of its sight
         void TickRifts(float dt)
         {
             if (art == null || art.rift == null) return;
@@ -138,7 +139,7 @@ namespace Hearthgate.Game
                     foreach (var c in g.GetComponentsInChildren<Transform>()) if (c.name == "swirl") riftSwirl[k] = c;
                     foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 }
-                rifts[k].position = Field.Lane(k, SpawnZ(k) + 0.6f, 0); rifts[k].rotation = Field.Facing(k);   // its face (-Z) toward the walls
+                rifts[k].position = Field.Lane(k, SpawnZ(k) + RIFT_OUT, 0); rifts[k].rotation = Field.Facing(k);   // its face (-Z) toward the walls
                 rifts[k].localScale = Vector3.one * (1f + 0.04f * Mathf.Sin(Time.time * 3f + k));
                 if (riftSwirl[k]) riftSwirl[k].Rotate(rifts[k].forward, 40f * dt, Space.World);
             }

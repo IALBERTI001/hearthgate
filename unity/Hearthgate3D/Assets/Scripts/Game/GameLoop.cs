@@ -131,7 +131,7 @@ namespace Hearthgate.Game
             {
                 var role = queue[0].role; queue.RemoveAt(0);
                 int lane = rnd.Next(4);   // each walks the lane to one tower (owner's sketch)
-                var en = new Enemy(role, P.wave, lane, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, SpawnZ(lane), unitsRoot) { born = (float)rnd.NextDouble() * 3 };
+                var en = new Enemy(role, P.wave, lane, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, SpawnZ(lane) + (Wizard.I && Wizard.I.On ? RIFT_OUT : 0f), unitsRoot) { born = (float)rnd.NextDouble() * 3 };   // from the walk, where its rift can be seen, it steps out of the rift itself
                 Fx.I.Burst(en.Pos + Vector3.up * 0.6f, new Color(0.7f, 0.45f, 1f), 6);   // out of its rift
                 double hx = (trial ? 1.6 : 1) * (en.boss ? 1 + 0.5 * HG.BossRank(P) : 1); en.hp = en.max *= hx;   // a Trial's enemies and a ranked boss are tougher
                 EventSpawn(en); enemies.Add(en);
