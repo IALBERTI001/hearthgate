@@ -279,7 +279,7 @@ namespace Hearthgate.Game
                 if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
                 if (!show) continue;
                 // inside, the steep room camera put the yard's board over the room and the wizard: it docks above the walls bar
-                if (docked) signs[i].anchoredPosition = new Vector2(canvas.rect.width * 0.5f, 64f);
+                if (docked) signs[i].anchoredPosition = new Vector2(canvas.rect.width * 0.5f, 96f);   // clear of the walls bar
                 else { RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp); signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f; }
                 signs[i].localScale = Vector3.one;   // never scaled: scaled text is blurry (owner, Nov 14 2026); its font is sized to read
                 // the building's board (owner, Nov 14 2026: "Everything to do with this building should be at player level to

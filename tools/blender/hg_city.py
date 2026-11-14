@@ -316,7 +316,10 @@ def b_market():
     for (x, c) in ((-2.8, 'fire'), (0.0, None), (2.8, 'grass3')):   # three stalls, the middle one the Starshard counter's
         if c is None: continue   # the Starshard counter stands here (centrepiece('market'), placed by the game)
         table(x, -0.6, 2.0, 1.0, (c, c, 'blush'))
-        block((x, -0.6, z0 + 2.3), (2.4, 1.4, 0.06), M(R.choice(('awning', 'roof_blue', 'canvas'))), 0.0)
+        stripe = {'fire': 'awning', 'grass3': 'roof_blue'}[c]   # a striped awning with a scalloped front edge (a flat slab read cheap from the room camera)
+        for k in range(6):
+            block((x - 1.2 + 0.2 + k * 0.4, -0.6, z0 + 2.3), (0.4, 1.4, 0.06), M(stripe if k % 2 == 0 else 'canvas'), 0.0)
+            K.sphere('scallop', 0.2, (x - 1.0 + k * 0.4, -1.3, z0 + 2.27), M(stripe if k % 2 == 0 else 'canvas'), (1, 0.5, 0.25), 1)
         for s in (-1, 1): block((x + s * 1.1, -0.6, z0 + 1.55), (0.06, 0.06, 1.5), M('wood_dk'), 0.0)
     for k in range(5): crate(-3.6 + k * 1.8, hy - 1.0)
     barrel(hx - 1.0, 0.8); barrel(hx - 1.6, 1.4, 0.9); sacks(-hx + 0.8, 0.6, 3)
