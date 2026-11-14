@@ -40,7 +40,7 @@ namespace Hearthgate.Game
             if (P.restored.Count > 0 && (flyT -= dt) <= 0 && meadow.Count < 2 && !(Wizard.I && Wizard.I.On))
             {
                 flyT = Random.Range(25f, 45f);
-                var k = HG.FlyPick(P, flyRnd); var tr = MakeFly(k, 1.3f);
+                var k = HG.FlyPick(P, flyRnd); var tr = MakeFly(k, 3.6f);   // big enough to see and tap from the walls (1.3 read as 8 px)
                 if (tr != null)
                 {
                     var home = new Vector3(Random.Range(-16f, 16f), Random.Range(2.2f, 3.6f), Random.Range(6f, 16f));   // over the meadow before the walls
@@ -62,7 +62,7 @@ namespace Hearthgate.Game
             {
                 foreach (var g in garden) if (g.tr) Destroy(g.tr.gameObject);
                 garden.Clear();
-                foreach (var k in want) { var tr = MakeFly(k, 0.7f); if (tr == null) break; garden.Add(new Flier { kind = k, tr = tr, phase = Random.value * 10, home = Field.PLAZA + Vector3.up * 2.6f }); tr.position = Field.PLAZA + Vector3.up * 3f; }
+                foreach (var k in want) { var tr = MakeFly(k, 1.8f); if (tr == null) break; garden.Add(new Flier { kind = k, tr = tr, phase = Random.value * 10, home = Field.PLAZA + Vector3.up * 2.6f }); tr.position = Field.PLAZA + Vector3.up * 3f; }
             }
             for (int i = 0; i < garden.Count; i++)
             {
