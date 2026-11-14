@@ -59,13 +59,13 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
-            var xs = Enumerable.Range(0, 4).OrderBy(i => Field.Tower(i).x).ToList();
+            var cam = Camera.main; var xs = Enumerable.Range(0, 4).OrderBy(i => cam ? cam.WorldToScreenPoint(Field.Tower(i)).x : -Field.Tower(i).x).ToList();   // named as the player sees them, left to right
             string[] names = { "Far West Tower", "West Tower", "East Tower", "Far East Tower" };
-            var box = I.Modal(names[xs.IndexOf(n)], new Vector2(720, 560));
+            var box = I.Modal(names[xs.IndexOf(n)], new Vector2(720, 470));
             var els = g.TowerElements; string cur = g.TowerEl(n), pick = P.towerEl[n];
             I.Line(box, -62, els.Length == 0 ? "Rebuild the Forge, the Frost Spire or the Storm Bell to give the towers an element." : "What it shoots. Any element the city has can go on any tower.", 18, new Color(0.88f, 0.84f, 0.9f));
             var opts = new List<string> { "" }; opts.AddRange(els);
-            float w = 150, gap = 10, x0 = -(opts.Count - 1) * (w + gap) / 2;
+            float w = opts.Count > 4 ? 128 : 150, gap = 8, x0 = -(opts.Count - 1) * (w + gap) / 2;
             for (int k = 0; k < opts.Count; k++)
             {
                 var el = opts[k]; bool chosen = el == pick;
@@ -85,7 +85,7 @@ namespace Hearthgate.Game
                 var l = looks[k]; bool own = g.Owns(l), on = l.id == worn;
                 I.BtnAt("Lk" + k, new Vector2(0.5f, 1), new Vector2((k - (looks.Length - 1) / 2f) * 220, -290), new Vector2(210, 56), () => { g.SetTowerLook(n, l.id); ShowTower(n); }, () => own && !on, out var ll, box,
                         l.id.EndsWith("-classic") ? "el_" + cur : "look_" + l.id.Replace('-', '_'), on).rt.pivot = new Vector2(0.5f, 1);
-                ll.text = own ? l.name : $"{l.name}: Market";
+                ll.text = own ? l.name : $"{l.name} (Market)";
             }
             if (looks.Length > 0) I.Line(box, -372, "New designs are sold at the Market's Starshard counter. Each tower can wear its own.", 16, new Color(0.85f, 0.8f, 0.88f));
             I.Choice(box, "T_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
