@@ -92,7 +92,7 @@ namespace Hearthgate.Game
         bool Has(string id) => P.restored.Contains(id);
         void TickGold(float dt)
         {
-            if (P.restored.Count < 3) return;
+            if (P.restored.Count < 3 || P.fallen) return;   // no gifts over the ruins
             if ((Ev("harvest") || Ev("goldrush")) && gold == null && goldT > 6) goldT = 6;   // Golden Wisps every few seconds
             if (gold != null)
             {

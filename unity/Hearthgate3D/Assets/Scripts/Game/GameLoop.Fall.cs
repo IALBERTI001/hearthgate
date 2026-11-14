@@ -85,7 +85,7 @@ namespace Hearthgate.Game
                 var p = puffs[k]; p.age += dt;
                 if (!p.t || p.age > p.life) { if (p.t) Destroy(p.t.gameObject); puffs.RemoveAt(k); continue; }
                 float u = p.age / p.life;
-                p.t.position += (Vector3.up * 1.6f + p.drift) * dt;
+                p.t.position += (Vector3.up * 2.4f + p.drift) * dt;
                 p.t.localScale = Vector3.one * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0.7f, 1f, u));
                 p.t.Rotate(0, 20f * dt, 0); puffs[k] = p;
             }
@@ -95,11 +95,11 @@ namespace Hearthgate.Game
             for (int b = 0; b < HG.BUILDINGS.Length; b++) if (P.restored.Contains(HG.BUILDINGS[b].id)) standing.Add(b);
             int i = Random.Range(-1, standing.Count);
             var at = i < 0 ? new Vector3(Random.Range(-2f, 2f), 3.5f, Field.GATE_Z) : Field.Plot(standing[i]) + new Vector3(Random.Range(-1.2f, 1.2f), 1.2f, Random.Range(-1.2f, 1.2f));
-            if (art && art.puff && puffs.Count < 70)
+            if (art && art.puff && puffs.Count < 80)
             {
                 var g = Instantiate(art.puff, world); g.transform.position = at; g.transform.localScale = Vector3.zero;
                 foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                puffs.Add((g.transform, 0f, Random.Range(3.2f, 4.5f), Random.Range(1.3f, 2.2f), new Vector3(0.5f, 0, Random.Range(-0.2f, 0.2f))));
+                puffs.Add((g.transform, 0f, Random.Range(4f, 5.5f), Random.Range(4.5f, 7f), new Vector3(0.9f, 0, Random.Range(-0.3f, 0.3f))));   // seen from 55 m: a puff must be metres across to read
             }
             if (Random.value < 0.3f) Fx.I.Burst(at, Field.FIRE, 2);   // embers
         }
