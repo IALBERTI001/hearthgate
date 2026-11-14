@@ -22,6 +22,7 @@ namespace Hearthgate.Game
             { "whole", new[] { ("The city stands! Wave {aw} to Ascend", (string)null, "whole-1") } },
             { "ascend", new[] { ("Ascend: better than ever!", (string)null, "ascend-1"), ("Tap Ascend!", "re", "ascend-2") } },
             { "gate", new[] { ("At the walls! Upgrade!", "up", "gate-1") } },
+            { "town", new[] { ("Walk the town: upgrade the buildings!", "walk", (string)null) } },   // no recording yet: the line shows without his voice
             { "surge", new[] { ("Tap the fountain: double Resonance!", (string)null, "surge-1") } },
         };
         static readonly Queue<(string text, string press, string voice)> q = new Queue<(string, string, string)>();

@@ -138,7 +138,7 @@ namespace Hearthgate.Game
         // back while he speaks (js/audio.js voice())
         readonly Dictionary<string, AudioClip> voices = new Dictionary<string, AudioClip>();
         AudioSource voiceSrc;
-        public static void Voice(string n) { if (I && SfxOn) I.StartCoroutine(I.VoiceCo(n)); }
+        public static void Voice(string n) { if (I && SfxOn && !string.IsNullOrEmpty(n)) I.StartCoroutine(I.VoiceCo(n)); }
         IEnumerator VoiceCo(string n)
         {
             if (!voices.TryGetValue(n, out var clip))

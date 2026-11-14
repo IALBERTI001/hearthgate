@@ -435,6 +435,7 @@ namespace Hearthgate.Game
             TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls();
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
             if (CanAscend) Guide.Say("ascend");
+            if (P.restored.Count >= 2 && !Guide.Busy && !(wz && wz.On)) for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && CanWork(i)) { Guide.Say("town"); break; }   // the town has work: say so once
             if (SurgeReady && SurgeOpen && !Guide.Busy) Guide.Say("surge");
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.X)) TapSurge();
             for (int i = 0; i < plots.Length; i++) if (uppers[i]) uppers[i].gameObject.SetActive(!(wz && wz.Inside == i));

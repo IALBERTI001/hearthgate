@@ -58,8 +58,9 @@ namespace Hearthgate.Game
             }
             // one voice: a pop near one still young starts above it instead of printing over it (two kills at once printed
             // "+9.18K" twice in one place)
-            int near = 0; foreach (var (pt, pat, ptime, _) in pops) if (ptime < 0.4f && (pat - at).sqrMagnitude < 4f) near++;
-            at += Vector3.up * (near * 1.1f);
+            float lift = 0; foreach (var (pt, pat, ptime, _) in pops)
+                if (ptime < 0.5f && (pat - at).sqrMagnitude < 16f) lift = Mathf.Max(lift, pat.y - at.y + (pt.fontSize >= 36 ? 2.2f : 1.3f));   // clear the highest young one near it (a combo word needs more room)
+            at += Vector3.up * Mathf.Max(0, lift);
             pops.Add((t, at, 0, life));
         }
 
