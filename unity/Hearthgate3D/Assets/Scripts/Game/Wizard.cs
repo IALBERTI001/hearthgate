@@ -16,6 +16,7 @@ namespace Hearthgate.Game
         public int Near = -1;         // the plot in reach, or -1
         public const float SPEED = 6f, REACH = 4.6f, PLOT_R = 2.9f, FOUNTAIN_R = 3.4f;
         public static readonly Vector3 HOME = Field.PLAZA + new Vector3(0.6f, 0, 3.9f);   // in front of the fountain, facing the walls
+        public static readonly Vector3 FOLLOW = new Vector3(0, 9f, -7.5f), LOOK = new Vector3(0, 1.6f, 3.2f);   // the walk camera, from his feet
 
         Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle;
         GameObject goal;   // a little gold ring where a tap sent him
@@ -102,8 +103,8 @@ namespace Hearthgate.Game
             // filled the screen whenever he walked near the front: Nov 13 2026), and the fight shows beyond the wall
             blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
-            var followLook = pos + new Vector3(0, 1.6f, 3.2f);
-            var followPos = pos + new Vector3(0, 9f, -7.5f);
+            var followLook = pos + LOOK;
+            var followPos = pos + FOLLOW;
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
             var r = Quaternion.Slerp(Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS), Quaternion.LookRotation(followLook - followPos), k);
             Fx.I.camHome = p; cam.transform.rotation = r;

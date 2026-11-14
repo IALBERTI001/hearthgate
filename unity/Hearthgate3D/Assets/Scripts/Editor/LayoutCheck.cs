@@ -161,6 +161,26 @@ namespace Hearthgate.EditorTools
             if (Hidden(Field.PLAZA + new Vector3(0, 1.2f, 1.5f))) bad.Add("the plaza is hidden behind the gatehouse or the wall");
             foreach (var p in road) if (p.y > 1f && Hidden(p)) { bad.Add($"a lane is hidden behind {blocker} at {p}"); break; }
 
+            // 5. the town walk: wherever the wizard can stand, the walk camera sees him past the wall, the gatehouse and the
+            // towers (from the wall side the fire cap filled the screen near the front, Nov 13 2026); buildings may hide him
+            // for a step and are only counted
+            int spots = 0, byBuilding = 0; string wallBlock = null;
+            for (float x = -Field.RX + 2.5f; x <= Field.RX - 2.5f; x += 1.5f)
+                for (float z = -2 * Field.RZ + 2.5f; z <= -3.2f; z += 1.5f)
+                {
+                    var p = new Vector3(x, 0, z);
+                    if (!InRing(p, 2.4f) || Enumerable.Range(0, 10).Any(i => Vector3.Distance(p, Field.Plot(i)) < Wizard.PLOT_R) || Vector3.Distance(p, Field.PLAZA) < Wizard.FOUNTAIN_R) continue;
+                    spots++;
+                    var from = p + Wizard.FOLLOW; var to = p + Vector3.up * 1.3f; var d = to - from;
+                    if (Physics.Raycast(from, d.normalized, out var hitInfo, d.magnitude - 0.5f))
+                    {
+                        var who = hitInfo.collider.transform.root.name;
+                        if (who.StartsWith("building")) byBuilding++; else if (wallBlock == null) wallBlock = $"{who} at {p}";
+                    }
+                }
+            if (wallBlock != null) bad.Add($"town walk: the camera loses the wizard behind {wallBlock}");
+            Debug.Log($"[Hearthgate] town walk: {spots} spots, {byBuilding} briefly behind a building");
+
             foreach (var g in placed) Object.DestroyImmediate(g); placed.Clear();
             if (bad.Count == 0) { Debug.Log($"[Hearthgate] layout check passed ({items.Count} structures, 3 window shapes)"); return; }
             Fail(bad);
