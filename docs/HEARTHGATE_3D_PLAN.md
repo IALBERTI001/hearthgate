@@ -37,7 +37,10 @@ together in Unity. The goal is 3D!" All four decisions below were approved the s
    - Golden Wisps (twice as often with the Bakery, from its chimney); the Tavern's Cheer meter; the Watchtower's beacon as a fifth tower.
    - Ascension: Rebuild becomes Ascend at 10/10 and wave 30 + 5 per Ascension; a card says what is lost and kept; x1.5 for good; perk points; seven perks at a board over the Watchtower.
    - 19 named waves (Golden Wave, Horde, Stampede, Thunderstorm, Blizzard, Inferno, Eclipse, Giants, Rush, Deep Winter, Blood Moon, Gold Rush and more).
-   - Still to port: daily quests and Feats (they pay Starshards, so they come with the Shop), constellations, the Earth element, the Ascended buildings' second abilities, and the 2D game's other enemies (Elite, Sprinter, Splitter, Mender, Ironhide, Bulwark, Phantom, Totem), which need Blender models.
+   - Ported Nov 14 2026 (the long game): Starshards, the Shop and daily quests; Feats (40) and the Bestiary in the Library; the Ascended buildings' second abilities; ten constellations of five stars; Challenge Trials (2nd Ascension), Relics (3rd), the Earth element and QUAKE (4th), boss ranks (5th), the Steward (6th) and the daily Omen; the Ascension enemies (Phantom, Thief, Bomber, Totem) and bosses (Wraith King, Totem Titan, Thief Tyrant); butterflies and the Garden. Every new enemy, the Earth cap and the butterfly are Blender models.
+   - Still to port: the 2D game's later Ascension enemies (Leech, Knight, Hive, 7th to 9th Ascension), the named waves that need them, the Eternal City ending card, and the rewarded-ad slots for Full Launch.
+   - One button kit: every pressable thing is Hud.Action (56 px, plum and brass, medallion, glow); cards and tabs use it too, the open tab lit.
+   - Test hooks: development builds (HG_DEV=1) compile GameLoop.Dev.cs, reached from the page as hgUnity.SendMessage("Game", "Dev", "shop" | "res N" | "wave N" | "asc N" | "spawn kind n" | "fly"); a release build never contains them.
    - Walls and towers: the health bar reads Walls; the main button is Upgrade towers, with Walk the town always beside it.
 
 ## Quality testing
@@ -52,7 +55,7 @@ together in Unity. The goal is 3D!" All four decisions below were approved the s
 - **P0, pipeline slice:** done. Waves, four element towers, combos, Upgrade and Rebuild, city income, saves, offline earnings.
 - **P1, art direction:** in progress. The owner's ring layout is in; hero gatehouse, towers with element caps, slime, beetle, golem, the ten city buildings and burnt ruins, lanes, ground, fountain, HUD in the game's style.
 - **P2, the full kit:** enemy walk rigs, villagers, effects per element.
-- **P3, the rest of the systems:** Ascension, constellations, relics, perks, events, quests, feats, the shop, butterflies, Magister Bram.
+- **P3, the rest of the systems:** done Nov 14 2026 except the 7th-to-9th Ascension enemies (see above).
 - **P4, UI and polish** to the game-polish rules.
 - **P5, QA and resubmission.** The pinned CrazyGames note says never upload a rejected game as new: reply in the original support thread with a numbered list of what changed.
 
