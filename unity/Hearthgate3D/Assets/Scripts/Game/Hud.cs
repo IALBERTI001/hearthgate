@@ -853,7 +853,7 @@ namespace Hearthgate.Game
         readonly System.Collections.Generic.List<(Image fill, Text pct, System.Func<float> get)> levelRows = new System.Collections.Generic.List<(Image, Text, System.Func<float>)>();
         void LevelRow(RectTransform box, float y, string name, System.Func<float> get, System.Action<float> set)
         {
-            var nl = Label("LN" + name, box, new Vector2(0.5f, 1), new Vector2(-270, y - 14), 20, TextAnchor.MiddleLeft); nl.font = body; nl.text = name;
+            var nl = Label("LN" + name, box, new Vector2(0.5f, 1), new Vector2(-270, y - 24), 20, TextAnchor.MiddleLeft); nl.font = body; nl.text = name;
             nl.rectTransform.pivot = new Vector2(0, 0.5f); nl.rectTransform.sizeDelta = new Vector2(150, 30);
             BtnAt("LM" + name, new Vector2(0.5f, 1), new Vector2(-75, y), new Vector2(48, 48), () => { set(get() - 0.1f); RefreshSettings(); }, () => get() > 0, out var ml, box).rt.pivot = new Vector2(0.5f, 1); ml.text = "-";
             var bar = Box("LB" + name, box, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(45, y - 12), new Vector2(170, 24)); bar.pivot = new Vector2(0.5f, 1);
@@ -867,7 +867,7 @@ namespace Hearthgate.Game
                 set(Mathf.Clamp01((lp.x + bar.rect.width * bar.pivot.x) / bar.rect.width)); RefreshSettings();
             }, null);
             BtnAt("LP" + name, new Vector2(0.5f, 1), new Vector2(165, y), new Vector2(48, 48), () => { set(get() + 0.1f); RefreshSettings(); }, () => get() < 1, out var pl, box).rt.pivot = new Vector2(0.5f, 1); pl.text = "+";
-            var pc = Label("LP%" + name, box, new Vector2(0.5f, 1), new Vector2(200, y - 14), 18, TextAnchor.MiddleLeft); pc.font = body;
+            var pc = Label("LP%" + name, box, new Vector2(0.5f, 1), new Vector2(200, y - 24), 18, TextAnchor.MiddleLeft); pc.font = body;
             pc.rectTransform.pivot = new Vector2(0, 0.5f); pc.rectTransform.sizeDelta = new Vector2(70, 30);
             levelRows.Add((fill, pc, get));
         }
