@@ -659,7 +659,6 @@ def golem(kind='golem'):
     block((0, -0.82, 1.22), (0.08, 0.1, 0.95), M(trim), 0.02)                                       # its centre ridge
     for s in (-1, 1): block((s * 0.4, -0.78, 1.68), (0.55, 0.1, 0.08), M(trim), 0.02).rotation_euler = (0, s * 0.25, 0)   # the collar's edge
     K.sphere('boss', 0.09, (0, -0.86, 1.6), M(*glow), (1, 0.5, 1), 2)                                # a small glowing stone at the throat
-    for (x, z, rot) in ((-0.85, 0.85, -0.6), (0.88, 1.05, 0.9)): o = block((x, -0.66, z), (0.3, 0.05, 0.06), M(*glow), 0.0); o.rotation_euler = (0, rot, 0)
     block((0, -0.6, 0.66), (1.3, 0.24, 0.2), M('wood_dk' if kind != 'king' else 'iron'), 0.03); block((0, -0.73, 0.66), (0.24, 0.06, 0.24), M(trim), 0.02)   # belt and buckle
     if kind == 'bulwark':   # layered stone slabs on the body itself: a wall that walks
         for z in (0.95, 1.3): block((0, -0.95, z), (1.5, 0.14, 0.3), M('stone2'), 0.04)
