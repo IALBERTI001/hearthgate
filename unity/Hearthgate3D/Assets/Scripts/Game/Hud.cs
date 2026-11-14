@@ -700,7 +700,7 @@ namespace Hearthgate.Game
                 I.BtnAt("F_Pay", new Vector2(0.5f, 0), new Vector2(-175, y), new Vector2(310, 56), () => { I.ShowSettings(false); g.RestoreFallen(true); }, () => g.CanPayRestore, out var pl, box, "starshard", true);
                 pl.text = $"Rewind  ·  {cost}";
             }
-            I.BtnAt("F_Over", new Vector2(0.5f, 0), new Vector2(175, y), new Vector2(310, 56), () => ShowFallen(true), null, out var ol, box, "timestop"); ol.text = $"Back to {(P.ascensions > 0 ? "Ascension " + P.ascensions : "the start")} (run lost)";
+            I.BtnAt("F_Over", new Vector2(0.5f, 0), new Vector2(175, y), new Vector2(310, 56), () => ShowFallen(true), null, out var ol, box, "timestop"); ol.text = P.ascensions > 0 ? $"Back to Ascension {P.ascensions}" : "Back to the start";   // one line: what is lost is said above it and on the confirm card
         }
 
         // the Eternal City (Ascension 10, js/game.js): the climb's ending, said once; the game goes on
