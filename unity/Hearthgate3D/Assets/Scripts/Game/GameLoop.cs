@@ -251,7 +251,6 @@ namespace Hearthgate.Game
             if (!P.combos.Contains(id)) { P.combos.Add(id); Hud.Banner($"New combo: {word.TrimEnd('!')}"); }
             lastCombo = word; comboT = 1.2f;
             Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.6f), word, c, 40, 1.1f); Fx.I.Burst(e.Pos, c, 20);
-            if (id == "shatter") Fx.I.Shake(0.12f);
             Sound.Play(id == "shatter" ? "shatter_combo" : id == "frostStorm" ? "freeze_combo" : "conduction_combo", 0.4f);
         }
 
@@ -277,7 +276,7 @@ namespace Hearthgate.Game
             id ??= NextBuilding; if (id == null || !CanRestore) return;
             P.res -= RestoreCost; P.restored.Add(id); B = HG.Bonuses(P);
             int i = System.Array.IndexOf(HG.BUILDING_IDS, id); RefreshPlot(i); RefreshTowers();
-            Fx.I.Burst(Field.Plot(i) + Vector3.up * 2, Field.GOLD, 30); Fx.I.Shake(0.15f); Sound.Play("feat", 0.55f);
+            Fx.I.Burst(Field.Plot(i) + Vector3.up * 2, Field.GOLD, 30); Fx.I.Shake(0.15f, true); Sound.Play("feat", 0.55f);
             Hud.Banner($"{HG.ById(id).name} rebuilt! {HG.ById(id).line}"); Save();
         }
 
@@ -311,7 +310,7 @@ namespace Hearthgate.Game
             bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0; Sound.Play(big ? "tier_up" : "level_up", big ? 0.5f : 0.42f);
             Glow(i, big ? 28 : 10);
             Fx.I.Pop(Field.Door(i, 0f, 3.8f), $"Level {L}", Field.GOLD, 34);   // over the door, in view inside and out
-            if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f); }
+            if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f, true); }
             Save();
         }
 

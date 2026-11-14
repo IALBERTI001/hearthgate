@@ -56,7 +56,16 @@ namespace Hearthgate.Game
             pops.Add((t, at, 0, life));
         }
 
-        public void Shake(float s) { shake = Mathf.Max(shake, s); }
+        // a shake is the fight's (the walls' view) or the town's own (a rebuild, a milestone). While the wizard walks the
+        // town the camera is about 8 m from him instead of 55 m from the walls, so the same shake looked seven times bigger
+        // (owner, Nov 14 2026: "screen shakes too much in town"): the fight's shakes stay at the walls, the town's are small
+        float amp = 0.12f;
+        public void Shake(float s, bool town = false)
+        {
+            bool walking = Wizard.I && Wizard.I.On;
+            if (walking && !town) return;
+            shake = Mathf.Max(shake, s); amp = walking ? 0.025f : 0.12f;
+        }
 
         void LateUpdate()
         {
@@ -72,7 +81,7 @@ namespace Hearthgate.Game
                 txt.rectTransform.localScale = Vector3.one * s;
                 var c = txt.color; c.a = Mathf.Clamp01((life - t) / 0.3f); txt.color = c;
             }
-            if (shake > 0) { shake -= Time.deltaTime; cam.transform.position = camHome + Random.insideUnitSphere * 0.12f * Mathf.Clamp01(shake / 0.2f); }
+            if (shake > 0) { shake -= Time.deltaTime; cam.transform.position = camHome + Random.insideUnitSphere * amp * Mathf.Clamp01(shake / 0.2f); }
             else cam.transform.position = camHome;
         }
     }
