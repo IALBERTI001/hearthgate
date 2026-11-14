@@ -76,6 +76,8 @@ namespace Hearthgate.Game
                 pops[i] = (txt, at, t, life);
                 var sp = cam.WorldToScreenPoint(at + Vector3.up * t * 1.2f);
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(popLayer, sp, null, out var lp);
+                float half = txt.preferredWidth * 0.55f + 8f, edge = popLayer.rect.width * 0.5f;   // a word near the edge slides in, never cut off
+                lp.x = Mathf.Clamp(lp.x, -edge + half, Mathf.Max(-edge + half, edge - half));
                 txt.rectTransform.anchoredPosition = lp;
                 float s = t < 0.12f ? Mathf.Lerp(0.6f, 1.15f, t / 0.12f) : Mathf.Lerp(1.15f, 1f, Mathf.Min(1, (t - 0.12f) / 0.1f));
                 txt.rectTransform.localScale = Vector3.one * s;

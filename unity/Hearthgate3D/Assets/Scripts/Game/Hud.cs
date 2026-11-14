@@ -219,6 +219,27 @@ namespace Hearthgate.Game
             else if (!perksOn && perksTag.gameObject.activeSelf) perksTag.gameObject.SetActive(false);
         }
 
+        // boards pinned over the town never sit on one another: from the lowest up, each one that overlaps a board below it
+        // moves up to clear it (browser check, Nov 14 2026: the Perks board covered the Library's)
+        void Unstack()
+        {
+            var on = new System.Collections.Generic.List<RectTransform>();
+            foreach (var r in new[] { surgeTag, perksTag, cheerTag, shopAct?.p.rt, questAct?.p.rt }) if (r && r.gameObject.activeSelf) on.Add(r);
+            on.Sort((a, b) => a.anchoredPosition.y.CompareTo(b.anchoredPosition.y));
+            for (int i = 1; i < on.Count; i++)
+                for (int pass = 0; pass < 3; pass++)
+                {
+                    bool moved = false; var r = on[i]; var R = Bounds(r);
+                    for (int j = 0; j < i; j++)
+                    {
+                        var o = Bounds(on[j]);
+                        if (R.Overlaps(o)) { r.anchoredPosition += new Vector2(0, o.yMax + 4f - R.yMin); R = Bounds(r); moved = true; }
+                    }
+                    if (!moved) break;
+                }
+        }
+        static Rect Bounds(RectTransform r) { var s = r.sizeDelta; var p = r.anchoredPosition - Vector2.Scale(r.pivot, s); return new Rect(p, s); }
+
         // where the pointer is: a touch's own position when there is one (the mouse position Unity simulates from a touch can
         // lag a frame), else the mouse (QA, Nov 13 2026: a click with no mouse move before it reported (0, 0))
         public static Vector2 PointerPos => Input.touchCount > 0 ? Input.GetTouch(0).position : (Vector2)Input.mousePosition;
@@ -391,6 +412,7 @@ namespace Hearthgate.Game
         {
             var a = Action(n, anchor, pos, size, icon, null, act, on, primary, parent);
             a.title.rectTransform.anchoredPosition = new Vector2(a.title.rectTransform.anchoredPosition.x, 0); lbl = a.title;
+            lbl.alignment = TextAnchor.MiddleCenter;   // a card button's words sit centred in the space beside its medallion
             Fit(lbl, new Vector2(a.title.rectTransform.sizeDelta.x, size.y - 10), 13);
             acts.Add(a); return a.p;
         }
@@ -419,7 +441,7 @@ namespace Hearthgate.Game
                 re.gem.enabled = false;
             }
             if (nb != null) re.gem.enabled = true;
-            Signs(g, P); TownTags(g, P); HallTags(g, P); perkRefresh?.Invoke();
+            Signs(g, P); TownTags(g, P); HallTags(g, P); Unstack(); perkRefresh?.Invoke();
             // the town walk
             var wz = Wizard.I;
             Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", null, true, now);
@@ -507,7 +529,7 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
-            var box = I.Modal("The Watchtower", new Vector2(700, 236 + HG.PERKS.Length * 64));   // room for the close button under the last row
+            var box = I.Modal("The Watchtower", new Vector2(700, 262 + HG.PERKS.Length * 64));   // room for the close button under the last row
             var tabs = new System.Collections.Generic.List<(string id, string label)> { ("perks", "Perks"), ("stars", $"Stars {P.stars.Count}/{HG.STARS.Length}") };
             if (HG.Unlocked(P, "relics")) tabs.Add(("relics", $"Relics {P.relics.Count}/2"));
             for (int k = 0; k < tabs.Count; k++)
@@ -531,7 +553,7 @@ namespace Hearthgate.Game
                 name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
                 var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = k.line; line.color = new Color(0.85f, 0.8f, 0.88f);
                 line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(400, 22);
-                var lv = I.Label("V" + i, box, new Vector2(1, 1), new Vector2(-170, y - 8), 17, TextAnchor.UpperRight); lv.font = I.body; lv.rectTransform.pivot = new Vector2(1, 1); lv.rectTransform.sizeDelta = new Vector2(90, 24);
+                var lv = I.Label("V" + i, box, new Vector2(1, 1), new Vector2(-196, y - 8), 17, TextAnchor.UpperRight); lv.font = I.body; lv.rectTransform.pivot = new Vector2(1, 1); lv.rectTransform.sizeDelta = new Vector2(90, 24);
                 var id = k.id;
                 I.BtnAt("P_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.BuyPerk(id); }, () => HG.CanBuyPerk(g.P, id), out var cost, box);
                 rows.Add((k, lv, cost));
@@ -561,7 +583,7 @@ namespace Hearthgate.Game
                 var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = r.line; line.color = new Color(0.85f, 0.8f, 0.88f);
                 line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(420, 22);
                 var id = r.id;
-                I.BtnAt("R_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => g.EquipRelic(id), null, out var bt, box);
+                I.BtnAt("R_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.EquipRelic(id); ShowPerks("relics"); }, null, out var bt, box);
                 rows.Add((r, bt));
             }
             Text stew = null;

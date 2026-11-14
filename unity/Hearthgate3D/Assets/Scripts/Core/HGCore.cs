@@ -157,6 +157,7 @@ namespace Hearthgate.Core
                 stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars), flies = new List<string>(p.flies), relics = new List<string>(p.relics), steward = p.steward,
                 questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
+            foreach (var x in STARS) if (x.asc <= p.ascensions && !q.stars.Contains(x.id)) q.stars.Add(x.id);   // the run just finished: its sky is whole
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
             return q;
         }
