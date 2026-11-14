@@ -3,7 +3,7 @@
 import subprocess, os, sys
 B = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 U = B + r"\unity\Hearthgate3D"; BL = r"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe"
-N = int(os.environ.get('HG_PARTS', '4')); SKIP_TEST = '--fast' in sys.argv
+N = int(os.environ.get('HG_PARTS', '4')); SKIP_TEST = '--fast' in sys.argv; UNITY_ONLY = '--unity' in sys.argv   # --unity: code changes only
 def blend_all(args, log):
     ps = []
     for k in range(N):
@@ -17,8 +17,9 @@ def blend_all(args, log):
         for _, lg in ps: out.write(open(lg, encoding='utf-8', errors='replace').read())
     return ok
 ok = True
-if not SKIP_TEST: ok = blend_all(["-P", B + r"\tools\blender\hg_kit_test.py"], B + r"\log-kittest")
-ok = ok and blend_all(["-P", B + r"\tools\blender\hg_kit.py", "--", U + r"\Assets\Art\Models"], B + r"\log-kit")
+if UNITY_ONLY: pass
+elif not SKIP_TEST: ok = blend_all(["-P", B + r"\tools\blender\hg_kit_test.py"], B + r"\log-kittest")
+ok = ok and (UNITY_ONLY or blend_all(["-P", B + r"\tools\blender\hg_kit.py", "--", U + r"\Assets\Art\Models"], B + r"\log-kit"))
 if ok:
     subprocess.run([r"C:\Program Files\Unity\Hub\Editor\6000.6.7f1\Editor\Unity.exe", "-batchmode", "-quit", "-projectPath", U, "-buildTarget", "WebGL",
                     "-executeMethod", "Hearthgate.EditorTools.HearthgateSetup.BuildWebGL", "-logFile", B + r"\log-build.txt"], creationflags=0x08000000)

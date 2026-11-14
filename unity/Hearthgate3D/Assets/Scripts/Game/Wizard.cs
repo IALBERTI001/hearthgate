@@ -21,7 +21,9 @@ namespace Hearthgate.Game
         public const float SCALE = 0.66f, SPEED = 4.2f, RADIUS = 0.32f, REACH = 2.6f, FOUNTAIN_R = 3.4f;
         // in the square, left of the gatehouse's keep as seen from the walls (LayoutCheck: seen from the wall camera)
         public static readonly Vector3 HOME = new Vector3(-6f, 0, -8f);
-        public static readonly Vector3 FOLLOW = new Vector3(0, 8f, -6.5f), LOOK = new Vector3(0, 1.0f, 2.6f);   // the walk camera, from his feet
+        // the walk camera, from his feet: on the gate side looking into the town, the way the wall view looks, so it sees
+        // the fronts and doorways (from the town side it looked at the backs and lost him at every door: 159 of 692 spots)
+        public static readonly Vector3 FOLLOW = new Vector3(0, 8f, 6.5f), LOOK = new Vector3(0, 1.0f, -2.6f);
         // the walk camera for a spot: behind him on the town side, pulled in and up when that would put it outside the ring
         // wall (from outside, the wall came between it and him near the back of the town)
         public static Vector3 FollowFrom(Vector3 p)
@@ -135,9 +137,8 @@ namespace Hearthgate.Game
             if (!On) Near = -1;
             if (On && Near >= 0 && Input.GetKeyDown(KeyCode.E)) GameLoop.I.WorkOn(Near);
 
-            // the camera: from the walls it swings over into the town and settles behind him on the town side, looking out
-            // toward the walls, so the wall and the towers are never between it and him and the fight shows beyond the wall;
-            // high enough to look over a room's walls when he is inside
+            // the camera: from the walls it glides down into the town and settles behind and above him, looking the way the
+            // wall view looks (FollowFrom keeps it inside the ring); high enough to look over a room's walls when he is inside
             blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
             var followLook = pos + LOOK; var followPos = FollowFrom(pos);
