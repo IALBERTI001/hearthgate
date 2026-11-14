@@ -18,6 +18,7 @@ namespace Hearthgate.Game
         float s0; readonly System.Collections.Generic.List<Transform> legs = new System.Collections.Generic.List<Transform>();
         readonly System.Collections.Generic.List<Quaternion> legRest = new System.Collections.Generic.List<Quaternion>();
         Transform footL, footR, armL, armR; Quaternion rFL, rFR, rAL, rAR; Vector3 pFL, pFR;
+        Quaternion baseRot; int lastStrike = -1;
 
         public Enemy(string role, int wave, int lane, float x, float z, Transform parent)
         {
@@ -27,7 +28,7 @@ namespace Hearthgate.Game
             yaw = Quaternion.Euler(0, Random.Range(14f, 30f) * (Random.value < 0.5f ? -1 : 1), 0);
             var g = Art.Spawn(Art.Set ? Art.Set.Enemy(R.model) : null, R.model, Field.Lane(lane, z, x), parent);
             t = g.transform; body = t; s0 = size / 1.5f;
-            t.localScale = Vector3.one * s0;
+            t.localScale = Vector3.one * s0; baseRot = t.rotation;
             foreach (var c in g.GetComponentsInChildren<Transform>(true))   // the jointed parts (hg_front.Part): beetle legs, golem feet and arms
             {
                 if (c.name.StartsWith("leg_") && c.name.Length == 6) { legs.Add(c); legRest.Add(c.localRotation); }
@@ -74,11 +75,31 @@ namespace Hearthgate.Game
                 if (armR) armR.localRotation = rAR * Quaternion.Euler(a * 0.8f + pound, 0, 0);
                 step = walking ? Mathf.Abs(Mathf.Sin(ph)) * 0.3f : 0f;   // he rises as the feet pass
             }
+            // at the wall it attacks (owner, Nov 14 2026: "Add an attack animation for the monsters to hit the wall"): it winds
+            // back, lunges into the wall and recovers, about every half second for the small ones, slower for a boss; dust
+            // flies and a thud sounds as it lands (a golem's fists pound as well)
+            float atk = 0f;
+            if (atGate && dying <= 0 && stun <= 0)
+            {
+                float a = (time + born) * (boss ? 0.9f : 1.7f), u = a - Mathf.Floor(a);
+                atk = u < 0.6f ? -Mathf.SmoothStep(0, 1, u / 0.6f) : u < 0.72f ? Mathf.Lerp(-1f, 1f, (u - 0.6f) / 0.12f) : Mathf.Lerp(1f, 0f, (u - 0.72f) / 0.28f);
+                int cyc = Mathf.FloorToInt(a);
+                if (u >= 0.72f && cyc != lastStrike)
+                {
+                    lastStrike = cyc; var front = t.position + baseRot * Vector3.back * (size * 0.6f) + Vector3.up * size * 0.3f;
+                    Fx.I.Burst(front, new Color(0.62f, 0.55f, 0.45f), boss ? 10 : 4); Sound.Knock();
+                    if (boss) Fx.I.Shake(0.06f);
+                }
+            }
+            bool slime = !jointed;
             float sq = (1f + flash * 0.15f) * (faded ? 0.92f : 1f);
             float roll = footL && walking ? Mathf.Sin(ph) * 5f : 0f;   // a golem rocks onto the planted foot
-            t.localScale = s0 * new Vector3(sq, (1f + (jointed ? 0f : step * 0.08f)) / sq, sq);
-            t.position = Field.Lane(lane, z, x, dying > 0 ? -dying * 2f : step * 0.12f * size);
-            t.rotation = Quaternion.RotateTowards(t.rotation, Field.Facing(lane) * (atGate ? Quaternion.identity : yaw) * Quaternion.Euler(0, 0, roll), 240f * Time.deltaTime);
+            float squash = slime ? 1f - 0.22f * Mathf.Max(0, -atk) + 0.12f * Mathf.Max(0, atk) : 1f;   // a slime gathers itself, then slams
+            t.localScale = s0 * new Vector3(sq / Mathf.Sqrt(squash), (1f + (jointed ? 0f : step * 0.08f)) * squash / sq, sq / Mathf.Sqrt(squash));
+            var lungeAt = baseRot * Vector3.back * (Mathf.Max(0, atk) * 0.35f * size);
+            t.position = Field.Lane(lane, z, x, dying > 0 ? -dying * 2f : step * 0.12f * size) + lungeAt;
+            baseRot = Quaternion.RotateTowards(baseRot, Field.Facing(lane) * (atGate ? Quaternion.identity : yaw) * Quaternion.Euler(0, 0, roll), 240f * Time.deltaTime);
+            t.rotation = baseRot * Quaternion.Euler(slime ? 0f : -atk * 16f, 0, 0);   // leans back to wind up, forward into the blow (models face -Z)
             for (int i = 0; i < rends.Length; i++)
             {
                 var c = baseCols[i];
@@ -101,6 +122,6 @@ namespace Hearthgate.Game
 
     public class Shot
     {
-        public Vector3 p, from; public Enemy target; public string el; public float speed, k, dur; public Transform t; public TrailRenderer trail; public bool beacon;   // k: 0..1 along the arc
+        public Vector3 p, from; public Enemy target; public string el; public float speed, k, dur, spin; public Transform t; public TrailRenderer trail; public bool beacon; public Vector3 last;   // k: 0..1 along the arc
     }
 }

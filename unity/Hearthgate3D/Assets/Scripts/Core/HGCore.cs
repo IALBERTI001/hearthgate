@@ -525,6 +525,7 @@ namespace Hearthgate.Core
         public List<string> told = new List<string>();   // one-time hints already shown
         public List<string> seenEvents = new List<string>();   // named waves met at least once
         public List<string> seenRoles = new List<string>();    // enemy kinds met (each one's tip shows once)
+        public bool fallen;                                     // the walls fell and the town lies in shambles until restored (GameLoop.Fall)
         public int shards; public bool shopOpen;               // Starshards, and whether the Market has opened the Shop
         public List<string> owned = new List<string>();        // looks bought
         public List<KS> equip = new List<KS>();                // slot -> look

@@ -21,6 +21,8 @@ namespace Hearthgate.Game
                 case "fly": flyT = 0; Debug.Log("[dev] butterfly model: " + (art != null && art.butterfly ? "yes" : "NO")); break;
                 case "flies": foreach (var f in meadow) Debug.Log($"[dev] fly {f.kind.id} at {f.tr.position} screen {Camera.main.WorldToScreenPoint(f.tr.position)} scale {f.tr.localScale} rot {f.tr.eulerAngles} t {f.t}"); Debug.Log($"[dev] meadow {meadow.Count} flyT {flyT}"); break;
                 case "goto": { int bi = System.Array.IndexOf(HG.BUILDING_IDS, a[1]); if (!Wizard.I.On) Wizard.I.Toggle(); Wizard.I.Teleport(Field.Door(bi, a.Length > 2 ? float.Parse(a[2]) : 1.2f)); break; }
+                case "fall": gateHp = 0; GateFell(); break;
+                case "rise": if (P.fallen) StartOver(); break;
                 case "pause": Time.timeScale = a[1] == "1" ? 0 : 1; break;
                 case "shop": foreach (var id in HG.BUILDING_IDS.Where(id => !P.restored.Contains(id)).ToArray()) { P.res += RestoreCost; Restore(id); } break;
                 case "spawn": if (!HG.ROLES.ContainsKey(a[1])) { Debug.Log("[dev] no such kind: " + a[1]); break; }

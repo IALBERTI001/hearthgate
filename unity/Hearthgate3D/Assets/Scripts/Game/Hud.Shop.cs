@@ -38,7 +38,7 @@ namespace Hearthgate.Game
                 line.text = (l.el != null ? $"<color=#FFD56B>{(l.el == "fire" ? "Fire" : l.el == "frost" ? "Frost" : l.el == "earth" ? "Earth" : "Storm")} towers</color>  ·  " : "") + l.line; line.color = new Color(0.88f, 0.84f, 0.9f);
                 line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(440, 24);
                 var lk = l;
-                I.BtnAt("B_" + l.id, new Vector2(1, 1), new Vector2(-24, y + 4), new Vector2(180, 56), () => g.BuyOrEquip(lk), () => HG.Equipped(g.P, HG.Slot(lk)) != lk.id && (g.Owns(lk) || g.P.shards >= lk.price), out var bt, box, g.Owns(l) ? null : "shard");
+                I.BtnAt("B_" + l.id, new Vector2(1, 1), new Vector2(-24, y + 4), new Vector2(180, 56), () => g.BuyOrEquip(lk), () => HG.Equipped(g.P, HG.Slot(lk)) != lk.id && (g.Owns(lk) || g.P.shards >= lk.price), out var bt, box, g.Owns(l) ? null : "starshard");
                 rows.Add((l, bt));
             }
             I.Choice(box, "S_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
@@ -147,10 +147,10 @@ namespace Hearthgate.Game
                 var pr = I.Label("P" + i, box, new Vector2(0, 1), new Vector2(36, y - 27), 15, TextAnchor.UpperLeft); pr.font = I.body; pr.color = RES;
                 pr.rectTransform.pivot = new Vector2(0, 1); pr.rectTransform.sizeDelta = new Vector2(300, 22);
                 int qi = i;
-                I.BtnAt("C" + i, new Vector2(1, 1), new Vector2(-28, y + 4), new Vector2(180, 56), () => g.ClaimQuest(qi), () => g.P.quests[qi].n >= g.P.quests[qi].need && !g.P.quests[qi].claimed, out var bt, box, "shard");
+                I.BtnAt("C" + i, new Vector2(1, 1), new Vector2(-28, y + 4), new Vector2(180, 56), () => g.ClaimQuest(qi), () => g.P.quests[qi].n >= g.P.quests[qi].need && !g.P.quests[qi].claimed, out var bt, box, "starshard");
                 rows.Add((i, pr, bt));
             }
-            I.BtnAt("Bonus", new Vector2(0.5f, 1), new Vector2(0, -176 - 3 * 70 - 10), new Vector2(320, 56), () => g.ClaimBonus(), () => g.BonusReady, out var bonus, box, "shard", true).rt.pivot = new Vector2(0.5f, 1);
+            I.BtnAt("Bonus", new Vector2(0.5f, 1), new Vector2(0, -176 - 3 * 70 - 10), new Vector2(320, 56), () => g.ClaimBonus(), () => g.BonusReady, out var bonus, box, "starshard", true).rt.pivot = new Vector2(0.5f, 1);
             I.perkRefresh = () =>
             {
                 foreach (var (i, pr, b) in rows)

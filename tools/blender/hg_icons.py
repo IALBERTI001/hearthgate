@@ -17,8 +17,9 @@ ICONS = {
     'walk': ('wizard', 205, 0.86),
     'tower': ('tower_base', 200, 0.9),
     'gear': (None, 0, 0.9),   # the settings cog, modelled here: a brass wheel with eight teeth and a dark hub
-    'ascend': (None, 0, 0.9),
-    'shard': (None, 0, 0.85),   # Starshards: a rose crystal, modelled here
+    'ascend': (None, 0, 0.9),   # Ascend: a rising double chevron over a halo, modelled here
+    'starshard': (None, 0, 0.9),   # Starshards: a gold star (owner, Nov 14 2026: "starshards should be the perks logo. Its a star after all")
+    'shard': (None, 0, 0.85),   # perk points: the rose crystal (owner: "perks can be the starshards logo")
     'shop': ('building_market', 205, 0.95),   # the Market keeps the Shop
     'quests': ('building_library', 205, 0.95),   # the Library keeps the quests
     'fountain': ('fountain', 200, 0.92),      # the Surge board
@@ -80,11 +81,41 @@ def star():
     me.materials.append(mat)
     o.rotation_euler = (math.radians(70), 0, 0)
 
+def rising():   # Ascend: two gold chevrons rising out of a glowing halo
+    import bmesh
+    from mathutils import Matrix
+    me = bpy.data.meshes.new('rise'); bm = bmesh.new()
+    for k, z in enumerate((-0.15, 0.42)):
+        for sx in (-1, 1):   # each chevron: two bevelled bars meeting at a point
+            m = bmesh.ops.create_cube(bm, size=1.0)['verts']
+            bmesh.ops.scale(bm, vec=(0.72, 0.2, 0.18), verts=m)
+            bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=Matrix.Rotation(sx * math.radians(38), 3, 'Y'), verts=m)
+            bmesh.ops.translate(bm, vec=(sx * 0.27, 0, z), verts=m)
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.03, segments=2, affect='EDGES')
+    bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new('rise', me); bpy.context.scene.collection.objects.link(o)
+    mat = bpy.data.materials.new('gold'); mat.use_nodes = True; b = mat.node_tree.nodes['Principled BSDF']
+    b.inputs['Base Color'].default_value = (1.0, 0.72, 0.18, 1); b.inputs['Metallic'].default_value = 0.7; b.inputs['Roughness'].default_value = 0.3
+    em = b.inputs.get('Emission Color') or b.inputs.get('Emission')
+    if em: em.default_value = (1.0, 0.6, 0.1, 1)
+    if b.inputs.get('Emission Strength'): b.inputs['Emission Strength'].default_value = 0.4
+    me.materials.append(mat)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.62, minor_radius=0.07, location=(0, 0, -0.55))
+    t = bpy.context.object; t.scale = (1, 1, 0.5)
+    hm = bpy.data.materials.new('halo'); hm.use_nodes = True; hb = hm.node_tree.nodes['Principled BSDF']
+    hb.inputs['Base Color'].default_value = (1.0, 0.9, 0.55, 1)
+    em = hb.inputs.get('Emission Color') or hb.inputs.get('Emission')
+    if em: em.default_value = (1.0, 0.85, 0.4, 1)
+    if hb.inputs.get('Emission Strength'): hb.inputs['Emission Strength'].default_value = 1.5
+    t.data.materials.append(hm)
+    for ob in (o,): ob.rotation_euler = (math.radians(90), 0, 0)
+
 def render(name, model, yaw, fill):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
     if model: bpy.ops.import_scene.fbx(filepath=os.path.join(MODELS, model + '.fbx'))
-    elif name.startswith('ascend'): star()
+    elif name.startswith('ascend'): rising()
+    elif name.startswith('starshard'): star()
     elif name.startswith('shard'): shard()
     else: gear()
     objs = [o for o in sc.objects if o.type == 'MESH']

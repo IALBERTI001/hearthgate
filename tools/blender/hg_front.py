@@ -1064,6 +1064,44 @@ def butterfly():   # the meadow's butterflies (owner, Nov 6 2026: "add some inte
         bsphere('knob', 0.025, (sx * 0.1, -0.48, 0.16), M('char'), (1, 1, 1), 1)
     return K.export('butterfly')
 
+def projectile(kind):
+    """What each tower throws (owner, Nov 14 2026: "Tower projectile animations should match their element"), flying toward
+    -y (the game turns it along its flight). About 0.7 m. fire: a fireball with flame tongues trailing; frost: a spear of
+    ice; storm: a crackling orb with lightning spikes; earth: an amber-veined boulder; stone: a plain rock."""
+    if kind == 'fire':
+        K.sphere('core', 0.24, (0, 0, 0), M('fire_core', 3.2), sub=2)
+        K.sphere('shell', 0.33, (0, 0.04, 0), M('fire', 2.6), (1, 1.15, 1), 2)
+        for (x, z, r, h) in ((0, 0, 0.26, 0.9), (0.15, 0.1, 0.13, 0.6), (-0.14, -0.08, 0.12, 0.55), (0.05, -0.15, 0.1, 0.5)):
+            K.cone('tongue', r, h, (x, 0.2 + h / 2, z), M('fire', 2.4), 8).rotation_euler = (-math.pi / 2, 0, 0)   # flames trailing back (+y)
+        for k in range(4): K.sphere('ember', 0.05, (math.cos(k * 1.6) * 0.3, 0.45 + k * 0.12, math.sin(k * 1.6) * 0.25), M('fire_core', 3.5), sub=1)
+    elif kind == 'frost':
+        o = K.cyl('shaft', 0.13, 0.55, (0, 0.1, 0), M('frost', 1.8), 6, 0.0); o.rotation_euler = (math.pi / 2, 0, 0)
+        o = K.cone('tip', 0.13, 0.45, (0, -0.4, 0), M('frost', 2.2), 6); o.rotation_euler = (math.pi / 2, 0, 0)   # the point leads (-y)
+        o = K.cone('tail', 0.13, 0.22, (0, 0.48, 0), M('frost_dk', 1.4), 6); o.rotation_euler = (-math.pi / 2, 0, 0)
+        for sx in (-1, 1):
+            o = K.cone('fin', 0.06, 0.32, (sx * 0.12, 0.2, 0.04), M('snow', 1.6), 6); o.rotation_euler = (math.pi / 2 + 0.5, 0, sx * 0.6)
+        K.sphere('glint', 0.06, (0.05, -0.15, 0.1), M('snow', 3.0), sub=1)
+    elif kind == 'storm':
+        K.sphere('core', 0.16, (0, 0, 0), M('snow', 3.5), sub=2)
+        K.sphere('orb', 0.28, (0, 0, 0), M('storm', 2.6), sub=2)
+        for k in range(7):   # lightning spikes in every direction
+            a, b = k * 2.4, (k % 3 - 1) * 0.9
+            d = Vector((math.cos(a) * math.cos(b), math.sin(a) * math.cos(b), math.sin(b)))
+            o = K.cone('spike', 0.05, 0.38, tuple(d * 0.38), M('storm', 3.5), 4)
+            o.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
+    elif kind == 'earth':
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.36, location=(0, 0, 0))
+        b = bpy.context.object
+        for v in b.data.vertices: v.co *= R.uniform(0.82, 1.12)
+        b.data.update(); K.finish(b, M('dirt_dk'), 0.0, smooth=False)
+        for k in range(5): K.sphere('vein', 0.09, (math.cos(k * 1.3) * 0.3, math.sin(k * 1.3) * 0.28, (k % 3 - 1) * 0.2), M('amber', 3.0), (1, 1, 0.5), 1)
+    else:   # stone
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.3, location=(0, 0, 0))
+        b = bpy.context.object
+        for v in b.data.vertices: v.co *= R.uniform(0.85, 1.1)
+        b.data.update(); K.finish(b, M('stone2'), 0.0, smooth=False)
+    return K.export('proj_' + kind)
+
 # the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender
 CAP_LOOKS = {
     'fire_obsidian': ('fire', {'iron': 'pupil', 'gold': 'iron'}),                                        # black glass and magma

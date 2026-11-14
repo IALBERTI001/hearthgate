@@ -114,27 +114,28 @@ namespace Hearthgate.Game
             var pops = Box("Pops", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             gameObject.AddComponent<Fx>().Init(pops, font);
 
-            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(380, 150)); shade.pivot = new Vector2(0, 1);
-            var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.78f);   // the stats read over bright roofs (fresh-eyes review) si.raycastTarget = false;
-            wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -12), 28, TextAnchor.UpperLeft);
+            // the stats, top left (owner, Nov 14 2026: "this is too bunched up"): the wave, Resonance and its rate, and a row of
+            // the other currencies with room between them; the settings cog moved to the bottom right
+            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(400, 172)); shade.pivot = new Vector2(0, 1);
+            var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.78f); si.raycastTarget = false;   // reads over bright roofs
+            wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -10), 28, TextAnchor.UpperLeft);
             var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -52), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
             gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
             res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -46), 40, TextAnchor.UpperLeft); res.color = RES;
-            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -94), 18, TextAnchor.UpperLeft); rate.font = body;
-            // every currency in sight (owner, Nov 14 2026: "all the different currencies should be displayed for the player to
-            // see"): Resonance above, then Starshards (the Shop's) and, after an Ascension, perk points (the Watchtower's), each
-            // with its icon and its name; a tap on a counter says where it comes from and what it buys
-            shardRow = Box("Shards", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -114), new Vector2(170, 28)); shardRow.pivot = new Vector2(0, 1);
-            var shi = Box("Icon", shardRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(-6, 0), new Vector2(40, 40));   // the shard icon has room round it shi.pivot = new Vector2(0, 0.5f);
-            var shImg = shi.gameObject.AddComponent<Image>(); shImg.sprite = Icon("shard"); shImg.preserveAspect = true; shImg.raycastTarget = false;
-            shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(33, 0), 20, TextAnchor.MiddleLeft); shardTxt.color = ROSE_TXT;
-            shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(160, 30);
-            perkRow = Box("PerkPts", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(186, -114), new Vector2(160, 28)); perkRow.pivot = new Vector2(0, 1);
-            var pki = Box("Icon", perkRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(28, 28)); pki.pivot = new Vector2(0, 0.5f);
-            var pkImg = pki.gameObject.AddComponent<Image>(); pkImg.sprite = Icon("ascend"); pkImg.preserveAspect = true; pkImg.raycastTarget = false;
-            perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(33, 0), 20, TextAnchor.MiddleLeft); perkTxt.color = RES;
-            perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(160, 30);
-            evTxt = Label("Event", transform, new Vector2(0, 1), new Vector2(24, -94), 18, TextAnchor.UpperLeft); evTxt.gameObject.SetActive(false);   // the named wave now rides on the rate line evTxt.color = new Color(1f, 0.72f, 0.9f);   // the named wave
+            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -98), 17, TextAnchor.UpperLeft); rate.font = body;
+            // every currency in sight (owner, Nov 14 2026: "all the different currencies should be displayed"): Starshards (the
+            // gold star) and, after an Ascension, perk points (the rose crystal); a tap on one says where it comes from
+            shardRow = Box("Shards", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(18, -132), new Vector2(178, 32)); shardRow.pivot = new Vector2(0, 1);
+            var shi = Box("Icon", shardRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(32, 32)); shi.pivot = new Vector2(0, 0.5f);
+            var shImg = shi.gameObject.AddComponent<Image>(); shImg.sprite = Icon("starshard"); shImg.preserveAspect = true; shImg.raycastTarget = false;
+            shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); shardTxt.color = ROSE_TXT;
+            shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(150, 30);
+            perkRow = Box("PerkPts", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(210, -132), new Vector2(178, 32)); perkRow.pivot = new Vector2(0, 1);
+            var pki = Box("Icon", perkRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(32, 32)); pki.pivot = new Vector2(0, 0.5f);
+            var pkImg = pki.gameObject.AddComponent<Image>(); pkImg.sprite = Icon("shard"); pkImg.preserveAspect = true; pkImg.raycastTarget = false;
+            perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); perkTxt.color = RES;
+            perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(150, 30);
+            evTxt = Label("Event", transform, new Vector2(0, 1), new Vector2(24, -98), 18, TextAnchor.UpperLeft); evTxt.gameObject.SetActive(false);   // the named wave rides on the rate line
             // the banner sits under the top row of the HUD, never across it (QA, Nov 14 2026: in a portrait window the walk
             // banner ran under the cog and the Upgrade button), and wraps to the window's width
             banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -190), 34, TextAnchor.UpperCenter); banner.color = RES;
@@ -174,7 +175,7 @@ namespace Hearthgate.Game
 
             // settings (game-polish rule 19: the controls inside the game, the music and sound switches): a small brass
             // medallion with a cog rendered in Blender, inside the top-left label block, right of the wave
-            var gear = Action("Settings", new Vector2(0, 1), new Vector2(196, -12), new Vector2(56, 56), "gear", null, () => ShowSettings(true), null, false);
+            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-16, 16), new Vector2(56, 56), "gear", null, () => ShowSettings(true), null, false);   // bottom right (owner, Nov 14 2026)
 
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
             // buildings"): a small plum board with its name, level and output, pinned over the signpost in its yard while
@@ -613,6 +614,43 @@ namespace Hearthgate.Game
             I.Choice(box, "A_Yes", new Vector2(130, 26), new Vector2(230, 56), "Ascend", () => { I.ShowSettings(false); g.Ascend(); }, null, true);
         }
 
+        // the walls fell (GameLoop.Fall): the card sits at the foot of the screen with the shambles in view above it, the
+        // world kept moving (smoke rises) though the fight waits. Restore for Starshards; without enough, an ad where one
+        // can be shown; or start again from wave 1, asked twice.
+        public static void ShowFallen(bool confirm = false)
+        {
+            if (!I || !GameLoop.I || !GameLoop.I.Fallen) return;
+            var g = GameLoop.I; var P = g.P; int cost = g.FallCost; bool can = g.CanPayRestore, ad = !can && GameLoop.AdReady;
+            if (I.settingsBox) I.ShowSettings(false);
+            var box = I.Modal(confirm ? "Start over at wave 1?" : "The walls have fallen!", new Vector2(700, 300));
+            Time.timeScale = 1;   // the shambles stay alive behind the card (the fight itself waits: GameLoop.FixedUpdate)
+            I.settingsBox.GetComponent<Image>().color = new Color(0.08f, 0.02f, 0.04f, 0.28f);
+            box.anchorMin = box.anchorMax = new Vector2(0.5f, 0); box.pivot = new Vector2(0.5f, 0); box.anchoredPosition = new Vector2(0, 24);
+            if (confirm)
+            {
+                I.Line(box, -72, $"The town is rebuilt as it was, and the waves begin again from wave 1 (you were on wave {P.wave}).", 19);
+                I.Line(box, -136, "Your buildings, towers, perks and best wave are kept.", 17, new Color(0.85f, 0.8f, 0.88f));
+                I.Choice(box, "F_Back", new Vector2(-130, 26), new Vector2(230, 56), "Back", () => ShowFallen());
+                I.Choice(box, "F_Over", new Vector2(130, 26), new Vector2(230, 56), "Start over", () => { I.ShowSettings(false); g.StartOver(); }, null, true);
+                return;
+            }
+            I.Line(box, -70, $"Wave {P.wave} broke through and the town lies in ruins.", 20);
+            I.Line(box, -108, can ? $"Restore it for <color=#FF8CD9>{cost} Starshards</color> (you have {P.shards}) and fight wave {P.wave} again."
+                                  : $"Restoring it costs <color=#FF8CD9>{cost} Starshards</color>; you have {P.shards}. Bosses, Trials, quests and Feats pay them.", 18);
+            float y = 26;
+            if (ad)
+            {
+                I.Choice(box, "F_Ad", new Vector2(-170, y), new Vector2(300, 56), "Watch an ad to restore", () => { I.ShowSettings(false); g.WatchAdToRestore(); }, null, true);
+                I.Choice(box, "F_Over", new Vector2(170, y), new Vector2(300, 56), "Start over at wave 1", () => ShowFallen(true));
+            }
+            else
+            {
+                I.BtnAt("F_Pay", new Vector2(0.5f, 0), new Vector2(-170, y), new Vector2(300, 56), () => { I.ShowSettings(false); g.RestoreFallen(true); }, () => g.CanPayRestore, out var pl, box, "starshard", true);
+                pl.text = $"Restore for {cost}";
+                I.Choice(box, "F_Over", new Vector2(170, y), new Vector2(300, 56), "Start over at wave 1", () => ShowFallen(true));
+            }
+        }
+
         // the Eternal City (Ascension 10, js/game.js): the climb's ending, said once; the game goes on
         public static void ShowEternal()
         {
@@ -658,7 +696,7 @@ namespace Hearthgate.Game
                 line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(400, 22);
                 var lv = I.Label("V" + i, box, new Vector2(1, 1), new Vector2(-196, y - 8), 17, TextAnchor.UpperRight); lv.font = I.body; lv.rectTransform.pivot = new Vector2(1, 1); lv.rectTransform.sizeDelta = new Vector2(90, 24);
                 var id = k.id;
-                I.BtnAt("P_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.BuyPerk(id); }, () => HG.CanBuyPerk(g.P, id), out var cost, box);
+                I.BtnAt("P_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.BuyPerk(id); }, () => HG.CanBuyPerk(g.P, id), out var cost, box, "shard");
                 rows.Add((k, lv, cost));
             }
             I.perkRefresh = () =>

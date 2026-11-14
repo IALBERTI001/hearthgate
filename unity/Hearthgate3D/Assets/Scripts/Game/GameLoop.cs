@@ -1,6 +1,7 @@
 // The fight and the city, in 3D. Same rules as the 2D game (Core/HGCore.cs): waves walk the road to the gate, four
 // towers on the wall shoot, kills pay Resonance, Upgrade raises the gate, Rebuild restores the next building (its element
-// joins the towers), restored buildings hum out Resonance, and the gate falling sends the player back one wave.
+// joins the towers), restored buildings hum out Resonance, and the gate falling leaves the town in shambles until it
+// is restored for Starshards (or an ad) or begun again from wave 1 (GameLoop.Fall).
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -34,7 +35,7 @@ namespace Hearthgate.Game
             var off = HG.OfflineEarnings(P, B, Now());
             if (off.res > 0) { P.res += off.res; Hud.Toast($"While you were away: +{HG.Fmt(off.res)}"); }
             ApplyLooks(); if (P.shopOpen) HG.QuestsFor(P, Today());
-            StartWave();
+            if (P.fallen) { gateHp = 0; ShowShambles(true); } else StartWave();   // a reload during the loss comes back to the same choice
             if (P.ascensions == 0 && P.restored.Count == 0 && P.wave <= 2) Guide.Say("intro");
         }
 
@@ -46,7 +47,7 @@ namespace Hearthgate.Game
             Art.Spawn(art ? art.ground : null, "ground", Vector3.zero, world);
             Art.Spawn(art ? art.road : null, "road", Vector3.zero, world);
             Art.Spawn(art ? art.wall : null, "wall", Vector3.zero, world);   // the ring, closed round the town
-            Art.Spawn(art ? art.gate : null, "gate", new Vector3(0, 0, Field.GATE_Z), world);
+            gateObj = Art.Spawn(art ? art.gate : null, "gate", new Vector3(0, 0, Field.GATE_Z), world);
             Art.Spawn(art ? art.fountain : null, "fountain", Field.PLAZA, world);
             for (int i = 0; i < 4; i++)
             {
@@ -121,6 +122,7 @@ namespace Hearthgate.Game
 
         void FixedUpdate()
         {
+            if (P.fallen) return;   // the fight and the city's hum wait while the town lies in shambles
             float t = Time.time; waveT += DT;
             while (queue.Count > 0 && queue[0].at <= waveT)
             {
@@ -225,13 +227,6 @@ namespace Hearthgate.Game
             if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, e.lane, Mathf.Clamp(e.x + Random.Range(-1.5f, 1.5f), -Field.LANE, Field.LANE), e.z + Random.Range(0, 1.5f), unitsRoot));
         }
 
-        void GateFell()
-        {
-            foreach (var e in enemies) Destroy(e.t.gameObject);
-            enemies.Clear(); queue.Clear(); waveLive = false; betweenT = 2f;
-            P.wave = Mathf.Max(1, P.wave - 1); gateHp = HG.GateMax(P, B);
-            Hud.Banner("The walls fell. Back a wave: upgrade the towers!"); Guide.Say("fell"); Fx.I.Shake(0.4f); Sound.Play("boss_horn", 0.4f);
-        }
 
         void WaveWon()
         {
@@ -258,12 +253,22 @@ namespace Hearthgate.Game
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f) * (cheerT > 0 ? 0.5f : 1f) * (Ev("frenzy") ? 0.7f : 1f) * (tw.beacon && B["beacon"] > 0 ? 0.5f : 1f); tw.flash = 1;   // the Tavern's Cheer: twice as fast
                 var go = new GameObject("shot");
                 var col = tw.el != "none" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
-                var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
-                // fat, glowing shots with long trails: the fight has to read across the screen (fresh-eyes review 2)
-                mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : tw.el == "earth" ? 0.85f : 0.65f);
-                var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f * Fx.TrailScale; tr.endWidth = 0f;
-                tr.material = Art.Flat(Color.Lerp(col, Color.black, 0.15f)); tr.numCapVertices = 3; StyleTrail(tr, col);
-                tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; var smr = mr.GetComponent<Renderer>(); if (smr) smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
+                // what it throws matches its element (owner, Nov 14 2026): a Blender model per element (hg_front.projectile),
+                // turned along its flight; each element moves and trails in its own way (TickShots)
+                var pf = art != null ? art.Projectile(tw.el) : null;
+                GameObject mrGo = pf ? Instantiate(pf) : Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f)).gameObject;
+                mrGo.transform.SetParent(go.transform, false); mrGo.transform.localScale = Vector3.one * (pf ? (tw.el == "earth" ? 1.1f : 1.25f) : 0.65f);
+                foreach (var r in mrGo.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
+                var tr = go.AddComponent<TrailRenderer>(); tr.numCapVertices = 3; tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; tr.endWidth = 0f;
+                switch (tw.el)
+                {   // the trail of each element: fire a wide flame tail, frost a thin pale streak, storm a short crackle, earth dust
+                    case "fire": tr.time = 0.3f; tr.startWidth = 0.6f * Fx.TrailScale; tr.material = Art.Flat(new Color(1f, 0.42f, 0.1f)); break;
+                    case "frost": tr.time = 0.25f; tr.startWidth = 0.22f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.75f, 0.93f, 1f)); break;
+                    case "storm": tr.time = 0.1f; tr.startWidth = 0.3f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.8f, 0.6f, 1f)); break;
+                    case "earth": tr.time = 0.18f; tr.startWidth = 0.4f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.55f, 0.42f, 0.28f)); break;
+                    default: tr.time = 0.15f; tr.startWidth = 0.3f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.6f, 0.55f, 0.47f)); break;
+                }
+                StyleTrail(tr, col);
                 go.transform.position = tw.Muzzle; Sound.Play(Sfx(tw.el) + "_launch_0", 0.16f);
                 shots.Add(new Shot { beacon = tw.beacon, p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
             }
@@ -304,6 +309,19 @@ namespace Hearthgate.Game
                     float apex = s.el == "storm" ? 0.6f : 1.2f + dist * 0.06f;
                     s.p = Vector3.Lerp(s.from, goal, s.k) + Vector3.up * (4f * apex * s.k * (1 - s.k));
                 }
+                // each element in flight: the shot turns along its path (models fly toward -Z); fire flickers and sheds embers,
+                // frost glints, storm crackles (it jitters and throws sparks), earth and stone tumble
+                var dir = s.p - (s.last == default ? s.from : s.last); s.last = s.p;
+                if (dir.sqrMagnitude > 1e-6f)
+                {
+                    var face = Quaternion.LookRotation(-dir.normalized);
+                    if (s.el == "earth" || s.el == "none") { s.spin += DT * 540f; s.t.rotation = face * Quaternion.Euler(s.spin, 0, 0); }
+                    else if (s.el == "storm") s.t.rotation = face * Quaternion.Euler(Random.Range(-25f, 25f), Random.Range(-25f, 25f), Random.Range(0f, 360f));
+                    else s.t.rotation = face;
+                }
+                if (s.el == "fire") { s.t.localScale = Vector3.one * (0.9f + 0.2f * Mathf.Sin(Time.time * 40f + i)); if (Random.value < DT * 18f) Fx.I.Burst(s.p, new Color(1f, 0.5f, 0.1f), 1); }
+                else if (s.el == "storm" && Random.value < DT * 25f) Fx.I.Burst(s.p, new Color(0.85f, 0.7f, 1f), 1);
+                else if (s.el == "frost" && Random.value < DT * 10f) Fx.I.Burst(s.p, new Color(0.85f, 0.97f, 1f), 1);
                 s.t.position = s.p;
                 if (s.k >= 1f) { Hit(s.target, s.el); Destroy(s.t.gameObject); shots.RemoveAt(i); continue; }
             }
@@ -341,6 +359,13 @@ namespace Hearthgate.Game
             e.bigHit = false;
             e.hp -= d; e.flash = 1; if (el != "none") Sound.Play(Sfx(el) + "_contact_0", 0.2f);
             HitBurst(e.Pos, Field.Of(el), el == "none" ? 4 : 7);
+            switch (el)
+            {   // each element lands its own way: fire bursts in embers, frost in ice chips, storm in sparks, earth in dust
+                case "fire": Fx.I.Burst(e.Pos, new Color(1f, 0.75f, 0.2f), 5); break;
+                case "frost": Fx.I.Burst(e.Pos, new Color(0.9f, 0.98f, 1f), 6); break;
+                case "storm": Fx.I.Burst(e.Pos + Vector3.up * 0.4f, Color.white, 4); break;
+                case "earth": Fx.I.Burst(e.Pos - Vector3.up * 0.3f, new Color(0.55f, 0.42f, 0.28f), 8); break;
+            }
         }
         void Stun(Enemy e, float t)
         {
@@ -432,7 +457,7 @@ namespace Hearthgate.Game
         void Update()
         {
             var wz = Wizard.I;
-            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls();
+            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls(); TickFall(Time.unscaledDeltaTime);
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
             if (CanAscend) Guide.Say("ascend");
             if (P.restored.Count >= 2 && !Guide.Busy && !(wz && wz.On)) for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && CanWork(i)) { Guide.Say("town"); break; }   // the town has work: say so once

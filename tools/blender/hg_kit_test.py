@@ -37,7 +37,7 @@ jobs = [(name, fn, extra) for fn, name, extra in ((F.gate, 'gate', None), (F.wal
 jobs += [('top_' + k, (lambda k=k: F.top(k)), None) for k in ('stone', 'fire', 'frost', 'storm', 'earth')]
 jobs += [('centre_' + b, (lambda b=b: C.centrepiece(b)), None) for b in ('watchtower', 'market', 'library')]
 jobs += [('building_' + b, C.BUILDERS[b], None) for b in C.BUILDERS] + [('ruin_' + b, (lambda b=b: C.ruin_of(b)), None) for b in C.SHELLS]
-jobs += [('marker', F.marker, None)]
+jobs += [('marker', F.marker, None)] + [('proj_' + k, (lambda k=k: F.projectile(k)), None) for k in ('fire', 'frost', 'storm', 'earth', 'stone')]
 jobs += [('villager_' + v, (lambda v=v: F.villager(v)), None) for v in 'abc']
 jobs += [(k, (lambda k=k: F.variant(k)), None) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem', 'leech', 'knight', 'hive')]
 jobs += [('top_' + c, (lambda c=c: F.cap_look(c)), None) for c in F.CAP_LOOKS]
