@@ -283,12 +283,15 @@ if __name__ == '__main__':
     import hg_city as C   # the city's buildings and ruins
     building, ruin = C.building, C.ruin
     clear()
+    # every model, in a fixed order; HG_PART="k/n" builds only every n-th from the k-th, so the chain can run n Blenders
+    # side by side (one Blender building all 37 took 10 minutes once the town grew)
+    jobs = [(fn.__name__, fn) for fn in (ground, road, wall, gate, tower_base, slime, beetle, golem, ruin, fountain, villager)]
+    jobs += [('top_' + k, (lambda k=k: top(k))) for k in ('stone', 'fire', 'frost', 'storm')]
+    jobs += [('building_' + b, (lambda b=b: building(b))) for b in ROOF]
+    jobs += [('ruin_' + b, (lambda b=b: C.ruin_of(b))) for b in ROOF]
+    jobs += [('marker', F.marker), ('wizard', F.wizard)]
+    k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))
     report = {}
-    for fn in (ground, road, wall, gate, tower_base, slime, beetle, golem, ruin, fountain, villager):
-        report[fn.__name__] = fn()
-    for k in ('stone', 'fire', 'frost', 'storm'): report['top_' + k] = top(k)
-    for bid in ROOF: report['building_' + bid] = building(bid)
-    for bid in ROOF: report['ruin_' + bid] = C.ruin_of(bid)   # each plot's own burnt shell
-    report['marker'] = F.marker()
-    report['wizard'] = F.wizard()
+    for i, (nm, fn) in enumerate(jobs):
+        if i % n == k: report[nm] = fn()
     print('[hg_kit] done', len(report), 'models,', sum(report.values()), 'tris total, into', OUT)

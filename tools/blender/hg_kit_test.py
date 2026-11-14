@@ -23,7 +23,7 @@ def check(name):
 # the join keeping its rotation (Nov 13 2026, the ring wall came out mirrored); export raises if the model moves
 real_export = K.export
 K.clear(); F.block((6.0, -9.0, 1.0), (2.0, 1.0, 1.0), F.M('stone'), 0.0, 2.6); F.block((-3.0, -14.0, 0.5), (1.0, 1.0, 1.0), F.M('stone'), 0.0)
-try: real_export('_export_test')
+try: real_export('_export_test_' + os.environ.get('HG_PART', '0/1').replace('/', '_'))
 except Exception as ex: bad.append(f'export: {ex}')
 K.export = lambda name: 0
 F.K.export = K.export; C.K.export = K.export
@@ -31,15 +31,17 @@ def tower_front():
     blks = [o for o in bpy.data.objects if o.name.startswith('blk')]
     front = [o for o in blks if o.matrix_world.translation.y > 1.5 and abs(o.matrix_world.translation.x) < 0.6 and 1.0 < o.matrix_world.translation.z < 4.4]
     if len(front) < 6: bad.append(f'tower_base: only {len(front)} stones on the face toward the camera')
-for fn, name, extra in ((F.gate, 'gate', None), (F.wall, 'wall', None), (F.tower_base, 'tower_base', tower_front), (F.road, 'road', None),
+jobs = [(name, fn, extra) for fn, name, extra in ((F.gate, 'gate', None), (F.wall, 'wall', None), (F.tower_base, 'tower_base', tower_front), (F.road, 'road', None),
                         (F.ground, 'ground', None), (F.fountain, 'fountain', None), (F.slime, 'slime', None), (F.beetle, 'beetle', None),
-                        (F.golem, 'golem', None), (C.ruin, 'ruin', None), (F.wizard, 'wizard', None)):
+                        (F.golem, 'golem', None), (C.ruin, 'ruin', None), (F.wizard, 'wizard', None))]
+jobs += [('top_' + k, (lambda k=k: F.top(k)), None) for k in ('stone', 'fire', 'frost', 'storm')]
+jobs += [('building_' + b, C.BUILDERS[b], None) for b in C.BUILDERS] + [('ruin_' + b, (lambda b=b: C.ruin_of(b)), None) for b in C.SHELLS]
+jobs += [('marker', F.marker, None)]
+part, parts = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))   # the chain runs the test in parallel parts
+for i, (name, fn, extra) in enumerate(jobs):
+    if i % parts != part: continue
     K.clear(); fn(); check(name)
     if extra: extra()
-for k in ('stone', 'fire', 'frost', 'storm'): K.clear(); F.top(k); check('top_' + k)
-for bid in C.BUILDERS: K.clear(); C.BUILDERS[bid](); check('building_' + bid)
-for bid in C.SHELLS: K.clear(); C.ruin_of(bid); check('ruin_' + bid)
-K.clear(); F.marker(); check('marker')
 for b in bad: print('[kit-test] FAIL', b)
 print('[kit-test]', 'passed' if not bad else f'FAILED ({len(bad)})')
 sys.exit(1 if bad else 0)
