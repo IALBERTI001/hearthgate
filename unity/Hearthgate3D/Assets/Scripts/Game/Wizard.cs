@@ -53,6 +53,7 @@ namespace Hearthgate.Game
             for (float k = 1f; k > 0.05f; k -= 0.1f)
             {
                 var c = p + new Vector3(-h.x * off.z * k, off.y + (1 - k) * 3f, -h.y * off.z * k);
+                if (Mathf.Abs(c.x) < 11f) c.y += Mathf.Clamp01((c.z + 15f) / 6f) * 2.6f;   // over the gatehouse and its towers when he is just inside the gate
                 float ex = c.x / (Field.RX - 1.2f), ez = (c.z + Field.RZ) / (Field.RZ - 1.2f);
                 if (ex * ex + ez * ez < 1) return c;
             }
