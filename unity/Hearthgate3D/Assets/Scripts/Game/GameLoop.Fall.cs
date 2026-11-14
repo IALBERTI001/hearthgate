@@ -86,8 +86,8 @@ namespace Hearthgate.Game
                 if (!p.t || p.age > p.life) { if (p.t) Destroy(p.t.gameObject); puffs.RemoveAt(k); continue; }
                 float u = p.age / p.life;
                 p.t.position += (Vector3.up * 2.4f + p.drift) * dt;
-                p.t.localScale = Vector3.one * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0.7f, 1f, u));
-                p.t.Rotate(0, 20f * dt, 0); puffs[k] = p;
+                p.t.localScale = art.puff.transform.localScale * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0.7f, 1f, u));
+                p.t.Rotate(0, 20f * dt, 0); puffs[k] = p;   // (the scale is the prefab's own times ours: a one-mesh FBX root carries the importer's scale)
             }
             if ((smokeT -= dt) > 0) return;
             smokeT = 0.12f;
