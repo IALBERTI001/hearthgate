@@ -220,7 +220,7 @@ namespace Hearthgate.Game
                 if (P.restored.Contains(id))
                 {
                     int L = HG.LevelOf(P, id); double now = HG.BuildingRate(P, id, g.B), next = HG.BuildingRate(P, id, g.B, L + 1);
-                    workLbl.text = $"Upgrade {b.name}  ·  level {L} to {L + 1}\n+{HG.Fmt(next - now)}/s   <color=#FFD56B>{HG.Fmt(g.LevelCost(wz.Near))}</color>{keyE}";
+                    workLbl.text = $"Upgrade {b.name}  ·  level {L} to {L + 1}\n+{(next - now < 10 ? (next - now).ToString("0.##") : HG.Fmt(next - now))}/s   <color=#FFD56B>{HG.Fmt(g.LevelCost(wz.Near))}</color>{keyE}";
                 }
                 else if (HG.RestoreOffer(P).Contains(id)) workLbl.text = $"Rebuild {b.name}\n{b.line}   <color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>{keyE}";
                 else workLbl.text = $"Ruined {b.name}\n<color=#D9C9A8>Rebuild the marked plot first</color>";

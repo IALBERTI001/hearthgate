@@ -58,14 +58,15 @@ namespace Hearthgate.Game
                 else if (Ground(Input.mousePosition, out var at)) { target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
             }
 
-            // walking: keys move him relative to the camera (it looks south, so screen right is world -x), a tap sends him
+            // walking: keys move him relative to the camera, a tap sends him
             Vector3 want = Vector3.zero;
             if (On)
             {
                 float h = (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) ? 1 : 0) - (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) ? 1 : 0);
                 float v = (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.Z) ? 1 : 0) - (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ? 1 : 0);
                 if (Input.GetKey(KeyCode.Q)) h -= 1;   // AZERTY: ZQSD
-                if (h != 0 || v != 0) { want = new Vector3(-h, 0, -v).normalized; target = null; goal.SetActive(false); }
+                var fw = cam.transform.forward; fw.y = 0; fw = fw.sqrMagnitude < 0.01f ? Vector3.forward : fw.normalized; var rt = new Vector3(fw.z, 0, -fw.x);
+                if (h != 0 || v != 0) { want = (rt * h + fw * v).normalized; target = null; goal.SetActive(false); }
                 else if (target.HasValue)
                 {
                     var to = target.Value - pos; to.y = 0;
@@ -96,11 +97,13 @@ namespace Hearthgate.Game
                 }
             if (On && Near >= 0 && Input.GetKeyDown(KeyCode.E)) GameLoop.I.WorkOn(Near);
 
-            // the camera: from the walls down to just behind and above him, and back, eased
-            blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 0.9f);
+            // the camera: from the walls it swings over into the town and settles behind him on the town side, looking out
+            // toward the walls, so the wall and the towers are never between it and him (from the wall side the fire cap
+            // filled the screen whenever he walked near the front: Nov 13 2026), and the fight shows beyond the wall
+            blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
-            var followLook = pos + new Vector3(0, 1.4f, -2.2f);
-            var followPos = pos + new Vector3(0, 8.5f, 10.5f);
+            var followLook = pos + new Vector3(0, 1.6f, 3.2f);
+            var followPos = pos + new Vector3(0, 9f, -7.5f);
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
             var r = Quaternion.Slerp(Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS), Quaternion.LookRotation(followLook - followPos), k);
             Fx.I.camHome = p; cam.transform.rotation = r;
