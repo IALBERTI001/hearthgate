@@ -673,10 +673,13 @@ def wizard():
     block((0, -0.42, 0.88), (0.16, 0.06, 0.13), M('gold'), 0.02)
     K.sphere('chest', 0.42, (0, 0, 1.1), M('robe'), (1, 0.9, 0.85), 3)
     # sleeves and hands; the right one holds the staff
-    for s in (-1, 1):
-        o = K.cyl('sleeve', 0.17, 0.55, (s * 0.46, -0.08, 1.02), M('robe'), 12, 0.02, r2=0.22); o.rotation_euler = (0.35, s * 0.55, 0)
-        K.cyl('cuff', 0.2, 0.07, (s * 0.6, -0.2, 0.83), M('gold'), 12, 0.0).rotation_euler = (0.35, s * 0.55, 0)
-        K.sphere('hand', 0.12, (s * 0.63, -0.25, 0.76), M('skin'), sub=2)
+    from mathutils import Euler
+    for s in (-1, 1):   # bell sleeves hanging down and out from the shoulders, a gold cuff at the open end, the hand in it
+        c = Vector((s * 0.48, -0.1, 1.04)); rot = Euler((-0.35, -s * 0.55, 0))
+        def along(d): v = Vector((0, 0, d)); v.rotate(rot); return c + v
+        o = K.cyl('sleeve', 0.23, 0.55, tuple(c), M('robe'), 12, 0.02, r2=0.15); o.rotation_euler = rot
+        o = K.cyl('cuff', 0.24, 0.07, tuple(along(-0.27)), M('gold'), 12, 0.0); o.rotation_euler = rot
+        K.sphere('hand', 0.12, tuple(along(-0.36)), M('skin'), sub=2)
     # head: a round face, rosy nose, little eyes under bushy brows, and a long tapering beard
     K.sphere('head', 0.33, (0, -0.02, 1.52), M('skin'), sub=3)
     K.sphere('nose', 0.08, (0, -0.33, 1.5), M('blush'), sub=2)
