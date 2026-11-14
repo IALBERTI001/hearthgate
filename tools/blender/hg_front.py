@@ -494,23 +494,21 @@ def lanes():
         L0 = math.hypot(sx - fx, sz - fz); dx, dz = (sx - fx) / L0, (sz - fz) / L0; px, pz = -dz, dx
         u0, u1 = 1.0, L0 + 9.0
         n = int((u1 - u0) / 1.5) + 1
-        # a trail worn by the horde, not a dug road (owner, Nov 14 2026: "fix the paths of dirt. Not sure if they are really
-        # required"): bare earth in scuffed patches down the middle, thicker toward the tower where they mass, the
-        # meadow grass showing through between
-        u = u0
-        while u < u1:
-            near = 1 - (u - u0) / (u1 - u0)
-            for _ in range(2 if R.random() < 0.45 + 0.4 * near else 1):
-                if R.random() > 0.35 + 0.55 * near: continue
-                off = R.uniform(-1.0, 1.0); cx, cy = fx + dx * u + px * off, fz + dz * u + pz * off
-                rr = R.uniform(0.45, 0.95) * (0.8 + 0.4 * near); n_ = 7
-                vs = []
-                for k in range(n_):   # a scuff drawn out along the lane
-                    a_, j = k / n_ * math.tau, R.uniform(0.7, 1.2)
-                    vs.append((cx + dx * math.cos(a_) * rr * 1.6 * j + px * math.sin(a_) * rr * j, cy + dz * math.cos(a_) * rr * 1.6 * j + pz * math.sin(a_) * rr * j, 0.03 + R.uniform(0, 0.006)))
-                if (dx * pz - dz * px) < 0: vs.reverse()   # counter-clockwise from above
-                mesh_from('trail', vs, [tuple(range(n_))], M(R.choice(('dirt', 'dirt', 'dirt_dk'))), 0.0)
-            u += R.uniform(0.9, 1.4)
+        # trampled grass, not a dug road (owner, Nov 14 2026: "fix the paths of dirt. Not sure if they are really
+        # required"; scuffed earth patches read as stepping stones): a faint lighter strip with ragged edges where the
+        # horde has flattened the meadow, bare earth only at the tower's foot where they mass
+        left, right = [], []
+        for k in range(n + 1):
+            u = u0 + (u1 - u0) * k / n
+            hl, hr = 1.25 + R.uniform(-0.25, 0.25), 1.25 + R.uniform(-0.25, 0.25)
+            left.append((fx + dx * u + px * hl, fz + dz * u + pz * hl, 0.026)); right.append((fx + dx * u - px * hr, fz + dz * u - pz * hr, 0.026))
+        N = n + 1
+        mesh_from('trodden', left + right, [(N + k, N + k + 1, k + 1, k) for k in range(n)], M('grass3'), 0.0)
+        for _ in range(5):   # a little bare earth just before the tower
+            u = R.uniform(1.5, 5.0); off = R.uniform(-0.8, 0.8); cx, cy = fx + dx * u + px * off, fz + dz * u + pz * off
+            rr = R.uniform(0.4, 0.75); n_ = 7
+            vs = [(cx + math.cos(k / n_ * math.tau) * rr * R.uniform(0.75, 1.15), cy + math.sin(k / n_ * math.tau) * rr * R.uniform(0.75, 1.15), 0.032) for k in range(n_)]
+            mesh_from('scuff', vs, [tuple(range(n_))], M('dirt'), 0.0)
         # the apron at the tower's foot: trampled earth in a rough half disc, rubble from the fighting
         vs = [(fx, fz, 0.035)]
         for k in range(13):
@@ -641,7 +639,7 @@ def outcrop(x, y, n, spread, scale=1.0):   # a cluster of big angular rocks
 # the town (owner, Nov 14 2026: "you can do the housing spaced inside circular facing the interior. makes the inside match
 # a circular cobble floor matching the path of the gate"): grass inside the ring, a cobbled square laid in rings round the
 # fountain and kerbed, the road through the gate running on into it, a short path from each door, and gardens between
-SETT_MATS = ('cobble', 'cobble', 'cobble2', 'cobble2', 'stone2')
+SETT_MATS = ('cobble', 'cobble', 'cobble', 'cobble2', 'cobble2', 'stone2')   # close tones; a few warm stones
 
 def _sett_bag(): return {m: ([], []) for m in SETT_MATS + ('stone_dk', 'stone3')}
 def _flush(bag, name='setts'):

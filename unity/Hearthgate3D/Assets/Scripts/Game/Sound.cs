@@ -36,7 +36,7 @@ namespace Hearthgate.Game
             for (int i = 0; i < pool.Length; i++) { pool[i] = gameObject.AddComponent<AudioSource>(); pool[i].playOnAwake = false; }
             song = gameObject.AddComponent<AudioSource>(); amb = gameObject.AddComponent<AudioSource>();
             song.playOnAwake = amb.playOnAwake = false; song.volume = amb.volume = 0;
-            foreach (var n in SFX) { var c = Resources.Load<AudioClip>("Sfx/" + n); if (c) clips[n] = c; }
+            foreach (var n in SFX) { var c = Resources.Load<AudioClip>("Sfx/" + n); if (c) { clips[n] = c; c.LoadAudioData(); } }   // decoded up front
             click = Make("click", 0.045f, (t, k) => (Mathf.Sin(t * 2f * Mathf.PI * 1250f) * 0.6f + Noise() * 0.4f) * Mathf.Pow(1 - k, 4));
             dud = Make("dud", 0.07f, (t, k) => Mathf.Sin(t * 2f * Mathf.PI * Mathf.Lerp(260f, 180f, k)) * Mathf.Pow(1 - k, 3) * 0.7f);
             knock = Make("knock", 0.09f, (t, k) => (Mathf.Sin(t * 2f * Mathf.PI * Mathf.Lerp(200f, 90f, k)) * 0.7f + Noise() * 0.35f) * Mathf.Pow(1 - k, 3));
@@ -60,6 +60,7 @@ namespace Hearthgate.Game
         void Shot(string name, AudioClip c, float vol, bool jitter)
         {
             if (!SfxOn || c == null) return;
+            if (c.loadState != AudioDataLoadState.Loaded) { if (c.loadState == AudioDataLoadState.Unloaded) c.LoadAudioData(); return; }   // still decoding: skip (asking an unloaded clip floods the WebGL console)
             float now = Time.unscaledTime; if (last.TryGetValue(name, out var t) && now - t < 0.07f) return; last[name] = now;
             var s = pool[next = (next + 1) % pool.Length];
             s.pitch = jitter ? 0.94f + (float)rnd.NextDouble() * 0.12f : 1f; s.PlayOneShot(c, vol * SFX_VOL);
@@ -108,6 +109,8 @@ namespace Hearthgate.Game
                     yield return rq.SendWebRequest();
                     if (rq.result != UnityWebRequest.Result.Success) yield break;
                     clip = DownloadHandlerAudioClip.GetContent(rq); clip.name = n; music[n] = clip;
+                    clip.LoadAudioData(); while (clip.loadState == AudioDataLoadState.Loading) yield return null;   // the browser decodes it
+                    if (clip.loadState != AudioDataLoadState.Loaded) yield break;
                 }
             }
             if ((mode == "boss") != (n == "battle") && src == song) yield break;   // the mood changed while it loaded
