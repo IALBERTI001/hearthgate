@@ -3,10 +3,11 @@
 # of what it acts on, not a code-drawn symbol. Usage: blender -b -P hg_icons.py -- <models dir> <out dir>
 # Writes <out>/icon_<name>.png, 192 x 192, transparent, three-quarter view from the front, the game's warm key light.
 import bpy, sys, os, math
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 a = sys.argv[sys.argv.index('--') + 1:]
 MODELS, OUT = a[0], a[1]
+ONLY = a[2].split(',') if len(a) > 2 else None   # optional: just these icons, e.g. for a yaw test
 os.makedirs(OUT, exist_ok=True)
 # icon name -> (model, yaw in degrees, how much of the frame the model fills)
 ICONS = {
@@ -43,8 +44,10 @@ def render(name, model, yaw, fill):
     if model: bpy.ops.import_scene.fbx(filepath=os.path.join(MODELS, model + '.fbx'))
     else: gear()
     objs = [o for o in sc.objects if o.type == 'MESH']
+    bpy.context.view_layer.update()
+    turn = Matrix.Rotation(math.radians(yaw), 4, 'Z')   # about the world's up axis (the FBX roots carry a Y-up correction)
     for o in sc.objects:
-        if o.parent is None: o.rotation_euler.rotate_axis('Z', math.radians(yaw))
+        if o.parent is None: o.matrix_world = turn @ o.matrix_world
     bpy.context.view_layer.update()
     pts = [o.matrix_world @ Vector(c) for o in objs for c in o.bound_box]
     lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts))); hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
@@ -68,4 +71,8 @@ def render(name, model, yaw, fill):
     bpy.ops.render.render(write_still=True)
     print('[hg_icons] wrote', sc.render.filepath)
 
-for n, (m, yaw, fill) in ICONS.items(): render(n, m, yaw, fill)
+for n, (m, yaw, fill) in ICONS.items():
+    if ONLY is None or n in ONLY:
+        if os.environ.get('HG_YAW'):   # a yaw sweep: icon_<name>_<yaw>.png for each
+            for y in os.environ['HG_YAW'].split(','): render(n + '_' + y, m, float(y), fill)
+        else: render(n, m, yaw, fill)
