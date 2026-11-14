@@ -17,16 +17,24 @@ namespace Hearthgate.EditorTools
 {
     public static class LayoutCheck
     {
-        struct Item { public string name; public Bounds b; }
+        struct Item { public string name; public Bounds b; public List<Vector3> pts; }
 
+        static readonly List<Vector3> lastPts = new List<Vector3>();
         static Bounds Measure(GameObject prefab, Vector3 at, Quaternion rot)
         {
             var g = Object.Instantiate(prefab, at, rot * prefab.transform.rotation);
             var rs = g.GetComponentsInChildren<Renderer>();
             var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+            lastPts.Clear();
+            foreach (var mf in g.GetComponentsInChildren<MeshFilter>())
+            {
+                var vs = mf.sharedMesh.vertices; int step = Mathf.Max(1, vs.Length / 600);   // a sample of the silhouette
+                for (int i = 0; i < vs.Length; i += step) lastPts.Add(mf.transform.TransformPoint(vs[i]));
+            }
             Object.DestroyImmediate(g);
             return b;
         }
+        static List<Vector3> Pts() => new List<Vector3>(lastPts);
 
         // a placed copy of a model with mesh colliders, so sight lines are tested against the real shape, not its box
         static readonly List<GameObject> placed = new List<GameObject>();
@@ -47,22 +55,22 @@ namespace Hearthgate.EditorTools
             if (art == null) { Fail(new List<string> { "no art set" }); return; }
 
             var items = new List<Item>();
-            items.Add(new Item { name = "gatehouse", b = Measure(art.gate, new Vector3(0, 0, Field.GATE_Z), Quaternion.identity) });
+            items.Add(new Item { name = "gatehouse", b = Measure(art.gate, new Vector3(0, 0, Field.GATE_Z), Quaternion.identity), pts = Pts() });
             for (int i = 0; i < 4; i++)
             {
                 var at = new Vector3(Field.TOWER_X[i], 0, Field.TOWER_Z);
-                var tb = Measure(art.towerBase, at, Quaternion.identity);
+                var tb = Measure(art.towerBase, at, Quaternion.identity); var tp = Pts();
                 foreach (var top in new[] { art.topStone, art.topFire, art.topFrost, art.topStorm })
-                    tb.Encapsulate(Measure(top, new Vector3(at.x, Field.TOWER_TOP, at.z), Quaternion.identity));
-                items.Add(new Item { name = "tower " + i, b = tb });
+                { tb.Encapsulate(Measure(top, new Vector3(at.x, Field.TOWER_TOP, at.z), Quaternion.identity)); tp.AddRange(lastPts); }
+                items.Add(new Item { name = "tower " + i, b = tb, pts = tp });
             }
-            items.Add(new Item { name = "fountain", b = Measure(art.fountain, Field.PLAZA, Quaternion.identity) });
+            items.Add(new Item { name = "fountain", b = Measure(art.fountain, Field.PLAZA, Quaternion.identity), pts = Pts() });
             for (int i = 0; i < art.buildings.Length; i++)
             {
                 var at = Field.Plot(i);
                 var rot = Field.PLOT_FACING;
-                var b = Measure(art.buildings[i], at, rot); b.Encapsulate(Measure(art.ruin, at, rot));
-                items.Add(new Item { name = "plot " + Hearthgate.Core.HG.BUILDING_IDS[i], b = b });
+                var b = Measure(art.buildings[i], at, rot); var pp = Pts(); b.Encapsulate(Measure(art.ruin, at, rot)); pp.AddRange(lastPts);
+                items.Add(new Item { name = "plot " + Hearthgate.Core.HG.BUILDING_IDS[i], b = b, pts = pp });
             }
             // the road in front of the wall is open ground
             // (the strip next to the wall, where foot rubble and grass sit, is left out)
@@ -91,10 +99,14 @@ namespace Hearthgate.EditorTools
                 var hud = Hud(w, h);
                 foreach (var it in items)
                 {
-                    var c = Corners(it.b).Select(p => cam.WorldToViewportPoint(p)).ToArray();
+                    var c = it.pts.Select(p => (Vector2)cam.WorldToViewportPoint(p)).ToArray();   // the model's own vertices
                     Rect r = Rect.MinMaxRect(c.Min(p => p.x), c.Min(p => p.y), c.Max(p => p.x), c.Max(p => p.y));
                     if (r.xMin < 0.005f || r.yMin < 0.005f || r.xMax > 0.995f || r.yMax > 0.995f) bad.Add($"{w}x{h}: {it.name} leaves the view ({R(r)})");
-                    foreach (var (hn, hr) in hud) if (hr.Overlaps(r)) bad.Add($"{w}x{h}: {it.name} is under the {hn} ({R(r)})");
+                    foreach (var (hn, hr) in hud)
+                    {
+                        int n = c.Count(p => hr.Contains(p));
+                        if (n > 0) bad.Add($"{w}x{h}: {it.name} is under the {hn} ({n} points)");
+                    }
                 }
                 foreach (var p in road.Select(p => (Vector2)cam.WorldToViewportPoint(p)))
                 {
@@ -117,16 +129,18 @@ namespace Hearthgate.EditorTools
             }
             for (int i = 0; i < art.buildings.Length; i++) PlaceSolid(art.buildings[i], Field.Plot(i), Field.PLOT_FACING);
             Physics.SyncTransforms();
+            string blocker = null;
             bool Hidden(Vector3 target)
             {
                 var o = Field.CAM_POS; var d = target - o; float L = d.magnitude;
-                return Physics.Raycast(o, d / L, L - 0.4f);
+                bool hit = Physics.Raycast(o, d / L, out var info, L - 0.4f);
+                blocker = hit ? info.collider.transform.root.name : null; return hit;
             }
             foreach (var it in items.Where(x => x.name.StartsWith("plot")))
             {
                 var b = it.b; float roof = b.min.y + Mathf.Min(3f, b.size.y * 0.7f);
                 foreach (float fx in new[] { -0.3f, 0f, 0.3f })
-                    if (Hidden(new Vector3(b.center.x + fx * b.size.x, roof, b.max.z + 0.3f))) { bad.Add($"{it.name} is hidden behind the wall, the gatehouse, a tower or another house"); break; }
+                    if (Hidden(new Vector3(b.center.x + fx * b.size.x, roof, b.max.z + 0.3f))) { bad.Add($"{it.name}'s roof line is hidden behind {blocker} (at {fx:+0.0;-0.0;0} of its width)"); break; }
             }
             if (Hidden(Field.PLAZA + new Vector3(0, 1.2f, 1.5f))) bad.Add("the plaza is hidden behind the gatehouse or the wall");
             foreach (var p in road) if (p.y > 1f && Hidden(p)) { bad.Add($"the road is hidden at {p}"); break; }
