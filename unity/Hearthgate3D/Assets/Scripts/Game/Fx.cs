@@ -56,6 +56,10 @@ namespace Hearthgate.Game
                 t.color = new Color(1f, 0.957f, 0.863f); o.effectColor = new Color(c.r * 0.7f, c.g * 0.7f, c.b * 0.7f, 1f); o.effectDistance = new Vector2(3, -3);
                 go.AddComponent<Shadow>().effectColor = new Color(0.16f, 0.08f, 0.19f, 0.9f);
             }
+            // one voice: a pop near one still young starts above it instead of printing over it (two kills at once printed
+            // "+9.18K" twice in one place)
+            int near = 0; foreach (var (pt, pat, ptime, _) in pops) if (ptime < 0.4f && (pat - at).sqrMagnitude < 4f) near++;
+            at += Vector3.up * (near * 1.1f);
             pops.Add((t, at, 0, life));
         }
 

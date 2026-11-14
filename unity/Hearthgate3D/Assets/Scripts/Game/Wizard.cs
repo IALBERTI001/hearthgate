@@ -69,6 +69,7 @@ namespace Hearthgate.Game
             goal = Art.Spawn(art ? art.marker : null, "goal", pos, transform); goal.transform.localScale = Vector3.one * 0.25f; goal.SetActive(false);
         }
 
+        public void Teleport(Vector3 p) { pos = new Vector3(p.x, 0, p.z); Stop(); }   // test hooks only (GameLoop.Dev)
         public void Stop() { target = null; goal.SetActive(false); vel = Vector3.zero; }
 
         public void Toggle()

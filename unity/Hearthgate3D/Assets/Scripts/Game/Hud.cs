@@ -121,7 +121,7 @@ namespace Hearthgate.Game
             // see"): Resonance above, then Starshards (the Shop's) and, after an Ascension, perk points (the Watchtower's), each
             // with its icon and its name; a tap on a counter says where it comes from and what it buys
             shardRow = Box("Shards", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -114), new Vector2(170, 28)); shardRow.pivot = new Vector2(0, 1);
-            var shi = Box("Icon", shardRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(28, 28)); shi.pivot = new Vector2(0, 0.5f);
+            var shi = Box("Icon", shardRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(-6, 0), new Vector2(40, 40));   // the shard icon has room round it shi.pivot = new Vector2(0, 0.5f);
             var shImg = shi.gameObject.AddComponent<Image>(); shImg.sprite = Icon("shard"); shImg.preserveAspect = true; shImg.raycastTarget = false;
             shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(33, 0), 20, TextAnchor.MiddleLeft); shardTxt.color = ROSE_TXT;
             shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(160, 30);
@@ -520,7 +520,7 @@ namespace Hearthgate.Game
             // the town walk
             var wz = Wizard.I;
             int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
-            Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", wz && wz.On || ready == 0 ? null : $"<color=#CFE9B0>{ready} upgrade{(ready == 1 ? "" : "s")} ready</color>", true, now);   // a reason to go in
+            Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", wz && wz.On || ready == 0 ? null : $"<color=#CFE9B0>{ready} upgrade{(ready == 1 ? "" : "s")} ready</color>", true, now); walk.gem.enabled = false;   // a reason to go in (a count, not a price: no gem)
             bool showWork = false; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);   // the building's own board has it now (owner, Nov 14 2026)
             if (showWork)
             {
