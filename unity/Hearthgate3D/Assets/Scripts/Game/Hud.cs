@@ -2,7 +2,6 @@
 // rule 1): wave and Resonance top left, the two actions bottom right with their keys, one banner line, the fork choice.
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using Hearthgate.Core;
 
 namespace Hearthgate.Game
@@ -10,7 +9,38 @@ namespace Hearthgate.Game
     public class Hud : MonoBehaviour
     {
         static Hud I;
-        Font font; Text wave, res, rate, banner, upLbl, reLbl, gateTxt; Button up, re; Image gateBar; RectTransform forkBox;
+        Font font; Text wave, res, rate, banner, upLbl, reLbl, gateTxt; Image gateBar; RectTransform forkBox;
+        Pressable up, re;
+
+        // A control this HUD answers itself, from the raw pointer. uGUI's event system drops pointer input whenever the page
+        // does not report focus to Unity (Windows hosts), which left the buttons dead in a browser pane while the keys
+        // worked (Nov 13 2026); an embedded iframe can do the same. Hover grows it, press squeezes it (game-polish 17).
+        class Pressable
+        {
+            public RectTransform rt; public Image img; public Color col; public System.Func<bool> on; public System.Action act;
+            public bool down; public float s = 1;
+        }
+        readonly System.Collections.Generic.List<Pressable> press = new System.Collections.Generic.List<Pressable>();
+        Pressable Press(RectTransform rt, System.Action act, System.Func<bool> on = null)
+        {
+            var img = rt.GetComponent<Image>();
+            var p = new Pressable { rt = rt, img = img, col = img ? img.color : Color.white, on = on ?? (() => true), act = act };
+            press.Add(p); return p;
+        }
+        void Pointer()
+        {
+            Vector2 m = Input.mousePosition; bool dn = Input.GetMouseButtonDown(0), upNow = Input.GetMouseButtonUp(0);
+            press.RemoveAll(p => p.rt == null);
+            foreach (var p in press.ToArray())
+            {
+                bool on = p.on(), inside = RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null);
+                if (dn && inside && on) p.down = true;
+                if (upNow) { if (p.down && inside && on) p.act(); p.down = false; }
+                float target = !on ? 1f : p.down && inside ? 0.95f : inside ? 1.04f : 1f;
+                p.s = Mathf.MoveTowards(p.s, target, Time.unscaledDeltaTime * 1.2f); p.rt.localScale = Vector3.one * p.s;
+                if (p.img) p.img.color = on ? (inside ? Color.Lerp(p.col, Color.white, 0.12f) : p.col) : new Color(p.col.r * 0.6f, p.col.g * 0.6f, p.col.b * 0.6f, p.col.a * 0.8f);
+            }
+        }
         float bannerT;
         static readonly Color INK = new Color(0.12f, 0.07f, 0.1f, 0.92f), CREAM = new Color(1f, 0.96f, 0.86f);
 
@@ -22,7 +52,6 @@ namespace Hearthgate.Game
             var sc = gameObject.AddComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             sc.referenceResolution = new Vector2(1280, 720); sc.matchWidthOrHeight = 0.5f;
             gameObject.AddComponent<GraphicRaycaster>();
-            if (!FindFirstObjectByType<EventSystem>()) new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
 
             var pops = Box("Pops", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             gameObject.AddComponent<Fx>().Init(pops, font);
@@ -40,8 +69,8 @@ namespace Hearthgate.Game
             gateBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
             gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), Vector2.zero, 16, TextAnchor.MiddleCenter);
 
-            up = Btn("Upgrade", new Vector2(-24, 104), () => GameLoop.I.Upgrade(), out upLbl);
-            re = Btn("Rebuild", new Vector2(-24, 24), () => GameLoop.I.Restore(), out reLbl);
+            up = Btn("Upgrade", new Vector2(-24, 104), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
+            re = Btn("Rebuild", new Vector2(-24, 24), () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, out reLbl);
         }
 
         RectTransform Box(string n, Transform p, Vector2 aMin, Vector2 aMax, Vector2 pos, Vector2 size)
@@ -65,27 +94,26 @@ namespace Hearthgate.Game
             t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Truncate;
             t.resizeTextForBestFit = true; t.resizeTextMinSize = min; t.resizeTextMaxSize = t.fontSize;
         }
-        Button Btn(string n, Vector2 pos, UnityEngine.Events.UnityAction act, out Text lbl)
+        Pressable Btn(string n, Vector2 pos, System.Action act, System.Func<bool> on, out Text lbl)
         {
             var r = Box(n, transform, new Vector2(1, 0), new Vector2(1, 0), pos, new Vector2(300, 68)); r.pivot = new Vector2(1, 0);
             var img = r.gameObject.AddComponent<Image>(); img.color = new Color(0.27f, 0.15f, 0.2f, 0.95f);
-            var b = r.gameObject.AddComponent<Button>(); b.onClick.AddListener(act);
-            var cb = b.colors; cb.highlightedColor = new Color(1.1f, 1.1f, 1.1f); cb.pressedColor = new Color(0.85f, 0.85f, 0.85f); b.colors = cb;
             lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 22, TextAnchor.MiddleCenter);
             Fit(lbl, r.sizeDelta - new Vector2(20, 8), 12);
-            return b;
+            return Press(r, act, on);
         }
 
         void Update()
         {
             var g = GameLoop.I; if (g == null) return; var P = g.P;
+            Pointer();
             wave.text = $"Wave {P.wave}";
             res.text = HG.Fmt(P.res);
             double r = HG.CityRate(P, g.B); rate.text = r > 0 ? $"+{HG.Fmt(r)}/s from the city" : "";
             double gm = HG.GateMax(P, g.B); gateBar.fillAmount = Mathf.Clamp01((float)(g.gateHp / gm)); gateTxt.text = $"Gate {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
-            upLbl.text = $"Upgrade gate\n{HG.Fmt(g.UpgradeCost)}   [U]"; up.interactable = g.CanUpgrade;
+            upLbl.text = $"Upgrade gate\n{HG.Fmt(g.UpgradeCost)}   [U]"; 
             var nb = g.NextBuilding;
-            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n{HG.Fmt(g.RestoreCost)}   [R]"; re.interactable = g.CanRestore;
+            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n{HG.Fmt(g.RestoreCost)}   [R]"; 
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
         }
 
@@ -105,8 +133,7 @@ namespace Hearthgate.Game
                 var f = opts[k];
                 var r = I.Box(f.id, box, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(k == 0 ? -150 : 150, 30), new Vector2(280, 150)); r.pivot = new Vector2(0.5f, 0);
                 r.gameObject.AddComponent<Image>().color = new Color(0.3f, 0.18f, 0.24f);
-                var b = r.gameObject.AddComponent<Button>();
-                b.onClick.AddListener(() => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); });
+                I.Press(r, () => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); });
                 I.Label("N", r, new Vector2(0.5f, 1), new Vector2(0, -14), 24, TextAnchor.UpperCenter).text = f.name;
                 var n = r.GetChild(r.childCount - 1).GetComponent<Text>(); Fit(n, new Vector2(260, 34), 14); n.rectTransform.anchoredPosition = new Vector2(0, -30);
                 var d = I.Label("D", r, new Vector2(0.5f, 0.5f), new Vector2(0, -16), 18, TextAnchor.MiddleCenter); d.text = f.line; d.color = Field.GOLD; Fit(d, new Vector2(256, 80), 12); d.rectTransform.anchoredPosition = new Vector2(0, -14);

@@ -98,7 +98,7 @@ namespace Hearthgate.Game
             while (queue.Count > 0 && queue[0].at <= waveT)
             {
                 var role = queue[0].role; queue.RemoveAt(0);
-                enemies.Add(new Enemy(role, P.wave, (float)(rnd.NextDouble() * 2 - 1) * (Field.HALF_W - 1.5f), Field.SPAWN_Z, unitsRoot) { born = (float)rnd.NextDouble() * 3 });
+                enemies.Add(new Enemy(role, P.wave, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, Field.SPAWN_Z, unitsRoot) { born = (float)rnd.NextDouble() * 3 });
             }
             TickEnemies(); TickTowers(); TickShots();
             // the city hums
@@ -132,7 +132,7 @@ namespace Hearthgate.Game
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); }
-            if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, e.x + Random.Range(-1.5f, 1.5f), e.z + Random.Range(0, 1.5f), unitsRoot));
+            if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, Mathf.Clamp(e.x + Random.Range(-1.5f, 1.5f), -Field.LANE, Field.LANE), e.z + Random.Range(0, 1.5f), unitsRoot));
         }
 
         void GateFell()
@@ -158,9 +158,8 @@ namespace Hearthgate.Game
                 var tg = Pick(tw.el); if (tg == null) continue;
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f);
                 var go = new GameObject("shot");
-                var mr = GameObject.CreatePrimitive(PrimitiveType.Sphere); Destroy(mr.GetComponent<Collider>());
+                var mr = Art.Shape(PrimitiveType.Sphere, Art.Mat(Field.Of(tw.el), true));
                 mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.5f : 0.35f);
-                mr.GetComponent<Renderer>().sharedMaterial = Art.Mat(Field.Of(tw.el), true);
                 var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.18f; tr.startWidth = 0.3f; tr.endWidth = 0f;
                 tr.material = Art.Mat(Field.Of(tw.el), true);
                 go.transform.position = tw.Muzzle;

@@ -12,6 +12,11 @@ namespace Hearthgate.Game
         public GameObject slime, beetle, golem, ruin, villager, fountain;
         public GameObject[] buildings = new GameObject[10];   // in the order of HG.BUILDINGS
         public Material lit, glow, particle;                   // material templates, so the build keeps their shaders
+        // Unity's built-in shape meshes, without the colliders CreatePrimitive adds: the WebGL build strips the physics
+        // engine code, so CreatePrimitive logged an error for every shot (Nov 13 2026)
+        public Mesh sphereMesh, capsuleMesh, cubeMesh, cylinderMesh, planeMesh;
+        public Mesh MeshOf(PrimitiveType t) => t == PrimitiveType.Sphere ? sphereMesh : t == PrimitiveType.Capsule ? capsuleMesh
+            : t == PrimitiveType.Cylinder ? cylinderMesh : t == PrimitiveType.Plane ? planeMesh : cubeMesh;
 
         public GameObject Enemy(string model) => model == "beetle" ? beetle : model == "golem" ? golem : slime;
         public GameObject Top(string el) => el == "fire" ? topFire : el == "frost" ? topFrost : el == "storm" ? topStorm : topStone;

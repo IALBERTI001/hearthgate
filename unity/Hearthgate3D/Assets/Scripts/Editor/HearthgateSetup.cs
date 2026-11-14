@@ -52,6 +52,9 @@ namespace Hearthgate.EditorTools
             art.lit = MatAsset("Lit", "Universal Render Pipeline/Lit", false);
             art.glow = MatAsset("Glow", "Universal Render Pipeline/Lit", true);
             art.particle = MatAsset("Particle", "Universal Render Pipeline/Particles/Unlit", false);
+            Mesh Builtin(PrimitiveType t) { var g = GameObject.CreatePrimitive(t); var m = g.GetComponent<MeshFilter>().sharedMesh; Object.DestroyImmediate(g); return m; }
+            art.sphereMesh = Builtin(PrimitiveType.Sphere); art.capsuleMesh = Builtin(PrimitiveType.Capsule); art.cubeMesh = Builtin(PrimitiveType.Cube);
+            art.cylinderMesh = Builtin(PrimitiveType.Cylinder); art.planeMesh = Builtin(PrimitiveType.Plane);
             GameObject M(string n) => AssetDatabase.LoadAssetAtPath<GameObject>($"{MODELS}/{n}.fbx");
             art.ground = M("ground"); art.road = M("road"); art.gate = M("gate"); art.wall = M("wall"); art.towerBase = M("tower_base");
             art.topStone = M("top_stone"); art.topFire = M("top_fire"); art.topFrost = M("top_frost"); art.topStorm = M("top_storm");
@@ -85,7 +88,7 @@ namespace Hearthgate.EditorTools
             var boot = Object.FindFirstObjectByType<Boot>();
             string bad = art == null ? "the art set asset has no script (is ArtSet in ArtSet.cs?)"
                 : boot == null || boot.art != art ? "the scene's Boot does not reference the art set"
-                : art.gate == null || art.slime == null || art.lit == null ? "the art set is missing models or materials" : null;
+                : art.gate == null || art.slime == null || art.lit == null || art.sphereMesh == null ? "the art set is missing models, materials or meshes" : null;
             if (bad == null) { Debug.Log("[Hearthgate] art check passed"); return; }
             Debug.LogError("[Hearthgate] art check FAILED: " + bad);
             if (Application.isBatchMode) EditorApplication.Exit(1);

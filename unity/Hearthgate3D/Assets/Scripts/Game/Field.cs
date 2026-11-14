@@ -7,6 +7,7 @@ namespace Hearthgate.Game
     public static class Field
     {
         public const float SPAWN_Z = 40f, GATE_Z = 0f, FRONT_Z = 2.2f, HALF_W = 7f, DEPTH = SPAWN_Z - FRONT_Z;
+        public const float LANE = 2.1f;                     // enemies keep to the road (the road model is 5.2 m wide)
         public const float PX = DEPTH / 414f;               // one 2D stage px of travel, in metres
         public static float Size(double px) => (float)px / 66f * 1.5f;   // a slime (66 px) is 1.5 m tall
         public static readonly float[] TOWER_X = { -6f, -2.2f, 2.2f, 6f };

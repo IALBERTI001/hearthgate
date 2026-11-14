@@ -9,12 +9,12 @@ namespace Hearthgate.Game
     public static class Art
     {
         public static ArtSet Set;
-        static readonly Dictionary<Color, Material> mats = new Dictionary<Color, Material>();
+        static readonly Dictionary<(Color, bool), Material> mats = new Dictionary<(Color, bool), Material>();
         static readonly HashSet<string> warned = new HashSet<string>();
 
         public static Material Mat(Color c, bool glow = false)
         {
-            if (!glow && mats.TryGetValue(c, out var m)) return m;
+            if (mats.TryGetValue((c, glow), out var m)) return m;   // shared: one material per colour, never one per shot
             // start from the material assets the editor setup made (they keep the URP shader and its emission variant in the
             // build); Shader.Find alone returns a stripped or missing shader in a WebGL player
             var tpl = Set != null ? (glow ? Set.glow : Set.lit) : null;
@@ -22,7 +22,7 @@ namespace Hearthgate.Game
             m.color = c;
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.15f);
             if (glow) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", c * 2.2f); }
-            else mats[c] = m;
+            mats[(c, glow)] = m;
             return m;
         }
 
@@ -41,10 +41,19 @@ namespace Hearthgate.Game
             return g;
         }
 
+        // a built-in shape with a renderer and no collider (see ArtSet.sphereMesh)
+        public static GameObject Shape(PrimitiveType t, Material m)
+        {
+            var g = new GameObject(t.ToString());
+            g.AddComponent<MeshFilter>().sharedMesh = Set != null ? Set.MeshOf(t) : null;
+            g.AddComponent<MeshRenderer>().sharedMaterial = m;
+            return g;
+        }
+
         static GameObject Prim(PrimitiveType t, Transform p, Vector3 pos, Vector3 scale, Color c)
         {
-            var g = GameObject.CreatePrimitive(t); g.transform.SetParent(p, false);
-            g.transform.localPosition = pos; g.transform.localScale = scale; g.GetComponent<Renderer>().sharedMaterial = Mat(c); return g;
+            var g = Shape(t, Mat(c)); g.transform.SetParent(p, false);
+            g.transform.localPosition = pos; g.transform.localScale = scale; return g;
         }
 
         static GameObject StandIn(string what)
