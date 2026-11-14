@@ -25,7 +25,10 @@ namespace Hearthgate.Game
         public static readonly Vector3 HOME = new Vector3(-6f, 0, -8f);
         // the walk camera, from his feet: on the gate side looking into the town, the way the wall view looks, so it sees
         // the fronts and doorways (from the town side it looked at the backs and lost him at every door: 159 of 692 spots)
-        public static readonly Vector3 FOLLOW = new Vector3(0, 8f, 6.5f), LOOK = new Vector3(0, 1.0f, -2.6f);
+        // lower and further than the first 8 m crane shot (owner, Nov 14 2026: "view of the player walking the town should be
+        // improved because it is an important impression"): a third-person shot over his shoulder, the street ahead and the
+        // rooftops against the sky, not the cobbles under his hat
+        public static readonly Vector3 FOLLOW = new Vector3(0, 5.2f, 7.4f), LOOK = new Vector3(0, 1.5f, -4.5f);
         // the walk camera for a spot: behind him on the town side, pulled in and up when that would put it outside the ring
         // wall (from outside, the wall came between it and him near the back of the town)
         public static readonly Vector3 INDOORS = new Vector3(0, 11f, 3.2f);   // steeper over a room, to look past its front wall
