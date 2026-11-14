@@ -261,7 +261,7 @@ namespace Hearthgate.Game
                 var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
                 // fat, glowing shots with long trails: the fight has to read across the screen (fresh-eyes review 2)
                 mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : tw.el == "earth" ? 0.85f : 0.65f);
-                var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f; tr.endWidth = 0f;
+                var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f * Fx.TrailScale; tr.endWidth = 0f;
                 tr.material = Art.Flat(Color.Lerp(col, Color.black, 0.15f)); tr.numCapVertices = 3; StyleTrail(tr, col);
                 tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; var smr = mr.GetComponent<Renderer>(); if (smr) smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
                 go.transform.position = tw.Muzzle; Sound.Play(Sfx(tw.el) + "_launch_0", 0.16f);

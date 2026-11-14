@@ -15,7 +15,8 @@ namespace Hearthgate.Game
         Font font, body; Text wave, res, rate, evTxt, banner, gateTxt; Image gateBar; RectTransform forkBox;
         Act up, re, walk, work; RectTransform workCard; double shownRes = -1;
         Sprite gemSprite; static Sprite Icon(string n) => Resources.Load<Sprite>("Icons/icon_" + n);
-        readonly RectTransform[] signs = new RectTransform[10]; readonly Text[] signTxt = new Text[10];   // the buildings' signs, written over their boards
+        readonly RectTransform[] signs = new RectTransform[10]; readonly Text[] signTxt = new Text[10];   // the buildings' boards (see Signs)
+        readonly Text[] signHead = new Text[10]; readonly Act[] signBtn = new Act[10]; readonly Image[] signGlow = new Image[10];
 
         // A control this HUD answers itself, from the raw pointer. uGUI's event system drops pointer input whenever the page
         // does not report focus to Unity (Windows hosts), which left the buttons dead in a browser pane while the keys
@@ -161,10 +162,20 @@ namespace Hearthgate.Game
             // the wizard walks the town; behind the HUD controls, so the cards and buttons stay on top
             for (int i = 0; i < signs.Length; i++)
             {
-                var r = Box("Sign" + i, transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(240, 66)); r.pivot = new Vector2(0.5f, 0.5f);
+                var r = Box("Sign" + i, transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(320, 84)); r.pivot = new Vector2(0.5f, 0f);
+                var gl = Box("Glow", r, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(16, 16));
+                signGlow[i] = gl.gameObject.AddComponent<Image>(); signGlow[i].sprite = Panel(new Color(1f, 0.8f, 0.35f, 0f), new Color(1f, 0.8f, 0.35f, 0.6f), 18, 7);
+                signGlow[i].type = Image.Type.Sliced; signGlow[i].raycastTarget = false;
                 var im = r.gameObject.AddComponent<Image>(); im.sprite = Panel(PLUM, BRASS, 10, 3); im.type = Image.Type.Sliced; im.raycastTarget = false;
-                signTxt[i] = Label("T", r, new Vector2(0.5f, 0.5f), Vector2.zero, 19, TextAnchor.MiddleCenter);
-                signTxt[i].font = body; Fit(signTxt[i], new Vector2(226, 60), 14);
+                signHead[i] = Label("H", r, new Vector2(0.5f, 1f), new Vector2(0, -8), 22, TextAnchor.UpperCenter);
+                signHead[i].rectTransform.pivot = new Vector2(0.5f, 1f); signHead[i].rectTransform.sizeDelta = new Vector2(300, 28);
+                signTxt[i] = Label("T", r, new Vector2(0.5f, 1f), new Vector2(0, -38), 17, TextAnchor.UpperCenter);
+                signTxt[i].font = body; signTxt[i].rectTransform.pivot = new Vector2(0.5f, 1f); signTxt[i].rectTransform.sizeDelta = new Vector2(300, 90);
+                signTxt[i].horizontalOverflow = HorizontalWrapMode.Wrap; signTxt[i].verticalOverflow = VerticalWrapMode.Overflow;
+                int bi = i;   // the building's own upgrade (or rebuild) button, on its board: shown when the wizard is at it
+                signBtn[i] = Action("SignBtn" + i, new Vector2(0.5f, 0f), new Vector2(0, 12), new Vector2(296, 56), "upgrade", "E",
+                    () => { if (GameLoop.I.CanWork(bi)) GameLoop.I.WorkOn(bi); else Sound.Dud(); }, () => GameLoop.I.CanWork(bi), true, r);
+                signBtn[i].p.rt.gameObject.SetActive(false);
                 r.SetSiblingIndex(1); r.gameObject.SetActive(false); signs[i] = r;
             }
 
@@ -251,14 +262,45 @@ namespace Hearthgate.Game
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp);
                 signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f;
                 signs[i].localScale = Vector3.one;   // never scaled: scaled text is blurry (owner, Nov 14 2026); its font is sized to read
-                var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
-                if (P.restored.Contains(id))
+                // the building's board (owner, Nov 14 2026: "Everything to do with this building should be at player level to
+                // interact with. Not hidden from the player"): its one name, its level and what it makes, what it does (and its
+                // Ascended ability), what waits inside; at the wizard's reach it opens to its upgrade: the next level, what that
+                // adds and what it costs, on the board itself (E or a tap). From across the square a board glows when its
+                // upgrade is affordable.
+                var id = HG.BUILDING_IDS[i]; var b = HG.ById(id); bool up = P.restored.Contains(id), near = wz.Near == i;
+                bool can = g.CanWork(i), offer = !up && HG.RestoreOffer(P).Contains(id);
+                string body = "";
+                if (up)
                 {
                     double r = HG.BuildingRate(P, id, g.B); string rs = r < 10 ? r.ToString("0.##") : HG.Fmt(r);
-                    signTxt[i].text = $"<b>{HG.NameOf(P, id)}</b>  ·  level {HG.LevelOf(P, id)}\n<color=#FFD56B>+{rs}/s</color>" + HallLine(g, P, i);
+                    signHead[i].text = $"{b.name}  ·  level {HG.LevelOf(P, id)}";
+                    body = $"<color=#FFD56B>+{rs} Resonance/s</color>";
+                    if (near) body += $"\n<color=#E6DCEA>{b.line}</color>";
+                    if (near && P.ascensions >= 1 && HG.RANK2.TryGetValue(id, out var r2)) body += $"\n<color=#FFD56B>{r2.name}:</color> <color=#E6DCEA>{r2.line}</color>";
+                    if (!near && can) body += "\n<color=#CFE9B0>upgrade ready</color>";
                 }
-                else if (g.CentreOn(i)) signTxt[i].text = $"<b>{b.name}</b>  ·  ruined" + HallLine(g, P, i);
-                else signTxt[i].text = HG.RestoreOffer(P).Contains(id) ? $"<b>{b.name}</b>  ·  ruined\n<color=#FFD56B>rebuild {HG.Fmt(g.RestoreCost)}</color>" : $"<b>{b.name}</b>  ·  ruined\n<color=#D9C9A8>{(g.NextBuilding != null ? "after the " + HG.ById(g.NextBuilding).name : "rebuilt later")}</color>";   // says what comes first, not a bare "not yet"
+                else
+                {
+                    signHead[i].text = $"{b.name}  ·  ruined";
+                    body = offer ? $"<color=#E6DCEA>{b.line}</color>" : $"<color=#D9C9A8>{(g.NextBuilding != null ? "rebuilt after the " + HG.ById(g.NextBuilding).name : "rebuilt later")}</color>";
+                }
+                body += HallLine(g, P, i);
+                signTxt[i].text = body;
+                bool btn = near && (up || offer);
+                if (signBtn[i].p.rt.gameObject.activeSelf != btn) signBtn[i].p.rt.gameObject.SetActive(btn);
+                if (btn)
+                {
+                    if (up)
+                    {
+                        int L = HG.LevelOf(P, id); double gain = HG.BuildingRate(P, id, g.B, L + 1) - HG.BuildingRate(P, id, g.B);
+                        signBtn[i].icon.sprite = Icon("upgrade") ?? signBtn[i].icon.sprite;
+                        Show(signBtn[i], $"Upgrade to level {L + 1}", $"{HG.Fmt(g.LevelCost(i))}     <color=#CFE9B0>+{(gain < 10 ? gain.ToString("0.##") : HG.Fmt(gain))}/s</color>", can, Time.unscaledTime);
+                    }
+                    else { signBtn[i].icon.sprite = Icon("rebuild") ?? signBtn[i].icon.sprite; Show(signBtn[i], $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, Time.unscaledTime); }
+                }
+                float textH = signTxt[i].preferredHeight;
+                signs[i].sizeDelta = new Vector2(320, 46 + textH + (btn ? 78 : 10));
+                var gc = signGlow[i].color; gc.a = up && can ? 0.45f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f) : 0f; signGlow[i].color = gc;
             }
         }
 
@@ -450,8 +492,9 @@ namespace Hearthgate.Game
             Signs(g, P); TownTags(g, P); Unstack(); perkRefresh?.Invoke();
             // the town walk
             var wz = Wizard.I;
-            Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", null, true, now);
-            bool showWork = wz && wz.On && wz.Near >= 0; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);
+            int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
+            Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", wz && wz.On || ready == 0 ? null : $"<color=#CFE9B0>{ready} upgrade{(ready == 1 ? "" : "s")} ready</color>", true, now);   // a reason to go in
+            bool showWork = false; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);   // the building's own board has it now (owner, Nov 14 2026)
             if (showWork)
             {
                 var id = HG.BUILDING_IDS[wz.Near]; var b = HG.ById(id);

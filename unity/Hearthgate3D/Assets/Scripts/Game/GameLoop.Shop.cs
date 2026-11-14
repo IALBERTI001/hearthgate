@@ -99,8 +99,8 @@ namespace Hearthgate.Game
         {
             switch (Look("trail"))
             {
-                case "trail-comet": tr.time = 0.5f; tr.startWidth = 0.6f; break;
-                case "trail-sparkle": tr.time = 0.3f; tr.startWidth = 0.3f; tr.material = Art.Flat(Color.Lerp(col, Color.white, 0.5f)); break;
+                case "trail-comet": tr.time = 0.5f; tr.startWidth = 0.6f * Fx.TrailScale; break;
+                case "trail-sparkle": tr.time = 0.3f; tr.startWidth = 0.3f * Fx.TrailScale; tr.material = Art.Flat(Color.Lerp(col, Color.white, 0.5f)); break;
             }
         }
         void HitBurst(Vector3 at, Color c, int n)

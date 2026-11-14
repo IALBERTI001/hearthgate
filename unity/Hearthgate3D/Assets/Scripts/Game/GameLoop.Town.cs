@@ -42,7 +42,7 @@ namespace Hearthgate.Game
                 var go = new GameObject("wisp"); var tr = go.transform; tr.position = from + Vector3.up;
                 var wc = n > 1 ? ROSE : WispColor; var ball = Art.Shape(PrimitiveType.Sphere, Art.Flat(wc * 1.3f)); ball.transform.SetParent(tr, false); ball.transform.localScale = Vector3.one * 0.38f;
                 var r = ball.GetComponent<Renderer>(); if (r) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                var trail = go.AddComponent<TrailRenderer>(); trail.time = 0.35f; trail.startWidth = 0.28f; trail.endWidth = 0; trail.material = Art.Flat(wc);
+                var trail = go.AddComponent<TrailRenderer>(); trail.time = 0.35f; trail.startWidth = 0.28f * Fx.TrailScale; trail.endWidth = 0; trail.material = Art.Flat(wc);
                 trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 var mid = (from + to) * 0.5f; float side = (k == 0 ? 1 : -1) * Random.Range(3f, 7f);
                 var c = new Vector3(mid.x + side, Mathf.Max(from.y, to.y) + 13f + Random.Range(0f, 4f), mid.z);   // high over the wall
@@ -118,7 +118,7 @@ namespace Hearthgate.Game
             var ball = Art.Shape(PrimitiveType.Sphere, Art.Flat(new Color(1f, 0.86f, 0.35f) * 1.6f)); ball.transform.SetParent(tr, false); ball.transform.localScale = Vector3.one * 0.9f;
             var halo = Art.Shape(PrimitiveType.Sphere, Art.Flat(new Color(1f, 0.7f, 0.2f))); halo.transform.SetParent(tr, false); halo.transform.localScale = Vector3.one * 0.5f; halo.transform.localPosition = new Vector3(0, 0, 0.35f);
             foreach (var r in go.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            var trail = go.AddComponent<TrailRenderer>(); trail.time = 0.6f; trail.startWidth = 0.5f; trail.endWidth = 0; trail.material = Art.Flat(new Color(1f, 0.8f, 0.3f));
+            var trail = go.AddComponent<TrailRenderer>(); trail.time = 0.6f; trail.startWidth = 0.5f * Fx.TrailScale; trail.endWidth = 0; trail.material = Art.Flat(new Color(1f, 0.8f, 0.3f));
             gold = new Gold { tr = tr, vx = (fromLeft ? -1 : 1) * Random.Range(6.5f, 8.5f), y0 = Random.Range(5.5f, 8f), z = Random.Range(5f, 13f) };
             tr.position = new Vector3(fromLeft ? 38 : -38, gold.y0, gold.z);
             if (Has("bakery") && Random.value < 0.6f)

@@ -37,6 +37,9 @@ namespace Hearthgate.Game
             sparks.Emit(ep, Mathf.Min(n, 30));
         }
 
+        // trails are sized for the wall camera, 55 m away; from the town walk (about 8 m) the same width read as a solid bar
+        // (owner's screenshot, Nov 14 2026), so a trail made while walking is a third as wide
+        public static float TrailScale => Wizard.I && Wizard.I.On ? 0.3f : 1f;
         float bigUntil;
         public void Pop(Vector3 at, string text, Color c, float size = 30, float life = 0.9f)
         {
