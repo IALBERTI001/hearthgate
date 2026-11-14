@@ -95,8 +95,51 @@ namespace Hearthgate.Core
             var b = new Bonus();
             foreach (var id in p.restored) { if (id == "granary") b["offlineH"] += 4; var d = ById(id); if (d != null) b.Add(d.bonus); }
             foreach (var s in FORK_STAGES) { var fid = p.ForkAt(s); var f = fid == null ? null : FORKS[s].FirstOrDefault(x => x.id == fid); if (f != null) b.Add(f.bonus); }
+            foreach (var k in PERKS) { int n = p.PerkAt(k.id); if (n > 0) foreach (var kv in k.per) b[kv.Key] += kv.Value * n; }
             b.ascend = Math.Pow(ASCEND_MULT, p.ascensions);
             return b;
+        }
+
+        // ---------- Ascension (js/core.js): at 10/10 and a deep enough run, the city returns to ruins and the waves restart;
+        // towers and Resonance x1.5 for good, stacking; perk points to spend at the Watchtower. Each Ascension asks for a
+        // deeper run (wave 30, 35, 40 ... up to 90), or the x1.5 made every loop shorter.
+        public const int ETERNAL_AT = 10;
+        public static int AscendWave(Profile p) => Math.Min(90, 30 + 5 * p.ascensions);
+        public static bool CityWhole(Profile p) => p.restored.Count >= BUILDINGS.Length;
+        public static bool CanAscend(Profile p) => CityWhole(p) && Math.Max(p.runWave, p.wave) >= AscendWave(p);
+        public static int PerkPtsFor(Profile p) => 1 + Math.Max(p.runWave, p.wave) / 25;   // wave 50 pays 3, wave 100 pays 5
+        public static Profile Ascend(Profile p)
+        {
+            var q = new Profile
+            {
+                ascensions = p.ascensions + 1, bestWave = p.bestWave, combos = new List<string>(p.combos), firstSession = false, lastSeen = p.lastSeen,
+                music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
+                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told)
+            };
+            int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
+            return q;
+        }
+
+        // ---------- perks: bought with the points each Ascension pays; each level costs one more than the last ----------
+        public class Perk { public string id, name, line; public int max, cost; public Dictionary<string, double> per = new Dictionary<string, double>(); }
+        static Perk K(string id, string name, string line, int max, int cost, params (string, double)[] per)
+        { var k = new Perk { id = id, name = name, line = line, max = max, cost = cost }; foreach (var (a, v) in per) k.per[a] = v; return k; }
+        public static readonly Perk[] PERKS =
+        {
+            K("sharp", "Keen Sights", "Towers hit 15% harder", 5, 0, ("damage", 0.15)),
+            K("hum", "Deep Hum", "The city makes 25% more", 4, 0, ("city", 0.25)),
+            K("rich", "Rich Veins", "+15% Resonance from enemies", 4, 0, ("res", 0.15)),
+            K("night", "Night Watch", "Offline earnings last 2 hours longer", 4, 0, ("offlineH", 2)),
+            K("surge", "Quick Surge", "The Surge recharges 3 minutes sooner", 3, 0, ("surgeCd", 3)),
+            K("start", "Head Start", "Each new city starts 5 waves and 5 tower levels ahead", 3, 0, ("start", 5)),
+            K("flame", "Eternal Flame", "Towers hit 10% harder and enemies pay 10% more", int.MaxValue, 3, ("damage", 0.1), ("res", 0.1)),
+        };
+        public static int PerkCost(Profile p, string id) { var k = PERKS.First(x => x.id == id); return k.cost > 0 ? k.cost : p.PerkAt(id) + 1; }
+        public static bool CanBuyPerk(Profile p, string id) { var k = PERKS.First(x => x.id == id); return p.PerkAt(id) < k.max && p.perkPts >= PerkCost(p, id); }
+        public static bool BuyPerk(Profile p, string id)
+        {
+            if (!CanBuyPerk(p, id)) return false;
+            p.perkPts -= PerkCost(p, id); p.SetPerk(id, p.PerkAt(id) + 1); return true;
         }
 
         public static double UpgradeCost(int lvl, Bonus b) => Math.Floor(5 * Math.Pow(1.27, lvl - 1) * (1 - (b == null ? 0 : b["upgradeDiscount"])));
@@ -184,12 +227,17 @@ namespace Hearthgate.Core
         public List<KV> levels = new List<KV>();
         public List<KV> forks = new List<KV>();   // k = fork id, v = stage
         public List<string> combos = new List<string>();
-        public long lastSeen, surgeUntil;   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
+        public long lastSeen, surgeUntil;
+        public int perkPts;
+        public List<KV> perks = new List<KV>();
+        public List<string> told = new List<string>();   // one-time hints already shown   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
         public bool firstSession = true;
         public bool music = true, sfx = true, reduced;
 
         public int LevelAt(string id) { var e = levels.Find(x => x.k == id); return e == null ? 1 : e.v; }
         public void SetLevel(string id, int L) { var e = levels.Find(x => x.k == id); if (e == null) levels.Add(new KV { k = id, v = L }); else e.v = L; }
+        public int PerkAt(string id) { var e = perks.Find(x => x.k == id); return e == null ? 0 : e.v; }
+        public void SetPerk(string id, int n) { var e = perks.Find(x => x.k == id); if (e == null) perks.Add(new KV { k = id, v = n }); else e.v = n; }
         public string ForkAt(int stage) { var e = forks.Find(x => x.v == stage); return e?.k; }
         public void SetFork(int stage, string id) { forks.RemoveAll(x => x.v == stage); forks.Add(new KV { k = id, v = stage }); }
 
@@ -203,6 +251,8 @@ namespace Hearthgate.Core
             levels = (levels ?? new List<KV>()).Where(e => restored.Contains(e.k) && e.v > 1).ToList();
             forks = (forks ?? new List<KV>()).Where(e => HG.FORKS.ContainsKey(e.v) && HG.FORKS[e.v].Any(f => f.id == e.k) && HG.StageOf(gateLevel) >= e.v).ToList();
             combos = (combos ?? new List<string>()).Distinct().ToList();
+            perkPts = Math.Max(0, perkPts); told = (told ?? new List<string>()).Distinct().ToList();
+            perks = (perks ?? new List<KV>()).Where(e => HG.PERKS.Any(k => k.id == e.k) && e.v > 0).Select(e => new KV { k = e.k, v = Math.Min(e.v, HG.PERKS.First(k => k.id == e.k).max) }).ToList();
         }
     }
 }

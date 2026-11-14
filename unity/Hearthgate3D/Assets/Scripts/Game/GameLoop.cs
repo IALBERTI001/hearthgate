@@ -337,7 +337,11 @@ namespace Hearthgate.Game
                 }
             }
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.U)) { if (CanUpgrade) { Sound.Click(); Upgrade(); } else Sound.Dud(); }
-            if (!Hud.Paused && Input.GetKeyDown(KeyCode.R) && NextBuilding != null) { if (CanRestore) { Sound.Click(); Restore(); } else Sound.Dud(); }
+            if (!Hud.Paused && Input.GetKeyDown(KeyCode.R))
+            {
+                if (NextBuilding != null) { if (CanRestore) { Sound.Click(); Restore(); } else Sound.Dud(); }
+                else if (CanAscend) { Sound.Click(); Hud.ShowAscend(); } else Sound.Dud();
+            }
             foreach (var e in enemies) e.Show(Time.time);
         }
 

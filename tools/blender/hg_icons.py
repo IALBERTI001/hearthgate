@@ -17,6 +17,7 @@ ICONS = {
     'walk': ('wizard', 205, 0.86),
     'tower': ('tower_base', 200, 0.9),
     'gear': (None, 0, 0.9),   # the settings cog, modelled here: a brass wheel with eight teeth and a dark hub
+    'ascend': (None, 0, 0.9),  # Ascend: a five-pointed gold star rising from a ring, modelled here
 }
 
 def gear():
@@ -38,10 +39,33 @@ def gear():
     hm = bpy.data.materials.new('hub'); hm.use_nodes = True; hm.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.16, 0.08, 0.19, 1); hub.materials.append(hm)
     for ob in (o, h): ob.rotation_euler = (math.radians(68), 0, 0)   # turned toward the camera, a little tilted
 
+def star():
+    import bmesh
+    from mathutils import Matrix
+    me = bpy.data.meshes.new('star'); bm = bmesh.new()
+    pts = []
+    for k in range(10):   # a fat five-pointed star, extruded and bevelled so it catches the light
+        a = math.pi / 2 + k * math.pi / 5; r = 0.95 if k % 2 == 0 else 0.42
+        pts.append(bm.verts.new((r * math.cos(a), r * math.sin(a), 0)))
+    f = bm.faces.new(pts); ext = bmesh.ops.extrude_face_region(bm, geom=[f])
+    bmesh.ops.translate(bm, vec=(0, 0, 0.26), verts=[v for v in ext['geom'] if isinstance(v, bmesh.types.BMVert)])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=0.04, segments=2, affect='EDGES')
+    bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new('star', me); bpy.context.scene.collection.objects.link(o)
+    mat = bpy.data.materials.new('gold'); mat.use_nodes = True; b = mat.node_tree.nodes['Principled BSDF']
+    b.inputs['Base Color'].default_value = (1.0, 0.72, 0.18, 1); b.inputs['Metallic'].default_value = 0.7; b.inputs['Roughness'].default_value = 0.3
+    em = b.inputs.get('Emission Color') or b.inputs.get('Emission')
+    if em: em.default_value = (1.0, 0.6, 0.1, 1)
+    if b.inputs.get('Emission Strength'): b.inputs['Emission Strength'].default_value = 0.4
+    me.materials.append(mat)
+    o.rotation_euler = (math.radians(70), 0, 0)
+
 def render(name, model, yaw, fill):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
     if model: bpy.ops.import_scene.fbx(filepath=os.path.join(MODELS, model + '.fbx'))
+    elif name.startswith('ascend'): star()
     else: gear()
     objs = [o for o in sc.objects if o.type == 'MESH']
     bpy.context.view_layer.update()

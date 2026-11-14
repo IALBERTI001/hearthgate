@@ -135,7 +135,10 @@ namespace Hearthgate.Game
             // brighter rim that breathes when it is affordable. A finished goal leaves (rule 4): no "City rebuilt" button.
             var tr = new Vector2(1, 1);
             up = Action("Upgrade", tr, new Vector2(-16, -16), new Vector2(230, 56), "tower", "U", () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, true);
-            re = Action("Rebuild", tr, new Vector2(-16, -78), new Vector2(230, 56), "rebuild", "R", () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, false);
+            // Rebuild the next building; once the city is whole the same button is Ascend (the 2D game's rule)
+            re = Action("Rebuild", tr, new Vector2(-16, -78), new Vector2(230, 56), "rebuild", "R",
+                () => { if (GameLoop.I.NextBuilding != null) GameLoop.I.Restore(); else ShowAscend(); },
+                () => GameLoop.I.NextBuilding != null ? GameLoop.I.CanRestore : GameLoop.I.CanAscend, false);
 
             // the town walk and, while walking, the work on the building in reach: in the same group as the other actions
             // (owner, Nov 14 2026: "the walk the town button should be with the other buttons. No reason to separate
@@ -181,7 +184,13 @@ namespace Hearthgate.Game
             var ct = Label("T", cheerTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 15, TextAnchor.MiddleCenter); ct.text = "Cheer"; ct.font = body;
             ct.rectTransform.pivot = new Vector2(0.5f, 0.5f); ct.rectTransform.sizeDelta = new Vector2(110, 26);
             cheerTag.SetSiblingIndex(1); cheerTag.gameObject.SetActive(false);
+            perksTag = Box("PerksTag", transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(190, 42)); perksTag.pivot = new Vector2(0.5f, 0);
+            var pti = perksTag.gameObject.AddComponent<Image>(); pti.sprite = Panel(PLUM, BRASS_HI, 12, 3); pti.type = Image.Type.Sliced;
+            perksTxt = Label("T", perksTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter); perksTxt.color = RES;
+            perksTxt.rectTransform.pivot = new Vector2(0.5f, 0.5f); perksTxt.rectTransform.sizeDelta = new Vector2(180, 38);
+            Press(perksTag, () => ShowPerks()); perksTag.SetSiblingIndex(1); perksTag.gameObject.SetActive(false);
         }
+        RectTransform perksTag; Text perksTxt;
         RectTransform surgeTag, cheerTag; Text surgeTxt; Image cheerFill;
         // a HUD element pinned over a point in the world; false when that point is off screen
         bool Pin(RectTransform r, Vector3 at, float near = 9999f)
@@ -207,6 +216,12 @@ namespace Hearthgate.Game
                 cheerFill.color = g.cheerT > 0 ? new Color(1f, 0.84f, 0.42f) : new Color(0.9f, 0.6f, 0.23f);
             }
             else if (!P.restored.Contains("tavern") && cheerTag.gameObject.activeSelf) cheerTag.gameObject.SetActive(false);
+            // the Watchtower keeps the perks: a board over it once there is anything to spend (it works even in ruins)
+            int wi = System.Array.IndexOf(HG.BUILDING_IDS, "watchtower");
+            bool perksOn = P.ascensions > 0;
+            if (perksOn && Pin(perksTag, Field.Plot(wi) + Vector3.up * (Field.PlotHeight(wi) + 1.2f)))
+                perksTxt.text = P.perkPts > 0 ? $"Perks  ·  {P.perkPts} to spend" : "Perks";
+            else if (!perksOn && perksTag.gameObject.activeSelf) perksTag.gameObject.SetActive(false);
         }
 
         // where the pointer is: a touch's own position when there is one (the mouse position Unity simulates from a touch can
@@ -394,9 +409,16 @@ namespace Hearthgate.Game
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
             float now = Time.unscaledTime;
             Show(up, "Upgrade towers", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
-            var nb = g.NextBuilding; if (re.p.rt.gameObject.activeSelf != (nb != null)) re.p.rt.gameObject.SetActive(nb != null);
-            if (nb != null) Show(re, $"Rebuild {HG.ById(nb).name}", HG.Fmt(g.RestoreCost), g.CanRestore, now);
-            Signs(g, P); TownTags(g, P);
+            var nb = g.NextBuilding;
+            if (nb != null) { re.icon.sprite = Icon("rebuild") ?? re.icon.sprite; Show(re, $"Rebuild {HG.ById(nb).name}", HG.Fmt(g.RestoreCost), g.CanRestore, now); }
+            else
+            {   // the city is whole: Ascend, once the run is deep enough
+                re.icon.sprite = Icon("ascend") ?? re.icon.sprite; int need = HG.AscendWave(P), got = System.Math.Max(P.runWave, P.wave);
+                Show(re, "Ascend", g.CanAscend ? "x1.5 for good" : $"wave {got} / {need}", g.CanAscend, now);
+                re.gem.enabled = false;
+            }
+            if (nb != null) re.gem.enabled = true;
+            Signs(g, P); TownTags(g, P); perkRefresh?.Invoke();
             // the town walk
             var wz = Wizard.I;
             Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", null, true, now);
@@ -433,9 +455,83 @@ namespace Hearthgate.Game
         // ---------- settings and controls ----------
         RectTransform settingsBox; Text musicLbl, sfxLbl;
         public static bool Paused => I && I.settingsBox != null;
+        // a modal card: dims the game, pauses the fight, takes every press until closed (settings, Ascend, perks)
+        RectTransform Modal(string title, Vector2 size)
+        {
+            if (settingsBox) ShowSettings(false);
+            Time.timeScale = 0;
+            var dim = Box("ModalDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, 0.55f); settingsBox = dim;
+            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size);
+            var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
+            Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = title;
+            return box;
+        }
+        Text Line(RectTransform box, float y, string text, int size = 18, Color? col = null)
+        {
+            var t = Label("L", box, new Vector2(0.5f, 1), new Vector2(0, y), size, TextAnchor.UpperCenter); t.font = body; t.text = text; t.supportRichText = true;
+            if (col.HasValue) t.color = col.Value;
+            t.horizontalOverflow = HorizontalWrapMode.Wrap; t.rectTransform.sizeDelta = new Vector2(box.sizeDelta.x - 60, size * 3); return t;
+        }
+        Pressable Choice(RectTransform box, string n, Vector2 pos, Vector2 size, string text, System.Action act, System.Func<bool> on = null, bool primary = false)
+        {
+            var p = BtnAt(n, new Vector2(0.5f, 0), pos, size, act, on, out var l); p.rt.SetParent(box, false); l.text = text;
+            if (primary) { var im = p.rt.GetComponent<Image>(); im.sprite = Panel(PLUM, BRASS_HI, 14, 4); p.col = im.color; }
+            return p;
+        }
+
+        // Ascend: the city goes back to ruins, so the card says plainly what is lost and what is kept (it cannot be undone)
+        public static void ShowAscend()
+        {
+            if (!I || !GameLoop.I || !GameLoop.I.CanAscend) return;
+            var g = GameLoop.I; var P = g.P; int n = P.ascensions + 1;
+            var box = I.Modal($"Ascend to Ascension {n}?", new Vector2(620, 380));
+            I.Line(box, -74, "The city returns to ruins and the waves start again from wave 1.", 19);
+            I.Line(box, -128, $"<color=#FFD56B>For good:</color> towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, n):0.##} (now x{g.B.ascend:0.##})", 19);
+            I.Line(box, -168, $"<color=#FFD56B>+{HG.PerkPtsFor(P)} perk points</color> to spend at the Watchtower", 19);
+            I.Line(box, -208, "Kept: your best wave, the combos you found, perks and settings.", 17, new Color(0.85f, 0.8f, 0.88f));
+            I.Choice(box, "A_No", new Vector2(-130, 26), new Vector2(220, 54), "Not yet", () => I.ShowSettings(false));
+            I.Choice(box, "A_Yes", new Vector2(130, 26), new Vector2(220, 54), "Ascend", () => { I.ShowSettings(false); g.Ascend(); }, null, true);
+        }
+
+        // the Watchtower's perks (2D: "Home of the Perks"): one row each, its level, its cost in points, Buy
+        public static void ShowPerks()
+        {
+            if (!I || !GameLoop.I) return;
+            var g = GameLoop.I; var box = I.Modal("Perks", new Vector2(660, 140 + HG.PERKS.Length * 58));
+            var pts = I.Line(box, -60, "", 19, RES);
+            var rows = new System.Collections.Generic.List<(HG.Perk k, Text lv, Text cost)>();
+            for (int i = 0; i < HG.PERKS.Length; i++)
+            {
+                var k = HG.PERKS[i]; float y = -104 - i * 58;
+                var name = I.Label("N" + i, box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = k.name;
+                name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
+                var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = k.line; line.color = new Color(0.85f, 0.8f, 0.88f);
+                line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(400, 22);
+                var lv = I.Label("V" + i, box, new Vector2(1, 1), new Vector2(-170, y - 8), 17, TextAnchor.UpperRight); lv.font = I.body; lv.rectTransform.pivot = new Vector2(1, 1); lv.rectTransform.sizeDelta = new Vector2(90, 24);
+                var id = k.id;
+                var b = I.BtnAt("P_" + id, new Vector2(1, 1), new Vector2(-24, y - 2), new Vector2(130, 44), () => { g.BuyPerk(id); }, () => HG.CanBuyPerk(g.P, id), out var cost);
+                b.rt.SetParent(box, false); b.rt.anchorMin = b.rt.anchorMax = b.rt.pivot = new Vector2(1, 1); b.rt.anchoredPosition = new Vector2(-24, y - 2);
+                rows.Add((k, lv, cost));
+            }
+            I.Choice(box, "P_Close", new Vector2(0, 18), new Vector2(200, 48), "Back to the game", () => I.ShowSettings(false));
+            I.perkRefresh = () =>
+            {
+                pts.text = $"{g.P.perkPts} perk point{(g.P.perkPts == 1 ? "" : "s")}  ·  each Ascension pays more";
+                foreach (var (k, lv, cost) in rows)
+                {
+                    int L = g.P.PerkAt(k.id); bool max = L >= k.max;
+                    lv.text = k.max == int.MaxValue ? $"level {L}" : $"{L} / {k.max}";
+                    cost.text = max ? "Maxed" : $"Buy · {HG.PerkCost(g.P, k.id)}";
+                }
+            };
+            I.perkRefresh();
+        }
+        System.Action perkRefresh;
+
         void ShowSettings(bool open)
         {
-            if (!open) { if (settingsBox) { Destroy(settingsBox.gameObject); settingsBox = null; } Time.timeScale = 1; return; }
+            if (!open) { if (settingsBox) { Destroy(settingsBox.gameObject); settingsBox = null; } perkRefresh = null; Time.timeScale = 1; return; }
             if (settingsBox) return;
             Time.timeScale = 0;   // the fight waits while the menu is open
             var dim = Box("SettingsDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);

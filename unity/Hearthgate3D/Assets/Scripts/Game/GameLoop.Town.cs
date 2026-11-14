@@ -22,9 +22,10 @@ namespace Hearthgate.Game
         long goldSurgeUntil;   // a Golden Wisp's 15 s of double pay (not saved)
         public float SurgeX => SurgeOn || Now() < goldSurgeUntil ? 2f : 1f;
         public bool SurgeOn => Now() < P.surgeUntil;
-        public bool SurgeReady => !SurgeOn && Now() >= P.surgeUntil + SURGE_CD_MS;
+        long SurgeCdMs => SURGE_CD_MS - (long)(B["surgeCd"] * 60000);   // Quick Surge perk: 3 minutes sooner a level
+        public bool SurgeReady => !SurgeOn && Now() >= P.surgeUntil + SurgeCdMs;
         public long SurgeLeftMs => System.Math.Max(0, P.surgeUntil - Now());
-        public long SurgeWaitMs => System.Math.Max(0, P.surgeUntil + SURGE_CD_MS - Now());
+        public long SurgeWaitMs => System.Math.Max(0, P.surgeUntil + SurgeCdMs - Now());
         public static readonly Vector3 FOUNTAIN_TOP = new Vector3(0, 2.6f, 0);
 
         // ---------- Resonance wisps ----------
@@ -190,6 +191,25 @@ namespace Hearthgate.Game
             var s = cam.WorldToScreenPoint(Field.PLAZA + Vector3.up * 1.2f);
             if (s.z > 0 && Vector2.Distance(pt, s) < 46f * Screen.height / 720f) TapSurge();
         }
+
+        // ---------- Ascension: the city returns to ruins, the waves restart, x1.5 for good, perk points ----------
+        public bool CanAscend => HG.CanAscend(P);
+        public void Ascend()
+        {
+            if (!CanAscend) return;
+            int pts = HG.PerkPtsFor(P); FlushWisps();
+            P = HG.Ascend(P); B = HG.Bonuses(P); gateHp = HG.GateMax(P, B); cheer = cheerT = 0;
+            foreach (var e in enemies) Destroy(e.t.gameObject); enemies.Clear(); queue.Clear();
+            foreach (var s in shots) Destroy(s.t.gameObject); shots.Clear();
+            for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
+            RefreshTowers(); waveLive = false; betweenT = 2.5f;
+            Sound.Play("ascension", 0.7f); Fx.I.Shake(0.3f, true);
+            Fx.I.Burst(Field.PLAZA + Vector3.up * 3, Field.GOLD, 60);
+            foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 16);
+            Hud.Banner($"Ascension {P.ascensions}! Towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, P.ascensions):0.##} for good. +{pts} perk points");
+            Save();
+        }
+        public void BuyPerk(string id) { if (HG.BuyPerk(P, id)) { B = HG.Bonuses(P); Sound.Play("level_up", 0.45f); Save(); } else Sound.Dud(); }
 
         void TickTown(float dt)
         {
