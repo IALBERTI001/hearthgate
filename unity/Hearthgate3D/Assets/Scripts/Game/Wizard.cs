@@ -26,18 +26,20 @@ namespace Hearthgate.Game
         public static readonly Vector3 FOLLOW = new Vector3(0, 8f, 6.5f), LOOK = new Vector3(0, 1.0f, -2.6f);
         // the walk camera for a spot: behind him on the town side, pulled in and up when that would put it outside the ring
         // wall (from outside, the wall came between it and him near the back of the town)
-        public static Vector3 FollowFrom(Vector3 p)
+        public static readonly Vector3 INDOORS = new Vector3(0, 11f, 3.2f);   // steeper over a room, to look past its front wall
+        public static Vector3 FollowFrom(Vector3 p, float indoors = 0f)
         {
+            var off = Vector3.Lerp(FOLLOW, INDOORS, indoors);
             for (float k = 1f; k > 0.05f; k -= 0.1f)
             {
-                var c = p + new Vector3(0, FOLLOW.y + (1 - k) * 3f, FOLLOW.z * k);
+                var c = p + new Vector3(0, off.y + (1 - k) * 3f, off.z * k);
                 float ex = c.x / (Field.RX - 1.2f), ez = (c.z + Field.RZ) / (Field.RZ - 1.2f);
                 if (ex * ex + ez * ez < 1) return c;
             }
-            return p + new Vector3(0, FOLLOW.y + 3f, -0.5f);
+            return p + new Vector3(0, off.y + 3f, 0.5f);
         }
 
-        Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift;
+        Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift, indoors;
         GameObject goal;   // a little gold ring where a tap sent him
         int log;
 
@@ -147,7 +149,8 @@ namespace Hearthgate.Game
             // wall view looks (FollowFrom keeps it inside the ring); high enough to look over a room's walls when he is inside
             blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
-            var followLook = pos + LOOK; var followPos = FollowFrom(pos);
+            indoors = Mathf.MoveTowards(indoors, Inside >= 0 ? 1 : 0, dt / 0.5f);
+            var followLook = pos + Vector3.Lerp(LOOK, new Vector3(0, 0.6f, -0.8f), indoors); var followPos = FollowFrom(pos, Mathf.SmoothStep(0, 1, indoors));
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
             var r = Quaternion.Slerp(Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS), Quaternion.LookRotation(followLook - followPos), k);
             Fx.I.camHome = p; cam.transform.rotation = r;

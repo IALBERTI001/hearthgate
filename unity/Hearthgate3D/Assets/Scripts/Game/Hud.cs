@@ -160,13 +160,13 @@ namespace Hearthgate.Game
                 if (show)
                 {
                     dist = Vector3.Distance(cam.transform.position, at); sp = cam.WorldToScreenPoint(at);
-                    show = sp.z > 0 && dist < 22f && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height;
+                    show = sp.z > 0 && dist < 32f && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height;
                 }
                 if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
                 if (!show) continue;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp);
                 signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f;
-                signs[i].localScale = Vector3.one * Mathf.Clamp(14f / dist, 0.55f, 1.05f);
+                signs[i].localScale = Vector3.one * Mathf.Clamp(16f / dist, 0.6f, 1.05f);
                 var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
                 if (P.restored.Contains(id))
                 {

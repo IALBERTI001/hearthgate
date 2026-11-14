@@ -621,7 +621,7 @@ def ground():
         vs = [(cx + math.cos(i / n * math.tau) * rr * R.uniform(0.7, 1.2), cy + math.sin(i / n * math.tau) * rr * R.uniform(0.5, 0.9), 0.025) for i in range(n)]
         mesh_from('swathe', vs, [tuple(range(n))], M(R.choice(('grass2', 'grass3'))), 0.0)
     scatter(40, 3.2, ((-L.RX - 14, L.RX + 14), (-2 * L.RZ - 2, 30)), swathe)
-    scatter(6, 1.8, ((-30, 30), (20, 30)), lambda x, y: tree(x, y, R.uniform(1.0, 1.3)))
+    # no trees in the near meadow: in a tall window they stood between the camera and the lanes (Nov 13 2026)
     props()
     # dark framing clumps at the bottom corners of the view
     for (cx, cy) in ((24, 17), (27, 21), (-24, 17), (-27, 21)):
