@@ -193,7 +193,7 @@ namespace Hearthgate.EditorTools
                 ? ("actions", TopRight(Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE + rowW, Hearthgate.Game.Hud.EDGE + 56))
                 : ("actions", TopRight(Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE + 230, Hearthgate.Game.Hud.EDGE + 3 * 56 + 2 * Hearthgate.Game.Hud.GAP));
             return new List<(string, Rect)> {
-                ("labels", TopLeft(250, 118)),                       // wave, Resonance, rate
+                ("labels", TopLeft(250, 140)),                       // wave, Resonance, rate, the named wave
                 actions,                                             // Hud.LayoutActions: Upgrade, Rebuild and Walk as a row or a column
                 ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 27 * s / h, 0.5f + 180 * s / w, 53 * s / h)),
             };

@@ -12,7 +12,7 @@ namespace Hearthgate.Game
     public class Hud : MonoBehaviour
     {
         static Hud I;
-        Font font, body; Text wave, res, rate, banner, gateTxt; Image gateBar; RectTransform forkBox;
+        Font font, body; Text wave, res, rate, evTxt, banner, gateTxt; Image gateBar; RectTransform forkBox;
         Act up, re, walk, work; RectTransform workCard; double shownRes = -1;
         Sprite gemSprite; static Sprite Icon(string n) => Resources.Load<Sprite>("Icons/icon_" + n);
         readonly RectTransform[] signs = new RectTransform[10]; readonly Text[] signTxt = new Text[10];   // the buildings' signs, written over their boards
@@ -107,13 +107,14 @@ namespace Hearthgate.Game
             var pops = Box("Pops", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             gameObject.AddComponent<Fx>().Init(pops, font);
 
-            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(380, 130)); shade.pivot = new Vector2(0, 1);
+            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(380, 150)); shade.pivot = new Vector2(0, 1);
             var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.55f); si.raycastTarget = false;
             wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -12), 28, TextAnchor.UpperLeft);
             var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -52), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
             gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
             res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -46), 40, TextAnchor.UpperLeft); res.color = RES;
             rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -94), 18, TextAnchor.UpperLeft); rate.font = body;
+            evTxt = Label("Event", transform, new Vector2(0, 1), new Vector2(24, -116), 18, TextAnchor.UpperLeft); evTxt.color = new Color(1f, 0.72f, 0.9f);   // the named wave
             // the banner sits under the top row of the HUD, never across it (QA, Nov 14 2026: in a portrait window the walk
             // banner ran under the cog and the Upgrade button), and wraps to the window's width
             banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -136), 34, TextAnchor.UpperCenter); banner.color = RES;
@@ -407,6 +408,7 @@ namespace Hearthgate.Game
             double r = HG.CityRate(P, g.B); rate.text = r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
+            evTxt.text = g.ev != null ? g.ev.name : "";
             float now = Time.unscaledTime;
             Show(up, "Upgrade towers", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
             var nb = g.NextBuilding;

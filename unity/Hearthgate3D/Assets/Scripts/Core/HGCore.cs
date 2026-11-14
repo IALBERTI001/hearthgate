@@ -114,7 +114,7 @@ namespace Hearthgate.Core
             {
                 ascensions = p.ascensions + 1, bestWave = p.bestWave, combos = new List<string>(p.combos), firstSession = false, lastSeen = p.lastSeen,
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
-                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told)
+                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents)
             };
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
             return q;
@@ -200,6 +200,43 @@ namespace Hearthgate.Core
             if (swarm > 0) mix.Add(("swarm", swarm));
             return mix;
         }
+        // ---------- named waves (js/core.js EVENTS): a twist the first time it can happen, then one wave in four brings a
+        // known one back. The ones the 3D game's enemies and mechanics can carry today; the rest need their enemies first.
+        public class Ev { public string id, name, line; public int from, asc; }
+        static Ev E(string id, string name, string line, int from, int asc = 0) => new Ev { id = id, name = name, line = line, from = from, asc = asc };
+        public static readonly Ev[] EVENTS =
+        {
+            E("stampede", "Stampede", "Runners only, and faster", 22), E("golden", "Golden Wave", "Every enemy pays double", 25),
+            E("horde", "Horde", "Half again as many enemies", 29), E("thunder", "Thunderstorm", "Storm hits twice as hard", 44),
+            E("blizzard", "Blizzard", "Frost hits twice as hard, enemies slow down", 49), E("inferno", "Inferno", "Fire hits twice as hard", 54),
+            E("eclipse", "Eclipse", "Enemies are faster, combos pay double", 6, 1), E("harvest", "Harvest Moon", "Golden Wisps every few seconds", 12, 1),
+            E("frenzy", "Frenzy", "Everyone moves and fires faster", 32, 1), E("giants", "Giants", "Bigger, tougher enemies that pay double", 18, 1),
+            E("rush", "Rush", "The wave comes twice as fast", 27, 1), E("hail", "Hailstorm", "Frost and Storm hit 50% harder", 11, 2),
+            E("winter", "Deep Winter", "Every enemy arrives frozen: SHATTER them", 29, 2), E("swarmnight", "Swarm Night", "A sky full of Swarm", 42, 2),
+            E("bloodmoon", "Blood Moon", "Tougher enemies that pay triple", 20, 3), E("feast", "Feast Day", "Combos fill the Cheer meter twice as fast", 12, 3),
+            E("embers", "Ember Rain", "Every enemy arrives burning", 31, 3), E("stormfront", "Stormfront", "Storm chains reach three more enemies", 38, 3),
+            E("goldrush", "Gold Rush", "Golden Wisps every few seconds, paying triple", 31, 4),
+        };
+        public static Ev EventFor(Profile p, int w)
+        {
+            if (IsBoss(w) || w < 6) return null;
+            var open = EVENTS.Where(e => p.ascensions >= e.asc && w >= e.from).ToList();
+            var fresh = open.FirstOrDefault(e => !p.seenEvents.Contains(e.id));
+            if (fresh != null) return fresh;
+            if (w % 4 != 1 || open.Count == 0) return null;
+            return open[(w * 7 + p.ascensions * 3) % open.Count];
+        }
+        public static List<(string role, int n)> EventMix(List<(string role, int n)> mix, Ev ev)
+        {
+            if (ev == null) return mix; int n = mix.Sum(x => x.n);
+            switch (ev.id)
+            {
+                case "stampede": return new List<(string, int)> { ("runner", n) };
+                case "horde": return mix.Select(x => (x.role, (int)Math.Ceiling(x.n * 1.5))).ToList();
+                case "swarmnight": return mix.Concat(new[] { ("swarm", n) }).ToList();
+                default: return mix;
+            }
+        }
         public static double EnemyBite(int w, string role) =>
             (ROLES[role].boss ? 16 : role == "armoured" ? 7 : role == "swarm" ? 2 : 4) * Math.Pow(1.12, w - 1);
         public static double EnemyHp(int w, string role) => 10 * Math.Pow(1.235, w - 1) * ROLES[role].hp;
@@ -230,7 +267,8 @@ namespace Hearthgate.Core
         public long lastSeen, surgeUntil;
         public int perkPts;
         public List<KV> perks = new List<KV>();
-        public List<string> told = new List<string>();   // one-time hints already shown   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
+        public List<string> told = new List<string>();   // one-time hints already shown
+        public List<string> seenEvents = new List<string>();   // named waves met at least once   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
         public bool firstSession = true;
         public bool music = true, sfx = true, reduced;
 
@@ -252,6 +290,7 @@ namespace Hearthgate.Core
             forks = (forks ?? new List<KV>()).Where(e => HG.FORKS.ContainsKey(e.v) && HG.FORKS[e.v].Any(f => f.id == e.k) && HG.StageOf(gateLevel) >= e.v).ToList();
             combos = (combos ?? new List<string>()).Distinct().ToList();
             perkPts = Math.Max(0, perkPts); told = (told ?? new List<string>()).Distinct().ToList();
+            seenEvents = (seenEvents ?? new List<string>()).Where(id => HG.EVENTS.Any(e => e.id == id)).Distinct().ToList();
             perks = (perks ?? new List<KV>()).Where(e => HG.PERKS.Any(k => k.id == e.k) && e.v > 0).Select(e => new KV { k = e.k, v = Math.Min(e.v, HG.PERKS.First(k => k.id == e.k).max) }).ToList();
         }
     }

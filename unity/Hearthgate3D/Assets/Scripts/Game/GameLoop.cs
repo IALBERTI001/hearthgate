@@ -95,13 +95,15 @@ namespace Hearthgate.Game
         void StartWave()
         {
             queue.Clear(); waveT = 0; waveLive = true;
-            var mix = HG.WaveMix(P.wave); var list = new List<string>();
+            ev = HG.EventFor(P, P.wave); bool evNew = ev != null && !P.seenEvents.Contains(ev.id); if (evNew) P.seenEvents.Add(ev.id);
+            var mix = HG.EventMix(HG.WaveMix(P.wave), ev); var list = new List<string>();
             foreach (var (role, n) in mix) for (int k = 0; k < n; k++) list.Add(role);
             list = list.OrderBy(_ => rnd.Next()).ToList();
-            float gap = Mathf.Max(0.35f, 1.4f - P.wave * 0.02f);
+            float gap = Mathf.Max(0.35f, 1.4f - P.wave * 0.02f) * (Ev("rush") ? 0.5f : 1f);
             for (int i = 0; i < list.Count; i++) queue.Add((list[i], 0.8f + i * gap));
             Sound.Boss(HG.IsBoss(P.wave)); if (HG.IsBoss(P.wave)) Sound.Play("boss_horn", 0.5f);
-            Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave)].label}!" : $"Wave {P.wave}");
+            if (ev != null) { Hud.Banner($"{(evNew ? "NEW! " : "")}{ev.name}: {ev.line}"); Sound.Play(evNew ? "feat" : "surge", evNew ? 0.45f : 0.3f); }
+            else Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave)].label}!" : $"Wave {P.wave}");
         }
 
         void FixedUpdate()
@@ -111,7 +113,8 @@ namespace Hearthgate.Game
             {
                 var role = queue[0].role; queue.RemoveAt(0);
                 int lane = rnd.Next(4);   // each walks the lane to one tower (owner's sketch)
-                enemies.Add(new Enemy(role, P.wave, lane, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, Field.SpawnProgress(lane, Camera.main), unitsRoot) { born = (float)rnd.NextDouble() * 3 });
+                var en = new Enemy(role, P.wave, lane, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, Field.SpawnProgress(lane, Camera.main), unitsRoot) { born = (float)rnd.NextDouble() * 3 };
+                EventSpawn(en); enemies.Add(en);
             }
             TickEnemies(); TickTowers(); TickShots();
             // the city hums
@@ -145,7 +148,7 @@ namespace Hearthgate.Game
         void Kill(Enemy e)
         {
             e.dying = 0.0001f;
-            double pay = HG.KillRes(P.wave, e.boss, B) * SurgeX; SendWisps(e.Pos, pay);   // paid when it reaches the fountain
+            double pay = HG.KillRes(P.wave, e.boss, B) * SurgeX * (Ev("golden") || Ev("giants") ? 2 : Ev("bloodmoon") ? 3 : 1); SendWisps(e.Pos, pay);   // paid when it reaches the fountain
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8); Sound.Play(e.boss ? "ascension" : "golem_death", e.boss ? 0.55f : 0.28f);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); }
@@ -175,7 +178,7 @@ namespace Hearthgate.Game
                 if ((tw.cool -= DT) > 0) continue;
                 if (tw.beacon) tw.el = BeaconElement();
                 var tg = Pick(tw); if (tg == null) continue;
-                tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f) * (cheerT > 0 ? 0.5f : 1f); tw.flash = 1;   // the Tavern's Cheer: twice as fast
+                tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f) * (cheerT > 0 ? 0.5f : 1f) * (Ev("frenzy") ? 0.7f : 1f); tw.flash = 1;   // the Tavern's Cheer: twice as fast
                 var go = new GameObject("shot");
                 var col = tw.el == "fire" || tw.el == "frost" || tw.el == "storm" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
                 var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
@@ -232,13 +235,14 @@ namespace Hearthgate.Game
         void Hit(Enemy e, string el)
         {
             double d = HG.TowerDamage(P, B) * (1 + B[el]) * (e.boss ? 1 + B["bossDmg"] : 1);
-            double cm = 1 + B["combo"];
+            double cm = (1 + B["combo"]) * (Ev("eclipse") ? 2 : 1);
+            d *= (Ev("thunder") && el == "storm") || (Ev("blizzard") && el == "frost") || (Ev("inferno") && el == "fire") ? 2 : (Ev("hail") && (el == "frost" || el == "storm")) ? 1.5 : 1;
             if (e.R.armour > 0 && el != "fire") d *= 1 - e.R.armour;
             if (el == "fire") { if (e.chill > 0) { d *= 3 * cm; Combo("shatter", e, "SHATTER!", Field.FROST); } e.burn = 2.2f; }
             if (el == "frost") { e.chill = 2.2f; if (e.R.weak == "frost") d *= 1.3; }
             if (el == "storm")
             {
-                int jumps = (e.chill > 0 ? 4 : 2) + (int)B["chainPlus"];
+                int jumps = (e.chill > 0 ? 4 : 2) + (int)B["chainPlus"] + (Ev("stormfront") ? 3 : 0);
                 if (e.chill > 0) Combo("frostStorm", e, "SUPERCHAIN!", Field.STORM);
                 if (e.burn > 0) Combo("fireStorm", e, "FIRESTORM!", Field.FIRE);
                 double cd = d * 0.6 * (e.chill > 0 || e.burn > 0 ? cm : 1) * (e.R.weak == "storm" ? 2 : 1);

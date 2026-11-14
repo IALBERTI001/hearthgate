@@ -91,6 +91,7 @@ namespace Hearthgate.Game
         void TickGold(float dt)
         {
             if (P.restored.Count < 3) return;
+            if ((Ev("harvest") || Ev("goldrush")) && gold == null && goldT > 6) goldT = 6;   // Golden Wisps every few seconds
             if (gold != null)
             {
                 var g = gold; var p = g.tr.position;
@@ -135,7 +136,7 @@ namespace Hearthgate.Game
             var at = gold.tr.position; Destroy(gold.tr.gameObject); gold = null;
             Sound.Play("claim", 0.6f); Fx.I.Burst(at, Field.GOLD, 26);
             if (Random.value < 0.3f) { goldSurgeUntil = Now() + 15000; Fx.I.Pop(at + Vector3.up, "x2 for 15 s!", ROSE, 42, 1.4f); }
-            else { double amt = HG.FightRate(P, B) * 1.6 * 10 * SurgeX; P.res += amt; Fx.I.Pop(at + Vector3.up, "+" + HG.Fmt(amt), Field.GOLD, 46, 1.4f); }
+            else { double amt = HG.FightRate(P, B) * 1.6 * 10 * SurgeX * (Ev("goldrush") ? 3 : 1); P.res += amt; Fx.I.Pop(at + Vector3.up, "+" + HG.Fmt(amt), Field.GOLD, 46, 1.4f); }
             Save(); return true;
         }
 
@@ -144,7 +145,7 @@ namespace Hearthgate.Game
         void FillCheer()
         {
             if (!Has("tavern") || cheerT > 0) return;
-            cheer = Mathf.Min(1, cheer + 0.06f);
+            cheer = Mathf.Min(1, cheer + 0.06f * (Ev("feast") ? 2 : 1));
             if (cheer >= 1)
             {
                 cheerT = CHEER_S; Sound.Play("feat", 0.5f); Hud.Banner("CHEER! Towers fire twice as fast");
@@ -210,6 +211,18 @@ namespace Hearthgate.Game
             Save();
         }
         public void BuyPerk(string id) { if (HG.BuyPerk(P, id)) { B = HG.Bonuses(P); Sound.Play("level_up", 0.45f); Save(); } else Sound.Dud(); }
+
+        // ---------- the named wave running now (HG.EventFor) ----------
+        public HG.Ev ev;
+        bool Ev(string id) => ev != null && ev.id == id;
+        void EventSpawn(Enemy e)
+        {
+            if (Ev("bloodmoon")) { e.hp *= 1.5; e.max = e.hp; }
+            if (Ev("giants") && !e.boss) { e.hp *= 2; e.max = e.hp; e.size *= 1.3f; e.t.localScale *= 1.3f; }
+            if (Ev("stampede") || Ev("eclipse") || Ev("frenzy")) e.speed *= 1.3f; else if (Ev("blizzard")) e.speed *= 0.75f;
+            if (Ev("winter")) e.chill = 4f;
+            if (Ev("embers")) e.burn = 4f;
+        }
 
         void TickTown(float dt)
         {
