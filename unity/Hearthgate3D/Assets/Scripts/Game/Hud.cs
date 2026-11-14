@@ -500,7 +500,7 @@ namespace Hearthgate.Game
         public static void ShowPerks()
         {
             if (!I || !GameLoop.I) return;
-            var g = GameLoop.I; var box = I.Modal("Perks", new Vector2(660, 140 + HG.PERKS.Length * 58));
+            var g = GameLoop.I; var box = I.Modal("Perks", new Vector2(660, 196 + HG.PERKS.Length * 58));   // room for the close button under the last row
             var pts = I.Line(box, -60, "", 19, RES);
             var rows = new System.Collections.Generic.List<(HG.Perk k, Text lv, Text cost)>();
             for (int i = 0; i < HG.PERKS.Length; i++)
