@@ -226,6 +226,7 @@ namespace Hearthgate.Game
             Fx.I.Burst(Field.PLAZA + Vector3.up * 3, Field.GOLD, 60);
             foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 16);
             var nu = HG.UNLOCKS.FirstOrDefault(u => u.at == P.ascensions);
+            if (P.ascensions == HG.ETERNAL_AT) Hud.ShowEternal();
             Hud.Banner($"Ascension {P.ascensions}! Towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, P.ascensions):0.##} for good. +{pts} perk points" + (nu != null ? $". New: {nu.name}" : ""));
             Save();
         }

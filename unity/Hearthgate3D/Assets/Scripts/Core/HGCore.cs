@@ -253,7 +253,7 @@ namespace Hearthgate.Core
         }
 
         // ---------- enemy roles ----------
-        public class Role { public string id, model, label, weak, tip, summonRole; public double hp, speed, size, armour, heal, comboWeak, totem, summon; public bool boss, chest, shield, blink, thief, bomb; public int split; }
+        public class Role { public string id, model, label, weak, tip, summonRole; public double hp, speed, size, armour, heal, comboWeak, totem, summon, bite = 1, reshield; public bool boss, chest, shield, blink, thief, bomb; public int split; }
         static Role R(string id, string model, double hp, double speed, double size, string label, string weak = null, double armour = 0, bool boss = false, int split = 0)
             => new Role { id = id, model = model, hp = hp, speed = speed, size = size, label = label, weak = weak, armour = armour, boss = boss, split = split };
         // speed and size are in the 2D stage's px (the field was 414 px deep); the 3D field converts them (Field.cs)
@@ -276,6 +276,9 @@ namespace Hearthgate.Core
             Asc(R("thief", "thief", 1, 110, 54, "Thieves", "frost"), "Thieves grab Resonance at the walls: stop them first", thief: true),
             Asc(R("bomber", "bomber", 2, 34, 78, "Bombers", "fire"), "Bombers blow up: pop them in a crowd, never at the walls", bomb: true),
             Asc(R("totem", "totem", 4, 24, 84, "Totems", "fire", 0.3), "Totems shield their friends: burn them down first", totem: 4),
+            Bite(Asc(R("leech", "leech", 1.8, 44, 70, "Leeches", "fire"), "Leeches drain the walls three times as fast: burn them first"), 3),
+            Resh(Asc(R("knight", "knight", 3, 30, 80, "Knights", "storm"), "Knights raise their shield again: keep Storm on them"), 5),
+            Asc(R("hive", "hive", 3.5, 26, 84, "Hives", "storm"), "Hives keep releasing Swarm: Storm chains clear them", summon: 3, summonRole: "swarm"),
             R("boss", "golem", 90, 28, 190, "Golem King", null, 0.3, true),
             R("queen", "slime", 70, 30, 190, "Slime Queen", null, 0, true, 6),
             Asc(R("lord", "beetle", 60, 40, 170, "Swarmlord", null, 0, true), "The Swarmlord calls runners as it walks", summon: 3.5),
@@ -286,6 +289,8 @@ namespace Hearthgate.Core
         }.ToDictionary(r => r.id);
         static Role Asc(Role r, string tip, bool blink = false, bool thief = false, bool bomb = false, double totem = 0, double summon = 0, string summonRole = null)
         { r.tip = tip; r.blink = blink; r.thief = thief; r.bomb = bomb; r.totem = totem; r.summon = summon; r.summonRole = summonRole; return r; }
+        static Role Bite(Role r, double bite) { r.bite = bite; return r; }
+        static Role Resh(Role r, double t) { r.shield = true; r.reshield = t; return r; }
         static Role Tip(Role r, string tip, bool chest = false, bool shield = false, double heal = 0, double comboWeak = 0)
         { r.tip = tip; r.chest = chest; r.shield = shield; r.heal = heal; r.comboWeak = comboWeak; return r; }
         public static readonly Dictionary<string, int> VARIANT_FROM = new Dictionary<string, int> { { "elite", 12 }, { "shielded", 14 }, { "splitter", 16 }, { "mender", 19 }, { "ironhide", 26 }, { "sprinter", 33 }, { "bulwark", 37 } };
@@ -299,7 +304,7 @@ namespace Hearthgate.Core
             return list[((w / 10) - 1) % list.Count];
         }
         // Ascension enemies: (Ascensions needed, first wave in that run)
-        public static readonly Dictionary<string, (int asc, int from)> ASC_ROLES = new Dictionary<string, (int, int)> { { "phantom", (1, 15) }, { "thief", (2, 8) }, { "bomber", (2, 26) }, { "totem", (3, 16) } };
+        public static readonly Dictionary<string, (int asc, int from)> ASC_ROLES = new Dictionary<string, (int, int)> { { "phantom", (1, 15) }, { "thief", (2, 8) }, { "bomber", (2, 26) }, { "totem", (3, 16) }, { "leech", (7, 12) }, { "knight", (8, 12) }, { "hive", (9, 12) } };
 
         // the wave's make-up as (role, count): runners from wave 3, armoured from 6, swarm from 12, a boss every 10
         public static List<(string role, int n)> WaveMix(int w, int asc = 0)
@@ -481,7 +486,7 @@ namespace Hearthgate.Core
         }
         // the Bestiary: every kind, in the order a player meets them
         public static readonly string[] BESTIARY = { "slime", "runner", "armoured", "swarm", "boss", "elite", "shielded", "splitter", "queen", "mender", "lord", "ironhide", "sprinter", "bulwark",
-            "phantom", "thief", "wraith", "bomber", "totem", "titan", "tyrant" };
+            "phantom", "thief", "wraith", "bomber", "totem", "titan", "tyrant", "leech", "knight", "hive" };
         public static string About(Role r) => r.tip ?? (r.id == "slime" ? "The common foe: anything beats them" : r.id == "runner" ? "Fast on their feet: Frost slows them"
             : r.id == "armoured" ? "Half damage from most hits: Fire melts armour" : r.id == "swarm" ? "Many and small: Storm chains through them"
             : r.id == "boss" ? "Every few boss waves: a slow giant of stone" : r.id == "queen" ? "Bursts into a brood of slimes when she falls" : r.id == "lord" ? "Calls beetles to its side" : "");

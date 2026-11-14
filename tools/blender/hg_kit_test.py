@@ -38,7 +38,7 @@ jobs += [('top_' + k, (lambda k=k: F.top(k)), None) for k in ('stone', 'fire', '
 jobs += [('building_' + b, C.BUILDERS[b], None) for b in C.BUILDERS] + [('ruin_' + b, (lambda b=b: C.ruin_of(b)), None) for b in C.SHELLS]
 jobs += [('marker', F.marker, None)]
 jobs += [('villager_' + v, (lambda v=v: F.villager(v)), None) for v in 'abc']
-jobs += [(k, (lambda k=k: F.variant(k)), None) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem')]
+jobs += [(k, (lambda k=k: F.variant(k)), None) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem', 'leech', 'knight', 'hive')]
 jobs += [('top_' + c, (lambda c=c: F.cap_look(c)), None) for c in F.CAP_LOOKS]
 part, parts = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))   # the chain runs the test in parallel parts
 for i, (name, fn, extra) in enumerate(jobs):

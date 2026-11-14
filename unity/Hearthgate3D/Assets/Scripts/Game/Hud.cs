@@ -524,6 +524,18 @@ namespace Hearthgate.Game
             I.Choice(box, "A_Yes", new Vector2(130, 26), new Vector2(230, 56), "Ascend", () => { I.ShowSettings(false); g.Ascend(); }, null, true);
         }
 
+        // the Eternal City (Ascension 10, js/game.js): the climb's ending, said once; the game goes on
+        public static void ShowEternal()
+        {
+            if (!I) return;
+            var box = I.Modal("The Eternal City", new Vector2(640, 360));
+            I.Line(box, -76, $"<color=#FFD56B>Ascension {HG.ETERNAL_AT}</color>", 20);
+            I.Line(box, -118, "Ten times the city fell to ruin and ten times you raised it again. The Hearthgate stands for good, and its light will never go out.", 19);
+            I.Line(box, -226, "The waves go on, and so can you.", 17, new Color(0.85f, 0.8f, 0.88f));
+            I.Choice(box, "E_Ok", new Vector2(0, 24), new Vector2(230, 56), "Onward", () => I.ShowSettings(false), null, true);
+            Sound.Play("ascension", 0.6f);
+        }
+
         // the Watchtower's perks (2D: "Home of the Perks"): one row each, its level, its cost in points, Buy
         public static void ShowPerks(string tab = "perks")
         {

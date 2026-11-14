@@ -150,6 +150,10 @@ namespace Hearthgate.Game
                 {   // a Mender heals its friends nearby until it burns
                     foreach (var o in enemies) if (o != e && o.dying <= 0 && o.hp < o.max && (o.Pos - e.Pos).sqrMagnitude < 16f) { o.hp = System.Math.Min(o.max, o.hp + o.max * e.R.heal * DT); if (Random.value < DT * 2) Fx.I.Burst(o.Pos, new Color(0.5f, 0.95f, 0.5f), 1); }
                 }
+                if (e.R.reshield > 0 && !e.shield && (e.reshT += DT) > e.R.reshield)
+                {   // a Knight raises his shield again
+                    e.reshT = 0; e.shield = true; if (e.shieldT) e.shieldT.gameObject.SetActive(true); Fx.I.Burst(e.Pos, new Color(0.75f, 0.9f, 1f), 8);
+                }
                 if (e.R.blink) { e.blinkT = (e.blinkT + DT) % 2.4f; e.faded = e.blinkT > 1.4f; }   // Phantoms: 1.4 s seen, 1 s faded
                 if (e.R.totem > 0 && (e.totemT -= DT) <= 0)
                 {   // a Totem wards up to three friends near it
@@ -184,7 +188,7 @@ namespace Hearthgate.Game
                         gateHp -= HG.EnemyBite(P.wave, e.role) * 10; e.dying = 0.0001f; e.hp = 0; Fx.I.Burst(e.Pos, new Color(1f, 0.6f, 0.23f), 26); Fx.I.Shake(0.25f);
                         Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1f), "BOOM!", new Color(1f, 0.6f, 0.23f), 44); Sound.Play("shatter_combo", 0.4f); continue;
                     }
-                    gateHp -= HG.EnemyBite(P.wave, e.role) * DT;
+                    gateHp -= HG.EnemyBite(P.wave, e.role) * DT * e.R.bite;   // Leeches bite three times as hard
                     e.x = Mathf.MoveTowards(e.x, Mathf.Clamp(e.x * 1.6f, -2.2f, 2.2f), e.speed * 0.3f * DT);   // spread round the tower's foot
                 }
                 if (e.hp <= 0) Kill(e);

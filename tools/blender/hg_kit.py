@@ -331,7 +331,7 @@ if __name__ == '__main__':
     jobs += [('top_' + k, (lambda k=k: top(k))) for k in ('stone', 'fire', 'frost', 'storm', 'earth')]
     jobs += [('building_' + b, (lambda b=b: building(b))) for b in ROOF]
     jobs += [('ruin_' + b, (lambda b=b: C.ruin_of(b))) for b in ROOF]
-    jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly)] + [(k, (lambda k=k: F.variant(k))) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem')] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
+    jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly)] + [(k, (lambda k=k: F.variant(k))) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem', 'leech', 'knight', 'hive')] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
     k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))
     report = {}
     for i, (nm, fn) in enumerate(jobs):

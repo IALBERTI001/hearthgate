@@ -943,7 +943,7 @@ def _shield(r, z):   # two glowing rings of force round it (the materials are op
 
 def variant(kind):
     base = {'elite': beetle, 'shielded': beetle, 'sprinter': beetle, 'splitter': slime, 'mender': slime, 'ironhide': golem, 'bulwark': golem,
-            'phantom': beetle, 'thief': beetle, 'bomber': slime, 'totem': golem}[kind]
+            'phantom': beetle, 'thief': beetle, 'bomber': slime, 'totem': golem, 'leech': slime, 'knight': golem, 'hive': beetle}[kind]
     real = K.export; K.export = lambda name: 0
     try: base()
     finally: K.export = real
