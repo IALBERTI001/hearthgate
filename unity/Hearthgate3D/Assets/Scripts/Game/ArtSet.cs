@@ -23,7 +23,12 @@ namespace Hearthgate.Game
         public Mesh MeshOf(PrimitiveType t) => t == PrimitiveType.Sphere ? sphereMesh : t == PrimitiveType.Capsule ? capsuleMesh
             : t == PrimitiveType.Cylinder ? cylinderMesh : t == PrimitiveType.Plane ? planeMesh : cubeMesh;
 
-        public GameObject Enemy(string model) => model == "beetle" ? beetle : model == "golem" ? golem : slime;
+        public GameObject[] variants = new GameObject[0];        // the enemy variants (hg_front.variant), found by name
+        public GameObject Enemy(string model)
+        {
+            foreach (var v in variants) if (v && v.name == model) return v;
+            return model == "beetle" || model == "elite" || model == "shielded" || model == "sprinter" ? beetle : model == "golem" || model == "ironhide" || model == "bulwark" ? golem : slime;
+        }
         public GameObject Top(string el) => el == "fire" ? topFire : el == "frost" ? topFrost : el == "storm" ? topStorm : topStone;
     }
 

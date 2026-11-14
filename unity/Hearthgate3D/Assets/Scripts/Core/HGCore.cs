@@ -114,7 +114,7 @@ namespace Hearthgate.Core
             {
                 ascensions = p.ascensions + 1, bestWave = p.bestWave, combos = new List<string>(p.combos), firstSession = false, lastSeen = p.lastSeen,
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
-                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents)
+                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles)
             };
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
             return q;
@@ -167,7 +167,7 @@ namespace Hearthgate.Core
         }
 
         // ---------- enemy roles ----------
-        public class Role { public string id, model, label, weak; public double hp, speed, size, armour; public bool boss; public int split; }
+        public class Role { public string id, model, label, weak, tip; public double hp, speed, size, armour, heal, comboWeak; public bool boss, chest, shield; public int split; }
         static Role R(string id, string model, double hp, double speed, double size, string label, string weak = null, double armour = 0, bool boss = false, int split = 0)
             => new Role { id = id, model = model, hp = hp, speed = speed, size = size, label = label, weak = weak, armour = armour, boss = boss, split = split };
         // speed and size are in the 2D stage's px (the field was 414 px deep); the 3D field converts them (Field.cs)
@@ -177,10 +177,21 @@ namespace Hearthgate.Core
             R("runner", "beetle", 0.7, 84, 60, "Runners", "frost"),
             R("armoured", "golem", 2.6, 36, 76, "Armoured", "fire", 0.5),
             R("swarm", "slime", 0.35, 54, 44, "Swarm", "storm"),
+            // the variants (js/core.js VARIANT_FROM): one new kind every few waves, each with a counter to learn
+            Tip(R("elite", "elite", 3, 60, 70, "Elite"), "Elites drop a treasure chest", chest: true),
+            Tip(R("shielded", "shielded", 1, 70, 62, "Shielded", "storm"), "Shields block most damage: Storm breaks them", shield: true),
+            Tip(R("splitter", "splitter", 1.6, 40, 76, "Splitters", "fire", 0, false, 2), "Splitters burst into two small slimes"),
+            Tip(R("mender", "mender", 1.2, 42, 64, "Menders", "fire"), "Menders heal their friends: burning stops them", heal: 0.05),
+            Tip(R("ironhide", "ironhide", 3.4, 32, 80, "Ironhide", "storm", 0.5), "Ironhide: Storm breaks the shield, then Fire burns the armour", shield: true),
+            Tip(R("sprinter", "sprinter", 0.8, 128, 56, "Sprinters", "frost"), "Sprinters dash for the walls: Frost slows them"),
+            Tip(R("bulwark", "bulwark", 6, 26, 86, "Bulwarks"), "Bulwarks shrug off hits: combos crack them for double", comboWeak: 2),
             R("boss", "golem", 90, 28, 190, "Golem King", null, 0.3, true),
             R("queen", "slime", 70, 30, 190, "Slime Queen", null, 0, true, 6),
             R("lord", "beetle", 60, 40, 170, "Swarmlord", null, 0, true),
         }.ToDictionary(r => r.id);
+        static Role Tip(Role r, string tip, bool chest = false, bool shield = false, double heal = 0, double comboWeak = 0)
+        { r.tip = tip; r.chest = chest; r.shield = shield; r.heal = heal; r.comboWeak = comboWeak; return r; }
+        public static readonly Dictionary<string, int> VARIANT_FROM = new Dictionary<string, int> { { "elite", 12 }, { "shielded", 14 }, { "splitter", 16 }, { "mender", 19 }, { "ironhide", 26 }, { "sprinter", 33 }, { "bulwark", 37 } };
         public static bool IsBoss(int w) => w % 10 == 0;
         public static string BossOf(int w) { var list = new[] { "boss", "queen", "lord" }; return list[((w / 10) - 1) % list.Length]; }
 
@@ -193,8 +204,17 @@ namespace Hearthgate.Core
             int runners = w >= 3 ? (int)Math.Floor(n * (w % 3 == 0 ? 0.5 : 0.25)) : 0;
             int armoured = w >= 6 ? Math.Max(1, (int)Math.Floor(n * (w % 4 == 2 ? 0.3 : 0.12))) : 0;
             int swarm = w >= 12 && w % 5 == 2 ? n : 0;
-            int slimes = Math.Max(0, n - runners - armoured);
+            var v = new List<(string, int)>(); int F(string r) => VARIANT_FROM[r];
+            if (w >= F("elite")) v.Add(("elite", w == F("elite") ? 1 : (w % 3 == 0 ? 2 : 1)));
+            if (w >= F("shielded")) { int k = Math.Max(2, runners / 2); v.Add(("shielded", k)); runners -= runners / 2; }
+            if (w >= F("splitter") && (w % 2 == 0 || w == F("splitter"))) v.Add(("splitter", 2 + (w - 16) / 8));
+            if (w >= F("mender") && (w % 3 != 2 || w == F("mender"))) v.Add(("mender", 1 + (w - 19) / 12));
+            if (w >= F("ironhide") && w % 2 == 0) { int k = Math.Max(1, armoured / 2); v.Add(("ironhide", k)); armoured = Math.Max(0, armoured - k); }
+            if (w >= F("sprinter") && w % 2 == 1) { int k = Math.Max(2, runners / 2); v.Add(("sprinter", k)); runners -= runners / 2; }
+            if (w >= F("bulwark") && (w % 3 == 1 || w == F("bulwark"))) v.Add(("bulwark", 1 + (w - 37) / 15));
+            int slimes = Math.Max(0, n - runners - armoured - v.Sum(x => x.Item2));
             if (slimes > 0) mix.Add(("slime", slimes));
+            mix.AddRange(v);
             if (runners > 0) mix.Add(("runner", runners));
             if (armoured > 0) mix.Add(("armoured", armoured));
             if (swarm > 0) mix.Add(("swarm", swarm));
@@ -268,7 +288,8 @@ namespace Hearthgate.Core
         public int perkPts;
         public List<KV> perks = new List<KV>();
         public List<string> told = new List<string>();   // one-time hints already shown
-        public List<string> seenEvents = new List<string>();   // named waves met at least once   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
+        public List<string> seenEvents = new List<string>();   // named waves met at least once
+        public List<string> seenRoles = new List<string>();    // enemy kinds met (each one's tip shows once)   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
         public bool firstSession = true;
         public bool music = true, sfx = true, reduced;
 
@@ -291,6 +312,7 @@ namespace Hearthgate.Core
             combos = (combos ?? new List<string>()).Distinct().ToList();
             perkPts = Math.Max(0, perkPts); told = (told ?? new List<string>()).Distinct().ToList();
             seenEvents = (seenEvents ?? new List<string>()).Where(id => HG.EVENTS.Any(e => e.id == id)).Distinct().ToList();
+            seenRoles = (seenRoles ?? new List<string>()).Distinct().ToList();
             perks = (perks ?? new List<KV>()).Where(e => HG.PERKS.Any(k => k.id == e.k) && e.v > 0).Select(e => new KV { k = e.k, v = Math.Min(e.v, HG.PERKS.First(k => k.id == e.k).max) }).ToList();
         }
     }

@@ -11,7 +11,8 @@ namespace Hearthgate.Game
         // lane is which tower it walks to; z is progress out along that lane from the tower's foot (spawn down to stop), x is
         // lateral across it; Field.Lane maps them to the world
         public int lane; public double hp, max; public float speed, size, x, z, spawn, chill, burn, flash, hop, born, dying;
-        public bool boss, atGate; Quaternion yaw = Quaternion.identity;
+        public bool boss, atGate, shield, bigHit; Quaternion yaw = Quaternion.identity;
+        public Transform shieldT;   // the rings of force (the model's 'upper' part), gone when Storm breaks the shield
         public float stop = Field.FRONT + Random.Range(0f, Field.STOP_SPREAD);   // where it halts, a crowd at the tower's foot
         Renderer[] rends; Color[] baseCols;
 
@@ -24,6 +25,7 @@ namespace Hearthgate.Game
             var g = Art.Spawn(Art.Set ? Art.Set.Enemy(R.model) : null, R.model, Field.Lane(lane, z, x), parent);
             t = g.transform; body = t.childCount > 0 ? t.GetChild(0) : t;
             t.localScale = Vector3.one * (size / 1.5f); t.rotation = Field.Facing(lane) * yaw;   // models face Blender -Y; Facing turns them up the lane
+            shield = R.shield; foreach (var c in g.GetComponentsInChildren<Transform>(true)) if (c.name == "upper") shieldT = c;
             rends = g.GetComponentsInChildren<Renderer>(); baseCols = new Color[rends.Length];
             for (int i = 0; i < rends.Length; i++) { var sm = rends[i].sharedMaterial ?? Art.Mat(Color.gray); rends[i].material = new Material(sm); baseCols[i] = rends[i].material.color; }
         }

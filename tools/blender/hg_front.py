@@ -906,6 +906,50 @@ def wizard():
     for s in (-1, 1): K.sphere('boot', 0.13, (s * 0.2, -0.22, 0.07), M('wood_dk'), (1, 1.5, 0.6), 2)
     return K.export('wizard')
 
+# ---------------------------------------------------------------------------------------------------------------------
+# the enemy variants (the 2D game's VARIANT_FROM, Nov 14 2026: "we are still not there yet with game core"): each one a
+# base enemy recoloured with one tell the player learns. A shield bubble is an 'upper' part (UP_), so the game can pop it
+# when Storm breaks the shield.
+def _remap(remap):
+    for o in bpy.context.scene.objects:
+        if o.type != 'MESH': continue
+        for k, m in enumerate(o.data.materials):
+            if m is None: continue
+            base = m.name[3:].replace('_glow', '') if m.name.startswith('HG_') else m.name
+            if base in remap: o.data.materials[k] = M(*remap[base]) if isinstance(remap[base], tuple) else M(remap[base])
+
+def _shield(r, z):   # two glowing rings of force round it (the materials are opaque: a bubble would hide the enemy)
+    for k, tilt in enumerate((0.35, -0.35)):
+        bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.05, major_segments=40, minor_segments=8, location=(0, 0, z + k * 0.15))
+        o = bpy.context.object; o.name = 'UP_shield%d' % k; o.rotation_euler = (tilt, 0, k * 1.2); K.finish(o, M('water', 1.6))
+
+def variant(kind):
+    base = {'elite': beetle, 'shielded': beetle, 'sprinter': beetle, 'splitter': slime, 'mender': slime, 'ironhide': golem, 'bulwark': golem}[kind]
+    real = K.export; K.export = lambda name: 0
+    try: base()
+    finally: K.export = real
+    K.flush_blocks(); flush_batch()
+    if kind == 'elite':      # gold shell and a little crown: it drops a treasure chest
+        _remap({'beetle_gloss': 'gold'})
+        bcyl('crown', 0.32, 0.22, (0, -0.55, 1.42), M('gold', 0.6), 8, 0.0, r2=0.38)
+        for k in range(5): bcone('point', 0.07, 0.2, (math.cos(k * 1.257) * 0.32, -0.55 + math.sin(k * 1.257) * 0.32, 1.6), M('gold', 0.6), 6)
+    elif kind == 'shielded':  # a blue bubble: Storm breaks it
+        _remap({'beetle_gloss': ('cloth',)}); _shield(1.25, 0.75)
+    elif kind == 'sprinter':  # pale and lean: it dashes for the walls
+        _remap({'beetle_gloss': 'stone3'})
+    elif kind == 'splitter':  # violet with a dark seam round its middle: it bursts into two
+        _remap({'slime_gloss': 'flower_p', 'slime_dk': 'robe'})
+        bcyl('seam', 0.82, 0.08, (0, 0, 0.72), M('robe_dk'), 32, 0.0)
+    elif kind == 'mender':    # green, a glowing ring over its head: it heals its friends until it burns
+        _remap({'slime_gloss': 'bush', 'slime_dk': 'grass2'})
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.42, minor_radius=0.06, location=(0, 0, 1.95)); K.finish(bpy.context.object, M('tree2', 1.5))
+    elif kind == 'ironhide':  # dark iron plates and a bubble: Storm breaks the shield, then Fire the armour
+        _remap({'storm': ('iron',)}); _shield(1.9, 1.3)
+    elif kind == 'bulwark':   # grey stone with a great slab carried in front: combos crack it for double
+        _remap({'storm': 'stone2'})
+        block((0, -1.05, 1.3), (1.6, 0.25, 1.9), M('stone3'), 0.06); block((0, -1.2, 1.3), (0.3, 0.1, 1.2), M('iron'), 0.02)
+    return K.export(kind)
+
 def villager(v):
     """The townsfolk (owner, Nov 14 2026: a town that is lived in), in the wizard's style and units (the game scales them to
     about 1.6 m): a: the baker (cream tunic, white apron and cap), b: the farmer (green tunic, straw hat), c: a townswoman

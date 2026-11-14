@@ -115,6 +115,7 @@ namespace Hearthgate.Game
                 int lane = rnd.Next(4);   // each walks the lane to one tower (owner's sketch)
                 var en = new Enemy(role, P.wave, lane, (float)(rnd.NextDouble() * 2 - 1) * Field.LANE, Field.SpawnProgress(lane, Camera.main), unitsRoot) { born = (float)rnd.NextDouble() * 3 };
                 EventSpawn(en); enemies.Add(en);
+                if (!P.seenRoles.Contains(role)) { P.seenRoles.Add(role); if (en.R.tip != null) Hud.Banner("New: " + en.R.tip); }   // each kind's counter, said once
             }
             TickEnemies(); TickTowers(); TickShots();
             // the city hums
@@ -131,6 +132,10 @@ namespace Hearthgate.Game
             {
                 var e = enemies[i];
                 if (e.dying > 0) { e.dying += DT; if (e.dying > 0.5f) { Destroy(e.t.gameObject); enemies.RemoveAt(i); } continue; }
+                if (e.R.heal > 0 && e.burn <= 0)
+                {   // a Mender heals its friends nearby until it burns
+                    foreach (var o in enemies) if (o != e && o.dying <= 0 && o.hp < o.max && (o.Pos - e.Pos).sqrMagnitude < 16f) { o.hp = System.Math.Min(o.max, o.hp + o.max * e.R.heal * DT); if (Random.value < DT * 2) Fx.I.Burst(o.Pos, new Color(0.5f, 0.95f, 0.5f), 1); }
+                }
                 if (e.burn > 0) { e.burn -= DT; e.hp -= HG.TowerDamage(P, B) * (1 + B["fire"]) * 0.5 * DT * (e.R.weak == "fire" ? 2 : 1); }
                 e.chill = Mathf.Max(0, e.chill - DT); e.flash = Mathf.Max(0, e.flash - DT * 6);
                 float slow = e.chill > 0 ? (e.R.weak == "frost" ? 0.3f : 0.45f) : 1f;
@@ -152,6 +157,11 @@ namespace Hearthgate.Game
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8); Sound.Play(e.boss ? "ascension" : "golem_death", e.boss ? 0.55f : 0.28f);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); }
+            if (e.R.chest)
+            {   // an Elite's treasure chest
+                double amt = HG.FightRate(P, B) * 1.6 * 5 * SurgeX; P.res += amt; Sound.Play("claim", 0.5f);
+                Fx.I.Burst(e.Pos, Field.GOLD, 26); Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1.5f), $"Treasure! +{HG.Fmt(amt)}", Field.GOLD, 40, 1.3f);
+            }
             if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, e.lane, Mathf.Clamp(e.x + Random.Range(-1.5f, 1.5f), -Field.LANE, Field.LANE), e.z + Random.Range(0, 1.5f), unitsRoot));
         }
 
@@ -238,17 +248,24 @@ namespace Hearthgate.Game
             double cm = (1 + B["combo"]) * (Ev("eclipse") ? 2 : 1);
             d *= (Ev("thunder") && el == "storm") || (Ev("blizzard") && el == "frost") || (Ev("inferno") && el == "fire") ? 2 : (Ev("hail") && (el == "frost" || el == "storm")) ? 1.5 : 1;
             if (e.R.armour > 0 && el != "fire") d *= 1 - e.R.armour;
-            if (el == "fire") { if (e.chill > 0) { d *= 3 * cm; Combo("shatter", e, "SHATTER!", Field.FROST); } e.burn = 2.2f; }
+            if (e.shield)
+            {   // a shield takes most of a hit; Storm breaks it
+                if (el == "storm") { e.shield = false; if (e.shieldT) e.shieldT.gameObject.SetActive(false); Fx.I.Burst(e.Pos, Field.STORM, 16); Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.5f), "SHIELD BROKEN", new Color(0.75f, 0.9f, 1f), 30); Sound.Play("lightning_contact_0", 0.35f); }
+                else d *= 0.2;
+            }
+            if (el == "fire") { if (e.chill > 0) { d *= 3 * cm; Combo("shatter", e, "SHATTER!", Field.FROST); e.bigHit = true; } e.burn = 2.2f; }
             if (el == "frost") { e.chill = 2.2f; if (e.R.weak == "frost") d *= 1.3; }
             if (el == "storm")
             {
                 int jumps = (e.chill > 0 ? 4 : 2) + (int)B["chainPlus"] + (Ev("stormfront") ? 3 : 0);
-                if (e.chill > 0) Combo("frostStorm", e, "SUPERCHAIN!", Field.STORM);
+                if (e.chill > 0) { Combo("frostStorm", e, "SUPERCHAIN!", Field.STORM); e.bigHit = true; }
                 if (e.burn > 0) Combo("fireStorm", e, "FIRESTORM!", Field.FIRE);
                 double cd = d * 0.6 * (e.chill > 0 || e.burn > 0 ? cm : 1) * (e.R.weak == "storm" ? 2 : 1);
                 foreach (var o in enemies.Where(x => x != e && x.dying <= 0).OrderBy(x => (x.Pos - e.Pos).sqrMagnitude).Take(jumps).ToList())
                 { o.hp -= cd; o.flash = 1; if (e.burn > 0) o.burn = 2; Bolt.Arc(e.Pos, o.Pos); }
             }
+            if (e.R.comboWeak > 0 && e.bigHit) { d *= e.R.comboWeak; Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1.2f), "CRACK!", Field.STONE, 30); }   // Bulwarks
+            e.bigHit = false;
             e.hp -= d; e.flash = 1; if (el != "none") Sound.Play(Sfx(el) + "_contact_0", 0.2f);
             Fx.I.Burst(e.Pos, Field.Of(el), el == "none" ? 4 : 7);
         }
