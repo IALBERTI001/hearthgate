@@ -19,7 +19,7 @@ TOWER_FOOT = 2.6                       # from a tower's centre to the foot of it
 LANE_HALF = 1.8                        # each lane is 3.6 m wide; enemies keep within +-1.3 of its centre line
 LANE_FAR_Z = 21.0                      # lanes begin just below the frame's bottom edge (ground z about 18 there)
 PLAZA = (-5.5, -13.5)
-PLOTS = [(5.0, -8.0), (5.0, -19.5), (-5.0, -19.5), (13.0, -9.5), (-13.0, -9.5), (-16.0, -21.0), (0.0, -23.0), (8.5, -26.5), (-8.5, -26.5), (16.0, -21.0)]
+PLOTS = [(5.0, -8.0), (5.0, -19.5), (-5.0, -19.5), (13.0, -9.5), (-15.0, -11.0), (-16.0, -21.0), (0.0, -23.0), (8.5, -26.5), (-8.5, -26.5), (16.0, -21.0)]
 IDS = ['forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower']
 
 CAM_PITCH, CAM_FOV, CAM_DIST = 30.0, 40.0, 50.0
