@@ -22,13 +22,13 @@ namespace Hearthgate.Game
         public Vector3 Position => pos;
         public const float SCALE = 0.66f, SPEED = 3.4f, RADIUS = 0.32f, REACH = 2.6f, FOUNTAIN_R = 3.4f;
         // in the square, left of the gatehouse's keep as seen from the walls (LayoutCheck: seen from the wall camera)
-        public static readonly Vector3 HOME = new Vector3(-6f, 0, -9f);   // beside the gatehouse's shadow, so the walls camera sees him (LayoutCheck)
+        public static readonly Vector3 HOME = new Vector3(-6f, 0, -8f);    // beside the gatehouse's shadow, so the walls camera sees him (LayoutCheck)
         // the walk camera, from his feet: on the gate side looking into the town, the way the wall view looks, so it sees
         // the fronts and doorways (from the town side it looked at the backs and lost him at every door: 159 of 692 spots)
         // lower and further than the first 8 m crane shot (owner, Nov 14 2026: "view of the player walking the town should be
         // improved because it is an important impression"): a third-person shot over his shoulder, the street ahead and the
         // rooftops against the sky, not the cobbles under his hat
-        public static readonly Vector3 FOLLOW = new Vector3(0, 6.2f, 7.0f), LOOK = new Vector3(0, 1.4f, -4.2f);
+        public static readonly Vector3 FOLLOW = new Vector3(0, 6.2f, 7.0f), LOOK = new Vector3(0, 1.4f, -3.2f);
         // the walk camera for a spot: behind him on the town side, pulled in and up when that would put it outside the ring
         // wall (from outside, the wall came between it and him near the back of the town)
         public static readonly Vector3 INDOORS = new Vector3(0, 11f, 3.2f);   // steeper over a room, to look past its front wall
@@ -52,7 +52,7 @@ namespace Hearthgate.Game
             var off = Vector3.Lerp(FOLLOW, INDOORS, indoors); var h = (heading ?? START_HEADING).normalized;
             for (float k = 1f; k > 0.05f; k -= 0.1f)
             {
-                var c = p + new Vector3(-h.x * off.z * k, off.y + (1 - k) * 3f, -h.y * off.z * k);
+                var c = p + new Vector3(-h.x * off.z * k, off.y * (0.62f + 0.38f * k), -h.y * off.z * k);   // pulled in, it comes down too: an over-the-shoulder shot, not a crane looking at his hat
                 if (Mathf.Abs(c.x) < 11f) c.y += Mathf.Clamp01((c.z + 5f) / 3f) * 2.6f;   // over the gatehouse and its towers when he is just inside the gate
                 float ex = c.x / (Field.RX - 1.2f), ez = (c.z + Field.RZ) / (Field.RZ - 1.2f);
                 if (ex * ex + ez * ez < 0.8f) return c;   // well inside: right against the ring the wall walk filled the bottom third of the first shot
