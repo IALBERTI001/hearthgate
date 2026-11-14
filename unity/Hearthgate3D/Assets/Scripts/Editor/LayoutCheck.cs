@@ -189,13 +189,13 @@ namespace Hearthgate.EditorTools
             Rect TopRight(float x0, float y0, float x1, float y1) => Rect.MinMaxRect(1 - x1 * s / w, 1 - y1 * s / h, 1 - x0 * s / w, 1 - y0 * s / h);
             // the action group (Hud.LayoutActions): a row along the top when it fits beside the labels, else a column
             float canvasW = w / s, rowW = 3 * 230 + 2 * Hearthgate.Game.Hud.GAP;
-            var actions = canvasW - Hearthgate.Game.Hud.LABELS_W - Hearthgate.Game.Hud.EDGE >= rowW
+            var actions = canvasW - Hearthgate.Game.Hud.LABELS_W - Hearthgate.Game.Hud.SKILL_W - Hearthgate.Game.Hud.EDGE >= rowW
                 ? ("actions", TopRight(Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE + rowW, Hearthgate.Game.Hud.EDGE + 56))
                 : ("actions", TopRight(Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE + 230, Hearthgate.Game.Hud.EDGE + 3 * 56 + 2 * Hearthgate.Game.Hud.GAP));
             return new List<(string, Rect)> {
                 ("labels", TopLeft(420, 124)),                       // wave with Starshards and perk points beside it, Resonance, the rate and the named wave
                 actions,                                             // Hud.LayoutActions: Upgrade, Rebuild and Walk as a row or a column
-                ("time stop", Rect.MinMaxRect(16 * s / w, 16 * s / h, 206 * s / w, 72 * s / h)),   // Hud.TickTimeStop
+                ("time stop", Rect.MinMaxRect((Hearthgate.Game.Hud.LABELS_W + 24) * s / w, 1 - 100 * s / h, (Hearthgate.Game.Hud.LABELS_W + 84) * s / w, 1 - 16 * s / h))   // the round skill button and its countdown,   // Hud.TickTimeStop
                 ("settings", Rect.MinMaxRect(1 - 206 * s / w, 16 * s / h, 1 - 16 * s / w, 72 * s / h)),   // the Settings button, bottom right
                 ("boss bar", Rect.MinMaxRect(0.5f - 180 * s / w, 76 * s / h, 0.5f + 180 * s / w, 108 * s / h)),   // Hud: a boss's name and health
                 ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 27 * s / h, 0.5f + 180 * s / w, 53 * s / h)),

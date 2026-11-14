@@ -409,7 +409,7 @@ namespace Hearthgate.Game
         // the actions as one group in the top-right corner: a row along the top when the window is wide enough (the sky and
         // the far meadow), else a column down the right side (portrait: the sky above the town). Upgrade gate, the primary
         // action, sits in the corner; a finished or idle action leaves and the rest close up. LayoutCheck mirrors this.
-        public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f;
+        public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 76f;
         void LayoutActions()
         {
             // Upgrade in the corner, Walk always right beside it (owner, Nov 14 2026: "make the walk town and back to the
@@ -418,7 +418,7 @@ namespace Hearthgate.Game
             if (re.p.rt.gameObject.activeSelf) list.Add(re.p.rt);
             if (work.p.rt.gameObject.activeSelf) list.Add(work.p.rt);
             float width = ((RectTransform)transform).rect.width, row = list.Sum(r => r.sizeDelta.x) + GAP * (list.Count - 1);
-            bool asRow = width - LABELS_W - EDGE >= row;
+            bool asRow = width - LABELS_W - SKILL_W - EDGE >= row;   // room left for the readouts and the round skill button
             float x = -EDGE, y = -EDGE;
             foreach (var r in list)
             {

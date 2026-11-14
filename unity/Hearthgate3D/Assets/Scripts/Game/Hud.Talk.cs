@@ -100,22 +100,29 @@ namespace Hearthgate.Game
             I.tint.color = c; I.tint.enabled = c.a > 0.001f;
         }
 
-        // the Time Stop button, in the bottom-left corner, mirroring Settings (the lanes run under every other spot along the bottom),
-        // once Aurelian has taught it
-        Act tsAct;
+        // the Time Stop button: a round skill button with the hourglass and its key, in the free space right of the readouts
+        // (the lanes run under every spot along the bottom); while it recharges a dark sweep closes over it and the seconds
+        // count down under it
+        Act tsAct; Image tsSweep; Text tsTxt;
         void TickTimeStop(GameLoop g)
         {
             if (tsAct == null)
             {
-                tsAct = Action("TimeStop", new Vector2(0, 0), new Vector2(16, 16), new Vector2(190, 56), "timestop", "F", () => g.UseTimeStop(), () => g.TimeStopReady, false);
-                tsAct.gem.enabled = false;
+                tsAct = Action("TimeStop", new Vector2(0, 1), new Vector2(LABELS_W + 24, -16), new Vector2(60, 60), "timestop", "F", () => g.UseTimeStop(), () => g.TimeStopReady, false);
+                var sw = Box("Sweep", tsAct.p.rt, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
+                tsSweep = sw.gameObject.AddComponent<Image>(); tsSweep.sprite = Panel(new Color(0.05f, 0.03f, 0.08f, 0.7f), new Color(0, 0, 0, 0), 26, 1);
+                tsSweep.type = Image.Type.Filled; tsSweep.fillMethod = Image.FillMethod.Radial360; tsSweep.fillOrigin = 2; tsSweep.fillClockwise = false; tsSweep.raycastTarget = false;
+                tsTxt = Label("TsTxt", transform, new Vector2(0, 1), new Vector2(LABELS_W + 54, -80), 15, TextAnchor.UpperCenter); tsTxt.font = body;
+                tsTxt.rectTransform.pivot = new Vector2(0.5f, 1); tsTxt.rectTransform.sizeDelta = new Vector2(120, 20);
             }
             bool on = g.TimeStopLevel > 0 && !(Wizard.I && Wizard.I.On);
-            if (tsAct.p.rt.gameObject.activeSelf != on) tsAct.p.rt.gameObject.SetActive(on);
+            if (tsAct.p.rt.gameObject.activeSelf != on) { tsAct.p.rt.gameObject.SetActive(on); tsTxt.gameObject.SetActive(on); }
             if (!on) return;
-            float left = g.TimeStopLeft;
-            Show(tsAct, g.timeStop > 0 ? "Time stopped" : "Stop time", g.timeStop > 0 ? $"{g.timeStop:0.0} s" : left > 0 ? $"ready in {left:0} s" : "ready", g.TimeStopReady, Time.unscaledTime);
-            tsAct.gem.enabled = false;
+            float left = g.TimeStopLeft, total = GameLoop.TS_CD[g.TimeStopLevel] + GameLoop.TS_DUR[g.TimeStopLevel];
+            tsSweep.fillAmount = g.timeStop > 0 ? 0f : Mathf.Clamp01(left / total);
+            tsTxt.text = g.timeStop > 0 ? $"{g.timeStop:0.0} s" : left > 0 ? $"{left:0} s" : "Stop time";
+            tsTxt.color = g.TimeStopReady ? new Color(0.72f, 0.9f, 1f) : new Color(0.8f, 0.76f, 0.84f);
+            if (tsAct.glow) { var c = tsAct.glow.color; c.a = g.TimeStopReady ? 0.45f + 0.35f * Mathf.Sin(Time.unscaledTime * 3f) : 0f; tsAct.glow.color = c; }
         }
     }
 }
