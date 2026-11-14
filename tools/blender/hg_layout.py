@@ -12,15 +12,15 @@
 # y up. In Blender, Unity z is Blender y.
 import math
 
-RX, RZ = 42.0, 28.0                    # ring half axes; centre (0, -RZ), so the ring's front point is the gate at (0, 0)
+RX, RZ = 44.0, 28.0                    # ring half axes; centre (0, -RZ), so the ring's front point is the gate at (0, 0)
 WALL_H = 3.4                           # wall walk; merlons to about 4.0
-TOWER_X = (9.0, -9.0, 25.2, -25.2)     # tower 0 and 1 beside the gate, 2 and 3 further out (Field.TOWER_X, same order)
+TOWER_X = (9.0, -9.0, 26.4, -26.4)     # tower 0 and 1 beside the gate, 2 and 3 further out (Field.TOWER_X, same order)
 TOWER_TOP = 5.0
 TOWER_FOOT = 2.6                       # from a tower's centre to the foot of its lane (base radius 2.15 plus a margin)
 LANE_HALF = 1.8                        # each lane is 3.6 m wide; enemies keep within +-1.3 of its centre line
 LANE_FAR_Z = 22.5                      # lanes begin just below the frame's bottom edge (ground z about 18 there)
 PLAZA = (0.0, -10.0)
-PLOTS = [(-31.0, -20.16), (-29.0, -35.84), (1.5, -35.84), (15.5, -46.5), (-15.5, -20.16), (17.0, -32.84), (-15.5, -46.0), (0.0, -49.0), (30.0, -19.66), (32.5, -35.84)]
+PLOTS = [(-31.0, -20.16), (-29.0, -35.84), (2.5, -35.34), (15.5, -46.5), (-15.5, -20.16), (18.0, -32.84), (-15.5, -46.0), (0.0, -48.5), (30.0, -19.66), (34.0, -35.84)]
 # the buildings at human scale (owner, Nov 13 2026: "Wizard is as big as the town, some doors are insanely bigger than
 # others. I want the wizard to be able to walk into the buildings"): footprint w (across the front) x d (deep), metres.
 # Every door is 1.2 x 2.4 m, every storey 3.2 m (hg_city.py); the wizard is 1.8 m to his hat's tip.
@@ -29,8 +29,8 @@ SIZES = {'forge': (8.0, 7.0), 'frostSpire': (7.0, 7.0), 'stormBell': (6.0, 6.0),
 DOOR_W, DOOR_H, STOREY, WALL_T, PLINTH = 1.2, 2.4, 3.2, 0.3, 0.3
 IDS = ['forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower']
 
-CAM_PITCH, CAM_FOV, CAM_DIST = 30.0, 42.0, 50.0
-CAM_LOOK = (0.0, 0.0, -2.0)
+CAM_PITCH, CAM_FOV, CAM_DIST = 30.0, 40.0, 55.0
+CAM_LOOK = (0.0, 0.0, -3.0)
 CAM_POS = (0.0, CAM_DIST * math.sin(math.radians(CAM_PITCH)), CAM_LOOK[2] + CAM_DIST * math.cos(math.radians(CAM_PITCH)))
 
 def ring_z(x):

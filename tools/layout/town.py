@@ -99,7 +99,7 @@ def solve(RX, RZ, TX):
             return not any(max(xs) > a and min(xs) < b and max(ys) > c and min(ys) < dd for a, b, c, dd in HUD(1280, 720))
         def fits(q, placed):
             x, z, w, d, h = q
-            if not all(inside(x + a * w / 2, z + b * d / 2, 2.5) for a in (-1, 1) for b in (-1, 1)): return False
+            if not all(inside(x + a * (w / 2 + 0.3), z + (d / 2 + 2.0 if b > 0 else -d / 2 - 0.3), 2.5) for a in (-1, 1) for b in (-1, 1)): return False   # the sign and step before the door too
             if abs(x) < 4.4 + w / 2 + 3 and z + d / 2 > -2.5 - 3: return False                   # the gatehouse and its yard
             if any(abs(x - tx) < 2.2 + w / 2 + 2 and abs(z - tz) < 2.2 + d / 2 + 2 for tx, tz in TOW): return False
             for p in placed:   # 6 m streets (owner, Nov 13 2026: "more separation on the buildings ... for easy movement")
@@ -145,7 +145,7 @@ def solve(RX, RZ, TX):
     return last
 
 if __name__ == '__main__':
-    for RX, RZ in ((38, 26), (40, 26), (40, 28), (42, 28), (44, 30)):
+    for RX, RZ in ((42, 28), (44, 28), (44, 30)):
         TX = [9.0, -9.0, round(RX * 0.6, 1), -round(RX * 0.6, 1)]
         r = solve(RX, RZ, TX)
         if r is None: print(RX, RZ, 'no camera or plaza'); continue
