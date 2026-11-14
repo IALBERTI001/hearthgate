@@ -15,8 +15,8 @@ random.seed(7)
 PAL = {
     # values tuned for a value structure (fresh-eyes review, Nov 13 2026): a mid-tone, saturated world; the brightest,
     # hottest colours are kept for enemies, tower tops and effects. '_gloss' names get a high smoothness in Unity.
-    'stone': (0.66, 0.61, 0.55), 'stone2': (0.60, 0.55, 0.49), 'stone3': (0.72, 0.67, 0.60), 'stone_dk': (0.42, 0.38, 0.34),
-    'mortar': (0.30, 0.27, 0.24), 'iron': (0.16, 0.16, 0.19), 'gold': (1.0, 0.76, 0.28), 'banner': (0.62, 0.10, 0.10),
+    'stone': (0.70, 0.61, 0.50), 'stone2': (0.63, 0.54, 0.44), 'stone3': (0.77, 0.68, 0.56), 'stone_dk': (0.45, 0.38, 0.31),
+    'mortar': (0.32, 0.27, 0.22), 'iron': (0.16, 0.16, 0.19), 'gold': (1.0, 0.76, 0.28), 'banner': (0.62, 0.10, 0.10),
     'cobble': (0.50, 0.46, 0.41), 'cobble2': (0.43, 0.40, 0.36), 'dirt': (0.52, 0.39, 0.26), 'dirt_dk': (0.40, 0.29, 0.19),
     'grass': (0.44, 0.66, 0.24), 'grass2': (0.36, 0.58, 0.20), 'grass3': (0.52, 0.72, 0.28), 'moss': (0.30, 0.45, 0.18),
     'bush': (0.22, 0.46, 0.18), 'tree': (0.20, 0.44, 0.18), 'tree2': (0.30, 0.52, 0.20), 'pine': (0.13, 0.33, 0.20),
@@ -64,9 +64,12 @@ def finish(o, m, bevel=0.0, smooth=True):
         if hasattr(o.data, 'set_sharp_from_angle'): o.data.set_sharp_from_angle(angle=math.radians(40))
     return o
 
+# transform_apply's location and rotation flags default to True: applying only the scale must say so, or the object's
+# origin moves to the world origin and any later rotation swings the part round it (Nov 13 2026: tower stones on the
+# wrong faces, roof battens floating across the gatehouse, lanes mirrored in front of the wall)
 def cube(name, size, loc, m, bevel=0.04):
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc); o = bpy.context.object; o.name = name; o.scale = size
-    bpy.ops.object.transform_apply(scale=True); return finish(o, m, bevel)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True); return finish(o, m, bevel)
 def cyl(name, r, h, loc, m, verts=16, bevel=0.03, r2=None):
     if r2 is None: bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=r, depth=h, location=loc)
     else: bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r, radius2=r2, depth=h, location=loc)
@@ -74,7 +77,7 @@ def cyl(name, r, h, loc, m, verts=16, bevel=0.03, r2=None):
 def cone(name, r, h, loc, m, verts=16): return cyl(name, r, h, loc, m, verts, 0.0, r2=0.0)
 def sphere(name, r, loc, m, scale=(1, 1, 1), sub=3):
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=sub, radius=r, location=loc); o = bpy.context.object; o.name = name; o.scale = scale
-    bpy.ops.object.transform_apply(scale=True); return finish(o, m)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True); return finish(o, m)
 
 def export(name):
     objs = [o for o in bpy.context.scene.objects if o.type == 'MESH']

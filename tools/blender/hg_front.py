@@ -370,31 +370,33 @@ def top(kind):
 
 # ---------------------------------------------------------------------------------------------------------------------
 # enemies. Each faces -y; Field.WALK turns them along the road, three-quarters to the camera.
-def face(y, z, spread, r=0.2, brows=True, mouth=0.13):
+def face(y, z, spread, r=0.2, brows=True, mouth=0.13, body='slime_dk'):
+    # big close-set eyes with large pupils and one catchlight, brows that sit on the body, an open smile: reads as a
+    # character at 30 px (fresh-eyes review: "googly eyes ... white extra eyes read as noise")
     for s in (-1, 1):
-        K.sphere('eye', r, (s * spread, y, z), M('eye'), (1, 0.7, 1.15), 3)
-        K.sphere('pupil', r * 0.58, (s * spread * 0.92, y - r * 0.62, z - r * 0.05), M('pupil'), (1, 0.6, 1.2), 2)
-        K.sphere('catch', r * 0.2, (s * spread * 0.8, y - r * 0.95, z + r * 0.28), M('white_gloss', 0.5), sub=1)
+        K.sphere('eye', r, (s * spread, y, z), M('eye'), (1, 0.62, 1.12), 3)
+        K.sphere('pupil', r * 0.74, (s * spread * 0.94, y - r * 0.5, z - r * 0.06), M('pupil'), (1, 0.55, 1.15), 2)
+        K.sphere('catch', r * 0.22, (s * spread * 0.82, y - r * 0.9, z + r * 0.3), M('white_gloss', 0.5), sub=1)
         if brows:
-            o = block((s * spread * 1.02, y - r * 0.35, z + r * 1.15), (r * 1.5, r * 0.4, r * 0.32), M('pupil'), 0.02)
-            o.rotation_euler = (0, s * 0.42, 0)
+            o = block((s * spread, y + r * 0.15, z + r * 1.12), (r * 1.7, r * 0.6, r * 0.42), M(body), 0.04)
+            o.rotation_euler = (0, s * 0.38, 0)
     if mouth:
-        K.sphere('mouth', mouth, (0, y - 0.04, z - r * 1.9), M('pupil'), (1.4, 0.5, 0.7), 2)
-        K.sphere('tongue', mouth * 0.55, (0, y - 0.1, z - r * 2.05), M('blush'), (1.3, 0.5, 0.5), 1)
+        K.sphere('mouth', mouth, (0, y + 0.02, z - r * 1.75), M('pupil'), (1.5, 0.55, 0.95), 2)
+        K.sphere('tongue', mouth * 0.6, (0, y - 0.04, z - r * 1.95), M('blush'), (1.3, 0.5, 0.55), 1)
 
 def slime():   # 1.5 m: a glossy teal teardrop with a darker puddle foot, an angry-cute face
     bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=18, radius=0.8, location=(0, 0, 0.72))
     o = bpy.context.object
     for v in o.data.vertices:
         x, y, z = v.co.x, v.co.y, v.co.z
-        if z > 0: z *= 1.0 + 0.32 * (z / 0.8) ** 3
+        if z > 0: z *= 1.0 + 0.22 * (z / 0.8) ** 3
         else: z *= 0.7; k = 1.06 + 0.12 * (-z / 0.56); x *= k; y *= k
         v.co = Vector((x, y, z))
     o.data.update(); K.finish(o, M('slime_gloss'))
     K.cyl('puddle', 1.0, 0.12, (0, 0, 0.06), M('slime_dk'), 24, 0.0, r2=0.9)
     for (x, y, s) in ((0.78, 0.25, 0.2), (-0.72, 0.4, 0.17), (0.35, -0.82, 0.14), (-0.5, -0.66, 0.12)):
         K.sphere('drip', s, (x, y, s * 0.35), M('slime_gloss'), (1.25, 1.25, 0.5), 2)
-    face(-0.68, 1.0, 0.3, 0.21)
+    face(-0.66, 0.98, 0.22, 0.2, mouth=0.12)
     return K.export('slime')
 
 def beetle():   # a shiny armoured beetle: domed split shell, horned head, thick jointed legs
@@ -510,8 +512,15 @@ def ground():
     for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
     K.finish(g, M('grass'))
     # the town's ground inside the walls: packed earth with cobbled yards and a cobbled plaza
-    pts = [(-30, -1.2), (20.5, -1.2), (20.5, -12), (14, -22), (-6, -24.5), (-24, -24), (-30, -18)]
-    mesh_from('town', [(x, y, 0.02) for x, y in pts], [tuple(range(len(pts) - 1, -1, -1))], M('dirt'), 0.0)
+    # an irregular blob hugging the buildings (the review: hard-edged ground read as a stage), with grass eating its rim
+    centre = (-3.0, -12.5); pts = []
+    for i in range(36):
+        a = i / 36 * math.tau
+        rx, ry = 22.0, 10.5
+        r = R.uniform(0.82, 1.0)
+        pts.append((centre[0] + math.cos(a) * rx * r, max(-1.6, centre[1] + math.sin(a) * ry * r)))
+    mesh_from('town', [(x, y, 0.02) for x, y in pts], [tuple(range(len(pts)))], M('dirt'), 0.0)
+    for (x, y) in pts[::2]: tufts(x, y, 2, (0.8, 0.6))
     def patch(cx, cy, r, m, n=9, z=0.035):
         vs = [(cx + math.cos(a) * r * R.uniform(0.8, 1.15), cy + math.sin(a) * r * R.uniform(0.8, 1.15), z) for a in [i / n * math.tau for i in range(n)]]
         mesh_from('patch', vs, [tuple(range(n))], m, 0.0)
@@ -532,9 +541,13 @@ def ground():
         for k in range(R.randint(5, 10)): K.sphere('flower', 0.07, (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.6, 0.6), 0.12), M(c), sub=1)
     for _ in range(8):
         cx, cy = R.uniform(-46, 18), R.uniform(11, 26); outcrop(cx, cy, 2, 0.6, 0.35); tufts(cx, cy, 3, (0.9, 0.7))
-    for _ in range(12):
+    for _ in range(22):
         cx, cy = R.uniform(-46, 18), R.uniform(12, 26)
-        for k in range(4): K.sphere('bush', R.uniform(0.45, 0.85), (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.5, 0.5), 0.35), M(R.choice(('bush', 'grass2'))), (1, 1, 0.8), 2)
+        for k in range(R.randint(3, 6)): K.sphere('bush', R.uniform(0.45, 0.95), (cx + R.uniform(-1.0, 1.0), cy + R.uniform(-0.6, 0.6), 0.35), M(R.choice(('bush', 'grass2', 'tree'))), (1, 1, 0.8), 2)
+    for _ in range(30):   # broad, low-contrast swathes of darker and lighter grass, so the meadow is not one flat colour
+        cx, cy = R.uniform(-48, 20), R.uniform(10, 30); n = 9; rr = R.uniform(1.5, 4.0)
+        vs = [(cx + math.cos(i / n * math.tau) * rr * R.uniform(0.7, 1.2), cy + math.sin(i / n * math.tau) * rr * R.uniform(0.5, 0.9), 0.025) for i in range(n)]
+        mesh_from('swathe', vs, [tuple(range(n))], M(R.choice(('grass2', 'grass3'))), 0.0)
     for (x, y) in [(R.uniform(-44, 16), R.uniform(20, 30)) for _ in range(7)]: tree(x, y, R.uniform(1.0, 1.3))
     # dark framing clumps at the bottom corners of the view
     for (cx, cy) in ((17, 17), (19, 21), (-36, 17), (-39, 21)):
