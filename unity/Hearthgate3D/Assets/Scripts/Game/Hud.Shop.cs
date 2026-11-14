@@ -41,7 +41,7 @@ namespace Hearthgate.Game
             for (int k = 0; k < TABS.Length; k++)
             {
                 var t = TABS[k];
-                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-264 + k * 132, -98), new Vector2(124, 56), () => ShowShop(t.cat), () => t.cat != cat, out var tl, box).rt.pivot = new Vector2(0.5f, 1);
+                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-264 + k * 132, -98), new Vector2(124, 56), () => ShowShop(t.cat), null, out var tl, box, null, t.cat == cat).rt.pivot = new Vector2(0.5f, 1);
                 tl.text = t.label;
             }
             var rows = new List<(HG.Look l, Text b)>();
@@ -79,7 +79,7 @@ namespace Hearthgate.Game
             for (int k = 0; k < tabs.Length; k++)
             {
                 var t = tabs[k];
-                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-220 + k * 220, -70), new Vector2(210, 56), () => ShowQuests(t.id), () => t.id != tab, out var tl, box).rt.pivot = new Vector2(0.5f, 1);
+                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-220 + k * 220, -70), new Vector2(210, 56), () => ShowQuests(t.id), null, out var tl, box, null, t.id == tab).rt.pivot = new Vector2(0.5f, 1);
                 tl.text = t.label;
             }
             I.perkRefresh = null;

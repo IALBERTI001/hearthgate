@@ -276,7 +276,10 @@ namespace Hearthgate.Game
         // Instead the size steps down here until the wrapped text fits the box, never below min.
         static void Fit(Text t, Vector2 box, int min)
         {
-            var r = t.rectTransform; r.pivot = new Vector2(0.5f, 0.5f); r.sizeDelta = box;
+            // keep the label's centre where it was: changing the pivot alone moved every fitted label half its width to the
+            // left, out of its button (browser check, Nov 14 2026)
+            var r = t.rectTransform; var centre = r.anchoredPosition + Vector2.Scale(new Vector2(0.5f, 0.5f) - r.pivot, r.sizeDelta);
+            r.pivot = new Vector2(0.5f, 0.5f); r.sizeDelta = box; r.anchoredPosition = centre;
             t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
             t.resizeTextForBestFit = false;
             fits.Add((t, t.fontSize, min, box.y));
@@ -510,7 +513,7 @@ namespace Hearthgate.Game
             for (int k = 0; k < tabs.Count; k++)
             {
                 var t = tabs[k]; float x = (k - (tabs.Count - 1) / 2f) * 220;
-                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(x, -70), new Vector2(210, 56), () => ShowPerks(t.id), () => t.id != tab, out var tl, box).rt.pivot = new Vector2(0.5f, 1);
+                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(x, -70), new Vector2(210, 56), () => ShowPerks(t.id), null, out var tl, box, null, t.id == tab).rt.pivot = new Vector2(0.5f, 1);
                 tl.text = t.label;
             }
             I.perkRefresh = null;

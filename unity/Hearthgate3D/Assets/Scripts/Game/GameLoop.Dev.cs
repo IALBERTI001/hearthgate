@@ -16,11 +16,13 @@ namespace Hearthgate.Game
             {
                 case "res": P.res += double.Parse(a[1]); break;
                 case "shards": P.shards += int.Parse(a[1]); break;
-                case "wave": P.wave = int.Parse(a[1]); break;
+                case "wave": P.wave = P.runWave = int.Parse(a[1]); break;
+                case "asc": P.ascensions = int.Parse(a[1]); Refresh(); for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i); RefreshTowers(); break;
+                case "pause": Time.timeScale = a[1] == "1" ? 0 : 1; break;
                 case "shop": foreach (var id in HG.BUILDING_IDS.Where(id => !P.restored.Contains(id)).ToArray()) { P.res += RestoreCost; Restore(id); } break;
                 case "spawn":
                     for (int k = 0; k < (a.Length > 2 ? int.Parse(a[2]) : 1); k++)
-                    { var en = new Enemy(a[1], P.wave, k % 4, 0, 0.05f, unitsRoot); EventSpawn(en); enemies.Add(en); }
+                    { var en = new Enemy(a[1], P.wave, k % 4, 0, Field.SpawnProgress(k % 4, Camera.main) * (a.Length > 3 ? float.Parse(a[3]) : 1f), unitsRoot); EventSpawn(en); enemies.Add(en); }
                     break;
             }
             Save(); Debug.Log("[dev] " + cmd);

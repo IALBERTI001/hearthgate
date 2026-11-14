@@ -407,10 +407,11 @@ namespace Hearthgate.Core
         static bool QuestOk(Profile p, string id) => id == "combo" ? p.combos.Count > 0 : id == "shatter" ? p.combos.Contains("shatter") : id == "level" ? p.restored.Count > 0 : id == "boss" ? p.bestWave >= 10 : true;
         public static void QuestsFor(Profile p, string today)
         {
-            if (p.questDay == today && p.quests.Count > 0) return;
-            var pool = QUESTS.Where(q => QuestOk(p, q.id)).ToList(); uint seed = 7; foreach (var c in today) seed = seed * 31 + c;
+            if (p.questDay == today && p.quests.Count >= 3) return;
+            var pool = QUESTS.Where(q => QuestOk(p, q.id)).ToList(); uint seed = 7; foreach (var c in today) seed = unchecked(seed * 31 + c);
             var pick = new List<QuestDef>();
-            for (int i = 0; pick.Count < 3 && i < pool.Count * 3; i++) { var q = pool[(int)((seed + (uint)i * 5) % (uint)pool.Count)]; if (!pick.Contains(q)) pick.Add(q); }
+            // a day's shuffle (a stride of 5 through a pool of 5 picked one quest only: browser check, Nov 14 2026)
+            while (pick.Count < 3 && pool.Count > 0) { seed = unchecked(seed * 1103515245 + 12345); var q = pool[(int)((seed >> 8) % (uint)pool.Count)]; pick.Add(q); pool.Remove(q); }
             p.questDay = today; p.questBonus = false; p.quests = pick.Select(q => new QuestState { id = q.id, need = q.need }).ToList();
         }
         public static string QuestText(QuestState q) => QUESTS.First(x => x.id == q.id).text.Replace("{n}", q.need.ToString());
