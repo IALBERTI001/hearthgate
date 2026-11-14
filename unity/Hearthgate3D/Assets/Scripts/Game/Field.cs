@@ -81,6 +81,10 @@ namespace Hearthgate.Game
         public static Vector2 PlotSize(int i) => SIZES[i];
         public static float PlotHeight(int i) => HEIGHTS[i];
         public static Vector3 Door(int i, float out_ = 0f, float y = 0f) => World(i, 0, SIZES[i].y / 2 + out_, y);
+        // each room's centrepiece in its own frame (u, v, reach; reach < 0: none), written by gen_field.py from hg_layout.py
+        public static readonly Vector3[] CENTREPIECE = { new Vector3(0, 0, -1), new Vector3(0, 0, -1), new Vector3(0, 0, -1), new Vector3(0, 0, -1), new Vector3(0.000f, 0.600f, 1.050f), new Vector3(0, 0, -1), new Vector3(0, 0, -1), new Vector3(0.000f, 0.400f, 0.550f), new Vector3(0, 0, -1), new Vector3(-0.200f, -0.400f, 0.850f) };
+        public static bool HasCentre(int i) => CENTREPIECE[i].z > 0;
+        public static Vector3 Centre(int i, float y = 0f) => World(i, CENTREPIECE[i].x, CENTREPIECE[i].y, y);
         // the board of a building's sign (hg_city.signpost): in the yard, left of the door as you face the house
         public static Vector3 SignPoint(int i) => World(i, SIZES[i].x / 2 - 0.7f, SIZES[i].y / 2 + 1.5f, 2.0f);
         public const float DOOR_W = 1.2f, WALL_T = 0.3f, FLOOR = 0.34f;   // every door 1.2 x 2.4 m; the room floor on its plinth

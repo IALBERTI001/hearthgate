@@ -10,28 +10,9 @@ namespace Hearthgate.Game
 {
     public partial class Hud
     {
-        Act shopAct, questAct;
         static readonly Color ROSE_TXT = new Color(1f, 0.72f, 0.9f);
-        void InitHalls()
-        {
-            shopAct = Action("ShopTag", Vector2.zero, Vector2.zero, new Vector2(230, 56), "shop", null, () => ShowShop("tower"), null, false);
-            shopAct.p.rt.pivot = new Vector2(0.5f, 0); shopAct.p.rt.SetSiblingIndex(1); shopAct.p.rt.gameObject.SetActive(false);
-            questAct = Action("QuestTag", Vector2.zero, Vector2.zero, new Vector2(230, 56), "quests", null, () => ShowQuests(), null, false);
-            questAct.p.rt.pivot = new Vector2(0.5f, 0); questAct.p.rt.SetSiblingIndex(1); questAct.p.rt.gameObject.SetActive(false);
-        }
-        void HallTags(GameLoop g, Profile P)
-        {
-            int mi = System.Array.IndexOf(HG.BUILDING_IDS, "market"), li = System.Array.IndexOf(HG.BUILDING_IDS, "library");
-            if (P.shopOpen && Pin(shopAct.p.rt, Field.Plot(mi) + Vector3.up * (Field.PlotHeight(mi) + 1.2f)))
-            { Show(shopAct, "Shop", $"{P.shards} Starshards", true, 0); shopAct.gem.enabled = false; shopAct.cost.color = ROSE_TXT; }
-            else if (!P.shopOpen && shopAct.p.rt.gameObject.activeSelf) shopAct.p.rt.gameObject.SetActive(false);
-            int claim = g.QuestsToClaim, done = P.quests.Count(q => q.n >= q.need);
-            if (P.shopOpen && Pin(questAct.p.rt, Field.Plot(li) + Vector3.up * (Field.PlotHeight(li) + 1.2f)))
-            { Show(questAct, "Library", claim > 0 ? $"{claim} to claim" : FeatNews ? "New Feat!" : $"Quests {done} / {P.quests.Count}", true, 0); questAct.gem.enabled = false; questAct.cost.color = claim > 0 || FeatNews ? RES : CREAM; }
-            else if (!P.shopOpen && questAct.p.rt.gameObject.activeSelf) questAct.p.rt.gameObject.SetActive(false);
-        }
-
         static readonly (string cat, string label)[] TABS = { ("tower", "Towers"), ("trail", "Shots"), ("hit", "Hits"), ("wisp", "Wisps"), ("town", "Town") };
+
         public static void ShowShop(string cat)
         {
             if (!I || !GameLoop.I) return;
@@ -148,6 +129,7 @@ namespace Hearthgate.Game
         }
         static void QuestsTab(RectTransform box, GameLoop g)
         {
+            if (!g.P.shopOpen) { I.Line(box, -150, "Daily quests begin when the Market opens its Shop. Until then the book keeps your Feats, the Bestiary and the Garden.", 18); return; }
             var om = g.P.omen != null ? HG.OMENS.First(o => o.id == g.P.omen) : null;
             I.Line(box, -136, (om != null ? $"<color=#FFD56B>Today's omen: {om.name}</color> · {om.line}\n" : "") + $"{HG.SHARDS["quest"]} Starshards each, {HG.SHARDS["questBonus"]} more for all three. New quests tomorrow.", 16, new Color(0.85f, 0.8f, 0.88f));
             var rows = new List<(int i, Text prog, Text b)>();

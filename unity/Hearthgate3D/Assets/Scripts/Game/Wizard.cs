@@ -18,6 +18,7 @@ namespace Hearthgate.Game
         public bool On;               // walking the town (the camera follows him)
         public int Near = -1;         // the plot he can work on, or -1
         public int Inside = -1;       // the building he is standing in, or -1
+        public int Looking = -1;      // the room whose centrepiece he stands at and looks at (GameLoop.Halls opens its card)
         public Vector3 Position => pos;
         public const float SCALE = 0.66f, SPEED = 4.2f, RADIUS = 0.32f, REACH = 2.6f, FOUNTAIN_R = 3.4f;
         // in the square, left of the gatehouse's keep as seen from the walls (LayoutCheck: seen from the wall camera)
@@ -65,6 +66,8 @@ namespace Hearthgate.Game
             model.localScale = Vector3.one * SCALE;
             goal = Art.Spawn(art ? art.marker : null, "goal", pos, transform); goal.transform.localScale = Vector3.one * 0.25f; goal.SetActive(false);
         }
+
+        public void Stop() { target = null; goal.SetActive(false); vel = Vector3.zero; }
 
         public void Toggle()
         {
@@ -157,7 +160,20 @@ namespace Hearthgate.Game
                 }
             }
             if (!On) Near = -1;
-            if (On && Near >= 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else Sound.Dud(); }
+            // the centrepiece he looks at: in its room, within reach of it and turned to it (within 50 degrees)
+            Looking = -1;
+            if (On)
+                for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
+                {
+                    if (!GameLoop.I.CentreOn(i) || !InFootprint(i, pos, 0.2f)) continue;
+                    var c = Field.Centre(i); var to = new Vector3(c.x - pos.x, 0, c.z - pos.z);
+                    bool close = to.magnitude < Field.CENTREPIECE[i].z + RADIUS + 0.9f;
+                    if (close && want.sqrMagnitude > 0.01f && Vector3.Angle(want, to) < 70f)   // pressing toward it: he turns to face it squarely
+                        yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-to.x, -to.z) * Mathf.Rad2Deg, 540f * dt);
+                    var face = new Vector3(-Mathf.Sin(yaw * Mathf.Deg2Rad), 0, -Mathf.Cos(yaw * Mathf.Deg2Rad));
+                    if (to.magnitude < Field.CENTREPIECE[i].z + RADIUS + 0.9f && Vector3.Angle(face, to) < 50f) Looking = i;
+                }
+            if (On && Near >= 0 && Looking < 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else Sound.Dud(); }
 
             // the camera: from the walls it glides down into the town and settles behind and above him, looking the way the
             // wall view looks (FollowFrom keeps it inside the ring); high enough to look over a room's walls when he is inside
@@ -202,6 +218,7 @@ namespace Hearthgate.Game
             for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
             {
                 if (!InFootprint(i, pos, RADIUS + 0.3f)) continue;
+                if (GameLoop.I && GameLoop.I.CentreOn(i)) Push(Field.Centre(i), Field.CENTREPIECE[i].z + RADIUS);   // he walks up to the centrepiece, not through it
                 Rect(i, out float hx, out float hz); house = i;
                 if (HG.BUILDING_IDS[i] == "market")
                 {   // an open hall: only its posts stop him

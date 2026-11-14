@@ -27,6 +27,10 @@ SIZES = {'forge': (8.0, 7.0), 'frostSpire': (7.0, 7.0), 'stormBell': (6.0, 6.0),
          'tavern': (10.0, 8.0), 'granary': (8.0, 8.0), 'library': (10.0, 8.0), 'cottages': (10.0, 6.0), 'watchtower': (6.0, 6.0)}
 DOOR_W, DOOR_H, STOREY, WALL_T, PLINTH = 1.2, 2.4, 3.2, 0.3, 0.3
 IDS = ['forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower']
+# the centrepiece of each room that opens a menu (owner, Nov 14 2026): its spot in the building's Blender frame (x across, y
+# from the door at -y to the back) and how far it reaches; the game turns it into its own frame (u = x, v = -y)
+CENTREPIECE = {'watchtower': (-0.2, 0.4), 'market': (0.0, -0.6), 'library': (0.0, -0.4)}
+CENTRE_R = {'watchtower': 0.85, 'market': 1.05, 'library': 0.55}
 
 CAM_PITCH, CAM_FOV, CAM_DIST = 30.0, 40.0, 55.0
 CAM_LOOK = (0.0, 0.0, -3.0)

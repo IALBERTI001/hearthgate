@@ -181,11 +181,8 @@ namespace Hearthgate.Game
             var ct = Label("T", cheerTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 15, TextAnchor.MiddleCenter); ct.text = "Cheer"; ct.font = body;
             ct.rectTransform.pivot = new Vector2(0.5f, 0.5f); ct.rectTransform.sizeDelta = new Vector2(110, 26);
             cheerTag.SetSiblingIndex(1); cheerTag.gameObject.SetActive(false);
-            perksAct = Action("PerksTag", Vector2.zero, Vector2.zero, new Vector2(230, 56), "perks", null, () => ShowPerks(), null, false);
-            perksTag = perksAct.p.rt; perksTag.pivot = new Vector2(0.5f, 0); perksTag.SetSiblingIndex(1); perksTag.gameObject.SetActive(false);
-            InitHalls();
         }
-        RectTransform perksTag; Act surgeAct, perksAct;
+        Act surgeAct;
         RectTransform surgeTag, cheerTag; Image cheerFill; Act guide;
         // a HUD element pinned over a point in the world; false when that point is off screen
         bool Pin(RectTransform r, Vector3 at, float near = 9999f)
@@ -211,12 +208,6 @@ namespace Hearthgate.Game
                 cheerFill.color = g.cheerT > 0 ? new Color(1f, 0.84f, 0.42f) : new Color(0.9f, 0.6f, 0.23f);
             }
             else if (!P.restored.Contains("tavern") && cheerTag.gameObject.activeSelf) cheerTag.gameObject.SetActive(false);
-            // the Watchtower keeps the perks: a board over it once there is anything to spend (it works even in ruins)
-            int wi = System.Array.IndexOf(HG.BUILDING_IDS, "watchtower");
-            bool perksOn = P.ascensions > 0;
-            if (perksOn && Pin(perksTag, Field.Plot(wi) + Vector3.up * (Field.PlotHeight(wi) + 1.2f)))
-            { Show(perksAct, "Perks", P.perkPts > 0 ? $"{P.perkPts} to spend" : "all spent", P.perkPts > 0, Time.unscaledTime); perksAct.gem.enabled = false; }
-            else if (!perksOn && perksTag.gameObject.activeSelf) perksTag.gameObject.SetActive(false);
         }
 
         // boards pinned over the town never sit on one another: from the lowest up, each one that overlaps a board below it
@@ -224,7 +215,7 @@ namespace Hearthgate.Game
         void Unstack()
         {
             var on = new System.Collections.Generic.List<RectTransform>();
-            foreach (var r in new[] { surgeTag, perksTag, cheerTag, shopAct?.p.rt, questAct?.p.rt }) if (r && r.gameObject.activeSelf) on.Add(r);
+            foreach (var r in new[] { surgeTag, cheerTag }) if (r && r.gameObject.activeSelf) on.Add(r);
             on.Sort((a, b) => a.anchoredPosition.y.CompareTo(b.anchoredPosition.y));
             for (int i = 1; i < on.Count; i++)
                 for (int pass = 0; pass < 3; pass++)
@@ -264,10 +255,25 @@ namespace Hearthgate.Game
                 if (P.restored.Contains(id))
                 {
                     double r = HG.BuildingRate(P, id, g.B); string rs = r < 10 ? r.ToString("0.##") : HG.Fmt(r);
-                    signTxt[i].text = $"<b>{HG.NameOf(P, id)}</b>  ·  level {HG.LevelOf(P, id)}\n<color=#FFD56B>+{rs}/s</color>";
+                    signTxt[i].text = $"<b>{HG.NameOf(P, id)}</b>  ·  level {HG.LevelOf(P, id)}\n<color=#FFD56B>+{rs}/s</color>" + HallLine(g, P, i);
                 }
+                else if (g.CentreOn(i)) signTxt[i].text = $"<b>{b.name}</b>  ·  ruined" + HallLine(g, P, i);
                 else signTxt[i].text = HG.RestoreOffer(P).Contains(id) ? $"<b>{b.name}</b>  ·  ruined\n<color=#FFD56B>rebuild {HG.Fmt(g.RestoreCost)}</color>" : $"<b>{b.name}</b>  ·  ruined\n<color=#D9C9A8>{(g.NextBuilding != null ? "after the " + HG.ById(g.NextBuilding).name : "rebuilt later")}</color>";   // says what comes first, not a bare "not yet"
             }
+        }
+
+        // what waits at a hall's centrepiece, on its sign
+        static string HallLine(GameLoop g, Profile P, int i)
+        {
+            if (!g.CentreOn(i)) return "";
+            switch (HG.BUILDING_IDS[i])
+            {
+                case "watchtower": return P.perkPts > 0 ? $"\n<color=#FFD56B>{P.perkPts} perk point{(P.perkPts == 1 ? "" : "s")} at the star table</color>" : "\n<color=#D9C9A8>perks and stars inside</color>";
+                case "market": return $"\n<color=#FFB3E6>Shop · {P.shards} Starshards</color>";
+                case "library":
+                    int claim = g.QuestsToClaim; return claim > 0 ? $"\n<color=#FFD56B>{claim} quest{(claim == 1 ? "" : "s")} to claim</color>" : FeatNews ? "\n<color=#FFD56B>a new Feat in the book</color>" : "\n<color=#D9C9A8>quests and Feats inside</color>";
+            }
+            return "";
         }
 
         // true when the pointer is over a pressable control (the town walk ignores those taps)
@@ -441,7 +447,7 @@ namespace Hearthgate.Game
                 re.gem.enabled = false;
             }
             if (nb != null) re.gem.enabled = true;
-            Signs(g, P); TownTags(g, P); HallTags(g, P); Unstack(); perkRefresh?.Invoke();
+            Signs(g, P); TownTags(g, P); Unstack(); perkRefresh?.Invoke();
             // the town walk
             var wz = Wizard.I;
             Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", null, true, now);

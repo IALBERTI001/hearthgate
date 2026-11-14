@@ -214,6 +214,39 @@ def inner_walls(w, d, h=ST):   # a plaster skin and a timber dado on the inside 
     for (x, sg) in ((-w / 2 + T + 0.01, 1), (w / 2 - T - 0.01, -1)):
         block((x, 0, z0 + 0.45), (0.02, d - 2 * T, 0.9), M('wood'), 0.0); block((x + sg * 0.012, 0, z0 + 0.92), (0.04, d - 2 * T, 0.06), M('wood_dk'), 0.0)
 
+# ---------------------------------------------------------------------- the centrepieces (owner, Nov 14 2026: "i want the
+# perks, shop, and library quests to only be available when you walk into the building ... you open a menu by looking at
+# something in the middle of the room"). Each stands in the middle of its room, glowing so the eye goes to it; the game
+# opens the menu when the wizard walks up to it and looks at it. Each is its own model, origin on its spot (the game places
+# it at hg_layout.CENTREPIECE, in the finished room or, after an Ascension, in the ruin: it survived the fire).
+def star_table(x, y):   # the Watchtower: a captain's table with a star orb on a brass stand and a chart of the sky
+    table(x, y, 1.5, 1.0)
+    block((x - 0.25, y + 0.1, z0 + 0.81), (0.8, 0.6, 0.01), M('plaster2'), 0.0)                      # the chart
+    for k in range(7): K.sphere('chart_star', 0.025, (x - 0.55 + k * 0.1, y + 0.1 + math.sin(k * 1.7) * 0.2, z0 + 0.82), M('roof_blue', 0.6), (1, 1, 0.3), 1)
+    K.cyl('stand', 0.12, 0.12, (x + 0.35, y - 0.1, z0 + 0.86), M('gold', 0.4), 10, 0.0)
+    block((x + 0.35, y - 0.1, z0 + 1.0), (0.05, 0.05, 0.24), M('gold', 0.4), 0.0)
+    K.sphere('orb', 0.22, (x + 0.35, y - 0.1, z0 + 1.32), M('roof_blue', 2.4), sub=2)                  # the glowing sky-orb
+    for k in range(5):
+        a = k * 1.256; K.sphere('orb_star', 0.04, (x + 0.35 + math.cos(a) * 0.32, y - 0.1 + math.sin(a) * 0.32, z0 + 1.32 + math.sin(a * 2) * 0.12), M('gold', 3.0), sub=1)
+def shard_counter(x, y):   # the Market: the Starshard seller's counter, rose crystals on a velvet cushion
+    table(x, y, 2.0, 1.0)
+    block((x, y, z0 + 0.85), (0.9, 0.6, 0.1), M('banner'), 0.03)
+    for (dx, dy, h, r) in ((0, 0, 0.62, 0.11), (-0.2, 0.08, 0.42, 0.08), (0.2, -0.06, 0.48, 0.08), (0.08, 0.15, 0.3, 0.06), (-0.12, -0.14, 0.32, 0.06)):
+        K.cone('shard', r, h, (x + dx, y + dy, z0 + 0.9 + h / 2), M('rose', 2.6), 6)
+    for s in (-1, 1): K.cyl('coin_stack', 0.08, 0.12 + 0.06 * (s > 0), (x + s * 0.7, y + 0.2, z0 + 0.86), M('gold', 0.6), 10, 0.0)
+def book_lectern(x, y):   # the Library: a lectern with the great book of quests lying open, its pages lit
+    block((x, y, z0 + 0.5), (0.3, 0.3, 1.0), M('wood_dk'), 0.02)
+    o = block((x, y, z0 + 1.05), (0.9, 0.62, 0.08), M('wood'), 0.02); o.rotation_euler = (0.35, 0, 0)
+    for s in (-1, 1):
+        o = block((x + s * 0.2, y - 0.01, z0 + 1.11), (0.38, 0.5, 0.04), M('plaster', 1.6), 0.01); o.rotation_euler = (0.35, -s * 0.12, 0)   # the pages
+    o = block((x, y + 0.02, z0 + 1.08), (0.84, 0.56, 0.03), M('roof_red'), 0.0); o.rotation_euler = (0.35, 0, 0)   # the cover
+    K.cyl('ribbon', 0.015, 0.4, (x + 0.05, y - 0.32, z0 + 0.86), M('gold'), 4, 0.0)
+    for s in (-1, 1): K.cyl('candle', 0.05, 0.3, (x + s * 0.6, y + 0.2, z0 + 0.15), M('plaster'), 6, 0.0); K.cone('wick', 0.04, 0.1, (x + s * 0.6, y + 0.2, z0 + 0.35), M('fire_core', 3.0), 6)
+
+def centrepiece(bid):
+    {'watchtower': star_table, 'market': shard_counter, 'library': book_lectern}[bid](0.0, 0.0)
+    return K.export('centre_' + bid)
+
 # ------------------------------------------------------------------------------------------------- the ten buildings
 def b_forge():
     w, d = LY.SIZES['forge']; top = room(w, d, 3.4, 'stone2', 'cobble2'); top_rail(w, d, top)
@@ -280,7 +313,8 @@ def b_market():
     block((0, 0, PL / 2), (w + 0.4, d + 0.4, PL), M('cobble'), 0.02)
     for x in (-hx + 0.3, -hx / 3, hx / 3, hx - 0.3):
         for y in (-hy + 0.3, hy - 0.3): block((x, y, FLOOR + 1.9), (0.3, 0.3, 3.8), M('timber'), 0.0)
-    for (x, c) in ((-2.8, 'fire'), (0.0, 'flower_y'), (2.8, 'grass3')):   # three stalls with goods, crates along the back
+    for (x, c) in ((-2.8, 'fire'), (0.0, None), (2.8, 'grass3')):   # three stalls, the middle one the Starshard counter's
+        if c is None: continue   # the Starshard counter stands here (centrepiece('market'), placed by the game)
         table(x, -0.6, 2.0, 1.0, (c, c, 'blush'))
         block((x, -0.6, z0 + 2.3), (2.4, 1.4, 0.06), M(R.choice(('awning', 'roof_blue', 'canvas'))), 0.0)
         for s in (-1, 1): block((x + s * 1.1, -0.6, z0 + 1.55), (0.06, 0.06, 1.5), M('wood_dk'), 0.0)
@@ -321,11 +355,11 @@ def b_library():
     w, d = LY.SIZES['library']; top = room(w, d, 4.6, 'stone3', 'cobble'); top_rail(w, d, top, 'stone2')
     for s in (-1, 1): shelf(s * (w / 2 - T - 0.25), 2.0, 2.8, False)
     shelf(0, d / 2 - T - 0.25, 4.0, True)
-    table(0, 0.4, 2.4, 1.1, ('plaster', 'roof_red')); stool(-0.8, -0.5); stool(0.8, -0.5)
+    table(0, 1.3, 2.4, 1.0, ('plaster', 'roof_red')); stool(-0.8, 2.0); stool(0.8, 2.0)
     K.sphere('globe', 0.35, (2.3, -1.6, z0 + 1.15), M('roof_blue'), sub=2); block((2.3, -1.6, z0 + 0.4), (0.12, 0.12, 0.8), M('wood_dk'), 0.0)
     inner_walls(w, d); rug(0, 0.2, 4.0, 3.0, 'banner')
     for (x, y, f) in ((-w / 2 + T, -1.2, (1, 0)), (w / 2 - T, -1.2, (-1, 0))): sconce(x, y, z0 + 2.2, f)
-    for k in range(3): K.cyl('candle', 0.05, 0.22, (-0.6 + k * 0.4, 0.4, z0 + 0.92), M('plaster'), 6, 0.0); K.cone('wick', 0.04, 0.1, (-0.6 + k * 0.4, 0.4, z0 + 1.07), M('fire_core', 3.0), 6)
+    for k in range(3): K.cyl('candle', 0.05, 0.22, (-0.6 + k * 0.4, 1.3, z0 + 0.92), M('plaster'), 6, 0.0); K.cone('wick', 0.04, 0.1, (-0.6 + k * 0.4, 1.3, z0 + 1.07), M('fire_core', 3.0), 6)
     K.cyl('rose_frame', 0.8, 0.12, (0, -d / 2 - 0.02, FLOOR + 3.6), M('stone2'), 20, 0.02).rotation_euler = (math.pi / 2, 0, 0)
     K.cyl('rose', 0.66, 0.08, (0, -d / 2 - 0.05, FLOOR + 3.6), M('window', 2.0), 20, 0.0).rotation_euler = (math.pi / 2, 0, 0)
     with Up():
@@ -417,7 +451,7 @@ def ruin_of(bid):
         for (x, y) in ((-hx + 0.3, -hy + 0.3), (hx - 0.3, -hy + 0.3), (-hx + 0.3, hy - 0.3), (hx / 3, hy - 0.3)):
             o = block((x, y, FLOOR + 1.4), (0.3, 0.3, 2.8), M('char'), 0.0); o.rotation_euler = (R.uniform(-0.2, 0.2), R.uniform(-0.2, 0.2), 0)
         o = block((0, 0.6, FLOOR + 1.0), (6.0, 3.6, 0.06), M('awning'), 0.0); o.rotation_euler = (0.3, 0.15, 0)
-        for k in range(5): crate(R.uniform(-hx + 1, hx - 1), R.uniform(-hy + 1, 0.5), 0.9)
+        for k in range(5): crate(R.uniform(-hx + 1, hx - 1), R.uniform(-hy + 0.8, -1.9), 0.9)   # clear of the counter's spot
     for k in range(4):   # fallen, charred beams
         o = block((R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.5), (0.22, 0.22, R.uniform(2.4, 3.6)), M('char'), 0.0)
         o.rotation_euler = (R.uniform(0.9, 1.3), 0, R.uniform(0, 3))

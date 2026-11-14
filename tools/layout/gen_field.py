@@ -30,4 +30,6 @@ sub(r'public static readonly Vector3 CAM_LOOK = new Vector3\([^)]*\);', f'public
 th = math.radians(L.CAM_PITCH)
 sub(r'public static readonly Vector3 CAM_POS = [^;]*;[^\n]*', f'public static readonly Vector3 CAM_POS = CAM_LOOK + new Vector3(0, {f(L.CAM_DIST * math.sin(th))}, {f(L.CAM_DIST * math.cos(th))});   // {L.CAM_DIST:g} m away, {L.CAM_PITCH:g} degrees down')
 sub(r'public const float CAM_FOV = [^,]*,', f'public const float CAM_FOV = {L.CAM_FOV:g}f,')
+cp = [f'new Vector3({f(L.CENTREPIECE[b][0])}, {f(-L.CENTREPIECE[b][1])}, {f(L.CENTRE_R[b])})' if b in L.CENTREPIECE else 'new Vector3(0, 0, -1)' for b in L.IDS]
+sub(r'public static readonly Vector3\[\] CENTREPIECE = \{.*?\};', 'public static readonly Vector3[] CENTREPIECE = { ' + ', '.join(cp) + ' };')
 open(p, 'w').write(s); print('Field.cs written from hg_layout.py')

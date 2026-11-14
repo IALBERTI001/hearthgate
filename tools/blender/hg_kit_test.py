@@ -35,6 +35,7 @@ jobs = [(name, fn, extra) for fn, name, extra in ((F.gate, 'gate', None), (F.wal
                         (F.ground, 'ground', None), (F.fountain, 'fountain', None), (F.slime, 'slime', None), (F.beetle, 'beetle', None),
                         (F.golem, 'golem', None), (C.ruin, 'ruin', None), (F.wizard, 'wizard', None), (F.butterfly, 'butterfly', None))]
 jobs += [('top_' + k, (lambda k=k: F.top(k)), None) for k in ('stone', 'fire', 'frost', 'storm', 'earth')]
+jobs += [('centre_' + b, (lambda b=b: C.centrepiece(b)), None) for b in ('watchtower', 'market', 'library')]
 jobs += [('building_' + b, C.BUILDERS[b], None) for b in C.BUILDERS] + [('ruin_' + b, (lambda b=b: C.ruin_of(b)), None) for b in C.SHELLS]
 jobs += [('marker', F.marker, None)]
 jobs += [('villager_' + v, (lambda v=v: F.villager(v)), None) for v in 'abc']

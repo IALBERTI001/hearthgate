@@ -15,6 +15,8 @@ namespace Hearthgate.Game
         public GameObject marker;                             // where to rebuild next
         public GameObject wizard;                             // the town walk's wizard
         public GameObject[] villagers = new GameObject[0];   // the townsfolk, three outfits (hg_front.villager)
+        public GameObject centreWatchtower, centreMarket, centreLibrary;   // the rooms' centrepieces (GameLoop.Halls)
+        public GameObject Centre(string id) => id == "watchtower" ? centreWatchtower : id == "market" ? centreMarket : id == "library" ? centreLibrary : null;
         public GameObject Ruin(int i) => ruins != null && i < ruins.Length && ruins[i] ? ruins[i] : ruin;
         public Material lit, glow, particle;                   // material templates, so the build keeps their shaders
         // Unity's built-in shape meshes, without the colliders CreatePrimitive adds: the WebGL build strips the physics

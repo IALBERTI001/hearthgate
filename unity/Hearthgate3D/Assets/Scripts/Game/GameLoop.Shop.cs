@@ -21,7 +21,7 @@ namespace Hearthgate.Game
         {
             if (P.shopOpen) return;
             P.shopOpen = true; P.shards += HG.SHARDS["welcome"]; HG.QuestsFor(P, Today());
-            Hud.Banner($"The Market opens the Shop! +{HG.SHARDS["welcome"]} Starshards. The Library keeps your quests");
+            Hud.Banner($"The Market opens the Shop! +{HG.SHARDS["welcome"]} Starshards. Walk in to its counter; the Library's great book keeps your quests");
         }
 
         // ---------- quests ----------
