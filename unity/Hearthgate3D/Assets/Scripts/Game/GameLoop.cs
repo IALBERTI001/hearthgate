@@ -179,6 +179,7 @@ namespace Hearthgate.Game
                 mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : 0.65f);
                 var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f; tr.endWidth = 0f;
                 tr.material = Art.Flat(Color.Lerp(col, Color.black, 0.15f)); tr.numCapVertices = 3;
+                tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; var smr = mr.GetComponent<Renderer>(); if (smr) smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
                 go.transform.position = tw.Muzzle; Sound.Play(Sfx(tw.el) + "_launch_0", 0.16f);
                 shots.Add(new Shot { p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
             }

@@ -505,7 +505,7 @@ def lanes():
             w = min(R.uniform(0.38, 0.62), L.ROAD_HALF - 0.04 - x)
             a_, b_, c_, e_ = x, x + w - 0.06, zz, zz + d - 0.06
             mid = abs(x + w / 2) < 1.0
-            m = R.choice(('cobble', 'cobble', 'stone3', 'cobble2') if mid else ('cobble', 'cobble2', 'cobble2', 'stone2', 'stone_dk'))
+            m = R.choice(('cobble', 'cobble', 'cobble', 'cobble2', 'stone2') if mid else ('cobble', 'cobble2', 'cobble2', 'cobble2', 'stone_dk'))   # close tones: light stones in the middle read as a checkerboard
             top = 0.03 + R.uniform(0.05, 0.09); vs, fs = faces[m]; i = len(vs)
             j = R.uniform(-0.015, 0.015)   # a hand-laid stone is never quite square
             vs += [(b_ + j, c_, top), (b_, e_ + j, top), (a_ - j, e_, top), (a_, c_ - j, top), (a_ - j, e_, 0.03), (b_, e_ + j, 0.03)]
