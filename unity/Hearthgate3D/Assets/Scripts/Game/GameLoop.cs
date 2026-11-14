@@ -19,6 +19,7 @@ namespace Hearthgate.Game
         readonly List<Shot> shots = new List<Shot>();
         readonly List<(string role, float at)> queue = new List<(string, float)>();
         readonly GameObject[] plots = new GameObject[10]; readonly float[] punch = new float[10];
+        readonly Transform[] uppers = new Transform[10];   // each building's upper storey and roof, hidden while the wizard is inside
         Transform world, unitsRoot, marker;
         float waveT, saveT, betweenT; bool waveLive; System.Random rnd = new System.Random();
         const string SAVE_KEY = "hearthgate.profile.v1";
@@ -83,6 +84,8 @@ namespace Hearthgate.Game
             var prefab = art == null ? null : up ? art.buildings[i] : art.Ruin(i);
             plots[i] = Art.Spawn(prefab, up ? HG.BUILDINGS[i].id : "ruin", Field.Plot(i), world);
             plots[i].transform.rotation = Field.PLOT_FACING;
+            uppers[i] = null;
+            foreach (var t in plots[i].GetComponentsInChildren<Transform>(true)) if (t.name == "upper") uppers[i] = t;
         }
 
         // ---------- waves ----------
@@ -264,7 +267,7 @@ namespace Hearthgate.Game
             if (!P.restored.Contains(id)) { if (HG.RestoreOffer(P).Contains(id) && P.res >= RestoreCost) { Restore(id); punch[i] = 1; } return; }
             double cost = LevelCost(i); if (P.res < cost) return;
             P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P);
-            var top = Field.Plot(i) + Vector3.up * 6.5f; punch[i] = 1;
+            var top = Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 0.6f); punch[i] = 1;
             Fx.I.Burst(top - Vector3.up * 2, Field.GOLD, System.Array.IndexOf(HG.MILESTONES, L) >= 0 ? 34 : 12);
             Fx.I.Pop(top, $"Lv {L}", Field.GOLD, 34);
             if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f); }
@@ -273,6 +276,8 @@ namespace Hearthgate.Game
 
         void Update()
         {
+            var wz = Wizard.I;
+            for (int i = 0; i < plots.Length; i++) if (uppers[i]) uppers[i].gameObject.SetActive(!(wz && wz.Inside == i));
             for (int i = 0; i < plots.Length; i++)   // a building squashes and springs back when worked on
                 if (punch[i] > 0 && plots[i])
                 {
@@ -286,7 +291,8 @@ namespace Hearthgate.Game
                 if (nb != null)
                 {
                     int i = System.Array.IndexOf(HG.BUILDING_IDS, nb); float t = Time.time;
-                    marker.position = Field.Plot(i) + Vector3.up * (0.15f + Mathf.Sin(t * 2.4f) * 0.15f);
+                    // in the yard before its door (the buildings are rooms now: a ring at their centre would sit inside)
+                    marker.position = Field.Plot(i) + new Vector3(0, 0.15f + Mathf.Sin(t * 2.4f) * 0.15f, Field.PlotSize(i).y / 2 + 1.8f);
                     marker.rotation = Quaternion.Euler(0, t * 25f, 0);
                     marker.localScale = Vector3.one * (CanRestore ? 1f + Mathf.Sin(t * 5f) * 0.05f : 0.8f);
                 }

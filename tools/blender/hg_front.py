@@ -565,8 +565,8 @@ def ground():
     g.location = (0, -28, 0); bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
     def height(x, y):   # flat where the lanes run (a rolling meadow poked through them: fresh-eyes review 4)
         h = 0.0
-        if y < -35: h += (min(-35 - y, 40) / 18) ** 1.4 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)   # the ridge climbs on past the top of a tall window
-        if abs(x) > 31: h += (min(abs(x) - 31, 14) / 14) ** 1.4 * 7.0
+        if y < -52: h += (min(-52 - y, 40) / 18) ** 1.4 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)   # the ridge climbs on past the top of a tall window
+        if abs(x) > 42: h += (min(abs(x) - 42, 14) / 14) ** 1.4 * 7.0
         return h - 0.02
     for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
     K.finish(g, M('grass'))
@@ -580,22 +580,27 @@ def ground():
     def patch(cx, cy, r, m, n=9, z=0.035):
         vs = [(cx + math.cos(a) * r * R.uniform(0.8, 1.15), cy + math.sin(a) * r * R.uniform(0.8, 1.15), z) for a in [i / n * math.tau for i in range(n)]]
         mesh_from('patch', vs, [tuple(range(n))], m, 0.0)
-    patch(PLAZA[0], PLAZA[1], 4.4, M('cobble'), 12)
-    for (px, py) in PLOTS: patch(px, py, 3.0, M('cobble2'), 9, 0.03)
+    patch(PLAZA[0], PLAZA[1], 5.6, M('cobble'), 14)
+    mesh_from('street', [(-2.2, -1.6, 0.03), (2.2, -1.6, 0.03), (2.2, PLAZA[1] + 4.5, 0.03), (-2.2, PLAZA[1] + 4.5, 0.03)], [(3, 2, 1, 0)], M('cobble2'), 0.0)   # gate to plaza
+    for (px, py), bid in zip(PLOTS, L.IDS):   # a cobbled yard before each door (fronts face the gate, +y)
+        w, d = L.SIZES[bid]; y0 = py + d / 2 + 0.2
+        mesh_from('yard', [(px - w / 2, y0, 0.03), (px + w / 2, y0, 0.03), (px + w / 2 - 0.5, y0 + 2.6, 0.03), (px - w / 2 + 0.5, y0 + 2.6, 0.03)], [(0, 1, 2, 3)], M('cobble2'), 0.0)
+    def on_plot(x, y, m):
+        return any(abs(x - px) < L.SIZES[b][0] / 2 + m and abs(y - py) < L.SIZES[b][1] / 2 + m for (px, py), b in zip(PLOTS, L.IDS))
     n = 0
     while n < 40:   # grass creeping over the town's ground, clear of the yards
         x, y = R.uniform(-L.RX, L.RX), R.uniform(-2 * L.RZ, 0)
-        if L.inside(x, y, 2.5) and all(math.hypot(x - px, y - py) > 3.6 for px, py in PLOTS + [PLAZA]):
+        if L.inside(x, y, 2.5) and not on_plot(x, y, 2.0) and math.hypot(x - PLAZA[0], y - PLAZA[1]) > 6.5 and abs(x) > 2.6:
             patch(x, y, R.uniform(0.6, 1.6), M(R.choice(('grass2', 'grass'))), 7, 0.03); n += 1
             if n % 2: tufts(x, y, 2, (0.5, 0.5))
     # the slopes either side of the ring and the wooded ridge behind it: a darker, bluer back row for depth
-    for (x, y) in ((31, -8), (32, -20), (-31, -8), (-32, -20), (29, 4), (-29, 4)): outcrop(x, y, 4, 1.8, 1.2)
+    for (x, y) in ((41, -12), (42, -28), (-41, -12), (-42, -28), (39, 2), (-39, 2)): outcrop(x, y, 4, 1.8, 1.2)
     for _ in range(12):
-        x, y = R.choice((1, -1)) * R.uniform(31, 44), R.uniform(-34, 6); tree(x, y, R.uniform(1.0, 1.4), height(x, y))
-    for (x, y) in [(R.uniform(-48, 48), R.uniform(-48, -36)) for _ in range(40)] + [(R.uniform(-60, 60), R.uniform(-75, -48)) for _ in range(45)]:
+        x, y = R.choice((1, -1)) * R.uniform(40, 54), R.uniform(-50, 6); tree(x, y, R.uniform(1.0, 1.4), height(x, y))
+    for (x, y) in [(R.uniform(-58, 58), R.uniform(-64, -53)) for _ in range(40)] + [(R.uniform(-70, 70), R.uniform(-95, -64)) for _ in range(45)]:
         tree(x, y, R.uniform(1.1, 1.8), height(x, y), far=True)
     for _ in range(14):   # trees behind the ring's shoulders, between the wall and the ridge
-        x, y = R.choice((1, -1)) * R.uniform(18, 30), R.uniform(-36, -30)
+        x, y = R.choice((1, -1)) * R.uniform(26, 40), R.uniform(-52, -40)
         if free(x, y, 1.5): tree(x, y, R.uniform(1.0, 1.4), height(x, y))
     # the meadow: clustered flowers, rocks with tufts, bush clumps, broad swathes of darker and lighter grass
     def scatter(n, r, box, make):
@@ -603,7 +608,7 @@ def ground():
         while k < n:
             x, y = R.uniform(*box[0]), R.uniform(*box[1])
             if free(x, y, r): make(x, y); k += 1
-    box = ((-34, 34), (-2, 30))
+    box = ((-44, 44), (-2, 30))
     def flowers(cx, cy):
         c = R.choice(('flower_y', 'flower_w', 'flower_p'))
         for k in range(R.randint(5, 10)): K.sphere('flower', 0.07, (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.6, 0.6), 0.12), M(c), sub=1)
@@ -616,11 +621,11 @@ def ground():
         n = 9; rr = R.uniform(1.5, 3.0)
         vs = [(cx + math.cos(i / n * math.tau) * rr * R.uniform(0.7, 1.2), cy + math.sin(i / n * math.tau) * rr * R.uniform(0.5, 0.9), 0.025) for i in range(n)]
         mesh_from('swathe', vs, [tuple(range(n))], M(R.choice(('grass2', 'grass3'))), 0.0)
-    scatter(34, 3.2, ((-40, 40), (-34, 30)), swathe)
+    scatter(40, 3.2, ((-50, 50), (-50, 30)), swathe)
     scatter(6, 1.8, ((-30, 30), (20, 30)), lambda x, y: tree(x, y, R.uniform(1.0, 1.3)))
     props()
     # dark framing clumps at the bottom corners of the view
-    for (cx, cy) in ((22, 17), (24, 21), (-22, 17), (-24, 21)):
+    for (cx, cy) in ((24, 17), (27, 21), (-24, 17), (-27, 21)):
         for k in range(3):
             x, y = cx + R.uniform(-2, 2), cy + R.uniform(-1.5, 1.5)
             if free(x, y, 1.6): tree(x, y, R.uniform(1.4, 1.8), 0, 'round', far=True)

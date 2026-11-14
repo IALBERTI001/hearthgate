@@ -111,7 +111,7 @@ namespace Hearthgate.EditorTools
                 cam.aspect = (float)w / h; cam.fieldOfView = Field.FovFor(cam.aspect);
                 cam.transform.position = Field.CAM_POS; cam.transform.LookAt(Field.CAM_LOOK);
                 var hud = Hud(w, h);
-                foreach (var it in items)
+                foreach (var it in items.Where(x => !x.name.StartsWith("plot")))   // the town runs on beyond the top of the view (owner's sketch, human-scale town)
                 {
                     var c = it.pts.Select(p => (Vector2)cam.WorldToViewportPoint(p)).ToArray();   // the model's own vertices
                     Rect r = Rect.MinMaxRect(c.Min(p => p.x), c.Min(p => p.y), c.Max(p => p.x), c.Max(p => p.y));
@@ -150,15 +150,8 @@ namespace Hearthgate.EditorTools
                 bool hit = Physics.Raycast(o, d / L, out var info, L - 0.4f);
                 blocker = hit ? info.collider.transform.root.name : null; return hit;
             }
-            foreach (var it in items.Where(x => x.name.StartsWith("plot")))
-            {
-                // the roof line: three points across the front at 60% of the height; at least two must be seen
-                var b = it.b; float roof = b.min.y + b.size.y * 0.6f; int seen = 0; string by = null;
-                foreach (float fx in new[] { -0.3f, 0f, 0.3f })
-                    if (!Hidden(new Vector3(b.center.x + fx * b.size.x, roof, b.max.z + 0.3f))) seen++; else by = blocker;
-                if (seen < 2) bad.Add($"{it.name}'s roof line is hidden behind {by} ({seen} of 3 points seen)");
-            }
-            if (Hidden(Field.PLAZA + new Vector3(0, 1.2f, 1.5f))) bad.Add("the plaza is hidden behind the gatehouse or the wall");
+            // the wizard waiting in the square is seen from the walls (a tap on him starts the town walk)
+            if (Hidden(Wizard.HOME + Vector3.up * 1.2f)) bad.Add($"the wizard's spot in the square is hidden behind {blocker}");
             foreach (var p in road) if (p.y > 1f && Hidden(p)) { bad.Add($"a lane is hidden behind {blocker} at {p}"); break; }
 
             // 5. the town walk: wherever the wizard can stand, the walk camera sees him past the wall, the gatehouse and the
@@ -169,7 +162,7 @@ namespace Hearthgate.EditorTools
                 for (float z = -2 * Field.RZ + 2.5f; z <= -3.2f; z += 1.5f)
                 {
                     var p = new Vector3(x, 0, z);
-                    if (!InRing(p, 2.4f) || Enumerable.Range(0, 10).Any(i => Vector3.Distance(p, Field.Plot(i)) < Wizard.PLOT_R) || Vector3.Distance(p, Field.PLAZA) < Wizard.FOUNTAIN_R) continue;
+                    if (!InRing(p, 2.4f) || Enumerable.Range(0, 10).Any(i => Wizard.InFootprint(i, p, 0.4f)) || Vector3.Distance(p, Field.PLAZA) < Wizard.FOUNTAIN_R) continue;
                     spots++;
                     var from = p + Wizard.FOLLOW; var to = p + Vector3.up * 1.3f; var d = to - from;
                     if (Physics.Raycast(from, d.normalized, out var hitInfo, d.magnitude - 0.5f))

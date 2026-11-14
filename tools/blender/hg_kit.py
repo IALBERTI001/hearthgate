@@ -85,35 +85,45 @@ def sphere(name, r, loc, m, scale=(1, 1, 1), sub=3):
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True); return finish(o, m)
 
 def export(name):
+    """Join the scene into one model and write <name>.fbx. Parts named 'UP_*' (hg_city's upper storeys and roofs) are
+    joined into a second object, 'upper', parented to the model, so the game can hide them while the wizard is inside."""
     objs = [o for o in bpy.context.scene.objects if o.type == 'MESH']
     for o in objs:
         for md in list(o.modifiers): bpy.context.view_layer.objects.active = o; bpy.ops.object.modifier_apply(modifier=md.name)
     # where the model sits in the world before export: the exported mesh must be exactly this turned 180 degrees
     ws = [o.matrix_world @ v.co for o in objs for v in o.data.vertices]
     lo = Vector((min(v.x for v in ws), min(v.y for v in ws), min(v.z for v in ws))); hi = Vector((max(v.x for v in ws), max(v.y for v in ws), max(v.z for v in ws)))
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in objs: o.select_set(True)
-    bpy.context.view_layer.objects.active = objs[0]
-    if len(objs) > 1: bpy.ops.object.join()
-    o = bpy.context.object; o.name = name
-    bpy.context.scene.cursor.location = (0, 0, 0); bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
-    # the joined object keeps the FIRST part's rotation: bake it into the mesh before the turn below, or the turn replaces
-    # it and the model swings round (Nov 13 2026: the ring wall came out mirrored across the gate, round the meadow)
-    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    # the FBX axis conversion (forward -Z, up Y) plus Unity's handedness flip turn a model 180 degrees about up: Blender +Y
-    # landed on Unity -Z and the road ran through the city (Nov 13 2026). Turning it here puts Blender +Y (toward the
-    # waves) on Unity +Z and Blender +X on Unity +X, so footprints read the same in both programs.
-    o.rotation_euler = (0, 0, math.pi); bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-    vs = [v.co for v in o.data.vertices]
+    def join(group, nm):
+        bpy.ops.object.select_all(action='DESELECT')
+        for o in group: o.select_set(True)
+        bpy.context.view_layer.objects.active = group[0]
+        if len(group) > 1: bpy.ops.object.join()
+        j = bpy.context.object; j.name = nm
+        bpy.context.scene.cursor.location = (0, 0, 0); bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+        # the joined object keeps the FIRST part's rotation: bake it into the mesh before the turn below, or the turn
+        # replaces it and the model swings round (Nov 13 2026: the ring wall came out mirrored across the gate)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        # the FBX axis conversion (forward -Z, up Y) plus Unity's handedness flip turn a model 180 degrees about up:
+        # turning it here puts Blender +Y on Unity +Z and Blender +X on Unity +X, so footprints read the same in both
+        j.rotation_euler = (0, 0, math.pi); bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+        return j
+    up = [o for o in objs if o.name.startswith('UP_')]; main = [o for o in objs if not o.name.startswith('UP_')]
+    o = join(main, name); parts = [o]
+    if up:
+        u = join(up, 'upper'); u.parent = o; parts.append(u)
+    vs = [v.co for p in parts for v in p.data.vertices]
     lo2 = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs))); hi2 = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
     want_lo, want_hi = Vector((-hi.x, -hi.y, lo.z)), Vector((-lo.x, -lo.y, hi.z))
     if (lo2 - want_lo).length > 0.05 or (hi2 - want_hi).length > 0.05:
         raise RuntimeError(f'[hg_kit] {name}: export moved the model ({tuple(round(v, 2) for v in lo2)}..{tuple(round(v, 2) for v in hi2)}, want {tuple(round(v, 2) for v in want_lo)}..{tuple(round(v, 2) for v in want_hi)})')
+    bpy.ops.object.select_all(action='DESELECT')
+    for p in parts: p.select_set(True)
+    bpy.context.view_layer.objects.active = o
     path = os.path.join(OUT, name + '.fbx')
     bpy.ops.export_scene.fbx(filepath=path, use_selection=True, apply_scale_options='FBX_SCALE_UNITS', axis_forward='-Z', axis_up='Y',
                              bake_space_transform=True, object_types={'MESH'}, mesh_smooth_type='FACE', path_mode='COPY', embed_textures=False)
-    tris = sum(len(p.vertices) - 2 for p in o.data.polygons)
-    print(f'[hg_kit] {name}.fbx  {tris} tris')
+    tris = sum(len(p.vertices) - 2 for q in parts for p in q.data.polygons)
+    print(f'[hg_kit] {name}.fbx  {tris} tris' + (f' (upper part {sum(len(p.vertices) - 2 for p in parts[1].data.polygons)})' if len(parts) > 1 else ''))
     clear()
     return tris
 

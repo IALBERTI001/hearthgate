@@ -5,24 +5,31 @@
 # each tower. Close off the loop around town to make a protected town." The town sits inside an elliptical ring wall.
 # The front arc, nearest the camera, carries the gatehouse in the middle and two element towers each side. Four lanes
 # run up the screen from its bottom edge, one to the foot of each tower. Numbers from tools/layout/ring.py (a search
-# over the frame, the HUD, sight lines into the town and footprints).
+# over the frame, the HUD, sight lines into the town and footprints); since the human-scale town (Nov 13 2026) the plots,
+# plaza, ring and camera come from tools/layout/town.py, and the town runs on beyond the top of the wall view.
 #
 # Coordinates are Unity's: x (screen LEFT is +x: the camera stands north and looks south), z north toward the camera,
 # y up. In Blender, Unity z is Blender y.
 import math
 
-RX, RZ = 25.0, 16.0                    # ring half axes; centre (0, -RZ), so the ring's front point is the gate at (0, 0)
+RX, RZ = 36.0, 24.0                    # ring half axes; centre (0, -RZ), so the ring's front point is the gate at (0, 0)
 WALL_H = 3.4                           # wall walk; merlons to about 4.0
-TOWER_X = (8.5, -8.5, 17.0, -17.0)     # tower 0 and 1 beside the gate, 2 and 3 further out (Field.TOWER_X, same order)
+TOWER_X = (9.0, -9.0, 21.6, -21.6)     # tower 0 and 1 beside the gate, 2 and 3 further out (Field.TOWER_X, same order)
 TOWER_TOP = 5.0
 TOWER_FOOT = 2.6                       # from a tower's centre to the foot of its lane (base radius 2.15 plus a margin)
 LANE_HALF = 1.8                        # each lane is 3.6 m wide; enemies keep within +-1.3 of its centre line
 LANE_FAR_Z = 21.0                      # lanes begin just below the frame's bottom edge (ground z about 18 there)
-PLAZA = (-5.5, -13.5)
-PLOTS = [(5.0, -8.0), (5.0, -19.5), (-5.0, -19.5), (13.0, -9.5), (-15.0, -11.0), (-16.0, -21.0), (0.0, -23.0), (8.5, -26.5), (-8.5, -26.5), (16.0, -21.0)]
+PLAZA = (0.0, -10.0)
+PLOTS = [(11.5, -17.28), (-23.5, -30.72), (1.5, -30.72), (13.0, -39.0), (-12.5, -17.28), (14.0, -28.22), (-13.0, -38.5), (0.0, -41.0), (24.5, -17.28), (26.5, -30.72)]
+# the buildings at human scale (owner, Nov 13 2026: "Wizard is as big as the town, some doors are insanely bigger than
+# others. I want the wizard to be able to walk into the buildings"): footprint w (across the front) x d (deep), metres.
+# Every door is 1.2 x 2.4 m, every storey 3.2 m (hg_city.py); the wizard is 1.8 m to his hat's tip.
+SIZES = {'forge': (8.0, 7.0), 'frostSpire': (7.0, 7.0), 'stormBell': (6.0, 6.0), 'bakery': (8.0, 7.0), 'market': (10.0, 7.0),
+         'tavern': (10.0, 8.0), 'granary': (8.0, 8.0), 'library': (10.0, 8.0), 'cottages': (10.0, 6.0), 'watchtower': (6.0, 6.0)}
+DOOR_W, DOOR_H, STOREY, WALL_T, PLINTH = 1.2, 2.4, 3.2, 0.3, 0.3
 IDS = ['forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower']
 
-CAM_PITCH, CAM_FOV, CAM_DIST = 30.0, 40.0, 50.0
+CAM_PITCH, CAM_FOV, CAM_DIST = 30.0, 42.0, 48.0
 CAM_LOOK = (0.0, 0.0, -3.0)
 CAM_POS = (0.0, CAM_DIST * math.sin(math.radians(CAM_PITCH)), CAM_LOOK[2] + CAM_DIST * math.cos(math.radians(CAM_PITCH)))
 
@@ -92,3 +99,7 @@ if __name__ == '__main__':
         print('lane', i, 'foot', tuple(round(v, 2) for v in f), 'start', tuple(round(v, 2) for v in s), 'length', round(math.dist(f, s), 2),
               'screen', tuple(round(v, 3) for v in project((f[0], 0, f[1]))), tuple(round(v, 3) for v in project((s[0], 0, s[1]))))
     print('cam', CAM_POS)
+
+# ground to the top of each building (hg_city.py), for the marker over a plot and the town search
+HEIGHT = {'forge': 7.6, 'frostSpire': 14.8, 'stormBell': 12.9, 'bakery': 10.4, 'market': 6.6, 'tavern': 10.6,
+          'granary': 8.8, 'library': 9.0, 'cottages': 6.8, 'watchtower': 13.2}

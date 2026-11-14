@@ -46,8 +46,8 @@ for (x, z), el in zip(L.TOWERS, els):
 built = {'forge', 'frostSpire', 'stormBell', 'bakery', 'cottages'} if STATE == 'mid' else set()
 for (x, y), bid in zip(PLOTS, IDS):
     place('building_' + bid if bid in built else 'ruin_' + bid, (x, y, 0), 180)   # Field.PLOT_FACING: fronts to the camera
-if os.path.exists(os.path.join(MODELS, 'wizard.fbx')):   # Wizard.HOME: by the fountain, facing the walls
-    place('wizard', (PLAZA[0] + 0.6, PLAZA[1] + 3.9, 0), 180, 1.15)
+if os.path.exists(os.path.join(MODELS, 'wizard.fbx')):   # the wizard in the square, facing the walls
+    place('wizard', (-6.0, -8.0, 0), 180, 0.66)   # Wizard.HOME, Wizard.SCALE
 if STATE == 'mid':
     # a wave on the lanes: slimes walking up to the towers, a few gathered at a tower's foot, a beetle and a golem
     import random as _r; rr = _r.Random(5)
@@ -74,7 +74,7 @@ if os.environ.get('HG_CAM'):   # a close-up for inspection: "x,y,z,lookx,looky,l
     v = [float(q) for q in os.environ['HG_CAM'].split(',')]
     co.location = Vector(v[:3]); co.rotation_euler = (Vector(v[3:6]) - Vector(v[:3])).to_track_quat('-Z', 'Y').to_euler(); cam.angle_y = math.radians(v[6])
 if os.environ.get('HG_TOP'):   # a plan view of the whole layout, for finding stray geometry (north up)
-    cam.type = 'ORTHO'; cam.ortho_scale = 90; co.location = (0, -8, 80); co.rotation_euler = (0, 0, math.pi)
+    cam.type = 'ORTHO'; cam.ortho_scale = 110; co.location = (0, -16, 90); co.rotation_euler = (0, 0, math.pi)
 
 eng = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items]
 sc.render.engine = 'BLENDER_EEVEE' if 'BLENDER_EEVEE' in eng else 'BLENDER_EEVEE_NEXT'

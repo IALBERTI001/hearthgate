@@ -1,274 +1,393 @@
-# Hearthgate 3D, the city (Nov 13 2026, after the fresh-eyes review: "the city reads as debris on dirt discs ... the houses
-# are tiny cubes ... cylinders with circus hats"). Chunky storybook buildings with a stone ground floor, a jettied timber-
-# framed upper floor, steep roofs in a shared palette (terracotta, red, slate), chimneys and warm lit windows; the three
-# element buildings say their element; ruins read as burnt timber frames with charred walls and scaffolding, waiting to
-# be rebuilt. Footprints stay within 2.3 m of the origin (Field / LayoutCheck); fronts face -y (Field.PLOT_FACING turns
-# them to the camera). Imported by hg_kit.py.
+# Hearthgate 3D, the city at human scale (owner, Nov 13 2026: "we have to work on the proportions here. Wizard is as big
+# as the town, some doors are insanely bigger than others. I want the wizard to be able to walk into the buildings
+# inside. if we have to make the city bigger then so be it").
+#
+# One scale for every building (hg_layout.py): a storey is 3.2 m, every door is 1.2 x 2.4 m, every window 0.8 x 1.1 m
+# with its sill 1.0 m above the floor, walls 0.3 m thick on a 0.3 m plinth; the wizard is 1.8 m to his hat's tip.
+# Each building is a real ground-floor room the wizard walks into through an open doorway on its front (-y; the game turns
+# fronts to the walls), furnished for its trade. Everything above the ground storey (the ceiling, the upper floor, the
+# roof, spires and belfries) is tagged 'UP_' and exported as a child object named 'upper', which the game hides while
+# the wizard is inside, so the room shows from above. Footprints (hg_layout.SIZES) are what the game collides against.
+# Imported by hg_kit.py.
 import bpy, math, random
 import hg_kit as K
 import hg_front as F
+import hg_layout as LY
 
 R = random.Random(29)
-M, block, mesh_from, window, tufts, rubble = F.M, F.block, F.mesh_from, F.window, F.tufts, F.rubble
+M, block, mesh_from, tufts, rubble = F.M, F.block, F.mesh_from, F.tufts, F.rubble
+T, ST, PL = LY.WALL_T, LY.STOREY, LY.PLINTH
+DW, DH = LY.DOOR_W, LY.DOOR_H
+WW, WH, SILL = 0.8, 1.1, 1.0
+FLOOR = PL + 0.04
+z0 = FLOOR
 
-def win(x, y, z, w=0.5, h=0.62, shutters=True):   # a lit window on a -y face, with a frame and shutters
-    block((x, y - 0.03, z), (w + 0.16, 0.06, h + 0.16), M('timber'), 0.0)
-    block((x, y - 0.07, z), (w, 0.03, h), M('window', 1.8), 0.0)
-    block((x, y - 0.09, z), (0.05, 0.02, h), M('timber'), 0.0); block((x, y - 0.09, z), (w, 0.02, 0.05), M('timber'), 0.0)
-    if shutters:
-        for s in (-1, 1): block((x + s * (w / 2 + 0.17), y - 0.05, z), (0.26, 0.05, h + 0.06), M('roof_slate' if R.random() < 0.5 else 'wood'), 0.01)
+class Up:   # everything made inside `with Up():` goes to the 'upper' part the game hides when the wizard is inside
+    def __enter__(self): self.before = set(bpy.data.objects); return self
+    def __exit__(self, *a):
+        for o in set(bpy.data.objects) - self.before: o.name = 'UP_' + o.name
 
-def door(x, y, w=0.75, h=1.25, m='wood'):
-    block((x, y - 0.04, h / 2 + 0.05), (w + 0.2, 0.08, h + 0.15), M('stone3'), 0.02)
-    block((x, y - 0.08, h / 2), (w, 0.04, h), M(m), 0.01)
-    for k in (0.25, 0.75): block((x, y - 0.11, h * k), (w, 0.02, 0.06), M('iron'), 0.0)
-    K.sphere('knob', 0.04, (x + w * 0.3, y - 0.12, h * 0.48), M('gold'), sub=1)
-    block((x, y - 0.3, 0.06), (w + 0.4, 0.45, 0.12), M('stone_dk'), 0.02)
+# ------------------------------------------------------------------------------------------------- walls and openings
+def wall_x(x0, x1, y, zb, h, m, holes=()):
+    """A wall along x from x0 to x1 at y, from zb up h, with holes (u, width, bottom, top) cut as pieces round them."""
+    def piece(a, b, za, zt):
+        if b - a > 0.02 and zt - za > 0.02: block(((a + b) / 2, y, (za + zt) / 2), (b - a, T, zt - za), M(m), 0.0)
+    x = x0
+    for (u, wd, hb, ht) in sorted(holes):
+        a, b = u - wd / 2, u + wd / 2
+        piece(x, a, zb, zb + h); piece(a, b, zb, zb + hb); piece(a, b, zb + ht, zb + h); x = b
+    piece(x, x1, zb, zb + h)
+def wall_y(y0, y1, x, zb, h, m, holes=()):
+    def piece(a, b, za, zt):
+        if b - a > 0.02 and zt - za > 0.02: block((x, (a + b) / 2, (za + zt) / 2), (T, b - a, zt - za), M(m), 0.0)
+    y = y0
+    for (u, wd, hb, ht) in sorted(holes):
+        a, b = u - wd / 2, u + wd / 2
+        piece(y, a, zb, zb + h); piece(a, b, zb, zb + hb); piece(a, b, zb + ht, zb + h); y = b
+    piece(y, y1, zb, zb + h)
 
-def gable_roof(cx, cy, z0, hx, hy, rise, m, ridge_x=True, overhang=0.3):
-    """A gable roof over a box of half sizes hx, hy, ridge along x (gables at the sides) or y (gable to the front)."""
+def pane_x(x, y, z, out):   # a lit window in a wall along x: a glowing pane in the hole, mullions, sill, lintel, shutters
+    block((x, y, z + WH / 2), (WW - 0.02, 0.06, WH - 0.02), M('window', 1.6), 0.0)
+    block((x, y, z + WH / 2), (0.06, 0.1, WH), M('wood_dk'), 0.0); block((x, y, z + WH * 0.6), (WW, 0.1, 0.06), M('wood_dk'), 0.0)
+    yo = y + out * (T / 2 + 0.04)
+    block((x, yo, z - 0.06), (WW + 0.3, 0.14, 0.1), M('stone3'), 0.01)
+    block((x, yo, z + WH + 0.08), (WW + 0.3, 0.1, 0.16), M('timber'), 0.0)
+    c = R.choice(('roof_slate', 'wood', 'awning'))
+    for s in (-1, 1): block((x + s * (WW / 2 + 0.24), yo, z + WH / 2), (0.4, 0.05, WH), M(c), 0.01)
+def pane_y(x, y, z, out):
+    block((x, y, z + WH / 2), (0.06, WW - 0.02, WH - 0.02), M('window', 1.6), 0.0)
+    block((x, y, z + WH / 2), (0.1, 0.06, WH), M('wood_dk'), 0.0); block((x, y, z + WH * 0.6), (0.1, WW, 0.06), M('wood_dk'), 0.0)
+    xo = x + out * (T / 2 + 0.04)
+    block((xo, y, z - 0.06), (0.14, WW + 0.3, 0.1), M('stone3'), 0.01)
+    block((xo, y, z + WH + 0.08), (0.1, WW + 0.3, 0.16), M('timber'), 0.0)
+
+def doorway(x, y):
+    """The one door size (1.2 x 2.4 m): a stone frame, a step, and the plank door standing open inside against the wall."""
+    yo = y - T / 2 - 0.05
+    for s in (-1, 1): block((x + s * (DW / 2 + 0.12), yo, FLOOR + DH / 2), (0.24, 0.12, DH), M('stone3'), 0.02)
+    block((x, yo, FLOOR + DH + 0.14), (DW + 0.6, 0.14, 0.28), M('stone3'), 0.02)
+    block((x, y - T / 2 - 0.35, PL / 2), (DW + 0.5, 0.6, PL), M('stone_dk'), 0.02)   # the step up to the floor
+    block((x - DW / 2 + 0.05, y + T / 2 + DW / 2, FLOOR + DH / 2 - 0.02), (0.06, DW - 0.04, DH - 0.06), M('wood'), 0.01)   # open, swung in
+    for k in (0.25, 0.75): block((x - DW / 2 + 0.02, y + T / 2 + DW / 2, FLOOR + DH * k), (0.02, DW - 0.1, 0.07), M('iron'), 0.0)
+
+def room(w, d, h=ST, wall='stone2', floor='wood', door=True, front_win=True, side_win=True, back_win=True):
+    """The ground storey: plinth, plank floor, four walls with the doorway centred on the front, windows round it."""
+    hx, hy = w / 2, d / 2
+    block((0, 0, PL / 2), (w + 0.4, d + 0.4, PL), M('stone_dk'), 0.03)
+    block((0, 0, PL + 0.02), (w - 2 * T, d - 2 * T, 0.04), M(floor), 0.0)
+    if floor == 'wood':
+        for k in range(int((w - 2 * T) / 0.5)):   # floor boards
+            block((-hx + T + 0.25 + k * 0.5, 0, PL + 0.045), (0.02, d - 2 * T, 0.01), M('wood_dk'), 0.0)
+    wx = hx - 1.6 if w >= 6.5 else None
+    fh = [(0.0, DW, 0.0, DH)] if door else []
+    if front_win and wx: fh += [(-wx, WW, SILL, SILL + WH), (wx, WW, SILL, SILL + WH)]
+    wall_x(-hx, hx, -hy + T / 2, FLOOR, h, wall, fh)
+    bh = ([(-wx, WW, SILL, SILL + WH), (wx, WW, SILL, SILL + WH)] if wx else [(0.0, WW, SILL, SILL + WH)]) if back_win else []
+    wall_x(-hx, hx, hy - T / 2, FLOOR, h, wall, bh)
+    sh = [(0.0, WW, SILL, SILL + WH)] if side_win else []
+    for s in (-1, 1): wall_y(-hy + T, hy - T, s * (hx - T / 2), FLOOR, h, wall, sh)
+    if door: doorway(0.0, -hy + T / 2)
+    if front_win and wx:
+        for s in (-1, 1): pane_x(s * wx, -hy + T / 2, FLOOR + SILL, -1)
+    for (u, _, _, _) in bh: pane_x(u, hy - T / 2, FLOOR + SILL, 1)
+    if side_win:
+        for s in (-1, 1): pane_y(s * (hx - T / 2), 0.0, FLOOR + SILL, s)
+    for (sx, sy) in ((-1, -1), (1, -1), (-1, 1), (1, 1)):   # quoins
+        for k in range(int(h / 0.6)):
+            block((sx * (hx - 0.05), sy * (hy - 0.05), FLOOR + 0.3 + k * 0.6), (0.42 if k % 2 else 0.3, 0.3 if k % 2 else 0.42, 0.5), M('stone3'), 0.02)
+    return FLOOR + h
+
+def top_rail(w, d, z, m='timber'):   # the wall plate round the top of the ground storey: the cutaway's clean edge
+    for y in (-d / 2 + T / 2, d / 2 - T / 2): block((0, y, z + 0.08), (w, T + 0.06, 0.16), M(m), 0.0)
+    for s in (-1, 1): block((s * (w / 2 - T / 2), 0, z + 0.08), (T + 0.06, d, 0.16), M(m), 0.0)
+
+def ceiling(w, d, z):   # the floor of the storey above (part of the upper)
+    block((0, 0, z + 0.26), (w - 0.02, d - 0.02, 0.2), M('timber'), 0.0)
+
+def upper_floor(w, d, z, h=3.0, plaster='plaster'):
+    """A jettied, timber-framed plaster storey with windows and flower boxes on its long faces, a window on each end."""
+    hx, hy = w / 2 + 0.25, d / 2 + 0.25
+    K.cube('upper', (2 * hx, 2 * hy, h), (0, 0, z + h / 2), M(plaster), 0.03)
+    block((0, -hy - 0.02, z + 0.08), (2 * hx + 0.1, 0.18, 0.16), M('timber'), 0.0)
+    for (y, sg) in ((-hy, -1), (hy, 1)):
+        for x in [-hx + 0.08, hx - 0.08] + [-hx + 2 * hx * k / 4 for k in (1, 2, 3)]:
+            block((x, y + sg * 0.03, z + h / 2), (0.16, 0.06, h), M('timber'), 0.0)
+        for zz in (z + 0.08, z + h - 0.08): block((0, y + sg * 0.03, zz), (2 * hx, 0.06, 0.16), M('timber'), 0.0)
+        for x in (-hx * 0.5, hx * 0.5):
+            block((x, y + sg * 0.04, z + 1.0 + WH / 2), (WW, 0.04, WH), M('window', 1.6), 0.0)
+            block((x, y + sg * 0.07, z + 1.0 + WH / 2), (0.06, 0.03, WH), M('wood_dk'), 0.0)
+            K.cube('flowers', (WW, 0.22, 0.2), (x, y + sg * 0.16, z + 0.86), M('wood'), 0.02)
+            for k in range(4): K.sphere('bloom', 0.09, (x - 0.3 + k * 0.2, y + sg * 0.2, z + 1.0), M(R.choice(('flower_p', 'flower_y', 'blush'))), sub=1)
+    for s in (-1, 1): block((s * hx, 0, z + 1.0 + WH / 2), (0.04, WW, WH), M('window', 1.6), 0.0)
+    return z + h, hx, hy
+
+def gable_roof(zb, hx, hy, rise, m, ridge_x=True, overhang=0.45, gable_m='plaster'):
+    a, b = hx + overhang, hy + overhang
     if ridge_x:
-        a, b = hx + overhang, hy + overhang
-        vs = [(cx - a, cy - b, z0), (cx + a, cy - b, z0), (cx + a, cy + b, z0), (cx - a, cy + b, z0), (cx - a, cy, z0 + rise), (cx + a, cy, z0 + rise)]
+        vs = [(-a, -b, zb), (a, -b, zb), (a, b, zb), (-a, b, zb), (-a, 0, zb + rise), (a, 0, zb + rise)]
         fs = [(0, 1, 5, 4), (2, 3, 4, 5), (1, 2, 5), (3, 0, 4)]
     else:
-        a, b = hx + overhang, hy + overhang
-        vs = [(cx - a, cy - b, z0), (cx + a, cy - b, z0), (cx + a, cy + b, z0), (cx - a, cy + b, z0), (cx, cy - b, z0 + rise), (cx, cy + b, z0 + rise)]
+        vs = [(-a, -b, zb), (a, -b, zb), (a, b, zb), (-a, b, zb), (0, -b, zb + rise), (0, b, zb + rise)]
         fs = [(1, 2, 5, 4), (3, 0, 4, 5), (0, 1, 4), (2, 3, 5)]
-    o = mesh_from('roof', vs, fs, m, 0.0)
-    sol = o.modifiers.new('thick', 'SOLIDIFY'); sol.thickness = 0.14; sol.offset = 1.0
-    # ridge cap and tile courses on the slope facing the camera (-y)
+    o = mesh_from('roof', vs, fs, M(m), 0.0)
+    sol = o.modifiers.new('thick', 'SOLIDIFY'); sol.thickness = 0.2; sol.offset = 1.0
+    edge = 'roof_red' if 'terra' in m else 'stone_dk'
     if ridge_x:
-        block((cx, cy, z0 + rise + 0.05), (2 * a + 0.1, 0.2, 0.14), M('roof_red' if 'terra' in m.name else 'stone_dk'), 0.02)
-        for k in range(1, 5):
-            t = k / 5; o2 = block((cx, cy - b * (1 - t) - 0.06, z0 + rise * t + 0.08), (2 * a, 0.05, 0.07), M('wood_dk' if 'slate' in m.name else 'roof_red'), 0.0)
-            o2.rotation_euler = (math.atan2(rise, b), 0, 0)
-    return o
+        block((0, 0, zb + rise + 0.08), (2 * a + 0.1, 0.28, 0.2), M(edge), 0.02)
+        for sg in (-1, 1):
+            for k in range(1, 6):
+                t = k / 6; o2 = block((0, sg * (b * (1 - t) + 0.08), zb + rise * t + 0.12), (2 * a, 0.06, 0.08), M('wood_dk' if 'slate' in m else 'roof_red'), 0.0)
+                o2.rotation_euler = (-sg * math.atan2(rise, b), 0, 0)
+    else:
+        block((0, 0, zb + rise + 0.08), (0.28, 2 * b + 0.1, 0.2), M(edge), 0.02)
+        for sg in (-1, 1): mesh_from('gable', [(-hx, sg * hy, zb), (hx, sg * hy, zb), (0, sg * hy, zb + rise * hx / a)], [(0, 1, 2) if sg < 0 else (2, 1, 0)], M(gable_m), 0.0)
+    return zb + rise
 
-def gable_wall(cx, y, z0, hx, rise, m):   # the triangle closing a gable on a -y face (ridge along y)
-    mesh_from('gable', [(cx - hx, y, z0), (cx + hx, y, z0), (cx, y, z0 + rise)], [(0, 1, 2)], m, 0.0)
+def chimney(x, y, zb, ztop, glow=False):
+    block((x, y, (zb + ztop) / 2), (0.8, 0.8, ztop - zb), M('stone2'), 0.03)
+    block((x, y, ztop + 0.08), (1.0, 1.0, 0.18), M('stone_dk'), 0.02)
+    if glow: K.sphere('ember', 0.28, (x, y, ztop + 0.3), M('fire', 3.0), sub=2)
 
-def framing(x0, x1, y, z0, z1):   # timber framing on a -y plaster face: posts, rails and braces
-    for x in [x0 + 0.06] + [x0 + (x1 - x0) * k / 3 for k in (1, 2)] + [x1 - 0.06]:
-        block((x, y - 0.03, (z0 + z1) / 2), (0.12, 0.06, z1 - z0), M('timber'), 0.0)
-    for z in (z0 + 0.06, z1 - 0.06): block(((x0 + x1) / 2, y - 0.03, z), (x1 - x0, 0.06, 0.12), M('timber'), 0.0)
-    L = math.hypot((x1 - x0) / 3, z1 - z0)
-    for (xa, s) in ((x0, 1), (x1, -1)):
-        o = block((xa + s * (x1 - x0) / 6, y - 0.04, (z0 + z1) / 2), (0.1, 0.05, L), M('timber'), 0.0)
-        o.rotation_euler = (0, s * math.atan2((x1 - x0) / 3, z1 - z0), 0)
+def sign(x, y, z, icon_mat):   # a hanging sign on an iron bracket off the front wall, with a glowing icon
+    block((x, y - 0.5, z + 0.5), (0.07, 1.0, 0.07), M('iron'), 0.0)
+    block((x, y - 0.85, z), (0.07, 0.7, 0.55), M('wood'), 0.01)
+    K.sphere('icon', 0.16, (x - 0.06, y - 0.85, z), icon_mat, (0.5, 1, 1), 2)
+def lantern(x, y, z):
+    block((x, y - 0.25, z + 0.3), (0.05, 0.5, 0.05), M('iron'), 0.0)
+    K.cyl('lamp', 0.12, 0.3, (x, y - 0.45, z), M('window', 2.0), 6, 0.0); K.cone('lamp_top', 0.16, 0.14, (x, y - 0.45, z + 0.22), M('iron'), 6)
 
-def chimney(x, y, ztop, glow=False):
-    block((x, y, ztop - 0.9), (0.55, 0.55, 1.8), M('stone2'), 0.03)
-    block((x, y, ztop + 0.05), (0.7, 0.7, 0.14), M('stone_dk'), 0.02)
-    if glow: K.sphere('ember', 0.2, (x, y, ztop + 0.25), M('fire', 3.0), sub=2)
-
-def house(w=3.6, d=3.2, floors=2, roof='roof_terra', ridge_x=True, plaster='plaster', chim=True, x0=0.0, y0=0.0, scale=1.0):
-    hx, hy = w / 2 * scale, d / 2 * scale
-    g = 1.5 * scale; u = 1.35 * scale
-    block((x0, y0, 0.12), (2 * hx + 0.3, 2 * hy + 0.3, 0.24), M('stone_dk'), 0.03)
-    K.cube('ground', (2 * hx, 2 * hy, g), (x0, y0, 0.24 + g / 2), M('stone2'), 0.04)
-    for s in (-1, 1):   # quoins at the corners of the stone floor
-        for k in range(3):
-            block((x0 + s * (hx - 0.12), y0 - hy - 0.02, 0.4 + k * 0.45), (0.3 if k % 2 else 0.22, 0.08, 0.36), M('stone3'), 0.02)
-    door(x0 + (0.0 if w < 3 else -0.6 * scale), y0 - hy)
-    if w >= 3: win(x0 + 0.85 * scale, y0 - hy, 0.24 + g * 0.55, 0.5 * scale, 0.55 * scale, False)
-    top = 0.24 + g
-    if floors >= 2:
-        K.cube('upper', (2 * hx + 0.3, 2 * hy + 0.3, u), (x0, y0, top + u / 2), M(plaster), 0.03)   # jettied
-        block((x0, y0 - hy - 0.16, top + 0.05), (2 * hx + 0.4, 0.2, 0.14), M('timber'), 0.0)
-        framing(x0 - hx - 0.15, x0 + hx + 0.15, y0 - hy - 0.15, top, top + u)
-        for s in (-1, 1): win(x0 + s * 0.85 * scale, y0 - hy - 0.15, top + u * 0.52, 0.48 * scale, 0.58 * scale)
-        top += u; ehx, ehy = hx + 0.15, hy + 0.15
-    else: ehx, ehy = hx, hy
-    rise = 1.7 * scale if ridge_x else 1.9 * scale
-    gable_roof(x0, y0, top, ehx, ehy, rise, M(roof), ridge_x)
-    if not ridge_x:
-        gable_wall(x0, y0 - ehy - 0.01, top, ehx, rise, M(plaster))
-        win(x0, y0 - ehy - 0.02, top + rise * 0.4, 0.36 * scale, 0.42 * scale, False)
-    if chim: chimney(x0 + ehx * 0.55, y0 + ehy * 0.3, top + rise * 0.85)
-    return top + rise
-
-def roundtower(x0, y0, r, h, roof, roof_h, crown=None):
-    F.prism('rt_foot', r + 0.25, r + 0.05, 0, 0.6, M('stone_dk'), n=12)
-    F.prism('rt_body', r, r * 0.94, 0.5, h, M('stone2'), n=12)
-    for k in range(int(h / 0.5)):   # string courses every other course
-        if k % 2: F.prism('course', r * (1 - 0.06 * k / h * 0.5) + 0.04, r * (1 - 0.06 * k / h * 0.5) + 0.04, 0.5 + k * 0.5, 0.58 + k * 0.5, M('stone3'), n=12, bevel=0.0)
-    for z in (1.4, 2.9):
-        win(x0, y0 - r * 0.97, z, 0.4, 0.62, False)
-    door(x0, y0 - r * 0.98, 0.65, 1.1)
-    K.cyl('eave', r + 0.4, 0.12, (x0, y0, h + 0.06), M('wood_dk'), 12, 0.02)
-    K.cyl('roof', r + 0.45, roof_h, (x0, y0, h + 0.12 + roof_h / 2), M(roof), 12, 0.0, r2=0.08)
-    return h + 0.12 + roof_h
-
+# ------------------------------------------------------------------------------------------------- furniture (on the floor)
 def barrel(x, y, s=1.0):
-    K.cyl('barrel', 0.3 * s, 0.7 * s, (x, y, 0.35 * s), M('wood'), 10, 0.02)
-    for z in (0.15, 0.55): K.cyl('hoop', 0.31 * s, 0.05, (x, y, z * s), M('iron'), 10, 0.0)
+    K.cyl('barrel', 0.32 * s, 0.8 * s, (x, y, z0 + 0.4 * s), M('wood'), 10, 0.02)
+    for z in (0.15, 0.65): K.cyl('hoop', 0.33 * s, 0.05, (x, y, z0 + z * s), M('iron'), 10, 0.0)
 def crate(x, y, s=1.0):
-    o = block((x, y, 0.28 * s), (0.56 * s, 0.56 * s, 0.56 * s), M('wood'), 0.03); o.rotation_euler = (0, 0, R.uniform(-0.4, 0.4))
-
-def sign(x, y, z, icon_mat):   # a hanging sign on an iron bracket, with a glowing icon
-    block((x, y - 0.35, z + 0.35), (0.06, 0.7, 0.06), M('iron'), 0.0)
-    block((x, y - 0.62, z), (0.06, 0.5, 0.42), M('wood'), 0.01)
-    K.sphere('icon', 0.12, (x - 0.05, y - 0.62, z), icon_mat, (0.5, 1, 1), 2)
+    o = block((x, y, z0 + 0.3 * s), (0.6 * s, 0.6 * s, 0.6 * s), M('wood'), 0.03); o.rotation_euler = (0, 0, R.uniform(-0.4, 0.4))
+def table(x, y, w=1.6, d=0.9, goods=()):
+    block((x, y, z0 + 0.76), (w, d, 0.08), M('wood'), 0.02)
+    for (a, b) in ((-1, -1), (1, -1), (-1, 1), (1, 1)): block((x + a * (w / 2 - 0.1), y + b * (d / 2 - 0.1), z0 + 0.37), (0.08, 0.08, 0.74), M('wood_dk'), 0.0)
+    for k, g in enumerate(goods): K.sphere('goods', 0.12, (x - w / 3 + k * (w / 3), y, z0 + 0.88), M(g), (1, 1, 0.7), 1)
+def stool(x, y):
+    K.cyl('stool', 0.2, 0.06, (x, y, z0 + 0.46), M('wood'), 8, 0.0)
+    for k in range(3): block((x + math.cos(k * 2.1) * 0.12, y + math.sin(k * 2.1) * 0.12, z0 + 0.22), (0.05, 0.05, 0.44), M('wood_dk'), 0.0)
+def shelf(x, y, w, along_x=True, goods=('wood', 'roof_red', 'roof_blue', 'flower_y', 'grass3')):   # tall shelves against a wall
+    for z in (0.4, 1.0, 1.6, 2.2): block((x, y, z0 + z), (w, 0.4, 0.05) if along_x else (0.4, w, 0.05), M('wood'), 0.0)
+    for s in (-1, 1): block((x + s * w / 2, y, z0 + 1.2) if along_x else (x, y + s * w / 2, z0 + 1.2), (0.06, 0.4, 2.4) if along_x else (0.4, 0.06, 2.4), M('wood_dk'), 0.0)
+    for z in (0.4, 1.0, 1.6, 2.2):
+        for k in range(int(w / 0.18)):
+            if R.random() < 0.8:
+                u = -w / 2 + 0.1 + k * 0.18; hh = R.uniform(0.25, 0.42)
+                block((x + u, y, z0 + z + hh / 2 + 0.03) if along_x else (x, y + u, z0 + z + hh / 2 + 0.03), (0.12, 0.28, hh) if along_x else (0.28, 0.12, hh), M(R.choice(goods)), 0.0)
+def hearth(x, y, along_x=True, big=False):   # a stone fireplace against a wall, with its fire
+    w = 2.0 if big else 1.5
+    block((x, y, z0 + 0.6), (w, 0.7, 1.2) if along_x else (0.7, w, 1.2), M('stone3'), 0.03)
+    block((x, y, z0 + 1.3), (w + 0.3, 0.9, 0.2) if along_x else (0.9, w + 0.3, 0.2), M('stone_dk'), 0.02)
+    K.cone('flame', 0.3 if big else 0.22, 0.7, (x, y, z0 + 0.55), M('fire', 3.0), 8)
+    K.cone('flame_in', 0.15, 0.5, (x, y, z0 + 0.45), M('fire_core', 3.0), 6)
+def bed(x, y):
+    block((x, y, z0 + 0.3), (1.0, 2.0, 0.4), M('wood'), 0.02)
+    block((x, y, z0 + 0.55), (0.9, 1.9, 0.16), M(R.choice(('cloth', 'awning', 'roof_blue'))), 0.04)
+    K.sphere('pillow', 0.22, (x, y + 0.7, z0 + 0.7), M('plaster'), (1.4, 0.8, 0.5), 1)
+def sacks(x, y, n=4):
+    for k in range(n): K.sphere('sack', 0.3, (x + (k % 2) * 0.55, y + (k // 2 % 2) * 0.5, z0 + 0.28 + (0.4 if k > 3 else 0)), M('canvas'), (1, 0.85, 1.05), 1)
 
 # ------------------------------------------------------------------------------------------------- the ten buildings
 def b_forge():
-    house(3.4, 3.0, 1, 'roof_red', ridge_x=True, chim=False)
-    chimney(1.2, 0.6, 3.9, glow=True); K.sphere('smoke', 0.3, (1.2, 0.6, 4.6), M('rock'), (1, 1, 0.8), 1)
-    block((-2.0, -0.4, 1.3), (1.0, 2.0, 0.1), M('roof_red'), 0.0).rotation_euler = (0, 0.35, 0)   # lean-to shed
-    for y in (-1.2, 0.4): block((-2.35, y, 0.6), (0.12, 0.12, 1.2), M('timber'), 0.0)
-    block((-2.0, -0.4, 0.35), (0.8, 1.2, 0.7), M('stone_dk'), 0.03); K.sphere('hearth', 0.3, (-2.0, -0.9, 0.62), M('fire', 3.0), (1.2, 0.7, 0.7), 2)
-    block((-1.6, -1.6, 0.45), (0.5, 0.25, 0.25), M('iron'), 0.02); block((-1.6, -1.6, 0.2), (0.2, 0.2, 0.4), M('wood_dk'), 0.0)   # anvil
+    w, d = LY.SIZES['forge']; top = room(w, d, 3.4, 'stone2', 'cobble2'); top_rail(w, d, top)
+    hearth(-0.6, d / 2 - T - 0.36, big=True)                                    # the forge fire against the back wall
+    block((-0.6, d / 2 - 0.75, z0 + 2.0), (2.4, 1.0, 0.25), M('iron'), 0.02)    # its hood
+    block((0.6, 0.3, z0 + 0.65), (0.9, 0.4, 0.3), M('iron'), 0.02); block((0.6, 0.3, z0 + 0.3), (0.35, 0.35, 0.6), M('wood_dk'), 0.0)   # anvil
+    barrel(2.6, 2.2); K.cyl('quench', 0.3, 0.02, (2.6, 2.2, z0 + 0.81), M('water_gloss', 0.3), 10, 0.0)
+    block((-w / 2 + T + 0.08, 0.5, z0 + 1.5), (0.06, 2.4, 1.2), M('wood'), 0.0)   # tool rack
+    for k in range(5): block((-w / 2 + T + 0.16, -0.4 + k * 0.45, z0 + 1.5), (0.05, 0.08, 0.9), M('iron'), 0.0)
+    sign(-2.4, -d / 2, 2.9, M('fire', 1.5))
+    with Up():
+        ceiling(w, d, top); gable_roof(top + 0.36, w / 2, d / 2, 3.0, 'roof_red', True)
+        chimney(-0.6, d / 2 - 0.75, top + 0.36, top + 4.6, glow=True)
 def b_frostSpire():
-    top = roundtower(0, 0, 1.45, 4.6, 'roof_blue', 2.3)
-    for (r, h, x, y) in ((0.18, 1.0, 0, 0), (0.1, 0.6, 0.18, 0.08), (0.1, 0.55, -0.16, -0.08)):
-        K.cyl('ice', r, h, (x, y, top + h / 2 - 0.1), M('frost', 1.8), 6, 0.0); K.cone('ice_tip', r, r * 2, (x, y, top + h + r - 0.1), M('frost', 1.8), 6)
-    house(2.0, 1.8, 1, 'roof_slate', ridge_x=True, chim=False, x0=-1.3, y0=0.8, scale=0.85)
+    w, d = LY.SIZES['frostSpire']; top = room(w, d, 3.4, 'stone3', 'cobble'); top_rail(w, d, top)
+    K.cyl('plinth', 0.7, 0.6, (0, 0.8, z0 + 0.3), M('stone2'), 8, 0.03)
+    for (r, h, x, y) in ((0.28, 1.4, 0, 0.8), (0.16, 0.9, 0.3, 0.95), (0.16, 0.8, -0.28, 0.7)):
+        K.cyl('ice', r, h, (x, y, z0 + 0.6 + h / 2), M('frost', 1.8), 6, 0.0); K.cone('ice_tip', r, r * 2.2, (x, y, z0 + 0.6 + h + r * 1.1), M('frost', 1.8), 6)
+    shelf(0, d / 2 - T - 0.25, 3.0, True, ('frost', 'frost_dk', 'roof_blue', 'snow'))
+    lantern(-2.0, -d / 2, 2.6); lantern(2.0, -d / 2, 2.6)
+    with Up():
+        ceiling(w, d, top); block((0, 0, top + 0.4), (w + 0.4, d + 0.4, 0.2), M('roof_slate'), 0.02)
+        zb = top + 0.5
+        F.prism('spire', 2.7, 2.4, zb, zb + 4.5, M('stone3'), n=12)
+        for k in range(1, 4, 2): F.prism('course', 2.74 - k * 0.04, 2.74 - k * 0.04, zb + k, zb + k + 0.12, M('stone2'), n=12, bevel=0.0)
+        block((0, -2.55, zb + 2.0), (WW, 0.08, WH), M('window', 1.6), 0.0)
+        K.cyl('eave', 3.0, 0.16, (0, 0, zb + 4.6), M('wood_dk'), 12, 0.02)
+        K.cyl('roof', 3.1, 3.6, (0, 0, zb + 6.5), M('roof_blue'), 12, 0.0, r2=0.1)
+        for (r, h, x, y) in ((0.3, 1.6, 0, 0), (0.18, 1.0, 0.3, 0.12), (0.18, 0.9, -0.28, -0.1)):
+            K.cyl('ice', r, h, (x, y, zb + 8.1 + h / 2), M('frost', 1.8), 6, 0.0); K.cone('ice_tip', r, r * 2.2, (x, y, zb + 8.1 + h + r * 1.1), M('frost', 1.8), 6)
 def b_stormBell():
-    F.prism('belfry', 1.35, 1.3, 0, 3.8, M('stone2'), n=4)
-    door(0, -0.95, 0.7, 1.2); win(0, -0.95, 2.6, 0.42, 0.6, False)
-    for (x, y) in ((-0.85, -0.85), (0.85, -0.85), (-0.85, 0.85), (0.85, 0.85)): block((x, y, 4.5), (0.24, 0.24, 1.4), M('timber'), 0.0)
-    block((0, 0, 5.25), (2.0, 2.0, 0.14), M('timber'), 0.0)
-    K.cyl('bell', 0.42, 0.7, (0, 0, 4.6), M('gold'), 16, 0.02, r2=0.22)
-    K.sphere('glow', 0.2, (0, 0, 4.25), M('storm', 3.0), sub=2)
-    o = K.cone('roof', 1.55, 1.7, (0, 0, 6.15), M('roof_purple'), 4); o.rotation_euler = (0, 0, math.pi / 4)
-    K.cyl('rod', 0.05, 0.9, (0, 0, 7.4), M('gold'), 6, 0.0); K.sphere('orb', 0.2, (0, 0, 7.9), M('storm', 3.5), sub=2)
+    w, d = LY.SIZES['stormBell']; top = room(w, d, 3.4, 'stone2', 'cobble2'); top_rail(w, d, top)
+    K.cyl('rope', 0.04, 3.0, (0, 0.5, z0 + 1.9), M('canvas'), 6, 0.0)
+    block((-1.1, d / 2 - T - 0.4, z0 + 0.4), (1.8, 0.5, 0.8), M('wood'), 0.02)
+    for k in range(3):   # jars of caught lightning on the bench
+        K.cyl('jar', 0.16, 0.36, (-1.6 + k * 0.5, d / 2 - T - 0.4, z0 + 0.98), M('water_gloss', 0.2), 10, 0.0)
+        K.sphere('spark', 0.08, (-1.6 + k * 0.5, d / 2 - T - 0.4, z0 + 0.98), M('storm', 3.0), sub=1)
+    with Up():
+        ceiling(w, d, top); zb = top + 0.36
+        F.prism('belfry', 2.3, 2.2, zb, zb + 2.2, M('stone2'), n=4)
+        for (x, y) in ((-1.4, -1.4), (1.4, -1.4), (-1.4, 1.4), (1.4, 1.4)): block((x, y, zb + 3.4), (0.32, 0.32, 2.4), M('timber'), 0.0)
+        block((0, 0, zb + 4.7), (3.4, 3.4, 0.2), M('timber'), 0.0)
+        K.cyl('bell', 0.75, 1.2, (0, 0, zb + 3.4), M('gold'), 16, 0.02, r2=0.38)
+        K.sphere('glow', 0.32, (0, 0, zb + 2.8), M('storm', 3.0), sub=2)
+        o = K.cone('roof', 2.7, 2.4, (0, 0, zb + 6.0), M('roof_purple'), 4); o.rotation_euler = (0, 0, math.pi / 4)
+        K.cyl('rod', 0.06, 1.0, (0, 0, zb + 7.7), M('gold'), 6, 0.0); K.sphere('orb', 0.3, (0, 0, zb + 8.3), M('storm', 3.5), sub=2)
 def b_bakery():
-    house(3.2, 3.0, 2, 'roof_terra', ridge_x=False)
-    K.sphere('oven', 0.85, (1.55, 0.3, 0.3), M('stone3'), (1, 1, 0.85), 2)
-    K.sphere('oven_mouth', 0.25, (1.55, -0.45, 0.45), M('fire', 2.5), (1.2, 0.5, 0.8), 2)
-    sign(-1.85, -1.6, 2.3, M('gold', 1.5))
+    w, d = LY.SIZES['bakery']; top = room(w, d, ST, 'stone2', 'wood'); top_rail(w, d, top)
+    K.sphere('oven', 1.2, (1.7, d / 2 - 1.5, z0 + 0.2), M('stone3'), (1, 0.9, 0.85), 2)
+    K.sphere('oven_mouth', 0.32, (1.7, d / 2 - 2.55, z0 + 0.55), M('fire', 2.5), (1.2, 0.5, 0.8), 2)
+    block((-1.6, -0.6, z0 + 0.5), (2.6, 0.7, 1.0), M('wood'), 0.02)   # the counter, loaves on it
+    for k in range(5): K.sphere('loaf', 0.16, (-2.6 + k * 0.5, -0.6, z0 + 1.08), M('hay'), (1.4, 0.8, 0.6), 1)
+    sacks(-3.0, 1.6, 4)
+    sign(-2.4, -d / 2, 2.7, M('gold', 1.5))
+    with Up():
+        ceiling(w, d, top); zt, hx, hy = upper_floor(w, d, top + 0.36)
+        gable_roof(zt, hx, hy, 3.4, 'roof_terra', ridge_x=False); chimney(1.7, d / 2 - 1.5, zt - 1, zt + 3.2)
 def b_market():
-    block((0, 0, 0.1), (4.4, 3.8, 0.2), M('cobble'), 0.02)
-    for (x, y) in ((-1.9, -1.6), (1.9, -1.6), (-1.9, 1.6), (1.9, 1.6), (0, -1.6), (0, 1.6)): block((x, y, 1.35), (0.18, 0.18, 2.5), M('timber'), 0.0)
-    gable_roof(0, 0, 2.62, 2.1, 1.9, 0.9, M('awning'), ridge_x=True, overhang=0.15)
-    for x in (-1.3, 0.0, 1.3):
-        block((x, -0.9, 0.55), (1.0, 0.7, 0.7), M('wood'), 0.02)
-        for k in range(3): K.sphere('goods', 0.14, (x - 0.3 + k * 0.3, -0.9, 0.98), M(R.choice(('fire', 'flower_y', 'grass3', 'blush'))), sub=1)
-    barrel(-1.7, -2.0); crate(1.8, -1.9); crate(1.4, -2.1, 0.8)
+    w, d = LY.SIZES['market']; hx, hy = w / 2, d / 2
+    block((0, 0, PL / 2), (w + 0.4, d + 0.4, PL), M('cobble'), 0.02)
+    for x in (-hx + 0.3, -hx / 3, hx / 3, hx - 0.3):
+        for y in (-hy + 0.3, hy - 0.3): block((x, y, FLOOR + 1.9), (0.3, 0.3, 3.8), M('timber'), 0.0)
+    for (x, c) in ((-2.8, 'fire'), (0.0, 'flower_y'), (2.8, 'grass3')):   # three stalls with goods, crates along the back
+        table(x, -0.6, 2.0, 1.0, (c, c, 'blush'))
+        block((x, -0.6, z0 + 2.3), (2.4, 1.4, 0.06), M(R.choice(('awning', 'roof_blue', 'canvas'))), 0.0)
+        for s in (-1, 1): block((x + s * 1.1, -0.6, z0 + 1.55), (0.06, 0.06, 1.5), M('wood_dk'), 0.0)
+    for k in range(5): crate(-3.6 + k * 1.8, hy - 1.0)
+    barrel(hx - 1.0, 0.8); barrel(hx - 1.6, 1.4, 0.9); sacks(-hx + 0.8, 0.6, 3)
+    with Up():
+        block((0, 0, FLOOR + 3.9), (w + 0.2, d + 0.2, 0.2), M('timber'), 0.0)
+        gable_roof(FLOOR + 4.0, hx, hy, 2.2, 'awning', ridge_x=True, overhang=0.4)
 def b_tavern():
-    house(4.0, 3.3, 2, 'roof_red', ridge_x=True, plaster='plaster2')
-    sign(-2.15, -1.7, 2.4, M('gold', 1.5))
-    barrel(1.7, -2.0); barrel(2.0, -1.5, 0.9); crate(-1.6, -2.0, 0.8)
+    w, d = LY.SIZES['tavern']; top = room(w, d, ST, 'stone2', 'wood'); top_rail(w, d, top)
+    block((2.2, d / 2 - 1.6, z0 + 0.55), (3.6, 0.6, 1.1), M('wood_dk'), 0.02)   # the bar, barrels behind it
+    for k in range(4): barrel(0.9 + k * 0.9, d / 2 - 0.75, 0.9)
+    for (x, y) in ((-2.4, -1.0), (-2.4, 1.4), (1.0, -0.8)):
+        table(x, y, 1.6, 0.9, ('hay', 'gold')); stool(x - 1.0, y); stool(x + 1.0, y)
+    hearth(-w / 2 + T + 0.36, 1.4, along_x=False, big=True)
+    sign(-3.4, -d / 2, 2.7, M('gold', 1.5)); lantern(1.6, -d / 2, 2.7)
+    with Up():
+        ceiling(w, d, top); zt, hx, hy = upper_floor(w, d, top + 0.36, plaster='plaster2')
+        gable_roof(zt, hx, hy, 3.6, 'roof_red', ridge_x=True); chimney(-w / 2 + 1.0, 1.4, zt - 1, zt + 4.0)
 def b_granary():
-    block((0, 0, 0.15), (3.0, 3.4, 0.3), M('stone_dk'), 0.03)
-    K.cube('barn', (2.8, 3.2, 2.2), (-0.3, 0, 1.4), M('wood'), 0.03)
-    for x in [-1.6 + k * 0.4 for k in range(7)]: block((x, -1.62, 1.4), (0.06, 0.04, 2.2), M('wood_dk'), 0.0)
-    block((-0.3, -1.66, 1.0), (1.3, 0.06, 1.6), M('wood_dk'), 0.0); block((-0.3, -1.7, 1.0), (1.3, 0.04, 0.1), M('iron'), 0.0)
-    gable_roof(-0.3, 0, 2.5, 1.4, 1.6, 1.4, M('roof_red'), ridge_x=False, overhang=0.25)
-    gable_wall(-0.3, -1.86, 2.5, 1.65, 1.4, M('wood'))
-    K.cyl('silo', 0.75, 3.0, (1.55, 0.6, 1.5), M('stone3'), 12, 0.03)
-    K.cyl('silo_roof', 0.95, 1.0, (1.55, 0.6, 3.5), M('roof_terra'), 12, 0.0, r2=0.05)
-    for k in range(3): K.sphere('sack', 0.22, (-1.3 + k * 0.4, -2.0, 0.22), M('plaster2'), (1, 0.8, 1), 1)
+    w, d = LY.SIZES['granary']; top = room(w, d, 4.0, 'wood', 'wood', side_win=False); top_rail(w, d, top, 'wood_dk')
+    for k in range(int(w / 0.5)):   # boards on the outside of the front and back
+        x = -w / 2 + 0.25 + k * 0.5
+        if abs(x) < DW / 2 + 0.3: continue
+        for y in (-d / 2 - 0.01, d / 2 + 0.01): block((x, y, FLOOR + 2.0), (0.05, 0.04, 4.0), M('wood_dk'), 0.0)
+    for (x, y) in ((-2.4, 2.0), (-1.1, 2.0), (-2.4, 0.8)): K.cyl('bale', 0.55, 1.1, (x, y, z0 + 0.55), M('hay'), 12, 0.03).rotation_euler = (0, math.pi / 2, 0)
+    sacks(1.4, 1.4, 6)
+    for k in range(6): block((2.8, -1.0, z0 + 0.3 + k * 0.55), (0.6, 0.06, 0.06), M('wood'), 0.0)   # ladder to the loft
+    for s in (-1, 1): block((2.8 + s * 0.3, -1.0, z0 + 1.6), (0.06, 0.06, 3.2), M('wood'), 0.0)
+    with Up():
+        ceiling(w, d, top); gable_roof(top + 0.36, w / 2, d / 2, 4.0, 'roof_red', ridge_x=False, gable_m='wood')
+        block((0, -d / 2 - 0.05, top + 1.4), (1.4, 0.1, 1.6), M('wood_dk'), 0.0)   # the hayloft door
 def b_library():
-    block((0, 0, 0.12), (4.2, 3.6, 0.24), M('stone_dk'), 0.03)
-    K.cube('hall', (3.9, 3.3, 2.9), (0, 0, 1.69), M('stone3'), 0.04)
-    for s in (-1, 1):
-        block((s * 1.95, -1.66, 1.69), (0.3, 0.12, 2.9), M('stone2'), 0.02)
-        win(s * 1.15, -1.65, 1.5, 0.45, 1.0, False)
-    K.cyl('rose_frame', 0.62, 0.1, (0, -1.68, 2.35), M('stone2'), 20, 0.02).rotation_euler = (math.pi / 2, 0, 0)
-    K.cyl('rose', 0.5, 0.06, (0, -1.72, 2.35), M('window', 2.0), 20, 0.0).rotation_euler = (math.pi / 2, 0, 0)
-    door(0, -1.65, 0.8, 1.3, 'wood_dk')
-    gable_roof(0, 0, 3.14, 1.95, 1.65, 1.6, M('roof_slate'), ridge_x=True)
-    chimney(-1.1, 0.5, 4.5)
+    w, d = LY.SIZES['library']; top = room(w, d, 4.6, 'stone3', 'cobble'); top_rail(w, d, top, 'stone2')
+    for s in (-1, 1): shelf(s * (w / 2 - T - 0.25), 2.0, 2.8, False)
+    shelf(0, d / 2 - T - 0.25, 4.0, True)
+    table(0, 0.4, 2.4, 1.1, ('plaster', 'roof_red')); stool(-0.8, -0.5); stool(0.8, -0.5)
+    K.sphere('globe', 0.35, (2.3, -1.6, z0 + 1.15), M('roof_blue'), sub=2); block((2.3, -1.6, z0 + 0.4), (0.12, 0.12, 0.8), M('wood_dk'), 0.0)
+    K.cyl('rose_frame', 0.8, 0.12, (0, -d / 2 - 0.02, FLOOR + 3.6), M('stone2'), 20, 0.02).rotation_euler = (math.pi / 2, 0, 0)
+    K.cyl('rose', 0.66, 0.08, (0, -d / 2 - 0.05, FLOOR + 3.6), M('window', 2.0), 20, 0.0).rotation_euler = (math.pi / 2, 0, 0)
+    with Up():
+        ceiling(w, d, top); gable_roof(top + 0.36, w / 2, d / 2, 3.6, 'roof_slate', ridge_x=True); chimney(-2.8, 1.6, top + 0.36, top + 4.8)
 def b_cottages():
-    house(2.4, 2.4, 1, 'roof_terra', ridge_x=False, x0=-1.05, y0=-0.35, scale=0.92)
-    house(2.4, 2.4, 2, 'roof_red', ridge_x=True, x0=1.15, y0=0.55, scale=0.82, plaster='plaster2')
-    for k in range(4): F.cloth('wash', -0.4 + k * 0.25, -0.2 + k * 0.25, 1.5, 1.1, -1.7, M(R.choice(('plaster', 'cloth', 'blush'))), 0.02, False, 'x', 2, 2)
+    w, d = LY.SIZES['cottages']; top = room(w, d, 3.0, 'stone2', 'wood'); top_rail(w, d, top)
+    block((0, 0.9, z0 + 1.5), (0.16, d - 2 * T - 1.8, 3.0), M('timber'), 0.0)   # the party wall between the two homes, open at the front
+    bed(-3.4, 1.0); bed(3.4, 1.0); table(-2.0, -0.9, 1.2, 0.8); table(2.0, -0.9, 1.2, 0.8); stool(-2.0, -1.6); stool(2.0, -1.6)
+    hearth(-1.2, d / 2 - T - 0.36); hearth(1.2, d / 2 - T - 0.36)
+    for k in range(4): F.cloth('wash', -1.2 + k * 0.6, -0.8 + k * 0.6, 2.2, 1.6, -d / 2 - 1.2, M(R.choice(('plaster', 'cloth', 'blush'))), 0.02, False, 'x', 2, 2)
+    for s in (-1, 1): block((s * 1.6, -d / 2 - 1.2, 1.15), (0.06, 0.06, 2.3), M('wood'), 0.0)
+    block((0, -d / 2 - 1.2, 2.25), (3.3, 0.02, 0.02), M('canvas'), 0.0)
+    with Up():
+        ceiling(w, d, top)
+        for s, roof in ((-1, 'roof_terra'), (1, 'roof_red')):   # two homes under two roofs, gables to the front
+            cx = s * w / 4
+            vs = [(cx - w / 4 - 0.3, -d / 2 - 0.4, top + 0.36), (cx + w / 4 + 0.3, -d / 2 - 0.4, top + 0.36), (cx + w / 4 + 0.3, d / 2 + 0.4, top + 0.36),
+                  (cx - w / 4 - 0.3, d / 2 + 0.4, top + 0.36), (cx, -d / 2 - 0.4, top + 3.2), (cx, d / 2 + 0.4, top + 3.2)]
+            o = mesh_from('roof', vs, [(1, 2, 5, 4), (3, 0, 4, 5), (0, 1, 4), (2, 3, 5)], M(roof), 0.0)
+            o.modifiers.new('thick', 'SOLIDIFY').thickness = 0.2
+            mesh_from('gable', [(cx - w / 4, -d / 2, top + 0.36), (cx + w / 4, -d / 2, top + 0.36), (cx, -d / 2, top + 2.9)], [(0, 1, 2)], M('plaster'), 0.0)
+            chimney(cx + s * 1.0, d / 2 - T - 0.36, top + 0.36, top + 3.9)
 def b_watchtower():
-    F.prism('wt_body', 1.25, 1.1, 0, 5.2, M('stone2'), n=4)
-    door(0, -0.9, 0.65, 1.15); win(0, -0.85, 3.2, 0.36, 0.55, False)
-    block((0, 0, 5.35), (2.6, 2.6, 0.3), M('timber'), 0.02)
-    for (x, y) in ((-1.15, -1.15), (1.15, -1.15), (-1.15, 1.15), (1.15, 1.15)): block((x, y, 6.0), (0.18, 0.18, 1.0), M('timber'), 0.0)
-    o = K.cone('roof', 1.85, 1.3, (0, 0, 7.15), M('roof_terra'), 4); o.rotation_euler = (0, 0, math.pi / 4)
-    K.cyl('brazier', 0.35, 0.3, (0, 0, 5.65), M('iron'), 10, 0.02, r2=0.25)
-    K.cone('beacon', 0.3, 0.7, (0, 0, 6.1), M('gold', 4.0), 10)
+    w, d = LY.SIZES['watchtower']; top = room(w, d, 3.4, 'stone2', 'cobble2'); top_rail(w, d, top)
+    for k in range(7): block((w / 2 - T - 0.5, -1.6 + k * 0.45, z0 + 0.2 + k * 0.4), (0.9, 0.45, 0.4), M('stone3'), 0.02)   # stairs up
+    block((-w / 2 + T + 0.08, 0, z0 + 1.4), (0.06, 2.4, 1.6), M('wood'), 0.0)   # a weapon rack with spears
+    for k in range(5): block((-w / 2 + T + 0.2, -0.9 + k * 0.45, z0 + 1.2), (0.05, 0.05, 2.2), M('wood_dk'), 0.0)
+    with Up():
+        ceiling(w, d, top); zb = top + 0.36
+        F.prism('wt_body', 2.4, 2.1, zb, zb + 4.5, M('stone2'), n=4)
+        block((0, -1.65, zb + 2.2), (0.5, 0.08, 0.9), M('window', 1.6), 0.0)
+        block((0, 0, zb + 4.7), (4.6, 4.6, 0.4), M('timber'), 0.02)
+        for (x, y) in ((-2.0, -2.0), (2.0, -2.0), (-2.0, 2.0), (2.0, 2.0)): block((x, y, zb + 5.8), (0.28, 0.28, 1.9), M('timber'), 0.0)
+        o = K.cone('roof', 3.3, 2.2, (0, 0, zb + 7.8), M('roof_terra'), 4); o.rotation_euler = (0, 0, math.pi / 4)
+        K.cyl('brazier', 0.55, 0.45, (0, 0, zb + 5.15), M('iron'), 10, 0.02, r2=0.4)
+        K.cone('beacon', 0.45, 1.1, (0, 0, zb + 5.9), M('gold', 4.0), 10)
 
 BUILDERS = {'forge': b_forge, 'frostSpire': b_frostSpire, 'stormBell': b_stormBell, 'bakery': b_bakery, 'market': b_market,
             'tavern': b_tavern, 'granary': b_granary, 'library': b_library, 'cottages': b_cottages, 'watchtower': b_watchtower}
 
 def building(bid):
     BUILDERS[bid]()
-    tufts(-2.0, -1.9, 2, (0.3, 0.2)); tufts(2.0, -1.8, 2, (0.3, 0.2))
+    w, d = LY.SIZES[bid]
+    tufts(-w / 2 - 0.2, -d / 2 - 0.3, 2, (0.3, 0.2)); tufts(w / 2 + 0.2, -d / 2 - 0.2, 2, (0.3, 0.2)); tufts(w / 2 + 0.2, d / 2 + 0.2, 2, (0.3, 0.2))
     return K.export('building_' + bid)
 
 # ------------------------------------------------------------------------------------------------- the ruins
-# Each plot's ruin is the burnt shell of its own building (fresh-eyes review 2: "12 identical grey lumps in rows ...
-# procedural"): its footprint, its shape (round tower, belfry, barn, open market), charred walls of uneven height, fallen
-# beams, embers glowing in the rubble, a wisp of smoke, and, on some, scaffolding and fresh timber waiting for the rebuild.
-SHELLS = {   # footprint (w, d), shape, wall height
-    'forge': (3.4, 3.0, 'box', 1.6), 'frostSpire': (2.9, 2.9, 'round', 2.6), 'stormBell': (2.6, 2.6, 'square', 2.8),
-    'bakery': (3.2, 3.0, 'box', 1.8), 'market': (4.2, 3.6, 'stalls', 0.0), 'tavern': (4.0, 3.3, 'box', 2.0),
-    'granary': (3.0, 3.4, 'barn', 1.4), 'library': (3.9, 3.3, 'box', 2.3), 'cottages': (2.2, 2.2, 'pair', 1.3),
-    'watchtower': (2.4, 2.4, 'square', 3.0)}
+# Each plot's ruin is the burnt shell of its own building at its own footprint: charred walls of uneven height with the
+# doorway still open (the wizard walks in to rebuild), fallen beams, embers in the rubble, smoke, scaffolding and stacked
+# fresh timber waiting outside.
+SHELLS = {bid: LY.SIZES[bid] for bid in LY.IDS}
 
-def shell_walls(cx, cy, w, d, hmax, broken=0.6):
-    def run(x0, x1, y, axis):
-        x, k = x0, 0
-        while x < x1 - 0.1:
-            L = min(R.uniform(0.4, 0.75), x1 - x)
-            h = max(0.25, hmax * (1 - broken * R.random()) * (0.55 + 0.45 * math.sin(k * 0.9 + R.random())))
-            loc = (x + L / 2, y, h / 2 + 0.16) if axis == 'x' else (y, x + L / 2, h / 2 + 0.16)
-            size = (L - 0.04, 0.32, h) if axis == 'x' else (0.32, L - 0.04, h)
-            block(loc, size, M(R.choice(('stone2', 'stone_dk', 'stone2'))), 0.04)
-            if h > 0.6: block((loc[0], loc[1], h + 0.16), (size[0], size[1], 0.06), M('char'), 0.0)   # scorched tops
-            x += L; k += 1
-    run(cx - w / 2, cx + w / 2, cy + d / 2, 'x')      # back wall, the tallest remains
-    run(cy - d / 2, cy + d / 2, cx - w / 2, 'y'); run(cy - d / 2 + 0.6, cy + d / 2, cx + w / 2, 'y')
-    run(cx - w / 2, cx - w / 2 + w * 0.4, cy - d / 2, 'x')   # a stub of the front wall
+def broken(x0, x1, y, axis, hmax, gap=None):
+    x, k = x0, 0
+    while x < x1 - 0.1:
+        L = min(R.uniform(0.5, 0.9), x1 - x)
+        if gap and x + L > gap[0] and x < gap[1]: x = gap[1]; continue
+        h = max(0.3, hmax * R.uniform(0.3, 1.0) * (0.6 + 0.4 * math.sin(k * 0.8 + R.random())))
+        loc = (x + L / 2, y, FLOOR + h / 2) if axis == 'x' else (y, x + L / 2, FLOOR + h / 2)
+        size = (L - 0.04, T, h) if axis == 'x' else (T, L - 0.04, h)
+        block(loc, size, M(R.choice(('stone2', 'stone_dk', 'stone2'))), 0.04)
+        if h > 0.8: block((loc[0], loc[1], FLOOR + h + 0.03), (size[0], size[1], 0.06), M('char'), 0.0)
+        x += L; k += 1
 
 def ruin_of(bid):
-    w, d, shape, hw = SHELLS[bid]
-    block((0, 0, 0.08), (w + 0.3, d + 0.3, 0.16), M('char'), 0.02)
-    if shape in ('box', 'barn'): shell_walls(0, 0, w, d, hw)
-    elif shape == 'pair':
-        shell_walls(-1.05, -0.35, w, d, hw); shell_walls(1.15, 0.55, w * 0.9, d * 0.9, hw * 0.8)
-    elif shape == 'round':   # a round tower's broken stump
-        for i in range(12):
-            a = i / 12 * math.tau; h = hw * (0.35 + 0.65 * abs(math.sin(i * 0.7 + 0.4)))
-            o = block((math.cos(a) * 1.35, math.sin(a) * 1.35, h / 2 + 0.16), (0.32, 0.72, h), M(R.choice(('stone2', 'stone_dk'))), 0.04); o.rotation_euler = (0, 0, a)
-    elif shape == 'square':   # a belfry or watchtower's stump with a jagged top
-        for (a, b) in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
-            h = hw * R.uniform(0.6, 1.0)
-            block((a * (w / 2 - 0.2), b * (d / 2 - 0.2), h / 2 + 0.16), (0.42, 0.42, h), M('stone2'), 0.04)
-        shell_walls(0, 0, w, d, hw * 0.55)
-    elif shape == 'stalls':   # the market's collapsed stalls and torn awning
-        for (x, y) in ((-1.6, -1.3), (1.6, -1.3), (-1.6, 1.3), (0.2, 1.3)):
-            o = block((x, y, 0.9), (0.16, 0.16, 1.8), M('char'), 0.0); o.rotation_euler = (R.uniform(-0.3, 0.3), R.uniform(-0.3, 0.3), 0)
-        o = block((0, 0.2, 0.9), (3.6, 2.4, 0.06), M('awning'), 0.0); o.rotation_euler = (0.35, 0.2, 0)
-        for k in range(4): crate(R.uniform(-1.6, 1.6), R.uniform(-1.6, 0.4), 0.8)
-    # fallen, charred beams; embers in the rubble; a wisp of smoke
-    for k in range(3):
-        o = block((R.uniform(-w / 3, w / 3), R.uniform(-d / 3, d / 3), 0.5), (0.16, 0.16, R.uniform(1.4, 2.4)), M('char'), 0.0)
-        o.rotation_euler = (R.uniform(0.6, 1.2), 0, R.uniform(0, 3))
-    rubble(0.2, 0.0, 6, (w / 3, d / 3))
-    for k in range(4): K.sphere('ember', 0.07, (R.uniform(-w / 3, w / 3), R.uniform(-d / 3, d / 3), 0.25), M('fire', 2.5), sub=1)
-    for k, (dz, r) in enumerate(((1.6, 0.32), (2.3, 0.42), (3.1, 0.5))):
-        K.sphere('smoke', r, (0.3 + k * 0.25, 0.3, dz + hw * 0.4), M('rock'), (1, 1, 0.85), 1)
-    if bid in ('forge', 'tavern', 'library', 'granary', 'watchtower', 'frostSpire'):   # scaffolding: work has begun
-        for (x, y) in ((w / 2 - 0.1, -d / 2 - 0.4), (w / 2 - 1.6, -d / 2 - 0.4)): block((x, y, 1.2), (0.08, 0.08, 2.4), M('wood'), 0.0)
-        for z in (0.9, 1.9): block((w / 2 - 0.85, -d / 2 - 0.4, z), (1.6, 0.08, 0.08), M('wood'), 0.0)
-        block((w / 2 - 0.85, -d / 2 - 0.25, 1.95), (1.6, 0.35, 0.06), M('wood'), 0.0)
-    for k in range(3): block((-w / 2 + 0.8, -d / 2 - 0.5, 0.12 + k * 0.13), (1.3, 0.14, 0.12), M('wood'), 0.0)   # fresh timber
-    tufts(-w / 2, -d / 2 - 0.3, 2, (0.3, 0.2)); tufts(w / 2, d / 2, 2, (0.3, 0.2))
+    w, d = LY.SIZES[bid]; hx, hy = w / 2, d / 2
+    block((0, 0, PL / 2), (w + 0.4, d + 0.4, PL), M('stone_dk'), 0.03)
+    block((0, 0, PL + 0.02), (w - 2 * T, d - 2 * T, 0.04), M('char'), 0.0)
+    if bid != 'market':
+        broken(-hx, hx, hy - T / 2, 'x', 2.6)
+        for s in (-1, 1): broken(-hy + T, hy - T, s * (hx - T / 2), 'y', 2.2)
+        broken(-hx, hx, -hy + T / 2, 'x', 1.8, gap=(-DW / 2 - 0.24, DW / 2 + 0.24))
+        for s in (-1, 1): block((s * (DW / 2 + 0.12), -hy + T / 2 - 0.05, FLOOR + DH / 2), (0.24, 0.14, DH), M('stone3'), 0.02)   # the door frame survived
+        block((0, -hy + T / 2 - 0.05, FLOOR + DH + 0.14), (DW + 0.6, 0.14, 0.28), M('char'), 0.02)
+    else:   # the market: charred posts and a torn awning
+        for (x, y) in ((-hx + 0.3, -hy + 0.3), (hx - 0.3, -hy + 0.3), (-hx + 0.3, hy - 0.3), (hx / 3, hy - 0.3)):
+            o = block((x, y, FLOOR + 1.4), (0.3, 0.3, 2.8), M('char'), 0.0); o.rotation_euler = (R.uniform(-0.2, 0.2), R.uniform(-0.2, 0.2), 0)
+        o = block((0, 0.6, FLOOR + 1.0), (6.0, 3.6, 0.06), M('awning'), 0.0); o.rotation_euler = (0.3, 0.15, 0)
+        for k in range(5): crate(R.uniform(-hx + 1, hx - 1), R.uniform(-hy + 1, 0.5), 0.9)
+    for k in range(4):   # fallen, charred beams
+        o = block((R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.5), (0.22, 0.22, R.uniform(2.4, 3.6)), M('char'), 0.0)
+        o.rotation_euler = (R.uniform(0.9, 1.3), 0, R.uniform(0, 3))
+    rubble(0.6, 1.0, 10, (w / 3, d / 4))
+    for k in range(6): K.sphere('ember', 0.08, (R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.12), M('fire', 2.5), sub=1)
+    for k, (dz, r) in enumerate(((2.2, 0.45), (3.2, 0.6), (4.4, 0.72))):
+        K.sphere('smoke', r, (0.4 + k * 0.35, 1.0, dz), M('rock'), (1, 1, 0.85), 1)
+    for (x, y) in ((hx - 0.2, -hy - 0.5), (hx - 2.2, -hy - 0.5)): block((x, y, 1.6), (0.1, 0.1, 3.2), M('wood'), 0.0)   # scaffolding
+    for z in (1.2, 2.6): block((hx - 1.2, -hy - 0.5, z), (2.2, 0.1, 0.1), M('wood'), 0.0)
+    block((hx - 1.2, -hy - 0.32, 2.65), (2.2, 0.45, 0.08), M('wood'), 0.0)
+    for k in range(4): block((-hx + 1.4, -hy - 0.7, 0.14 + k * 0.16), (2.0, 0.18, 0.15), M('wood'), 0.0)   # fresh timber
+    tufts(-hx, -hy - 0.4, 2, (0.3, 0.2)); tufts(hx, hy, 2, (0.3, 0.2))
     return K.export('ruin_' + bid)
 
-def ruin():   # burnt: charred floor, broken stone walls, a scorched timber frame, scaffolding and stacked new timber
-    block((0, 0, 0.08), (4.0, 3.4, 0.16), M('char'), 0.02)
-    def broken_wall(x0, x1, y, hmax, axis='x'):
-        x, k = x0, 0
-        while x < x1 - 0.1:
-            L = min(R.uniform(0.45, 0.8), x1 - x); h = max(0.3, hmax * R.uniform(0.35, 1.0) * (1 - 0.6 * k / 8))
-            loc = (x + L / 2, y, h / 2 + 0.16) if axis == 'x' else (y, x + L / 2, h / 2 + 0.16)
-            size = (L - 0.04, 0.35, h) if axis == 'x' else (0.35, L - 0.04, h)
-            block(loc, size, M(R.choice(('stone2', 'stone_dk'))), 0.04); x += L; k += 1
-    broken_wall(-1.8, 1.8, 1.5, 1.8); broken_wall(-1.4, 1.2, -1.8, 1.4, axis='y'); broken_wall(-1.6, -0.2, -1.5, 0.9)
-    for (x, y, h, tilt) in ((-1.5, -1.2, 2.2, 0.05), (1.5, -1.2, 1.6, -0.12), (1.5, 1.2, 2.4, 0.0), (-0.2, 1.3, 1.2, 0.2)):
-        o = block((x, y, h / 2 + 0.16), (0.18, 0.18, h), M('char'), 0.0); o.rotation_euler = (tilt, 0, 0)
-    o = block((0.0, -1.2, 1.6), (3.2, 0.16, 0.16), M('char'), 0.0); o.rotation_euler = (0, 0.3, 0)
-    for (x, y) in ((0.6, -1.9), (1.9, -1.9)): block((x, y, 1.2), (0.08, 0.08, 2.4), M('wood'), 0.0)    # scaffolding
-    for z in (0.9, 1.9): block((1.25, -1.9, z), (1.5, 0.08, 0.08), M('wood'), 0.0)
-    block((1.25, -1.75, 1.95), (1.5, 0.35, 0.06), M('wood'), 0.0)
-    for k in range(4): block((-0.9, -2.0, 0.12 + k * 0.13), (1.5, 0.14, 0.12), M('wood'), 0.0)       # fresh timber stacked
-    rubble(0.3, 0.0, 6, (1.2, 0.9)); tufts(-1.8, -1.9, 2, (0.3, 0.2)); tufts(1.9, 1.7, 2, (0.3, 0.2))
+def ruin():   # the generic ruin, a stand-in if a plot's own shell were missing
+    w, d = 6.0, 5.0; hx, hy = w / 2, d / 2
+    block((0, 0, PL / 2), (w + 0.4, d + 0.4, PL), M('stone_dk'), 0.03)
+    broken(-hx, hx, hy - T / 2, 'x', 2.2); broken(-hx, hx, -hy + T / 2, 'x', 1.6, gap=(-0.84, 0.84))
+    for s in (-1, 1): broken(-hy + T, hy - T, s * (hx - T / 2), 'y', 1.8)
+    rubble(0.3, 0.3, 6, (1.6, 1.2))
     return K.export('ruin')
