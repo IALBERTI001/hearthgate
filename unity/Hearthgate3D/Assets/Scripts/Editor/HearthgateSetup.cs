@@ -127,7 +127,7 @@ namespace Hearthgate.EditorTools
                 c = p.Add<T>(true); c.name = typeof(T).Name; AssetDatabase.AddObjectToAsset(c, p); return c;
             }
             Get<Tonemapping>().mode.Override(TonemappingMode.Neutral);
-            var ca = Get<ColorAdjustments>(); ca.postExposure.Override(0.0f); ca.contrast.Override(16f); ca.saturation.Override(4f);
+            var ca = Get<ColorAdjustments>(); ca.postExposure.Override(-0.15f); ca.contrast.Override(16f); ca.saturation.Override(4f);
             var bl = Get<Bloom>(); bl.threshold.Override(1.0f); bl.intensity.Override(0.85f); bl.scatter.Override(0.65f);
             var vg = Get<Vignette>(); vg.intensity.Override(0.32f); vg.smoothness.Override(0.5f); vg.color.Override(new Color(0.12f, 0.08f, 0.1f));
             EditorUtility.SetDirty(p); AssetDatabase.SaveAssets();

@@ -43,7 +43,7 @@ namespace Hearthgate.Game
             if (pops.Count > 40) return;
             // one voice (game-polish rule 13): a big word (a combo) waits for the last one to clear, so two never print
             // over each other (Nov 13 2026: "FIRESTORM!!" and "SHATTER!!" stacked into one unreadable smear)
-            if (size >= 36) { if (Time.time < bigUntil) return; bigUntil = Time.time + 0.55f; }
+            if (size >= 36) { if (Time.time < bigUntil) return; bigUntil = Time.time + life + 0.15f; }   // not until the last has gone
             var go = new GameObject("pop", typeof(RectTransform)); go.transform.SetParent(popLayer, false);
             var t = go.AddComponent<Text>(); t.font = font; t.text = text; t.color = c; t.fontSize = (int)size; t.fontStyle = FontStyle.Bold;
             t.alignment = TextAnchor.MiddleCenter; t.horizontalOverflow = HorizontalWrapMode.Overflow; t.raycastTarget = false;

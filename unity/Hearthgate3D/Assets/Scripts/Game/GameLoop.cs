@@ -58,7 +58,7 @@ namespace Hearthgate.Game
             // a warm sun from the upper left of the screen, in front (art/STYLE.md: "warm golden light from the upper left"):
             // the faces the camera sees are lit, shadows fall back and to the right; a cool sky fill keeps shadows coloured
             sun.transform.rotation = Quaternion.LookRotation(new Vector3(-0.45f, -0.8f, -0.4f));
-            sun.color = new Color(1f, 0.9f, 0.74f); sun.intensity = 1.7f; sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.9f;
+            sun.color = new Color(1f, 0.9f, 0.74f); sun.intensity = 1.3f; sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.9f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.42f, 0.5f, 0.7f); RenderSettings.ambientEquatorColor = new Color(0.4f, 0.42f, 0.4f); RenderSettings.ambientGroundColor = new Color(0.22f, 0.2f, 0.17f);
         }

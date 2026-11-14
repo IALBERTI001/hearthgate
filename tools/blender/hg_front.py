@@ -243,7 +243,7 @@ def gate():
 # ---------------------------------------------------------------------------------------------------------------------
 # the curtain wall: from rocky hills on the left to rocky hills on the right; stones, a coping course, varied merlons,
 # buttresses between the towers, moss and grass at the foot
-WX0, WX1, WH = -31.0, 21.0, 3.4
+WX0, WX1, WH = -29.5, 21.0, 3.4   # the right end runs into the cave's hillside
 TOWERS = (-7.5, -13.0, -18.5, -24.0)
 def wall():
     for (a, b) in ((WX0, -GX + 0.02), (GX - 0.02, WX1)):
@@ -339,7 +339,7 @@ def top(kind):
         for i in range(5):
             a = i / 5 * math.tau + 0.4
             K.cone('tongue', 0.45, R.uniform(1.4, 2.0), (math.cos(a) * 0.65, math.sin(a) * 0.65, 2.3), M('fire', 3.5), 10)
-        K.cone('core', 0.6, 2.0, (0, 0, 2.55), M('fire_core', 3.0), 12)
+        K.cone('core', 0.38, 1.3, (0, 0, 2.25), M('fire_core', 3.0), 12)
         for i in range(7): K.sphere('spark', R.uniform(0.07, 0.12), (R.uniform(-0.9, 0.9), R.uniform(-0.9, 0.9), R.uniform(3.6, 4.8)), M('fire_core', 3.0), sub=1)
     elif kind == 'frost':
         prism('ring', 1.55, 1.45, -0.1, 0.45, M('stone3'))
@@ -442,7 +442,7 @@ def golem():   # a boss: lumpy boulders bound by glowing cracks, big fists, a sm
 # the road: worn earth along the front of the wall with darker ruts, pebbles and grass along its edges, a cobbled
 # forecourt centred on the gate, a low fence on the meadow side (0.7 m: never hides an enemy)
 ROADY, RHALF = 5.4, 3.0
-CAVE_X = 31.0    # the cave mouth the waves come out of, world x = -CAVE_X (Field.SPAWN_Z)
+CAVE_X = 28.5    # the cave mouth the waves come out of, world x = -CAVE_X (Field.SPAWN_Z 27.5): inside the frame
 def road():
     K.cube('way', (CAVE_X + 2.5, 2 * RHALF, 0.06), (-(CAVE_X + 2.5) / 2 + 2, ROADY, 0.03), M('dirt'), 0.0)
     for dy in (-1.05, 1.05):
@@ -515,7 +515,7 @@ def props():
         K.cyl('barrel', 0.28, 0.6, (x + 0.55, y + 0.15, 1.3), M('wood'), 10, 0.02)
     cart(-15.0, ROADY + RHALF + 2.2, 0)
     # the camp: a canvas tent, a campfire with stones round it, a log to sit on
-    tx, ty = 9.5, 13.0
+    tx, ty = 8.5, 11.6
     o = K.cone('tent', 1.6, 2.2, (tx, ty, 1.1), M('canvas'), 4); o.rotation_euler = (0, 0, math.pi / 4)
     mesh_from('flap', [(tx - 0.5, ty - 1.14, 0.02), (tx + 0.5, ty - 1.14, 0.02), (tx, ty - 0.9, 1.3)], [(0, 1, 2)], M('cave'), 0.0)
     for k in range(7):
@@ -523,7 +523,7 @@ def props():
         K.sphere('ring', 0.18, (tx - 2.6 + math.cos(a) * 0.55, ty - 0.6 + math.sin(a) * 0.55, 0.1), M('stone_dk'), (1, 1, 0.7), 1)
     K.cone('fire', 0.35, 0.8, (tx - 2.6, ty - 0.6, 0.45), M('fire', 3.0), 8); K.cone('fire_in', 0.18, 0.5, (tx - 2.6, ty - 0.6, 0.35), M('fire_core', 3.0), 6)
     o = K.cyl('log', 0.22, 1.6, (tx - 2.6, ty + 0.6, 0.22), M('wood'), 8, 0.0); o.rotation_euler = (0, math.pi / 2, 0.3)
-    for (x, y) in ((-3.5, 14.0), (-2.2, 14.6), (-24.0, 12.8)):
+    for (x, y) in ((-3.5, 12.3), (-2.2, 12.9), (-24.0, 11.8)):
         K.cyl('hay', 0.75, 1.0, (x, y, 0.5), M('hay'), 14, 0.04).rotation_euler = (0, math.pi / 2, R.uniform(0, 3))
     # a signpost at the road's edge pointing to the gate
     K.cyl('post', 0.08, 1.8, (-7.0, ROADY + RHALF + 0.9, 0.9), M('wood_dk'), 6, 0.0)
@@ -564,7 +564,7 @@ def ground():
         if y < -23: h += (min(-23 - y, 18) / 18) ** 1.5 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)
         if y > 11: h += 0.22 * math.sin(x * 0.3) * math.cos(y * 0.35)
         if x > 21: h += (min(x - 21, 14) / 14) ** 1.4 * 7.0
-        if x < -31: h += (min(-31 - x, 14) / 14) ** 1.4 * 7.0
+        if x < -30: h += (min(-30 - x, 14) / 14) ** 1.4 * 7.0
         return h - 0.02
     for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
     K.finish(g, M('grass'))
@@ -587,7 +587,7 @@ def ground():
         patch(R.uniform(-28, 19), R.uniform(-23, -2), R.uniform(0.6, 1.6), M(R.choice(('grass2', 'grass'))), 7, 0.03)
     for _ in range(24): tufts(R.uniform(-28, 19), R.uniform(-23, -2), 2, (0.5, 0.5))
     # rocky hills where the wall ends, rocks and trees on them
-    for (x, y) in ((22.5, 0.5), (24, -5), (23, 5), (-33, 0.5), (-34.5, 5), (-33.5, -5)): outcrop(x, y, 4, 1.8, 1.2)
+    for (x, y) in ((22.5, 0.5), (24, -5), (23, 5), (-30.5, 0.2), (-31.5, -5)): outcrop(x, y, 4, 1.8, 1.2)
     for (x, y) in [(R.uniform(23, 34), R.uniform(-28, 18)) for _ in range(10)]: tree(x, y, R.uniform(1.0, 1.4), height(x, y))
     for (x, y) in [(R.uniform(-46, -33), R.uniform(-28, 18)) for _ in range(10)]: tree(x, y, R.uniform(1.0, 1.4), height(x, y))
     # the wooded ridge behind the town: a darker, bluer back row for depth

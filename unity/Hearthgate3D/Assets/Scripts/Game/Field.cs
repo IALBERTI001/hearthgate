@@ -19,7 +19,7 @@ namespace Hearthgate.Game
 {
     public static class Field
     {
-        public const float SPAWN_Z = 30f, FRONT_Z = 1.2f, DEPTH = SPAWN_Z - FRONT_Z;   // road progress, in metres (the cave mouth to the gate)
+        public const float SPAWN_Z = 27.5f, FRONT_Z = 1.2f, DEPTH = SPAWN_Z - FRONT_Z;   // road progress, in metres (the cave mouth to the gate)
         public const float LANE = 1.9f;                       // enemies (2.2 m slimes) keep to the road (6 m wide)
         public const float ROAD_Z = 5.4f, ROAD_HALF = 3f;     // road centre line and half width, world z
         public const float GATE_Z = 0f, GATE_HALF = 4f, GATE_FRONT = 2.1f, HALF_W = 7f;
