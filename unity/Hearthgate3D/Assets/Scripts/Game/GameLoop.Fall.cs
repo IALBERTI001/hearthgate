@@ -17,7 +17,7 @@ namespace Hearthgate.Game
     public partial class GameLoop
     {
         public bool Fallen => P.fallen;
-        GameObject gateObj; Quaternion gateRot; Vector3 gatePos;
+        GameObject gateObj, breachObj; Quaternion gateRot; Vector3 gatePos;
         float smokeT;
 
         public int FallCost => 3 + P.wave / 10;
@@ -52,6 +52,8 @@ namespace Hearthgate.Game
                 else RefreshPlot(i);
             }
             foreach (var tw in towers) if (tw.top) tw.top.gameObject.SetActive(!on);
+            if (on && !breachObj && art && art.breach) { breachObj = Instantiate(art.breach, world); breachObj.transform.position = new Vector3(0, 0, Field.GATE_Z); }
+            else if (!on && breachObj) { Destroy(breachObj); breachObj = null; }
             if (gateObj)
             {
                 if (on) { gateRot = gateObj.transform.rotation; gatePos = gateObj.transform.position; gateObj.transform.SetPositionAndRotation(gatePos + new Vector3(0.3f, -0.9f, 0.4f), gateRot * Quaternion.Euler(-14f, 0, 7f)); }

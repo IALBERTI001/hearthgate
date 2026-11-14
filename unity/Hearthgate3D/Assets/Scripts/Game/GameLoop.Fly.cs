@@ -50,7 +50,7 @@ namespace Hearthgate.Game
         void TickFlies(float dt)
         {
             // the meadow: a new one every 25 to 45 s once a building stands, two at most
-            if (P.restored.Count > 0 && (flyT -= dt) <= 0 && meadow.Count(m => !m.caught) < 2 && !(Wizard.I && Wizard.I.On))
+            if (P.restored.Count > 0 && !P.fallen && (flyT -= dt) <= 0 && meadow.Count(m => !m.caught) < 2 && !(Wizard.I && Wizard.I.On))
             {
                 flyT = Random.Range(25f, 45f);
                 var f = MakeFly(HG.FlyPick(P, flyRnd), MEADOW_SCALE);

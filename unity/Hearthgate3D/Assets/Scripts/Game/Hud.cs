@@ -228,17 +228,17 @@ namespace Hearthgate.Game
         }
         void TownTags(GameLoop g, Profile P)
         {
-            bool tagOn = g.SurgeOpen && (g.SurgeOn || g.SurgeReady);
+            bool tagOn = g.SurgeOpen && (g.SurgeOn || g.SurgeReady) && !g.Fallen;   // the shambles show bare
             if (tagOn && Pin(surgeTag, Field.PLAZA + new Vector3(0, 4.2f, 0)))
             { Show(surgeAct, g.SurgeOn ? "Surge x2" : "Surge ready", g.SurgeOn ? $"{GameLoop.Mmss(g.SurgeLeftMs)} left" : "x2 for 3 min", !g.SurgeOn, Time.unscaledTime); surgeAct.gem.enabled = false; }
             else if (!tagOn && surgeTag.gameObject.activeSelf) surgeTag.gameObject.SetActive(false);
             int ti = System.Array.IndexOf(HG.BUILDING_IDS, "tavern");
-            if (P.restored.Contains("tavern") && Pin(cheerTag, Field.Plot(ti) + Vector3.up * (Field.PlotHeight(ti) + 0.8f)))
+            if (P.restored.Contains("tavern") && !g.Fallen && Pin(cheerTag, Field.Plot(ti) + Vector3.up * (Field.PlotHeight(ti) + 0.8f)))
             {
                 cheerFill.fillAmount = g.CheerShown;
                 cheerFill.color = g.cheerT > 0 ? new Color(1f, 0.84f, 0.42f) : new Color(0.9f, 0.6f, 0.23f);
             }
-            else if (!P.restored.Contains("tavern") && cheerTag.gameObject.activeSelf) cheerTag.gameObject.SetActive(false);
+            else if ((!P.restored.Contains("tavern") || g.Fallen) && cheerTag.gameObject.activeSelf) cheerTag.gameObject.SetActive(false);
         }
 
         // boards pinned over the town never sit on one another: from the lowest up, each one that overlaps a board below it
@@ -635,8 +635,8 @@ namespace Hearthgate.Game
                 return;
             }
             I.Line(box, -70, $"Wave {P.wave} broke through and the town lies in ruins.", 20);
-            I.Line(box, -108, can ? $"Restore it for <color=#FF8CD9>{cost} Starshards</color> (you have {P.shards}) and fight wave {P.wave} again."
-                                  : $"Restoring it costs <color=#FF8CD9>{cost} Starshards</color>; you have {P.shards}. Bosses, Trials, quests and Feats pay them.", 18);
+            I.Line(box, -108, can ? $"Restore it for <color=#FFE68C>{cost} Starshards</color> (you have {P.shards}) and fight wave {P.wave} again."
+                                  : $"Restoring it costs <color=#FFE68C>{cost} Starshards</color>; you have {P.shards}. Bosses, Trials, quests and Feats pay them.", 18);
             float y = 26;
             if (ad)
             {
