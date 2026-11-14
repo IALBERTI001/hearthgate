@@ -173,7 +173,8 @@ namespace Hearthgate.Game
                 var tg = Pick(tw); if (tg == null) continue;
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f);
                 var go = new GameObject("shot");
-                var col = tw.el == "fire" || tw.el == "frost" || tw.el == "storm" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
+                var col = tw.el == "fire" || tw.el == "frost" || tw.el == "storm" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
+                var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
                 // fat, glowing shots with long trails: the fight has to read across the screen (fresh-eyes review 2)
                 mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : 0.65f);
                 var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f; tr.endWidth = 0f;

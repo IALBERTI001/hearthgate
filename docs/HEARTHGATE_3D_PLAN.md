@@ -16,6 +16,14 @@ together in Unity. The goal is 3D!" All four decisions below were approved the s
 5. **Human scale and walk-in buildings** (owner, Nov 13 2026, 20:18 and 21:41): one scale for everything (storey 3.2 m, every door 1.2 x 2.4 m, windows 0.8 x 1.1 m, the wizard 1.8 m). Each building is a furnished room he walks into; its upper storey and roof hide while he is inside. The town grew to an 88 x 56 m ring with 6 m streets (tools/layout/town.py). Worked-on buildings stay still: sparks rise and the new level shows over the door. A signpost by every building shows its name, level and output while he walks.
 6. **Pipeline:** Blender scripts (`tools/blender/hg_kit.py`, `hg_front.py`, `hg_city.py`) build and export every model; Unity wires them with one menu command (`Hearthgate > Set up everything`); the PC pulls the `unity-3d` branch from GitHub.
 
+7. **Polish pass, Nov 14 2026** (owner: "Buttons are a mess, doesnt look polished ... the no road to gate part is a bit bad and the projectiles clipping the town is bad"):
+   - One action-button kit: an icon rendered in Blender from the game's own model (tools/blender/hg_icons.py) in a brass medallion, the action in Lilita One, the cost with the gem (gold when affordable, rose when short), the key as a keycap on desktop; Upgrade gate is the one primary action with a breathing rim.
+   - A laid cobble road with kerbs and milestones runs from the field to the gatehouse.
+   - Towers shoot their own side first; a shot that must cross curves out in front of the gatehouse, never over the town. Shots keep their element's colour.
+   - Sound: the 2D game's effects and music (streamed, so the first download stays at 10.6 MB), a click on every button and key, footsteps and a door knock in the town walk.
+   - Settings (P or the cog by the wave): music and sound switches, every control, the build stamp. M mutes.
+   - Build files are named by content hash, so a browser never mixes two builds.
+
 ## Quality testing
 - **LayoutCheck** (Unity, runs before every WebGL build and fails it): no overlapping structures, nothing on a lane, plots and fountain inside the ring, each lane ending in front of its own tower, every plot's roof line, the plaza and the lanes seen from the camera, nothing under the HUD or out of the view at 16:9, 2.2:1 and 1.2:1.
 - **tools/layout/town.py:** the search that places the camera, towers, plaza and plots (rows, 6 m streets, signs inside the ring); **gen_field.py** writes the numbers into Field.cs.
