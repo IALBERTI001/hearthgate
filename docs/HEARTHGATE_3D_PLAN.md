@@ -24,6 +24,14 @@ together in Unity. The goal is 3D!" All four decisions below were approved the s
    - Settings (P or the cog by the wave): music and sound switches, every control, the build stamp. M mutes.
    - Build files are named by content hash, so a browser never mixes two builds.
 
+8. **The ring town, Nov 14 2026** (owner: "you can do the housing spaced inside circular facing the interior. makes the inside match a circular cobble floor matching the path of the gate"; "the walk the town button should be with the other buttons"):
+   - Ten houses evenly spaced on an arc inside the wall (back and sides; the front arc stays open for the gatehouse and towers), each facing a cobbled square laid in rings round the fountain; the road through the gate runs on into it; a short path from each door. `hg_layout.place_ring` and `check_town` (gaps of 3.6 m or more, eaves and signs clear of the wall, props and villager walks clear of each other).
+   - Stalls, benches, lamps, barrels, trees, flower beds and bushes; three villagers (baker, farmer, townswoman) walk the square.
+   - The walk camera turns to face the house the wizard is at; he walks round every prop.
+   - The lanes outside are trampled grass with bare earth only at the tower foot.
+   - Every action is in one top-right group: a row in a wide window, a column in a narrow one.
+   - Screen shake: the fight's shakes stay at the walls; the town's own are small; routine combos never shake.
+
 ## Quality testing
 - **LayoutCheck** (Unity, runs before every WebGL build and fails it): no overlapping structures, nothing on a lane, plots and fountain inside the ring, each lane ending in front of its own tower, every plot's roof line, the plaza and the lanes seen from the camera, nothing under the HUD or out of the view at 16:9, 2.2:1 and 1.2:1.
 - **tools/layout/town.py:** the search that places the camera, towers, plaza and plots (rows, 6 m streets, signs inside the ring); **gen_field.py** writes the numbers into Field.cs.
