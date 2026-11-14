@@ -18,7 +18,7 @@ namespace Hearthgate.Game
             hp = max = HG.EnemyHp(wave, role); speed = (float)R.speed * Field.PX; size = Field.Size(R.size);
             var g = Art.Spawn(Art.Set ? Art.Set.Enemy(R.model) : null, R.model, new Vector3(x, 0, z), parent);
             t = g.transform; body = t.childCount > 0 ? t.GetChild(0) : t;
-            t.localScale = Vector3.one * (size / 1.5f); t.rotation = Quaternion.Euler(0, 180, 0);   // facing the gate
+            t.localScale = Vector3.one * (size / 1.5f); t.rotation = Quaternion.identity;   // models face Blender -Y = Unity -Z, toward the gate
             rends = g.GetComponentsInChildren<Renderer>(); baseCols = new Color[rends.Length];
             for (int i = 0; i < rends.Length; i++) { var sm = rends[i].sharedMaterial ?? Art.Mat(Color.gray); rends[i].material = new Material(sm); baseCols[i] = rends[i].material.color; }
         }

@@ -73,6 +73,10 @@ def export(name):
     if len(objs) > 1: bpy.ops.object.join()
     o = bpy.context.object; o.name = name
     bpy.context.scene.cursor.location = (0, 0, 0); bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    # the FBX axis conversion (forward -Z, up Y) plus Unity's handedness flip turn a model 180 degrees about up: Blender +Y
+    # landed on Unity -Z and the road ran through the city (Nov 13 2026). Turning it here puts Blender +Y (toward the
+    # waves) on Unity +Z and Blender +X on Unity +X, so footprints read the same in both programs.
+    o.rotation_euler = (0, 0, math.pi); bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     path = os.path.join(OUT, name + '.fbx')
     bpy.ops.export_scene.fbx(filepath=path, use_selection=True, apply_scale_options='FBX_SCALE_UNITS', axis_forward='-Z', axis_up='Y',
                              bake_space_transform=True, object_types={'MESH'}, mesh_smooth_type='FACE', path_mode='COPY', embed_textures=False)
@@ -160,7 +164,7 @@ def eyes(z, y, spread, r=0.17):
         sphere('eye', r, (s * spread, -y, z), mat('eye'), sub=2)
         sphere('pupil', r * 0.55, (s * spread, -y - r * 0.7, z), mat('pupil'), sub=2)
 
-def slime():   # 1.5 m tall, a happy blob; faces -Y (toward the gate in Unity once turned)
+def slime():   # 1.5 m tall, a happy blob; faces -Y, toward the gate (Unity -Z)
     sphere('body', 0.8, (0, 0, 0.65), mat('slime'), (1.1, 1.1, 0.95), 4)
     sphere('drip', 0.25, (0.5, -0.3, 0.2), mat('slime'), (1, 1, 0.6), 2)
     eyes(0.95, 0.78, 0.28); return export('slime')
