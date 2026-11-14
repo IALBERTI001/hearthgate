@@ -187,7 +187,7 @@ namespace Hearthgate.Game
             // kit like every other, its cog, its word and its key, in the bottom-right corner (owner, Nov 14 2026: "settings
             // button does not have settings written on it. It should match the other buttons. Consistency")
             var gear = Action("Settings", new Vector2(1, 0), new Vector2(-12, 12), new Vector2(150, 50), "gear", null, () => ShowSettings(true), null, false);   // no keycap: P is listed inside, and the corner stays clear of the lanes (LayoutCheck)
-            gear.title.text = "Settings"; gear.title.fontSize = 19;
+            gear.title.text = "Settings"; gear.title.fontSize = 19; gear.title.rectTransform.anchoredPosition = new Vector2(gear.title.rectTransform.anchoredPosition.x, 0);   // one line, centred (no cost row)
 
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
             // buildings"): a small plum board with its name, level and output, pinned over the signpost in its yard while
@@ -240,7 +240,7 @@ namespace Hearthgate.Game
         }
         void TownTags(GameLoop g, Profile P)
         {
-            bool tagOn = g.SurgeOpen && (g.SurgeOn || g.SurgeReady) && !g.Fallen;   // the shambles show bare
+            bool tagOn = g.SurgeOpen && (g.SurgeOn || g.SurgeReady) && !g.Fallen && !Paused;   // under a card the world's tags step back   // the shambles show bare
             if (tagOn && Pin(surgeTag, Field.PLAZA + new Vector3(0, 4.2f, 0)))
             { Show(surgeAct, g.SurgeOn ? "Surge x2" : "Surge ready", g.SurgeOn ? $"{GameLoop.Mmss(g.SurgeLeftMs)} left" : "x2 for 3 min", !g.SurgeOn, Time.unscaledTime); surgeAct.gem.enabled = false; }
             else if (!tagOn && surgeTag.gameObject.activeSelf) surgeTag.gameObject.SetActive(false);
@@ -296,7 +296,7 @@ namespace Hearthgate.Game
                 if (show)
                 {
                     dist = Vector3.Distance(cam.transform.position, at); sp = cam.WorldToScreenPoint(at);
-                    show = docked || (wz.Inside < 0 && (i == n1 || i == n2)) && sp.z > 0 && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height * 0.8f;
+                    show = !Paused && (docked || (wz.Inside < 0 && (i == n1 || i == n2))) && sp.z > 0 && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height * 0.8f;
                 }
                 if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
                 if (!show) continue;
@@ -499,7 +499,7 @@ namespace Hearthgate.Game
         {
             a.title.text = title;
             // the title never runs under the keycap or off the button (game-polish 5; QA Nov 14 2026: "Rebuild Frost Spi")
-            float room = a.p.rt.sizeDelta.x - a.title.rectTransform.anchoredPosition.x - (a.cap ? 32 : 12);
+            float room = a.p.rt.sizeDelta.x - a.title.rectTransform.anchoredPosition.x - (a.cap ? 40 : 12);   // clear of the keycap in its corner
             int fs = a.p.rt.sizeDelta.y >= 60 ? 22 : 20; a.title.fontSize = fs;
             while (fs > 13 && a.title.preferredWidth > room) a.title.fontSize = --fs;
             bool hasCost = !string.IsNullOrEmpty(cost); a.costRow.gameObject.SetActive(hasCost);
@@ -592,7 +592,8 @@ namespace Hearthgate.Game
             Refit();
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
             if (Input.GetKeyDown(KeyCode.M)) { bool on = !(Sound.MusicOn || Sound.SfxOn); Sound.SetMusic(on); Sound.SetSfx(on); Banner(on ? "Sound on" : "Sound off"); RefreshSettings(); }
-            if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
+            if (bannerT > 0) { bannerT -= Time.unscaledDeltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
+            if (bannerShade) { var sc = bannerShade.color; sc.a = 0.62f * banner.color.a * (bannerT > 0 ? 1 : 0); bannerShade.color = sc; }
         }
 
         public static void Banner(string s)
@@ -601,7 +602,18 @@ namespace Hearthgate.Game
             float w = Mathf.Min(900f, ((RectTransform)I.transform).rect.width - 48f); b.rectTransform.sizeDelta = new Vector2(w, 90);
             int size = 34; b.fontSize = size;
             while (size > 18 && b.preferredHeight > 84) b.fontSize = --size;   // two lines at most, then smaller
+            // a dark strip behind it, so it reads over trees, roofs and world boards (fresh-eyes review, Nov 14 2026)
+            if (!I.bannerShade)
+            {
+                var r = I.Box("BannerShade", I.transform, b.rectTransform.anchorMin, b.rectTransform.anchorMax, Vector2.zero, Vector2.one);
+                I.bannerShade = r.gameObject.AddComponent<Image>(); I.bannerShade.sprite = Panel(new Color(0.1f, 0.05f, 0.12f, 1f), new Color(0.75f, 0.6f, 0.32f, 1f), 14, 2); I.bannerShade.type = Image.Type.Sliced; I.bannerShade.raycastTarget = false;
+                r.SetSiblingIndex(b.transform.GetSiblingIndex());
+            }
+            var sr = I.bannerShade.rectTransform; sr.pivot = b.rectTransform.pivot;
+            sr.sizeDelta = new Vector2(Mathf.Min(w, b.preferredWidth) + 44, b.preferredHeight + 18);
+            sr.anchoredPosition = b.rectTransform.anchoredPosition + new Vector2(0, 8);
         }
+        Image bannerShade;
         public static void Toast(string s) => Banner(s);
 
         // ---------- settings and controls ----------
@@ -688,7 +700,7 @@ namespace Hearthgate.Game
                 I.BtnAt("F_Pay", new Vector2(0.5f, 0), new Vector2(-175, y), new Vector2(310, 56), () => { I.ShowSettings(false); g.RestoreFallen(true); }, () => g.CanPayRestore, out var pl, box, "starshard", true);
                 pl.text = $"Rewind  ·  {cost}";
             }
-            I.BtnAt("F_Over", new Vector2(0.5f, 0), new Vector2(175, y), new Vector2(310, 56), () => ShowFallen(true), null, out var ol, box, "timestop"); ol.text = $"Rewind to {(P.ascensions > 0 ? "Ascension " + P.ascensions : "the start")}";
+            I.BtnAt("F_Over", new Vector2(0.5f, 0), new Vector2(175, y), new Vector2(310, 56), () => ShowFallen(true), null, out var ol, box, "timestop"); ol.text = $"Back to {(P.ascensions > 0 ? "Ascension " + P.ascensions : "the start")} (run lost)";
         }
 
         // the Eternal City (Ascension 10, js/game.js): the climb's ending, said once; the game goes on

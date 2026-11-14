@@ -565,19 +565,20 @@ def beetle(kind='beetle'):
                 K.sphere('groove', 0.045, tuple(p), M('pupil'), (0.6, 2.2, 0.35), 1).rotation_euler = _aim(n)
     K.sphere('collar', 0.5, (0, -0.58, 0.7), M('iron'), (1.15, 0.75, 0.68), 3)
     K.sphere('head', 0.36, (0, -0.95, 0.62), M('iron'), (1, 0.9, 0.85), 2)
-    def ram(base, d, ln, rr):   # an iron-shod beam: the shaft, two gold bands, a blunt flared ram face
-        d = Vector(d).normalized(); e = _aim(d)
-        K.cyl('ram', rr, ln, tuple(Vector(base) + d * ln / 2), M('wood_dk' if kind != 'swarm' else 'iron'), 10, 0.02).rotation_euler = e
-        for t in (0.35, 0.7): K.cyl('band', rr * 1.18, 0.07, tuple(Vector(base) + d * ln * t), M('gold'), 12, 0.0).rotation_euler = e
-        K.cyl('ramface', rr * 1.45, 0.16, tuple(Vector(base) + d * (ln + 0.02)), M('iron'), 10, 0.02, r2=rr * 1.05).rotation_euler = _aim(-d)
-    if kind in ('swarm',):   # three rams, the middle one longest
-        ram((0, -1.22, 0.6), (0, -1, -0.05), 0.6, 0.17)   # short, low and level: from behind and above (the game camera) any long ram stands up like a pole
-        for s in (-1, 1): ram((s * 0.24, -1.15, 0.58), (s * 0.5, -0.9, -0.05), 0.42, 0.11)
-    elif kind == 'elite':    # a gold rhino horn, branched like antlers: the treasure-bearer's crest
-        K.cone('horn', 0.17, 0.8, (0, -1.2, 1.0), M('gold'), 8).rotation_euler = _aim((0, -0.5, 1))
-        for s in (-1, 1): K.cone('tine', 0.07, 0.4, (s * 0.15, -1.25, 1.15), M('gold'), 6).rotation_euler = _aim((s * 0.8, -0.3, 1))
-    elif kind not in ('tyrant', 'phantom', 'thief'):
-        ram((0, -1.22, 0.58), (0, -1, -0.05), 0.45, 0.15)
+    # the ramming head (owner, Nov 14 2026: a battering ram): a broad iron brow-plate it drives into the walls, and two
+    # short pincers low in front. No shaft: from behind and above (the game camera) any beam stood up like a pole with a
+    # knob (fresh-eyes review), so nothing here rises above the head
+    def brow(w, gold=False):
+        K.sphere('brow', 0.36, (0, -1.12, 0.88), M('gold' if gold else 'iron'), (w, 0.42, 0.45), 3)   # over the eyes, like a helm's peak
+        K.sphere('brow_rim', 0.37, (0, -1.17, 0.86), M('gold'), (w * 1.02, 0.12, 0.42), 2)
+    if kind == 'swarm':
+        brow(1.5)
+        for s in (-1, 1): K.cone('horn', 0.12, 0.55, (s * 0.42, -1.25, 0.86), M('lord_gloss'), 6).rotation_euler = _aim((s * 0.7, -0.6, 0.35))
+    elif kind == 'elite':    # a gold brow-plate with antler tines either side: the treasure-bearer's crest
+        brow(1.2, True)
+        for s in (-1, 1): K.cone('tine', 0.07, 0.4, (s * 0.32, -1.2, 0.85), M('gold'), 6).rotation_euler = _aim((s * 0.8, -0.4, 0.5))
+    elif kind not in ('tyrant', 'thief'):
+        brow(1.15)
     for s in (-1, 1):
         o = K.cone('mandible', 0.08 if kind != 'swarm' else 0.13, 0.4 if kind != 'swarm' else 0.65, (s * 0.2, -1.2, 0.42), M('iron'), 6); o.rotation_euler = (-1.4, 0, s * 0.4)
         for k in range(3):   # each leg turns at the shell's edge (a part: the game walks them on alternating tripods)
@@ -612,7 +613,7 @@ def beetle(kind='beetle'):
         for col in ('roof_red', 'frost', 'tree2'):
             p, n = _shell(1, R.uniform(0, 0.3), R.uniform(-0.3, 0.6)); K.sphere('jewel', 0.09, tuple(p + n * 0.15), M(col, 1.5), sub=1)
         return
-    face(-1.2, 0.66, 0.17, 0.12, brows=True, mouth=0)
+    face(-1.27, 0.62, 0.17, 0.12, brows=False, mouth=0)
 
 def golem(kind='golem'):
     """The Armoured: boulders bound by glowing seams, in worn iron armour (owner: "shoulder guards, chest plates, heck, a
@@ -675,7 +676,7 @@ def golem(kind='golem'):
             for k in range(5):   # each horn a curve of shrinking segments, out, back and up
                 t = k / 4; p = (s * (0.45 + 0.5 * t), 0.05 + 0.35 * t * t, 2.15 + 0.55 * t)
                 K.sphere('horn', 0.17 - 0.03 * k, p, M('bone' if k < 4 else 'gold'), (1, 1, 1.25), 2)
-        for (x, z, rot) in ((0.12, 1.3, 0.3), (-0.1, 1.05, -0.4), (0.05, 0.85, 0.2)): block((x, -0.84, z), (0.08, 0.06, 0.32), M('fire', 3.0), 0.0).rotation_euler = (0, rot, 0)   # the plate cracked over a molten heart
+        K.sphere('heart', 0.16, (0, -0.86, 1.52), M('fire', 3.0), (1.3, 0.5, 0.9), 2)   # a molten heart glowing at the collar (high: cracks low on the plate read as a groin piece)
         # his back is what the game camera sees as he marches on the walls: a ridged backplate and a row of spikes down the spine
         K.sphere('backplate', 0.78, (0, 0.42, 1.25), M('iron'), (1.05, 0.42, 0.72), 3)
         for k in range(5): K.cone('spine', 0.12 - 0.012 * k, 0.55 - 0.05 * k, (0, 0.78, 1.75 - k * 0.24), M('gold' if k == 0 else 'iron'), 6).rotation_euler = _aim((0, 1, 0.5))
@@ -747,6 +748,10 @@ def monster(name):
     elif name == 'phantom':
         _remap({'beetle_gloss': ('snow', 1.4), 'iron': ('frost_dk', 0.8), 'wood_dk': ('frost_dk', 0.8), 'gold': ('water_gloss', 2.0), 'pupil': ('frost', 2.5)})
         for k in range(3): bsphere('wisp', 0.16 - k * 0.04, (0, 0.95 + k * 0.35, 0.75 + k * 0.12), M('snow', 1.6), (1, 1, 1), 2)
+        for k, v in enumerate((-0.45, -0.15, 0.15, 0.45)):   # a crest of ice spikes down its back (a plain pale shell read as a rump from behind)
+            p, n = _shell(1, 0.0, v); bcone('ice', 0.1, 0.45 - k * 0.05, tuple(p + n * 0.15), M('frost', 2.0), 5, rot=tuple(_aim(n + Vector((0, 0.3, 0)))))
+            for sd in (-1, 1):
+                p2, n2 = _shell(sd, 0.6, v + 0.1); bcone('ice', 0.07, 0.28, tuple(p2 + n2 * 0.1), M('frost', 2.0), 5, rot=tuple(_aim(n2)))
     elif name == 'thief':
         bsphere('sack', 0.48, (0, 0.55, 1.35), M('canvas'), (1, 1, 1.05), 3); bcyl('tie', 0.14, 0.12, (0, 0.55, 1.86), M('wood_dk'), 10, 0.0)
         for (x, y, z) in ((0.24, 0.1, 1.55), (-0.18, 0.25, 1.75), (0.05, 0.05, 1.82)): bcyl('coin', 0.1, 0.03, (x, y, z), M('gold', 0.6), 12, 0.0)
@@ -1493,8 +1498,9 @@ def rift():
     time circling it (a part the game turns), and scorched grass at its foot."""
     bpy.ops.mesh.primitive_torus_add(major_radius=1.6, minor_radius=0.13, major_segments=48, minor_segments=8, location=(0, 0, 2.0), rotation=(math.pi / 2, 0, 0))
     o = bpy.context.object; o.scale = (0.75, 1.0, 1.25); bpy.ops.object.transform_apply(scale=True); K.finish(o, M('storm', 3.0))
-    K.sphere('void', 1.45, (0, 0.02, 2.0), M('cave'), (0.72, 0.12, 1.2), 3)
-    K.sphere('glow', 1.1, (0, -0.08, 2.0), M('roof_purple', 1.6), (0.55, 0.06, 0.95), 2)
+    K.sphere('void', 1.45, (0, 0.02, 2.0), M('robe_dk', 1.2), (0.72, 0.12, 1.2), 3)   # deep violet light, not black: from above a black tear read as a pit
+    K.sphere('glow', 1.1, (0, -0.08, 2.0), M('storm', 2.2), (0.55, 0.06, 0.95), 2)
+    K.sphere('core', 0.5, (0, -0.12, 2.0), M('snow', 3.0), (0.4, 0.05, 0.7), 2)
     for k in range(14):   # torn edges: jagged spikes of light round the tear
         a = k * math.tau / 14; x, z = math.cos(a) * 1.2, 2.0 + math.sin(a) * 2.0
         K.cone('tear', 0.09, 0.5, (x, 0, z), M('storm', 3.5), 4).rotation_euler = _aim((math.cos(a), 0, math.sin(a) * 1.4))
@@ -1502,7 +1508,6 @@ def rift():
         for k in range(9):
             a = k * math.tau / 9; r = 2.0 + (k % 3) * 0.25
             K.cone('shard', 0.1, 0.4, (math.cos(a) * r * 0.75, -0.1, 2.0 + math.sin(a) * r), M(('snow', 'storm', 'frost')[k % 3], 2.5), 4).rotation_euler = (0, a, 0)
-    K.cyl('scorch', 1.6, 0.03, (0, 0, 0.02), M('char'), 20, 0.0)
     for k in range(6): K.sphere('ember', 0.08, (R.uniform(-1.2, 1.2), R.uniform(-0.6, 0.6), 0.1), M('storm', 2.5), sub=1)
     return K.export('rift')
 

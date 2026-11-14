@@ -25,7 +25,7 @@ namespace Hearthgate.Game
             var who2 = I.Label("Calling", box, new Vector2(0, 1), new Vector2(206, -72), 16, TextAnchor.UpperLeft); who2.font = I.body; who2.text = Calling(kind); who2.color = new Color(0.85f, 0.78f, 0.6f);
             who2.rectTransform.pivot = new Vector2(0, 1); who2.rectTransform.sizeDelta = new Vector2(480, 24);
             var say = I.Label("Say", box, new Vector2(0, 1), new Vector2(206, -102), 19, TextAnchor.UpperLeft); say.font = I.body; say.fontStyle = FontStyle.Normal;
-            say.rectTransform.pivot = new Vector2(0, 1); say.rectTransform.sizeDelta = new Vector2(480, 140); say.horizontalOverflow = HorizontalWrapMode.Wrap; say.verticalOverflow = VerticalWrapMode.Overflow;
+            say.rectTransform.pivot = new Vector2(0, 1); say.rectTransform.sizeDelta = new Vector2(480, 140); say.color = new Color(0.97f, 0.94f, 0.9f); say.horizontalOverflow = HorizontalWrapMode.Wrap; say.verticalOverflow = VerticalWrapMode.Overflow;
             var opts = new System.Collections.Generic.List<(string label, string icon, System.Action act)>();
             switch (kind)
             {

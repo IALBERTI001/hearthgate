@@ -109,7 +109,7 @@ namespace Hearthgate.Game
                 if (burn > 0) c = Color.Lerp(c, Field.FIRE, 0.25f * (0.5f + 0.5f * Mathf.Sin(time * 20)));
                 if (faded) c = Color.Lerp(c, GHOST, 0.75f);                          // a Phantom washed out: only Storm finds it
                 else if (shield && shieldT == null) c = Color.Lerp(c, GHOST, 0.3f);   // a Totem's ward on a kind without rings
-                if (frozen) c = Color.Lerp(new Color(c.grayscale, c.grayscale, c.grayscale), new Color(0.62f, 0.78f, 1f), 0.45f);   // Time Stop: drained of colour, cold
+                if (frozen) c = Color.Lerp(new Color(c.grayscale, c.grayscale, c.grayscale), new Color(0.55f, 0.8f, 1f), 0.65f);   // Time Stop: drained of colour, cold
                 if (enraged) c = Color.Lerp(c, new Color(1f, 0.16f, 0.08f), 0.22f + 0.14f * Mathf.Sin(time * 7f));   // a boss in a rage burns red
                 if (flash > 0) c = Color.Lerp(c, Color.white, flash);
                 rends[i].material.color = c;

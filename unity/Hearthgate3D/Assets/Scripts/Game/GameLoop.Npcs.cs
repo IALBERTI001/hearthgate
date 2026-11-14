@@ -74,7 +74,7 @@ namespace Hearthgate.Game
                 var at = near || i == TRAINER ? TalkAt(i) + Vector3.up * (2.5f + (i == TRAINER ? 0 : Field.FLOOR)) : Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 1.6f);
                 float sc = near ? 1.0f : wz && wz.On ? 1.7f : 3.4f;
                 marks[k].position = at + Vector3.up * Mathf.Sin(npcT * 2.4f + k) * 0.15f * sc;
-                var cam = Camera.main; if (cam) { var d = marks[k].position - cam.transform.position; d.y = 0; if (d.sqrMagnitude > 0.01f) marks[k].rotation = Quaternion.LookRotation(d); }
+                var cam = Camera.main; if (cam) { var d = marks[k].position - cam.transform.position; if (d.sqrMagnitude > 0.01f) marks[k].rotation = Quaternion.LookRotation(d); }   // full billboard: from the high cameras a yaw-only sign was edge-on, a stick
                 marks[k].localScale = Vector3.one * sc * (1f + 0.05f * Mathf.Sin(npcT * 5f));
             }
         }
@@ -159,7 +159,7 @@ namespace Hearthgate.Game
             if (lv > 0) { if (P.shards < TS_TRAIN[lv]) { Sound.Dud(); return; } P.shards -= TS_TRAIN[lv]; }
             P.skills.RemoveAll(s => s.k == "timestop"); P.skills.Add(new KV { k = "timestop", v = lv + 1 });
             Sound.Play("level_up", 0.5f); Fx.I.Burst(TRAINER_AT + Vector3.up * 2, new Color(0.6f, 0.85f, 1f), 30);
-            Hud.Banner(lv == 0 ? "You learned Time Stop! Press F (or its button) when the walls are in trouble" : $"Time Stop {lv + 1}: {TS_DUR[lv + 1]:0.#} s, ready every {TS_CD[lv + 1]:0} s");
+            Hud.Banner(lv == 0 ? "New skill: Time Stop! Press F when the walls are in danger" : $"Time Stop {lv + 1}: {TS_DUR[lv + 1]:0.#} s, ready every {TS_CD[lv + 1]:0} s");
             Save();
         }
         public void UseTimeStop()
@@ -169,7 +169,7 @@ namespace Hearthgate.Game
             Sound.Play("surge", 0.6f); Sound.Play("ascension", 0.3f);
             StartCoroutine(Dial(new Vector3(0, 9f, Field.GATE_Z + 2f), TS_DUR[lv], 1.1f, true));
             foreach (var e in enemies) if (e.dying <= 0) Fx.I.Burst(e.Pos, new Color(0.7f, 0.85f, 1f), 4);
-            if (!told.Contains("tsUsed")) { told.Add("tsUsed"); Hud.Banner("Time stands still. The towers fire on"); }
+            if (!told.Contains("tsUsed")) { told.Add("tsUsed"); Hud.Banner("Time stands still. The towers fire on!"); }
         }
         // the great clock: rises over (at), turns (forward for Time Stop, backward fast for a rewind), and fades
         System.Collections.IEnumerator Dial(Vector3 at, float hold, float scale, bool forward)
@@ -187,7 +187,7 @@ namespace Hearthgate.Game
                 float spin = forward ? (u < 0.5f ? 360f : 12f) : -720f;   // Time Stop: the hands lurch, then crawl; a rewind: they race backward
                 if (hm) hm.Rotate(t.forward, spin * Time.unscaledDeltaTime, Space.World);
                 if (hh) hh.Rotate(t.forward, spin / 12f * Time.unscaledDeltaTime, Space.World);
-                Hud.SetTint(new Color(0.55f, 0.75f, 1f, 0.22f * k));
+                Hud.SetTint(new Color(0.5f, 0.72f, 1f, 0.3f * k));
                 yield return null;
             }
             Hud.SetTint(Color.clear); Destroy(g);
