@@ -17,7 +17,9 @@ ICONS = {
     'walk': ('wizard', 205, 0.86),
     'tower': ('tower_base', 200, 0.9),
     'gear': (None, 0, 0.9),   # the settings cog, modelled here: a brass wheel with eight teeth and a dark hub
-    'ascend': (None, 0, 0.9),  # Ascend: a five-pointed gold star rising from a ring, modelled here
+    'ascend': (None, 0, 0.9),
+    'fountain': ('fountain', 200, 0.92),      # the Surge board
+    'perks': ('building_watchtower', 205, 0.95),   # the Watchtower keeps the perks  # Ascend: a five-pointed gold star rising from a ring, modelled here
 }
 
 def gear():

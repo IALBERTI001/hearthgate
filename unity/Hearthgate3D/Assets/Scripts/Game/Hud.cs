@@ -151,11 +151,7 @@ namespace Hearthgate.Game
 
             // settings (game-polish rule 19: the controls inside the game, the music and sound switches): a small brass
             // medallion with a cog rendered in Blender, inside the top-left label block, right of the wave
-            var gear = Box("Settings", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(200, -14), new Vector2(44, 44)); gear.pivot = new Vector2(0, 1);
-            var gimg = gear.gameObject.AddComponent<Image>(); gimg.sprite = Panel(INK, BRASS, 21, 3); gimg.type = Image.Type.Sliced;
-            var gic = Box("Icon", gear, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
-            var gii = gic.gameObject.AddComponent<Image>(); gii.sprite = Icon("gear"); gii.preserveAspect = true; gii.raycastTarget = false; if (!gii.sprite) gii.enabled = false;
-            Press(gear, () => ShowSettings(true));
+            var gear = Action("Settings", new Vector2(0, 1), new Vector2(196, -12), new Vector2(56, 56), "gear", null, () => ShowSettings(true), null, false);
 
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
             // buildings"): a small plum board with its name, level and output, pinned over the signpost in its yard while
@@ -171,11 +167,8 @@ namespace Hearthgate.Game
 
             // the fountain's board (game-polish rule 6, in the world): ready, it says so and a tap starts the Surge; on, it
             // counts down. Hidden while the fountain refills.
-            surgeTag = Box("SurgeTag", transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(190, 44)); surgeTag.pivot = new Vector2(0.5f, 0);
-            var sti = surgeTag.gameObject.AddComponent<Image>(); sti.sprite = Panel(PLUM, new Color(1f, 0.62f, 0.86f), 12, 3); sti.type = Image.Type.Sliced;
-            surgeTxt = Label("T", surgeTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 19, TextAnchor.MiddleCenter); surgeTxt.color = new Color(1f, 0.8f, 0.94f);
-            surgeTxt.rectTransform.pivot = new Vector2(0.5f, 0.5f); surgeTxt.rectTransform.sizeDelta = new Vector2(180, 40);
-            Press(surgeTag, () => GameLoop.I.TapSurge()); surgeTag.SetSiblingIndex(1); surgeTag.gameObject.SetActive(false);
+            surgeAct = Action("SurgeTag", Vector2.zero, Vector2.zero, new Vector2(230, 56), "fountain", "X", () => GameLoop.I.TapSurge(), null, true);
+            surgeTag = surgeAct.p.rt; surgeTag.pivot = new Vector2(0.5f, 0); surgeTag.SetSiblingIndex(1); surgeTag.gameObject.SetActive(false);
             // the Tavern's Cheer meter, over its roof
             cheerTag = Box("CheerTag", transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(120, 30)); cheerTag.pivot = new Vector2(0.5f, 0);
             var cbg = cheerTag.gameObject.AddComponent<Image>(); cbg.sprite = Panel(INK, BRASS, 8, 2); cbg.type = Image.Type.Sliced; cbg.raycastTarget = false;
@@ -185,14 +178,11 @@ namespace Hearthgate.Game
             var ct = Label("T", cheerTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 15, TextAnchor.MiddleCenter); ct.text = "Cheer"; ct.font = body;
             ct.rectTransform.pivot = new Vector2(0.5f, 0.5f); ct.rectTransform.sizeDelta = new Vector2(110, 26);
             cheerTag.SetSiblingIndex(1); cheerTag.gameObject.SetActive(false);
-            perksTag = Box("PerksTag", transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(190, 42)); perksTag.pivot = new Vector2(0.5f, 0);
-            var pti = perksTag.gameObject.AddComponent<Image>(); pti.sprite = Panel(PLUM, BRASS_HI, 12, 3); pti.type = Image.Type.Sliced;
-            perksTxt = Label("T", perksTag, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter); perksTxt.color = RES;
-            perksTxt.rectTransform.pivot = new Vector2(0.5f, 0.5f); perksTxt.rectTransform.sizeDelta = new Vector2(180, 38);
-            Press(perksTag, () => ShowPerks()); perksTag.SetSiblingIndex(1); perksTag.gameObject.SetActive(false);
+            perksAct = Action("PerksTag", Vector2.zero, Vector2.zero, new Vector2(230, 56), "perks", null, () => ShowPerks(), null, false);
+            perksTag = perksAct.p.rt; perksTag.pivot = new Vector2(0.5f, 0); perksTag.SetSiblingIndex(1); perksTag.gameObject.SetActive(false);
         }
-        RectTransform perksTag; Text perksTxt;
-        RectTransform surgeTag, cheerTag; Text surgeTxt; Image cheerFill;
+        RectTransform perksTag; Act surgeAct, perksAct;
+        RectTransform surgeTag, cheerTag; Image cheerFill;
         // a HUD element pinned over a point in the world; false when that point is off screen
         bool Pin(RectTransform r, Vector3 at, float near = 9999f)
         {
@@ -208,7 +198,7 @@ namespace Hearthgate.Game
         {
             bool tagOn = !P.firstSession && (g.SurgeOn || g.SurgeReady);
             if (tagOn && Pin(surgeTag, Field.PLAZA + new Vector3(0, 4.2f, 0)))
-                surgeTxt.text = g.SurgeOn ? $"x2  ·  {GameLoop.Mmss(g.SurgeLeftMs)}" : (Application.isMobilePlatform ? "Surge ready: tap" : "Surge ready  [X]");
+            { Show(surgeAct, g.SurgeOn ? "Surge x2" : "Surge ready", g.SurgeOn ? $"{GameLoop.Mmss(g.SurgeLeftMs)} left" : "x2 for 3 min", !g.SurgeOn, Time.unscaledTime); surgeAct.gem.enabled = false; }
             else if (!tagOn && surgeTag.gameObject.activeSelf) surgeTag.gameObject.SetActive(false);
             int ti = System.Array.IndexOf(HG.BUILDING_IDS, "tavern");
             if (P.restored.Contains("tavern") && Pin(cheerTag, Field.Plot(ti) + Vector3.up * (Field.PlotHeight(ti) + 0.8f)))
@@ -221,7 +211,7 @@ namespace Hearthgate.Game
             int wi = System.Array.IndexOf(HG.BUILDING_IDS, "watchtower");
             bool perksOn = P.ascensions > 0;
             if (perksOn && Pin(perksTag, Field.Plot(wi) + Vector3.up * (Field.PlotHeight(wi) + 1.2f)))
-                perksTxt.text = P.perkPts > 0 ? $"Perks  ·  {P.perkPts} to spend" : "Perks";
+            { Show(perksAct, "Perks", P.perkPts > 0 ? $"{P.perkPts} to spend" : "all spent", P.perkPts > 0, Time.unscaledTime); perksAct.gem.enabled = false; }
             else if (!perksOn && perksTag.gameObject.activeSelf) perksTag.gameObject.SetActive(false);
         }
 
@@ -326,10 +316,14 @@ namespace Hearthgate.Game
         // ---------- the action kit ----------
         class Act { public Pressable p; public Text title, cost; public Image icon, gem, glow; public RectTransform cap, costRow; public bool primary; }
         static readonly Color PLUM_DIM = new Color(0.2f, 0.14f, 0.22f, 0.94f), BRASS_HI = new Color(1f, 0.82f, 0.42f), SHORT = new Color(0.93f, 0.62f, 0.55f);
-        Act Action(string n, Vector2 anchor, Vector2 pos, Vector2 size, string icon, string key, System.Action act, System.Func<bool> on, bool primary)
+        // EVERY pressable thing in the game is made here (owner, Nov 14 2026: "the buttons always have to look the same"):
+        // the plum panel and brass rim, the display font, the icon medallion when there is an icon, the keycap on desktop,
+        // the gold rim on the one primary action, the same press and hover. Menus, cards, the perks and the boards over the
+        // fountain and the Watchtower included.
+        Act Action(string n, Vector2 anchor, Vector2 pos, Vector2 size, string icon, string key, System.Action act, System.Func<bool> on, bool primary, Transform parent = null)
         {
             var a = new Act { primary = primary };
-            var r = Box(n, transform, anchor, anchor, pos, size); r.pivot = anchor;
+            var r = Box(n, parent ?? transform, anchor, anchor, pos, size); r.pivot = anchor;
             if (primary)
             {   // the breathing gold glow behind the primary action
                 var g = Box("Glow", r, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(14, 14));
@@ -338,15 +332,20 @@ namespace Hearthgate.Game
             }
             var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, primary ? BRASS_HI : BRASS, 14, primary ? 4 : 3); img.type = Image.Type.Sliced;
             float h = size.y, m = h - 12;
+            bool hasIcon = icon != null && size.x > m + 24;
             var med = Box("Medal", r, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(6 + m / 2, 0), new Vector2(m, m));
+            if (icon != null && size.x <= m + 24) med.anchorMin = med.anchorMax = new Vector2(0.5f, 0.5f);   // an icon-only button: the medallion centred
             var mi = med.gameObject.AddComponent<Image>(); mi.sprite = Panel(INK, BRASS, (int)(m / 2) - 1, 3); mi.type = Image.Type.Sliced; mi.raycastTarget = false;
             var ic = Box("Icon", med, Vector2.zero, Vector2.one, new Vector2(0, 1), new Vector2(2, 2));
             a.icon = ic.gameObject.AddComponent<Image>(); a.icon.sprite = Icon(icon); a.icon.preserveAspect = true; a.icon.raycastTarget = false;
             if (!a.icon.sprite) a.icon.enabled = false;
-            float left = m + 14, w = size.x - left - 10;
+            if (icon == null) med.gameObject.SetActive(false);
+            float left = hasIcon ? m + 14 : 12, w = size.x - left - (key != null && !Application.isMobilePlatform ? 30 : 12);
             a.title = Label("Title", r, new Vector2(0, 0.5f), Vector2.zero, h >= 60 ? 22 : 20, TextAnchor.MiddleLeft);
             var tr = a.title.rectTransform; tr.pivot = new Vector2(0, 0.5f); tr.sizeDelta = new Vector2(w, h * 0.5f); tr.anchoredPosition = new Vector2(left, h * 0.18f);
             a.title.horizontalOverflow = HorizontalWrapMode.Overflow;
+            if (!hasIcon) { a.title.alignment = TextAnchor.MiddleCenter; tr.sizeDelta = new Vector2(w, h * 0.5f); }
+            if (icon != null && !hasIcon) a.title.gameObject.SetActive(false);
             a.costRow = Box("Cost", r, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(left, -h * 0.2f), new Vector2(w, h * 0.4f)); a.costRow.pivot = new Vector2(0, 0.5f);
             var gm = Box("Gem", a.costRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(8, 0), new Vector2(17, 17));
             a.gem = gm.gameObject.AddComponent<Image>(); a.gem.sprite = gemSprite; a.gem.raycastTarget = false;
@@ -354,7 +353,9 @@ namespace Hearthgate.Game
             a.cost.rectTransform.pivot = new Vector2(0, 0.5f); a.cost.rectTransform.sizeDelta = new Vector2(w - 20, h * 0.4f);
             // a line taller than its box draws nothing in uGUI (Truncate): the cost row was blank in the browser (Nov 14 2026)
             a.cost.verticalOverflow = a.title.verticalOverflow = VerticalWrapMode.Overflow;
-            if (!Application.isMobilePlatform)
+            if (!hasIcon) { a.cost.alignment = TextAnchor.MiddleCenter; a.costRow.anchorMin = a.costRow.anchorMax = new Vector2(0.5f, 0.5f); a.costRow.pivot = new Vector2(0.5f, 0.5f); a.costRow.anchoredPosition = new Vector2(0, -h * 0.2f); a.cost.rectTransform.anchorMin = a.cost.rectTransform.anchorMax = a.cost.rectTransform.pivot = new Vector2(0.5f, 0.5f); a.cost.rectTransform.anchoredPosition = Vector2.zero; }
+            a.costRow.gameObject.SetActive(false);
+            if (key != null && !Application.isMobilePlatform)
             {   // the key, as a keycap on the corner (desktop only)
                 a.cap = Box("Key", r, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-4, -4), new Vector2(24, 21)); a.cap.pivot = new Vector2(1, 1);
                 var ci = a.cap.gameObject.AddComponent<Image>(); ci.sprite = Panel(INK, new Color(0.62f, 0.5f, 0.3f), 6, 2); ci.type = Image.Type.Sliced; ci.raycastTarget = false;
@@ -380,22 +381,14 @@ namespace Hearthgate.Game
             if (a.icon) a.icon.color = can || !hasCost ? Color.white : new Color(0.75f, 0.72f, 0.78f, 0.85f);
             if (a.glow) { var c = a.glow.color; c.a = can && hasCost ? 0.55f + 0.45f * Mathf.Sin(t * 3.2f) : 0f; a.glow.color = c; }
         }
-        Pressable BtnAt(string n, Vector2 anchor, Vector2 pos, Vector2 size, System.Action act, System.Func<bool> on, out Text lbl)
+        Pressable BtnAt(string n, Vector2 anchor, Vector2 pos, Vector2 size, System.Action act, System.Func<bool> on, out Text lbl, Transform parent = null, string icon = null, bool primary = false)
         {
-            var r = Box(n, transform, anchor, anchor, pos, size); r.pivot = anchor;
-            var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, BRASS); img.type = Image.Type.Sliced; img.color = Color.white;
-            lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 20, TextAnchor.MiddleCenter);
-            Fit(lbl, r.sizeDelta - new Vector2(20, 8), 12);
-            return Press(r, act, on);
+            var a = Action(n, anchor, pos, size, icon, null, act, on, primary, parent);
+            a.title.rectTransform.anchoredPosition = new Vector2(a.title.rectTransform.anchoredPosition.x, 0); lbl = a.title;
+            Fit(lbl, new Vector2(a.title.rectTransform.sizeDelta.x, size.y - 10), 13);
+            acts.Add(a); return a.p;
         }
-        Pressable Btn(string n, Vector2 pos, System.Action act, System.Func<bool> on, out Text lbl)
-        {
-            var r = Box(n, transform, new Vector2(1, 1), new Vector2(1, 1), pos, new Vector2(230, 56)); r.pivot = new Vector2(1, 1);   // slimmer (Nov 13 2026): the ring's outer towers stand under the corners
-            var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, BRASS); img.type = Image.Type.Sliced; img.color = Color.white;
-            lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 20, TextAnchor.MiddleCenter);
-            Fit(lbl, r.sizeDelta - new Vector2(20, 8), 12);
-            return Press(r, act, on);
-        }
+        readonly System.Collections.Generic.List<Act> acts = new System.Collections.Generic.List<Act>();   // every kit button, for the primary rim's breath
 
         void Update()
         {
@@ -438,6 +431,7 @@ namespace Hearthgate.Game
                 else if (HG.RestoreOffer(P).Contains(id)) { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, now); }
                 else { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"The {b.name} lies in ruins", null, false, now); }
             }
+            foreach (var a in acts) if (a.glow && a.p.rt) { var c = a.glow.color; c.a = 0.4f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f); a.glow.color = c; }
             LayoutActions();
             Refit();
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
@@ -477,8 +471,7 @@ namespace Hearthgate.Game
         }
         Pressable Choice(RectTransform box, string n, Vector2 pos, Vector2 size, string text, System.Action act, System.Func<bool> on = null, bool primary = false)
         {
-            var p = BtnAt(n, new Vector2(0.5f, 0), pos, size, act, on, out var l); p.rt.SetParent(box, false); l.text = text;
-            if (primary) { var im = p.rt.GetComponent<Image>(); im.sprite = Panel(PLUM, BRASS_HI, 14, 4); p.col = im.color; }
+            var p = BtnAt(n, new Vector2(0.5f, 0), pos, size, act, on, out var l, box, null, primary); l.text = text;
             return p;
         }
 
@@ -492,31 +485,30 @@ namespace Hearthgate.Game
             I.Line(box, -128, $"<color=#FFD56B>For good:</color> towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, n):0.##} (now x{g.B.ascend:0.##})", 19);
             I.Line(box, -168, $"<color=#FFD56B>+{HG.PerkPtsFor(P)} perk points</color> to spend at the Watchtower", 19);
             I.Line(box, -208, "Kept: your best wave, the combos you found, perks and settings.", 17, new Color(0.85f, 0.8f, 0.88f));
-            I.Choice(box, "A_No", new Vector2(-130, 26), new Vector2(220, 54), "Not yet", () => I.ShowSettings(false));
-            I.Choice(box, "A_Yes", new Vector2(130, 26), new Vector2(220, 54), "Ascend", () => { I.ShowSettings(false); g.Ascend(); }, null, true);
+            I.Choice(box, "A_No", new Vector2(-130, 26), new Vector2(230, 56), "Not yet", () => I.ShowSettings(false));
+            I.Choice(box, "A_Yes", new Vector2(130, 26), new Vector2(230, 56), "Ascend", () => { I.ShowSettings(false); g.Ascend(); }, null, true);
         }
 
         // the Watchtower's perks (2D: "Home of the Perks"): one row each, its level, its cost in points, Buy
         public static void ShowPerks()
         {
             if (!I || !GameLoop.I) return;
-            var g = GameLoop.I; var box = I.Modal("Perks", new Vector2(660, 196 + HG.PERKS.Length * 58));   // room for the close button under the last row
+            var g = GameLoop.I; var box = I.Modal("Perks", new Vector2(680, 200 + HG.PERKS.Length * 64));   // room for the close button under the last row
             var pts = I.Line(box, -60, "", 19, RES);
             var rows = new System.Collections.Generic.List<(HG.Perk k, Text lv, Text cost)>();
             for (int i = 0; i < HG.PERKS.Length; i++)
             {
-                var k = HG.PERKS[i]; float y = -104 - i * 58;
+                var k = HG.PERKS[i]; float y = -100 - i * 64;
                 var name = I.Label("N" + i, box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = k.name;
                 name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
                 var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = k.line; line.color = new Color(0.85f, 0.8f, 0.88f);
                 line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(400, 22);
                 var lv = I.Label("V" + i, box, new Vector2(1, 1), new Vector2(-170, y - 8), 17, TextAnchor.UpperRight); lv.font = I.body; lv.rectTransform.pivot = new Vector2(1, 1); lv.rectTransform.sizeDelta = new Vector2(90, 24);
                 var id = k.id;
-                var b = I.BtnAt("P_" + id, new Vector2(1, 1), new Vector2(-24, y - 2), new Vector2(130, 44), () => { g.BuyPerk(id); }, () => HG.CanBuyPerk(g.P, id), out var cost);
-                b.rt.SetParent(box, false); b.rt.anchorMin = b.rt.anchorMax = b.rt.pivot = new Vector2(1, 1); b.rt.anchoredPosition = new Vector2(-24, y - 2);
+                I.BtnAt("P_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.BuyPerk(id); }, () => HG.CanBuyPerk(g.P, id), out var cost, box);
                 rows.Add((k, lv, cost));
             }
-            I.Choice(box, "P_Close", new Vector2(0, 18), new Vector2(200, 48), "Back to the game", () => I.ShowSettings(false));
+            I.Choice(box, "P_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
             I.perkRefresh = () =>
             {
                 pts.text = $"{g.P.perkPts} perk point{(g.P.perkPts == 1 ? "" : "s")}  ·  each Ascension pays more";
@@ -541,8 +533,8 @@ namespace Hearthgate.Game
             var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 550));   // tall enough for every control row above the stamp
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = "Settings";
-            BtnAt("S_Music", new Vector2(0.5f, 1), new Vector2(-140, -76), new Vector2(250, 50), () => { Sound.SetMusic(!Sound.MusicOn); RefreshSettings(); }, null, out musicLbl).rt.SetParent(box, false);
-            BtnAt("S_Sfx", new Vector2(0.5f, 1), new Vector2(140, -76), new Vector2(250, 50), () => { Sound.SetSfx(!Sound.SfxOn); RefreshSettings(); }, null, out sfxLbl).rt.SetParent(box, false);
+            BtnAt("S_Music", new Vector2(0.5f, 1), new Vector2(-140, -76), new Vector2(250, 56), () => { Sound.SetMusic(!Sound.MusicOn); RefreshSettings(); }, null, out musicLbl, box);
+            BtnAt("S_Sfx", new Vector2(0.5f, 1), new Vector2(140, -76), new Vector2(250, 56), () => { Sound.SetSfx(!Sound.SfxOn); RefreshSettings(); }, null, out sfxLbl, box);
             var ct = Label("Controls", box, new Vector2(0.5f, 1), new Vector2(0, -148), 22, TextAnchor.UpperCenter); ct.text = "Controls";
             string[,] rows = {
                 { "U", "Upgrade the towers" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
@@ -558,8 +550,8 @@ namespace Hearthgate.Game
             }
             var stamp = Label("Stamp", box, new Vector2(0.5f, 0), new Vector2(0, 74), 13, TextAnchor.LowerCenter); stamp.font = body; stamp.color = new Color(0.8f, 0.74f, 0.82f);
             stamp.text = "Hearthgate 3D · build " + Application.version;
-            var close = BtnAt("S_Close", new Vector2(0.5f, 0), new Vector2(0, 16), new Vector2(200, 48), () => ShowSettings(false), null, out var cl);
-            close.rt.SetParent(box, false); cl.text = "Back to the game";
+            var close = BtnAt("S_Close", new Vector2(0.5f, 0), new Vector2(0, 16), new Vector2(230, 56), () => ShowSettings(false), null, out var cl, box);
+            cl.text = "Back to the game";
             RefreshSettings();
         }
         void RefreshSettings()
@@ -579,12 +571,8 @@ namespace Hearthgate.Game
             for (int k = 0; k < opts.Length; k++)
             {
                 var f = opts[k];
-                var r = I.Box(f.id, box, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(k == 0 ? -150 : 150, 30), new Vector2(280, 150)); r.pivot = new Vector2(0.5f, 0);
-                var ri = r.gameObject.AddComponent<Image>(); ri.sprite = Panel(PLUM, BRASS); ri.type = Image.Type.Sliced;
-                I.Press(r, () => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); });
-                I.Label("N", r, new Vector2(0.5f, 1), new Vector2(0, -14), 24, TextAnchor.UpperCenter).text = f.name;
-                var n = r.GetChild(r.childCount - 1).GetComponent<Text>(); Fit(n, new Vector2(260, 34), 14); n.rectTransform.anchoredPosition = new Vector2(0, -30);
-                var d = I.Label("D", r, new Vector2(0.5f, 0.5f), new Vector2(0, -16), 18, TextAnchor.MiddleCenter); d.text = f.line; d.color = Field.GOLD; d.font = I.body; Fit(d, new Vector2(256, 80), 12); d.rectTransform.anchoredPosition = new Vector2(0, -14);
+                var a = I.Action(f.id, new Vector2(0.5f, 0), new Vector2(k == 0 ? -152 : 152, 36), new Vector2(290, 64), "tower", null, () => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); }, null, false, box);
+                I.Show(a, f.name, f.line, true, 0); a.gem.enabled = false; a.cost.color = Field.GOLD; Fit(a.cost, new Vector2(a.cost.rectTransform.sizeDelta.x, 26), 11);
             }
         }
     }
