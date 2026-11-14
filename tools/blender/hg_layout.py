@@ -116,7 +116,7 @@ HEIGHT = {'forge': 7.6, 'frostSpire': 14.8, 'stormBell': 12.9, 'bakery': 10.4, '
 # the wall; villagers walk the square.
 CENTRE = (0.0, -RZ)                    # the ring's centre: the fountain
 PLAZA = CENTRE
-HOUSE_A, HOUSE_B = RX - 7.0, RZ - 7.0  # the arc the houses' centres stand on (an 8 m deep house keeps 3 m from the wall)
+HOUSE_A, HOUSE_B = RX - 8.0, RZ - 7.0  # the arc the houses' centres stand on (eaves, chimneys and back porches keep 1.4 m off the wall)
 ARC = (130.0, 410.0)                   # degrees, measured from +x with +z toward the gate: back and sides, the front open
 ORDER = ['granary', 'tavern', 'frostSpire', 'forge', 'stormBell', 'bakery', 'library', 'watchtower', 'market', 'cottages']   # the first rebuilds at the back, fronts to the camera
 SQUARE_A, SQUARE_B = HOUSE_A - 4.0 - 2.6, HOUSE_B - 4.0 - 2.6   # the cobbled square (an ellipse round the fountain)
@@ -251,8 +251,11 @@ def check_town():
     paving or through a prop. Returns (house gap, the closest two houses, prop count)."""
     n = len(IDS); worst = 99.0
     for i in range(n):
+        w, d = SIZES[IDS[i]]   # the model reaches past its footprint: eaves 0.85 m at the sides and back, the sign 1.9 m in front
+        for u, v in ((-w / 2 - 0.85, -d / 2 - 0.85), (w / 2 + 0.85, -d / 2 - 0.85), (w / 2 + 0.85, d / 2 + 1.9), (-w / 2 - 0.85, d / 2 + 1.9)):
+            x, z = world(i, u, v)
+            if not inside(x, z, 1.7): raise ValueError(f'{IDS[i]} reaches under the wall at {x:.1f},{z:.1f}')   # LayoutCheck: 1.4
         for x, z in corners(i):
-            if not inside(x, z, 2.0): raise ValueError(f'{IDS[i]} corner {x:.1f},{z:.1f} under the wall')
             if in_square(x, z, 1.2): raise ValueError(f'{IDS[i]} corner {x:.1f},{z:.1f} on the square')
         for j in range(i + 1, n):
             A, B = corners(i), corners(j)

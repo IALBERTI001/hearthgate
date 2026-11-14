@@ -59,14 +59,14 @@ namespace Hearthgate.Game
             return Mathf.Clamp(Mathf.Max(far, prog), far, far + 8f);   // the lane art runs 9 m past its 16:9 start
         }
         public static readonly Vector3 PLAZA = new Vector3(0.000f, 0, -28.000f);   // the ring's centre: the fountain in the square
-        public const float SQUARE_A = 30.40f, SQUARE_B = 14.40f;   // the cobbled square, an ellipse round the fountain
+        public const float SQUARE_A = 29.40f, SQUARE_B = 14.40f;   // the cobbled square, an ellipse round the fountain
 
         // the ten houses round the inside of the wall, in the order of HG.BUILDINGS, each turned to face the square (owner,
         // Nov 14 2026: "the housing spaced inside circular facing the interior"; tools/blender/hg_layout.py place_ring)
         static readonly Vector2[] PLOTS = {
-            new Vector2(-19.104f, -45.570f), new Vector2(-30.223f, -39.700f), new Vector2(-7.748f, -47.547f), new Vector2(3.608f, -48.403f), new Vector2(36.493f, -28.428f),
-            new Vector2(-36.765f, -25.555f), new Vector2(-26.806f, -13.324f), new Vector2(17.201f, -46.685f), new Vector2(27.252f, -14.768f), new Vector2(28.554f, -40.353f) };
-        static readonly float[] YAWS = { 198.524f, 219.535f, 186.756f, 176.927f, 91.999f, 280.947f, 329.631f, 163.945f, 32.454f, 144.343f };
+            new Vector2(-18.732f, -45.510f), new Vector2(-29.560f, -39.542f), new Vector2(-7.655f, -47.531f), new Vector2(3.469f, -48.405f), new Vector2(35.493f, -28.424f),
+            new Vector2(-35.774f, -25.577f), new Vector2(-26.190f, -13.406f), new Vector2(16.819f, -46.654f), new Vector2(26.620f, -14.863f), new Vector2(27.906f, -40.231f) };
+        static readonly float[] YAWS = { 199.251f, 220.867f, 187.081f, 176.868f, 91.938f, 280.623f, 328.668f, 163.380f, 33.520f, 143.149f };
         public static Vector3 Plot(int i) => new Vector3(PLOTS[i].x, 0, PLOTS[i].y);
         public static Quaternion PlotRot(int i) => Quaternion.Euler(0, YAWS[i], 0);
         // a house's own frame on the ground: u along its width (the model's +x), v toward its door (its front)
@@ -87,39 +87,38 @@ namespace Hearthgate.Game
 
         // the town's props the wizard walks round: x, z, radius (lamps, benches, stalls, barrels, trees, beds, bushes)
         public static readonly Vector3[] PROPS = {
-            new Vector3(-19.160f, -29.650f, 1.300f), new Vector3(-6.654f, -36.931f, 1.300f), new Vector3(12.506f, -35.280f, 1.300f), new Vector3(19.267f, -29.323f, 1.300f),
-            new Vector3(3.677f, -24.323f, 0.700f), new Vector3(-1.346f, -22.977f, 0.700f), new Vector3(-5.023f, -26.654f, 0.700f), new Vector3(-3.677f, -31.677f, 0.700f),
-            new Vector3(1.346f, -33.023f, 0.700f), new Vector3(5.023f, -29.346f, 0.700f), new Vector3(30.599f, -25.926f, 0.200f), new Vector3(28.848f, -22.660f, 0.200f),
-            new Vector3(22.228f, -17.650f, 0.200f), new Vector3(16.829f, -15.504f, 0.200f), new Vector3(5.366f, -13.326f, 0.200f), new Vector3(-5.896f, -13.374f, 0.200f),
-            new Vector3(-12.568f, -14.388f, 0.200f), new Vector3(-18.596f, -16.100f, 0.200f), new Vector3(-25.617f, -19.668f, 0.200f), new Vector3(-28.848f, -22.660f, 0.200f),
-            new Vector3(-30.825f, -29.039f, 0.200f), new Vector3(-29.550f, -32.356f, 0.200f), new Vector3(-24.999f, -36.758f, 0.200f), new Vector3(-20.272f, -39.245f, 0.200f),
-            new Vector3(-14.507f, -41.156f, 0.200f), new Vector3(-4.834f, -42.717f, 0.200f), new Vector3(5.366f, -42.674f, 0.200f), new Vector3(13.059f, -41.504f, 0.200f),
-            new Vector3(19.024f, -39.741f, 0.200f), new Vector3(27.532f, -34.764f, 0.200f), new Vector3(29.982f, -31.605f, 0.200f), new Vector3(-14.577f, -42.446f, 0.500f),
-            new Vector3(-25.262f, -38.089f, 0.500f), new Vector3(-5.005f, -43.944f, 0.500f), new Vector3(6.668f, -43.833f, 0.500f), new Vector3(32.245f, -23.977f, 0.500f),
-            new Vector3(-32.770f, -30.707f, 0.500f), new Vector3(-27.176f, -19.220f, 0.500f), new Vector3(19.978f, -40.787f, 0.500f), new Vector3(21.531f, -15.751f, 0.500f),
-            new Vector3(28.150f, -35.843f, 0.500f), new Vector3(38.531f, -21.107f, 1.100f), new Vector3(-34.894f, -36.561f, 1.100f), new Vector3(-36.000f, -17.318f, 1.100f),
-            new Vector3(34.649f, -19.270f, 1.100f), new Vector3(33.013f, -35.647f, 1.100f), new Vector3(-38.020f, -32.749f, 1.100f), new Vector3(-25.021f, -43.576f, 1.100f),
-            new Vector3(24.340f, -43.968f, 1.100f), new Vector3(-2.778f, -51.894f, 1.100f), new Vector3(-32.409f, -17.487f, 1.100f), new Vector3(36.660f, -36.933f, 1.100f),
-            new Vector3(35.097f, -16.166f, 1.100f), new Vector3(10.378f, -51.230f, 1.100f), new Vector3(9.875f, -47.899f, 1.100f), new Vector3(-13.464f, -50.236f, 1.100f),
-            new Vector3(-33.114f, -34.160f, 1.100f), new Vector3(34.836f, -40.006f, 1.100f), new Vector3(-2.636f, -47.813f, 1.100f), new Vector3(-25.744f, -46.814f, 0.800f),
-            new Vector3(24.550f, -46.642f, 0.800f), new Vector3(30.139f, -33.861f, 0.800f), new Vector3(-29.411f, -20.855f, 0.800f), new Vector3(-12.868f, -46.055f, 0.800f),
-            new Vector3(-12.185f, -43.612f, 0.800f), new Vector3(-38.402f, -35.475f, 0.800f), new Vector3(31.982f, -20.399f, 0.800f), new Vector3(-27.847f, -45.637f, 0.800f),
-            new Vector3(13.258f, -10.932f, 0.900f), new Vector3(-18.206f, -9.834f, 0.900f), new Vector3(-10.419f, -6.524f, 0.900f), new Vector3(-18.138f, -7.196f, 0.900f),
-            new Vector3(15.147f, -14.058f, 0.900f), new Vector3(7.642f, -10.749f, 0.900f), new Vector3(15.618f, -6.942f, 0.900f), new Vector3(-7.634f, -11.380f, 0.900f),
-            new Vector3(-15.534f, -11.264f, 0.900f), new Vector3(19.452f, -13.474f, 0.900f), new Vector3(7.765f, -7.964f, 0.900f), new Vector3(-3.919f, -6.005f, 0.900f),
-            new Vector3(-3.898f, -9.716f, 0.800f), new Vector3(4.815f, -7.409f, 0.800f), new Vector3(18.850f, -6.287f, 0.800f), new Vector3(-17.687f, -13.882f, 0.800f),
-            new Vector3(-21.865f, -8.465f, 0.800f), new Vector3(-9.459f, -9.730f, 0.800f), new Vector3(-31.280f, -32.186f, 0.800f), new Vector3(10.708f, -4.704f, 0.800f),
-            new Vector3(13.918f, -5.060f, 0.800f), new Vector3(9.926f, -12.612f, 0.800f) };
+            new Vector3(-18.530f, -29.650f, 1.300f), new Vector3(12.095f, -35.280f, 1.300f), new Vector3(18.805f, -28.332f, 1.300f), new Vector3(3.677f, -24.323f, 0.700f),
+            new Vector3(-1.346f, -22.977f, 0.700f), new Vector3(-5.023f, -26.654f, 0.700f), new Vector3(-3.677f, -31.677f, 0.700f), new Vector3(1.346f, -33.023f, 0.700f),
+            new Vector3(5.023f, -29.346f, 0.700f), new Vector3(29.609f, -25.926f, 0.200f), new Vector3(27.914f, -22.660f, 0.200f), new Vector3(22.220f, -18.030f, 0.200f),
+            new Vector3(17.150f, -15.795f, 0.200f), new Vector3(11.201f, -14.185f, 0.200f), new Vector3(4.677f, -13.283f, 0.200f), new Vector3(-10.226f, -13.999f, 0.200f),
+            new Vector3(-16.285f, -15.504f, 0.200f), new Vector3(-24.788f, -19.668f, 0.200f), new Vector3(-27.914f, -22.660f, 0.200f), new Vector3(-29.827f, -29.039f, 0.200f),
+            new Vector3(-28.594f, -32.356f, 0.200f), new Vector3(-24.190f, -36.758f, 0.200f), new Vector3(-19.616f, -39.245f, 0.200f), new Vector3(-14.037f, -41.156f, 0.200f),
+            new Vector3(-4.677f, -42.717f, 0.200f), new Vector3(5.192f, -42.674f, 0.200f), new Vector3(11.683f, -41.716f, 0.200f), new Vector3(17.575f, -40.054f, 0.200f),
+            new Vector3(26.641f, -34.764f, 0.200f), new Vector3(29.012f, -31.605f, 0.200f), new Vector3(-14.166f, -42.444f, 0.500f), new Vector3(-24.564f, -38.047f, 0.500f),
+            new Vector3(-4.892f, -43.944f, 0.500f), new Vector3(6.524f, -43.832f, 0.500f), new Vector3(31.241f, -23.978f, 0.500f), new Vector3(-31.750f, -30.707f, 0.500f),
+            new Vector3(-26.461f, -19.307f, 0.500f), new Vector3(19.538f, -40.729f, 0.500f), new Vector3(20.881f, -15.740f, 0.500f), new Vector3(27.407f, -35.731f, 0.500f),
+            new Vector3(38.531f, -21.107f, 1.100f), new Vector3(-34.894f, -36.561f, 1.100f), new Vector3(-36.000f, -17.318f, 1.100f), new Vector3(34.649f, -19.270f, 1.100f),
+            new Vector3(33.013f, -35.647f, 1.100f), new Vector3(-38.020f, -32.749f, 1.100f), new Vector3(33.910f, -39.368f, 1.100f), new Vector3(24.069f, -44.844f, 1.100f),
+            new Vector3(-31.692f, -17.538f, 1.100f), new Vector3(35.097f, -16.166f, 1.100f), new Vector3(-13.022f, -49.015f, 1.100f), new Vector3(-25.177f, -45.278f, 1.100f),
+            new Vector3(36.018f, -36.940f, 1.100f), new Vector3(-33.114f, -34.160f, 1.100f), new Vector3(9.747f, -49.202f, 1.100f), new Vector3(-2.613f, -51.327f, 1.100f),
+            new Vector3(30.569f, -21.319f, 0.800f), new Vector3(29.280f, -33.940f, 0.800f), new Vector3(-38.402f, -35.475f, 0.800f), new Vector3(38.634f, -35.504f, 0.800f),
+            new Vector3(9.220f, -45.397f, 0.800f), new Vector3(-25.131f, -42.567f, 0.800f), new Vector3(-29.792f, -19.452f, 0.800f), new Vector3(-23.338f, -41.003f, 0.800f),
+            new Vector3(24.344f, -47.637f, 0.800f), new Vector3(5.932f, -10.502f, 0.900f), new Vector3(19.192f, -13.319f, 0.900f), new Vector3(-10.425f, -7.332f, 0.900f),
+            new Vector3(-14.789f, -10.677f, 0.900f), new Vector3(21.017f, -9.603f, 0.900f), new Vector3(-21.107f, -7.148f, 0.900f), new Vector3(9.518f, -9.925f, 0.900f),
+            new Vector3(-5.887f, -10.937f, 0.900f), new Vector3(-17.312f, -11.713f, 0.900f), new Vector3(-17.072f, -7.881f, 0.900f), new Vector3(3.605f, -8.713f, 0.900f),
+            new Vector3(12.320f, -8.064f, 0.900f), new Vector3(15.943f, -14.410f, 0.800f), new Vector3(15.806f, -6.143f, 0.800f), new Vector3(5.789f, -5.345f, 0.800f),
+            new Vector3(-8.309f, -10.663f, 0.800f), new Vector3(16.420f, -8.363f, 0.800f), new Vector3(22.955f, -7.914f, 0.800f), new Vector3(-2.626f, -46.136f, 0.800f),
+            new Vector3(-12.912f, -7.034f, 0.800f), new Vector3(10.300f, -6.346f, 0.800f), new Vector3(16.747f, -11.786f, 0.800f) };
         // the villagers' walks along the paving; a walk that ends where it starts goes round and round
         public static readonly Vector2[][] WALKS = {
-            new[] { new Vector2(25.536f, -28.000f), new Vector2(24.896f, -25.437f), new Vector2(23.007f, -23.002f), new Vector2(19.965f, -20.817f), new Vector2(15.921f, -18.993f), new Vector2(11.080f, -17.621f), new Vector2(5.682f, -16.769f), new Vector2(0.000f, -16.480f), new Vector2(-5.682f, -16.769f), new Vector2(-11.080f, -17.621f), new Vector2(-15.921f, -18.993f), new Vector2(-19.965f, -20.817f), new Vector2(-23.007f, -23.002f), new Vector2(-24.896f, -25.437f), new Vector2(-25.536f, -28.000f), new Vector2(-24.896f, -30.563f), new Vector2(-23.007f, -32.998f), new Vector2(-19.965f, -35.183f), new Vector2(-15.921f, -37.007f), new Vector2(-11.080f, -38.379f), new Vector2(-5.682f, -39.231f), new Vector2(-0.000f, -39.520f), new Vector2(5.682f, -39.231f), new Vector2(11.080f, -38.379f), new Vector2(15.921f, -37.007f), new Vector2(19.965f, -35.183f), new Vector2(23.007f, -32.998f), new Vector2(24.896f, -30.563f), new Vector2(25.536f, -28.000f) },
-            new[] { new Vector2(12.768f, -28.000f), new Vector2(12.143f, -25.553f), new Vector2(10.330f, -23.345f), new Vector2(7.505f, -21.593f), new Vector2(3.946f, -20.468f), new Vector2(0.000f, -20.080f), new Vector2(-3.946f, -20.468f), new Vector2(-7.505f, -21.593f), new Vector2(-10.330f, -23.345f), new Vector2(-12.143f, -25.553f), new Vector2(-12.768f, -28.000f), new Vector2(-12.143f, -30.447f), new Vector2(-10.330f, -32.655f), new Vector2(-7.505f, -34.407f), new Vector2(-3.946f, -35.532f), new Vector2(-0.000f, -35.920f), new Vector2(3.946f, -35.532f), new Vector2(7.505f, -34.407f), new Vector2(10.330f, -32.655f), new Vector2(12.143f, -30.447f), new Vector2(12.768f, -28.000f) },
+            new[] { new Vector2(24.696f, -28.000f), new Vector2(24.077f, -25.437f), new Vector2(22.250f, -23.002f), new Vector2(19.308f, -20.817f), new Vector2(15.398f, -18.993f), new Vector2(10.715f, -17.621f), new Vector2(5.495f, -16.769f), new Vector2(0.000f, -16.480f), new Vector2(-5.495f, -16.769f), new Vector2(-10.715f, -17.621f), new Vector2(-15.398f, -18.993f), new Vector2(-19.308f, -20.817f), new Vector2(-22.250f, -23.002f), new Vector2(-24.077f, -25.437f), new Vector2(-24.696f, -28.000f), new Vector2(-24.077f, -30.563f), new Vector2(-22.250f, -32.998f), new Vector2(-19.308f, -35.183f), new Vector2(-15.398f, -37.007f), new Vector2(-10.715f, -38.379f), new Vector2(-5.495f, -39.231f), new Vector2(-0.000f, -39.520f), new Vector2(5.495f, -39.231f), new Vector2(10.715f, -38.379f), new Vector2(15.398f, -37.007f), new Vector2(19.308f, -35.183f), new Vector2(22.250f, -32.998f), new Vector2(24.077f, -30.563f), new Vector2(24.696f, -28.000f) },
+            new[] { new Vector2(12.348f, -28.000f), new Vector2(11.744f, -25.553f), new Vector2(9.990f, -23.345f), new Vector2(7.258f, -21.593f), new Vector2(3.816f, -20.468f), new Vector2(0.000f, -20.080f), new Vector2(-3.816f, -20.468f), new Vector2(-7.258f, -21.593f), new Vector2(-9.990f, -23.345f), new Vector2(-11.744f, -25.553f), new Vector2(-12.348f, -28.000f), new Vector2(-11.744f, -30.447f), new Vector2(-9.990f, -32.655f), new Vector2(-7.258f, -34.407f), new Vector2(-3.816f, -35.532f), new Vector2(-0.000f, -35.920f), new Vector2(3.816f, -35.532f), new Vector2(7.258f, -34.407f), new Vector2(9.990f, -32.655f), new Vector2(11.744f, -30.447f), new Vector2(12.348f, -28.000f) },
             new[] { new Vector2(0.000f, -3.000f), new Vector2(0.000f, -23.500f) },
-            new[] { new Vector2(-17.738f, -41.492f), new Vector2(-16.626f, -38.174f), new Vector2(-6.749f, -34.723f) },
-            new[] { new Vector2(15.873f, -42.072f), new Vector2(14.877f, -38.613f), new Vector2(6.017f, -34.985f) },
-            new[] { new Vector2(-32.052f, -26.466f), new Vector2(-28.517f, -27.150f), new Vector2(-12.703f, -27.204f) },
-            new[] { new Vector2(25.213f, -17.974f), new Vector2(23.335f, -20.928f), new Vector2(9.779f, -22.908f) },
-            new[] { new Vector2(-7.301f, -43.773f), new Vector2(-6.878f, -40.198f), new Vector2(-2.735f, -35.736f) } };
+            new[] { new Vector2(-17.314f, -41.450f), new Vector2(-16.160f, -38.146f), new Vector2(-6.586f, -34.700f) },
+            new[] { new Vector2(15.446f, -42.054f), new Vector2(14.416f, -38.605f), new Vector2(5.853f, -34.974f) },
+            new[] { new Vector2(-31.056f, -26.462f), new Vector2(-27.518f, -27.126f), new Vector2(-12.285f, -27.203f) },
+            new[] { new Vector2(24.522f, -18.031f), new Vector2(22.589f, -20.949f), new Vector2(9.501f, -22.942f) },
+            new[] { new Vector2(-7.187f, -43.760f), new Vector2(-6.743f, -40.187f), new Vector2(-2.692f, -35.730f) } };
 
         // the one steady camera (owner's rule: "one steady art and working area")
         public static readonly Vector3 CAM_LOOK = new Vector3(0.000f, 0, -3.000f);
