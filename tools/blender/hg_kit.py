@@ -26,7 +26,8 @@ PAL = {
     'plaster': (0.93, 0.86, 0.72), 'plaster2': (0.88, 0.78, 0.62),
     'roof_red': (0.72, 0.24, 0.16), 'roof_terra': (0.80, 0.40, 0.22), 'roof_slate': (0.26, 0.30, 0.42), 'roof_blue': (0.24, 0.40, 0.70),
     'roof_purple': (0.46, 0.26, 0.64), 'awning': (0.80, 0.18, 0.16),
-    'slime_gloss': (0.96, 0.36, 0.62), 'slime_dk': (0.62, 0.12, 0.38),   # hot pink: reads against the green ground (review 2) 'beetle_gloss': (0.34, 0.20, 0.62), 'golem': (0.48, 0.44, 0.40),
+    # slimes are hot pink: they read against the green ground (fresh-eyes review 2)
+    'slime_gloss': (0.96, 0.36, 0.62), 'slime_dk': (0.62, 0.12, 0.38), 'beetle_gloss': (0.34, 0.20, 0.62), 'golem': (0.48, 0.44, 0.40),
     'eye': (1.0, 1.0, 1.0), 'pupil': (0.06, 0.04, 0.06), 'white_gloss': (1.0, 1.0, 1.0), 'blush': (1.0, 0.45, 0.45),
     'fire': (1.0, 0.36, 0.07), 'fire_core': (1.0, 0.62, 0.14), 'frost': (0.32, 0.80, 1.0), 'frost_dk': (0.14, 0.52, 0.92),
     'storm': (0.64, 0.34, 1.0), 'snow': (0.90, 0.95, 1.0), 'shingle': (0.46, 0.27, 0.16), 'shingle2': (0.37, 0.21, 0.12),

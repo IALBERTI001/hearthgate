@@ -1,6 +1,7 @@
 # Kit test (Nov 13 2026): builds every model without exporting and fails when a part's origin is far from the part
 # (the transform_apply bug that sent tower stones to the wrong faces and roof battens across the gatehouse), or when the
-# tower's camera-facing face has no stones. Run: blender -b --factory-startup -P hg_kit_test.py   (exit 1 on failure)
+# tower's camera-facing face has no stones. Run: blender -b --factory-startup --python-exit-code 1 -P hg_kit_test.py
+# (exit 1 on failure; without --python-exit-code Blender exits 0 even when the script raises)
 import bpy, sys, os, math
 sys.argv = [sys.argv[0], '--', os.environ.get('TEMP', '/tmp')]
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
