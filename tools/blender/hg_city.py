@@ -192,6 +192,67 @@ def building(bid):
     tufts(-2.0, -1.9, 2, (0.3, 0.2)); tufts(2.0, -1.8, 2, (0.3, 0.2))
     return K.export('building_' + bid)
 
+# ------------------------------------------------------------------------------------------------- the ruins
+# Each plot's ruin is the burnt shell of its own building (fresh-eyes review 2: "12 identical grey lumps in rows ...
+# procedural"): its footprint, its shape (round tower, belfry, barn, open market), charred walls of uneven height, fallen
+# beams, embers glowing in the rubble, a wisp of smoke, and, on some, scaffolding and fresh timber waiting for the rebuild.
+SHELLS = {   # footprint (w, d), shape, wall height
+    'forge': (3.4, 3.0, 'box', 1.6), 'frostSpire': (2.9, 2.9, 'round', 2.6), 'stormBell': (2.6, 2.6, 'square', 2.8),
+    'bakery': (3.2, 3.0, 'box', 1.8), 'market': (4.2, 3.6, 'stalls', 0.0), 'tavern': (4.0, 3.3, 'box', 2.0),
+    'granary': (3.0, 3.4, 'barn', 1.4), 'library': (3.9, 3.3, 'box', 2.3), 'cottages': (2.2, 2.2, 'pair', 1.3),
+    'watchtower': (2.4, 2.4, 'square', 3.0)}
+
+def shell_walls(cx, cy, w, d, hmax, broken=0.6):
+    def run(x0, x1, y, axis):
+        x, k = x0, 0
+        while x < x1 - 0.1:
+            L = min(R.uniform(0.4, 0.75), x1 - x)
+            h = max(0.25, hmax * (1 - broken * R.random()) * (0.55 + 0.45 * math.sin(k * 0.9 + R.random())))
+            loc = (x + L / 2, y, h / 2 + 0.16) if axis == 'x' else (y, x + L / 2, h / 2 + 0.16)
+            size = (L - 0.04, 0.32, h) if axis == 'x' else (0.32, L - 0.04, h)
+            block(loc, size, M(R.choice(('stone2', 'stone_dk', 'stone2'))), 0.04)
+            if h > 0.6: block((loc[0], loc[1], h + 0.16), (size[0], size[1], 0.06), M('char'), 0.0)   # scorched tops
+            x += L; k += 1
+    run(cx - w / 2, cx + w / 2, cy + d / 2, 'x')      # back wall, the tallest remains
+    run(cy - d / 2, cy + d / 2, cx - w / 2, 'y'); run(cy - d / 2 + 0.6, cy + d / 2, cx + w / 2, 'y')
+    run(cx - w / 2, cx - w / 2 + w * 0.4, cy - d / 2, 'x')   # a stub of the front wall
+
+def ruin_of(bid):
+    w, d, shape, hw = SHELLS[bid]
+    block((0, 0, 0.08), (w + 0.3, d + 0.3, 0.16), M('char'), 0.02)
+    if shape in ('box', 'barn'): shell_walls(0, 0, w, d, hw)
+    elif shape == 'pair':
+        shell_walls(-1.05, -0.35, w, d, hw); shell_walls(1.15, 0.55, w * 0.9, d * 0.9, hw * 0.8)
+    elif shape == 'round':   # a round tower's broken stump
+        for i in range(12):
+            a = i / 12 * math.tau; h = hw * (0.35 + 0.65 * abs(math.sin(i * 0.7 + 0.4)))
+            o = block((math.cos(a) * 1.35, math.sin(a) * 1.35, h / 2 + 0.16), (0.32, 0.72, h), M(R.choice(('stone2', 'stone_dk'))), 0.04); o.rotation_euler = (0, 0, a)
+    elif shape == 'square':   # a belfry or watchtower's stump with a jagged top
+        for (a, b) in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+            h = hw * R.uniform(0.6, 1.0)
+            block((a * (w / 2 - 0.2), b * (d / 2 - 0.2), h / 2 + 0.16), (0.42, 0.42, h), M('stone2'), 0.04)
+        shell_walls(0, 0, w, d, hw * 0.55)
+    elif shape == 'stalls':   # the market's collapsed stalls and torn awning
+        for (x, y) in ((-1.6, -1.3), (1.6, -1.3), (-1.6, 1.3), (0.2, 1.3)):
+            o = block((x, y, 0.9), (0.16, 0.16, 1.8), M('char'), 0.0); o.rotation_euler = (R.uniform(-0.3, 0.3), R.uniform(-0.3, 0.3), 0)
+        o = block((0, 0.2, 0.9), (3.6, 2.4, 0.06), M('awning'), 0.0); o.rotation_euler = (0.35, 0.2, 0)
+        for k in range(4): crate(R.uniform(-1.6, 1.6), R.uniform(-1.6, 0.4), 0.8)
+    # fallen, charred beams; embers in the rubble; a wisp of smoke
+    for k in range(3):
+        o = block((R.uniform(-w / 3, w / 3), R.uniform(-d / 3, d / 3), 0.5), (0.16, 0.16, R.uniform(1.4, 2.4)), M('char'), 0.0)
+        o.rotation_euler = (R.uniform(0.6, 1.2), 0, R.uniform(0, 3))
+    rubble(0.2, 0.0, 6, (w / 3, d / 3))
+    for k in range(4): K.sphere('ember', 0.07, (R.uniform(-w / 3, w / 3), R.uniform(-d / 3, d / 3), 0.25), M('fire', 2.5), sub=1)
+    for k, (dz, r) in enumerate(((1.6, 0.32), (2.3, 0.42), (3.1, 0.5))):
+        K.sphere('smoke', r, (0.3 + k * 0.25, 0.3, dz + hw * 0.4), M('rock'), (1, 1, 0.85), 1)
+    if bid in ('forge', 'tavern', 'library', 'granary', 'watchtower', 'frostSpire'):   # scaffolding: work has begun
+        for (x, y) in ((w / 2 - 0.1, -d / 2 - 0.4), (w / 2 - 1.6, -d / 2 - 0.4)): block((x, y, 1.2), (0.08, 0.08, 2.4), M('wood'), 0.0)
+        for z in (0.9, 1.9): block((w / 2 - 0.85, -d / 2 - 0.4, z), (1.6, 0.08, 0.08), M('wood'), 0.0)
+        block((w / 2 - 0.85, -d / 2 - 0.25, 1.95), (1.6, 0.35, 0.06), M('wood'), 0.0)
+    for k in range(3): block((-w / 2 + 0.8, -d / 2 - 0.5, 0.12 + k * 0.13), (1.3, 0.14, 0.12), M('wood'), 0.0)   # fresh timber
+    tufts(-w / 2, -d / 2 - 0.3, 2, (0.3, 0.2)); tufts(w / 2, d / 2, 2, (0.3, 0.2))
+    return K.export('ruin_' + bid)
+
 def ruin():   # burnt: charred floor, broken stone walls, a scorched timber frame, scaffolding and stacked new timber
     block((0, 0, 0.08), (4.0, 3.4, 0.16), M('char'), 0.02)
     def broken_wall(x0, x1, y, hmax, axis='x'):

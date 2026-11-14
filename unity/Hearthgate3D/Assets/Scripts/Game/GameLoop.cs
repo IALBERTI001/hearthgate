@@ -19,7 +19,7 @@ namespace Hearthgate.Game
         readonly List<Shot> shots = new List<Shot>();
         readonly List<(string role, float at)> queue = new List<(string, float)>();
         readonly GameObject[] plots = new GameObject[10];
-        Transform world, unitsRoot;
+        Transform world, unitsRoot, marker;
         float waveT, saveT, betweenT; bool waveLive; System.Random rnd = new System.Random();
         const string SAVE_KEY = "hearthgate.profile.v1";
         public const float DT = 1f / 60f;
@@ -53,13 +53,14 @@ namespace Hearthgate.Game
             }
             RefreshTowers();
             for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
+            if (art && art.marker) marker = Art.Spawn(art.marker, "marker", Vector3.zero, world).transform;
             var sun = new GameObject("Sun").AddComponent<Light>(); sun.type = LightType.Directional;
             // a warm sun from the upper left of the screen, in front (art/STYLE.md: "warm golden light from the upper left"):
             // the faces the camera sees are lit, shadows fall back and to the right; a cool sky fill keeps shadows coloured
             sun.transform.rotation = Quaternion.LookRotation(new Vector3(-0.45f, -0.8f, -0.4f));
-            sun.color = new Color(1f, 0.92f, 0.8f); sun.intensity = 1.55f; sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.72f;
+            sun.color = new Color(1f, 0.9f, 0.74f); sun.intensity = 1.7f; sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.9f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.5f, 0.6f, 0.8f); RenderSettings.ambientEquatorColor = new Color(0.52f, 0.52f, 0.46f); RenderSettings.ambientGroundColor = new Color(0.28f, 0.25f, 0.2f);
+            RenderSettings.ambientSkyColor = new Color(0.42f, 0.5f, 0.7f); RenderSettings.ambientEquatorColor = new Color(0.4f, 0.42f, 0.4f); RenderSettings.ambientGroundColor = new Color(0.22f, 0.2f, 0.17f);
         }
 
         // each tower takes one element of those the city has (fire, frost, storm in restore order), like the 2D game
@@ -78,7 +79,7 @@ namespace Hearthgate.Game
         {
             if (plots[i]) Destroy(plots[i]);
             bool up = P.restored.Contains(HG.BUILDINGS[i].id);
-            var prefab = art == null ? null : up ? art.buildings[i] : art.ruin;
+            var prefab = art == null ? null : up ? art.buildings[i] : art.Ruin(i);
             plots[i] = Art.Spawn(prefab, up ? HG.BUILDINGS[i].id : "ruin", Field.Plot(i), world);
             plots[i].transform.rotation = Field.PLOT_FACING;
         }
@@ -166,8 +167,9 @@ namespace Hearthgate.Game
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f);
                 var go = new GameObject("shot");
                 var mr = Art.Shape(PrimitiveType.Sphere, Art.Mat(Field.Of(tw.el), true));
-                mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.5f : 0.35f);
-                var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.18f; tr.startWidth = 0.3f; tr.endWidth = 0f;
+                // fat, glowing shots with long trails: the fight has to read across the screen (fresh-eyes review 2)
+                mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : 0.65f);
+                var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.3f; tr.startWidth = 0.55f; tr.endWidth = 0f;
                 tr.material = Art.Mat(Field.Of(tw.el), true);
                 go.transform.position = tw.Muzzle;
                 shots.Add(new Shot { p = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
@@ -247,6 +249,18 @@ namespace Hearthgate.Game
 
         void Update()
         {
+            // the next plot to rebuild, marked in the world: a gold ring and arrow that bob, brighter when affordable
+            if (marker)
+            {
+                var nb = NextBuilding; marker.gameObject.SetActive(nb != null);
+                if (nb != null)
+                {
+                    int i = System.Array.IndexOf(HG.BUILDING_IDS, nb); float t = Time.time;
+                    marker.position = Field.Plot(i) + Vector3.up * (0.15f + Mathf.Sin(t * 2.4f) * 0.15f);
+                    marker.rotation = Quaternion.Euler(0, t * 25f, 0);
+                    marker.localScale = Vector3.one * (CanRestore ? 1f + Mathf.Sin(t * 5f) * 0.05f : 0.8f);
+                }
+            }
             if (Input.GetKeyDown(KeyCode.U)) Upgrade();
             if (Input.GetKeyDown(KeyCode.R)) Restore();
             foreach (var e in enemies) e.Show(Time.time);

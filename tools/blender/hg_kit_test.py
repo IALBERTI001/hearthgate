@@ -31,6 +31,8 @@ for fn, name, extra in ((F.gate, 'gate', None), (F.wall, 'wall', None), (F.tower
     if extra: extra()
 for k in ('stone', 'fire', 'frost', 'storm'): K.clear(); F.top(k); check('top_' + k)
 for bid in C.BUILDERS: K.clear(); C.BUILDERS[bid](); check('building_' + bid)
+for bid in C.SHELLS: K.clear(); C.ruin_of(bid); check('ruin_' + bid)
+K.clear(); F.marker(); check('marker')
 for b in bad: print('[kit-test] FAIL', b)
 print('[kit-test]', 'passed' if not bad else f'FAILED ({len(bad)})')
 sys.exit(1 if bad else 0)

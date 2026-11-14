@@ -19,12 +19,12 @@ namespace Hearthgate.Game
 {
     public static class Field
     {
-        public const float SPAWN_Z = 27f, FRONT_Z = 1.2f, DEPTH = SPAWN_Z - FRONT_Z;   // road progress, in metres
-        public const float LANE = 2.3f;                       // enemies keep to the road (the road model is 6 m wide)
+        public const float SPAWN_Z = 30f, FRONT_Z = 1.2f, DEPTH = SPAWN_Z - FRONT_Z;   // road progress, in metres (the cave mouth to the gate)
+        public const float LANE = 1.9f;                       // enemies (2.2 m slimes) keep to the road (6 m wide)
         public const float ROAD_Z = 5.4f, ROAD_HALF = 3f;     // road centre line and half width, world z
         public const float GATE_Z = 0f, GATE_HALF = 4f, GATE_FRONT = 2.1f, HALF_W = 7f;
         public const float PX = DEPTH / 414f;                 // one 2D stage px of travel, in metres
-        public static float Size(double px) => (float)px / 66f * 1.8f;   // a slime (66 px) is 1.8 m tall
+        public static float Size(double px) => (float)px / 66f * 2.2f;   // a slime (66 px) is 2.2 m tall: the fight reads first (review 2)
 
         // a point on the road: progress from the gate (world -X), lateral across it (world Z)
         public static Vector3 Road(float progress, float lateral, float y = 0) => new Vector3(-progress, y, ROAD_Z + lateral);

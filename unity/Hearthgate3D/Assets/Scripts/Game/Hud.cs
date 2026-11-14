@@ -47,6 +47,30 @@ namespace Hearthgate.Game
         static readonly Color INK = new Color(0.16f, 0.08f, 0.19f, 0.95f), CREAM = new Color(1f, 0.957f, 0.863f),
             PLUM = new Color(0.29f, 0.165f, 0.31f, 0.96f), BRASS = new Color(0.79f, 0.635f, 0.29f), RES = new Color(1f, 0.84f, 0.42f);
 
+        // the Resonance gem: a gold diamond with a light facet, drawn once (a glyph, like a font character)
+        static Sprite Gem()
+        {
+            const int S = 48; var t = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            var px = new Color[S * S]; var gold = new Color(1f, 0.8f, 0.3f); var dark = new Color(0.55f, 0.32f, 0.12f); var lit = new Color(1f, 0.95f, 0.7f);
+            for (int y = 0; y < S; y++)
+                for (int x = 0; x < S; x++)
+                {
+                    float u = (x + 0.5f) / S * 2 - 1, v = (y + 0.5f) / S * 2 - 1, d = Mathf.Abs(u) / 0.78f + Mathf.Abs(v);   // a diamond
+                    float a = Mathf.Clamp01((1f - d) * S * 0.5f);
+                    var c = d > 0.8f ? dark : (u < 0 && v > 0 ? lit : gold);
+                    c.a = a; px[y * S + x] = c;
+                }
+            t.SetPixels(px); t.Apply();
+            return Sprite.Create(t, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
+        }
+        // a horizontal fade, for the soft shade behind the top-left readouts (game-polish rule 3: no pills, a gentle shade)
+        static Sprite Fade()
+        {
+            var t = new Texture2D(64, 4, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int x = 0; x < 64; x++) for (int y = 0; y < 4; y++) t.SetPixel(x, y, new Color(1, 1, 1, Mathf.Pow(1 - x / 63f, 1.5f)));
+            t.Apply(); return Sprite.Create(t, new Rect(0, 0, 64, 4), new Vector2(0, 1));
+        }
+
         // a rounded panel with a rim and a soft top light, nine-sliced so it scales to any box
         static Sprite Panel(Color fill, Color rim, int radius = 14, int border = 3)
         {
@@ -79,19 +103,23 @@ namespace Hearthgate.Game
             var pops = Box("Pops", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             gameObject.AddComponent<Fx>().Init(pops, font);
 
-            wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(24, -18), 30, TextAnchor.UpperLeft);
-            res = Label("Res", transform, new Vector2(0, 1), new Vector2(24, -56), 44, TextAnchor.UpperLeft); res.color = RES;
+            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(420, 150)); shade.pivot = new Vector2(0, 1);
+            var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.55f); si.raycastTarget = false;
+            wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(24, -16), 30, TextAnchor.UpperLeft);
+            var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(22, -60), new Vector2(38, 38)); gem.pivot = new Vector2(0, 1);
+            var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = Gem(); gi.raycastTarget = false;
+            res = Label("Res", transform, new Vector2(0, 1), new Vector2(66, -54), 44, TextAnchor.UpperLeft); res.color = RES;
             rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(26, -108), 19, TextAnchor.UpperLeft); rate.font = body;
             banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -22), 34, TextAnchor.UpperCenter); banner.color = RES;
 
             // the gate's health, centred over the bottom of the view
-            var bar = Box("GateBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(360, 18));
-            var frame = bar.gameObject.AddComponent<Image>(); frame.sprite = Panel(INK, BRASS, 8, 2); frame.type = Image.Type.Sliced;
-            var fillBox = Box("FillBox", bar, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-6, -6));
+            var bar = Box("GateBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(360, 26));
+            var frame = bar.gameObject.AddComponent<Image>(); frame.sprite = Panel(INK, BRASS, 10, 3); frame.type = Image.Type.Sliced;
+            var fillBox = Box("FillBox", bar, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
             gateBar = fillBox.gameObject.AddComponent<Image>();
             gateBar.color = new Color(0.52f, 0.85f, 0.36f); gateBar.type = Image.Type.Filled; gateBar.fillMethod = Image.FillMethod.Horizontal;
             gateBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
-            gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 15, TextAnchor.MiddleCenter); gateTxt.font = body;
+            gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter);
 
             // top right, over the far meadow: the city fills the bottom of the view (LayoutCheck keeps it clear)
             up = Btn("Upgrade", new Vector2(-24, -24), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
@@ -151,10 +179,13 @@ namespace Hearthgate.Game
             wave.text = $"Wave {P.wave}";
             res.text = HG.Fmt(P.res);
             double r = HG.CityRate(P, g.B); rate.text = r > 0 ? $"+{HG.Fmt(r)}/s from the city" : "";
-            double gm = HG.GateMax(P, g.B); gateBar.fillAmount = Mathf.Clamp01((float)(g.gateHp / gm)); gateTxt.text = $"Gate {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
-            upLbl.text = $"Upgrade gate\n<color=#FFD56B>{HG.Fmt(g.UpgradeCost)}</color>   <color=#D9C9A8>[U]</color>"; 
+            double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
+            gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Gate {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
+            // keyboard keys on desktop only (game-polish rule 12); a phone or tablet shows just the action and its cost
+            string keyU = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[U]</color>", keyR = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[R]</color>";
+            upLbl.text = $"Upgrade gate\n<color=#FFD56B>{HG.Fmt(g.UpgradeCost)}</color>{keyU}";
             var nb = g.NextBuilding;
-            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n<color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>   <color=#D9C9A8>[R]</color>"; 
+            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n<color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>{keyR}";
             Refit();
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
         }

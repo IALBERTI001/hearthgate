@@ -69,7 +69,7 @@ namespace Hearthgate.EditorTools
             {
                 var at = Field.Plot(i);
                 var rot = Field.PLOT_FACING;
-                var b = Measure(art.buildings[i], at, rot); var pp = Pts(); b.Encapsulate(Measure(art.ruin, at, rot)); pp.AddRange(lastPts);
+                var b = Measure(art.buildings[i], at, rot); var pp = Pts(); b.Encapsulate(Measure(art.Ruin(i), at, rot)); pp.AddRange(lastPts);
                 items.Add(new Item { name = "plot " + Hearthgate.Core.HG.BUILDING_IDS[i], b = b, pts = pp });
             }
             // the road in front of the wall is open ground
@@ -162,7 +162,7 @@ namespace Hearthgate.EditorTools
             return new List<(string, Rect)> {
                 ("labels", TopLeft(300, 140)),                       // wave, Resonance, rate
                 ("buttons", TopRight(24, 24, 324, 172)),             // Upgrade and Rebuild
-                ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 31 * s / h, 0.5f + 180 * s / w, 49 * s / h)),
+                ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 27 * s / h, 0.5f + 180 * s / w, 53 * s / h)),
             };
         }
 

@@ -48,6 +48,11 @@ namespace Hearthgate.Game
             var t = go.AddComponent<Text>(); t.font = font; t.text = text; t.color = c; t.fontSize = (int)size; t.fontStyle = FontStyle.Bold;
             t.alignment = TextAnchor.MiddleCenter; t.horizontalOverflow = HorizontalWrapMode.Overflow; t.raycastTarget = false;
             var o = go.AddComponent<Outline>(); o.effectColor = new Color(0.1f, 0.05f, 0.08f, 0.9f); o.effectDistance = new Vector2(2, -2);
+            if (size >= 36)   // a combo word: cream letters outlined in its element's colour, a plum drop shadow (review 2)
+            {
+                t.color = new Color(1f, 0.957f, 0.863f); o.effectColor = new Color(c.r * 0.7f, c.g * 0.7f, c.b * 0.7f, 1f); o.effectDistance = new Vector2(3, -3);
+                go.AddComponent<Shadow>().effectColor = new Color(0.16f, 0.08f, 0.19f, 0.9f);
+            }
             pops.Add((t, at, 0, life));
         }
 

@@ -311,13 +311,16 @@ def tower_base():
 def top(kind):
     if kind == 'stone':
         prism('drum', 1.35, 1.35, 0.0, 0.6, M('stone2'))
-        K.cyl('eave', 2.15, 0.14, (0, 0, 0.65), M('wood_dk'), TN, 0.02)
-        K.cyl('roof', 2.1, 2.8, (0, 0, 2.1), M('roof_slate'), TN, 0.0, r2=0.08)
+        # a warm shingle roof, lower than the gatehouse's, with a brass ring and an empty socket that glows faintly:
+        # this tower is waiting for an element (fresh-eyes review 2: four blue cones outranked the gatehouse)
+        K.cyl('eave', 2.1, 0.16, (0, 0, 0.66), M('gold'), TN, 0.02)
+        K.cyl('roof', 2.05, 2.1, (0, 0, 1.79), M('shingle'), TN, 0.0, r2=0.1)
         for k in range(1, 4):
-            r = 2.1 * (1 - k / 4) + 0.08 * k / 4
-            K.cyl('course', r + 0.04, 0.07, (0, 0, 0.72 + 2.8 * k / 4), M('roof_slate'), TN, 0.0)
-        K.cyl('spire', 0.06, 1.0, (0, 0, 3.9), M('gold'), 6, 0.0)
-        cloth('pennant', 0.06, 1.0, 4.35, 3.95, 0.0, M('banner'), wave=0.1, tail=False, axis='y', nx=5, nz=2)
+            r = 2.05 * (1 - k / 4) + 0.1 * k / 4
+            K.cyl('course', r + 0.04, 0.08, (0, 0, 0.74 + 2.1 * k / 4), M('shingle2'), TN, 0.0)
+        K.sphere('socket', 0.26, (0, 0, 2.95), M('fire_core', 0.8), sub=2)
+        K.cyl('spire', 0.06, 0.9, (0, 0, 3.35), M('gold'), 6, 0.0)
+        cloth('pennant', 0.06, 1.0, 3.75, 3.35, 0.0, M('banner'), wave=0.1, tail=False, axis='y', nx=5, nz=2)
     elif kind == 'fire':
         prism('crown', 2.0, 1.85, -0.2, 0.55, M('iron'))
         for i in range(TN):   # glowing vents round the crown
@@ -336,8 +339,8 @@ def top(kind):
         for i in range(5):
             a = i / 5 * math.tau + 0.4
             K.cone('tongue', 0.45, R.uniform(1.4, 2.0), (math.cos(a) * 0.65, math.sin(a) * 0.65, 2.3), M('fire', 3.5), 10)
-        K.cone('core', 0.6, 2.0, (0, 0, 2.55), M('gold', 5.0), 12)
-        for i in range(7): K.sphere('spark', R.uniform(0.07, 0.12), (R.uniform(-0.9, 0.9), R.uniform(-0.9, 0.9), R.uniform(3.6, 4.8)), M('gold', 5.0), sub=1)
+        K.cone('core', 0.6, 2.0, (0, 0, 2.55), M('fire_core', 3.0), 12)
+        for i in range(7): K.sphere('spark', R.uniform(0.07, 0.12), (R.uniform(-0.9, 0.9), R.uniform(-0.9, 0.9), R.uniform(3.6, 4.8)), M('fire_core', 3.0), sub=1)
     elif kind == 'frost':
         prism('ring', 1.55, 1.45, -0.1, 0.45, M('stone3'))
         for i in range(TN):
@@ -347,7 +350,7 @@ def top(kind):
                 (0.26, 1.3, -0.55, -0.55, -0.28), (0.22, 1.1, 0.85, -0.35, 0.38), (0.2, 0.95, -0.95, 0.0, -0.4)]
         for (r, h, x, y, tilt) in spec:
             rx = tilt * (1 if y >= 0 else -1) * min(1.0, abs(y) * 2); ry = -tilt * (1 if x >= 0 else -1) * min(1.0, abs(x) * 2)
-            for (o_r, o_h, off, m) in ((r, h, 0.0, M('frost', 1.4)), (r * 0.45, h * 0.9, 0.02, M('white_gloss', 1.0))):
+            for (o_r, o_h, off, m) in ((r, h, 0.0, M('frost', 1.4)), (r * 0.45, h * 0.9, 0.02, M('frost_dk', 1.0))):
                 o = K.cyl('crystal', o_r, o_h, (x, y, 0.4 + o_h / 2), m, 6, 0.0)
                 tip = K.cone('tip', o_r, o_r * 2.2, (x, y, 0.4 + o_h + o_r * 1.1), m, 6)
                 for q in (o, tip): q.rotation_euler = (rx, ry, 0.3)
@@ -361,10 +364,10 @@ def top(kind):
         for s in (-1, 1):   # two arms carrying small orbs
             o = block((s * 0.55, 0, 2.2), (1.1, 0.1, 0.1), M('gold'), 0.0); o.rotation_euler = (0, s * -0.4, 0)
             K.sphere('arm_orb', 0.16, (s * 1.08, 0, 2.45), M('storm', 3.0), sub=2)
-        K.sphere('orb', 0.55, (0, 0, 4.5), M('storm', 3.5), sub=3)
-        K.sphere('orb_core', 0.3, (0, 0, 4.5), M('white_gloss', 3.0), sub=2)
+        K.sphere('orb', 0.72, (0, 0, 4.6), M('storm', 3.5), sub=3)
+        K.sphere('orb_core', 0.36, (0, 0, 4.6), M('storm', 3.0), sub=2)
         for k in range(3):
-            bpy.ops.mesh.primitive_torus_add(major_radius=0.85, minor_radius=0.035, location=(0, 0, 4.5), rotation=(k * 1.05, k * 0.7, 0))
+            bpy.ops.mesh.primitive_torus_add(major_radius=1.05, minor_radius=0.05, location=(0, 0, 4.6), rotation=(k * 1.05, k * 0.7, 0))
             K.finish(bpy.context.object, M('storm', 2.5), 0.0)
     return K.export('top_' + kind)
 
@@ -439,18 +442,24 @@ def golem():   # a boss: lumpy boulders bound by glowing cracks, big fists, a sm
 # the road: worn earth along the front of the wall with darker ruts, pebbles and grass along its edges, a cobbled
 # forecourt centred on the gate, a low fence on the meadow side (0.7 m: never hides an enemy)
 ROADY, RHALF = 5.4, 3.0
+CAVE_X = 31.0    # the cave mouth the waves come out of, world x = -CAVE_X (Field.SPAWN_Z)
 def road():
-    K.cube('way', (60, 2 * RHALF, 0.06), (-28, ROADY, 0.03), M('dirt'), 0.0)
+    K.cube('way', (CAVE_X + 2.5, 2 * RHALF, 0.06), (-(CAVE_X + 2.5) / 2 + 2, ROADY, 0.03), M('dirt'), 0.0)
     for dy in (-1.05, 1.05):
-        K.cube('rut', (60, 0.55, 0.02), (-28, ROADY + dy, 0.065), M('dirt_dk'), 0.0)
-    for _ in range(170):   # pebbles in clusters along both edges, grass bleeding in
-        side = R.choice((-1, 1)); x = R.uniform(-56, -GX - 1.0)
+        K.cube('rut', (CAVE_X + 2.5, 0.55, 0.02), (-(CAVE_X + 2.5) / 2 + 2, ROADY + dy, 0.065), M('dirt_dk'), 0.0)
+    # setts thinning out from the forecourt into the earth road, so the two meet without a seam
+    for _ in range(60):
+        x = -GX - 1.6 - abs(R.gauss(0, 1.6)); y = ROADY + R.uniform(-RHALF + 0.3, RHALF - 0.3)
+        o = block((x, y, 0.075), (R.uniform(0.28, 0.45), 0.27, 0.08), M(R.choice(('cobble', 'cobble2', 'stone2'))), 0.04); o.rotation_euler = (0, 0, R.uniform(-0.25, 0.25))
+    for _ in range(110):   # pebbles in clusters along both edges, grass bleeding in
+        side = R.choice((-1, 1)); x = R.uniform(-CAVE_X + 1, -GX - 1.0)
         for k in range(R.randint(1, 3)):
             s = R.uniform(0.14, 0.3)
             o = block((x + R.uniform(-0.4, 0.4), ROADY + side * (RHALF - R.uniform(0.05, 0.45)), 0.07), (s * 1.3, s, s * 0.5), M(R.choice(('cobble2', 'rock', 'rock_dk'))), 0.03)
             o.rotation_euler = (0, 0, R.uniform(0, 3.1))
-    for _ in range(36):
-        tufts(R.uniform(-56, -GX - 1.5), ROADY + R.choice((-1, 1)) * (RHALF - 0.1), 2, (0.6, 0.12))
+    for _ in range(26):
+        tufts(R.uniform(-CAVE_X + 1, -GX - 1.5), ROADY + R.choice((-1, 1)) * (RHALF - 0.1), 2, (0.6, 0.12))
+    cave()
     # forecourt: rounded cobbles in rows, darker toward its edges, a kerb of dark stones round it
     y = GY + 0.3
     while y < ROADY + RHALF - 0.15:   # small rounded setts, warm and dark toward the edges (the big grey slabs read as a car park)
@@ -464,7 +473,7 @@ def road():
         y += 0.33
     for x in [-GX - 1.75 + i * 0.5 for i in range(int((2 * GX + 3.5) / 0.5) + 1)]:
         block((x, ROADY + RHALF - 0.05, 0.1), (0.46, 0.22, 0.14), M('stone_dk'), 0.03)
-    x = -54
+    x = -CAVE_X + 2.5
     while x < -GX - 3.5:
         K.cyl('post', 0.08, 0.75, (x, ROADY + RHALF + 0.7, 0.37), M('wood_dk'), 6, 0.0)
         if x + 2.4 < -GX - 3.5:
@@ -472,6 +481,54 @@ def road():
                 o = K.cyl('rail', 0.05, 2.45, (x + 1.2, ROADY + RHALF + 0.7, zz), M('wood'), 6, 0.0); o.rotation_euler = (0, math.pi / 2, R.uniform(-0.05, 0.05))
         x += 2.4
     return K.export('road')
+
+def cave():
+    """The cave the waves come out of: a dark mouth in a rocky hillside where the road begins, framed by big rocks and
+    a broken arch of stones, a faint violet glow inside (fresh-eyes review 2: the road stopped at the frame's edge)."""
+    cx = -CAVE_X - 0.6
+    mesh_from('mouth', [(cx, ROADY - 2.6, 0.0), (cx, ROADY + 2.6, 0.0), (cx, ROADY + 2.2, 3.4), (cx, ROADY - 2.2, 3.4)], [(0, 1, 2, 3)], M('cave'), 0.0)
+    K.sphere('dark', 2.6, (cx - 1.4, ROADY, 1.4), M('cave'), (1.0, 1.25, 0.8), 2)
+    K.sphere('glow', 0.9, (cx - 1.2, ROADY, 1.0), M('storm', 1.2), (0.6, 1.4, 0.7), 2)
+    for (dy, h, r) in ((-3.1, 4.2, 1.5), (3.2, 4.6, 1.6), (-4.6, 2.6, 1.8), (4.8, 3.0, 1.9)):   # the hill's flanks
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r, location=(cx + R.uniform(-0.4, 0.6), ROADY + dy, h * 0.42))
+        b = bpy.context.object; b.scale = (1.0, 0.9, h / (2 * r) * 1.3)
+        for v in b.data.vertices: v.co *= R.uniform(0.85, 1.12)
+        K.finish(b, M(R.choice(('rock', 'rock_dk'))), 0.0, smooth=False)
+    for k in range(5):   # the arch: stones along a curve over the mouth
+        a = math.pi * (k + 0.5) / 5
+        o = block((cx + 0.3, ROADY + math.cos(a) * 2.6, 2.4 + math.sin(a) * 1.4), (0.9, 0.85, 0.75), M(R.choice(('rock', 'stone_dk'))), 0.06)
+        o.rotation_euler = (math.cos(a) * 0.5, 0, 0)
+    outcrop(cx + 1.5, ROADY - 4.2, 3, 1.0, 0.7); outcrop(cx + 1.5, ROADY + 4.3, 3, 1.0, 0.7)
+    for k in range(4): K.cone('spike', 0.12, 0.5, (cx + 0.5, ROADY - 1.8 + k * 1.2, 3.35), M('rock_dk'), 5).rotation_euler = (math.pi, 0, 0)
+
+def props():
+    """Foreground life on the meadow, clear of the road (fresh-eyes review 2: the bottom third was empty): a supply cart,
+    a little camp with a tent and a campfire, haystacks, a signpost pointing at the gate."""
+    def cart(x, y, rot):
+        parts = []
+        parts.append(block((x, y, 0.75), (1.8, 1.0, 0.5), M('wood'), 0.03))
+        for s in (-1, 1):
+            w = K.cyl('wheel', 0.42, 0.12, (x - 0.4, y + s * 0.58, 0.42), M('wood_dk'), 12, 0.01); w.rotation_euler = (math.pi / 2, 0, 0)
+            K.cyl('hub', 0.1, 0.16, (x - 0.4, y + s * 0.6, 0.42), M('iron'), 8, 0.0).rotation_euler = (math.pi / 2, 0, 0)
+        o = block((x + 1.3, y, 0.62), (1.1, 0.08, 0.08), M('wood_dk'), 0.0); o.rotation_euler = (0, 0.2, 0)
+        for k in range(3): K.sphere('sack', 0.28, (x - 0.5 + k * 0.5, y + R.uniform(-0.2, 0.2), 1.15), M('canvas'), (1, 0.8, 0.8), 1)
+        K.cyl('barrel', 0.28, 0.6, (x + 0.55, y + 0.15, 1.3), M('wood'), 10, 0.02)
+    cart(-15.0, ROADY + RHALF + 2.2, 0)
+    # the camp: a canvas tent, a campfire with stones round it, a log to sit on
+    tx, ty = 9.5, 13.0
+    o = K.cone('tent', 1.6, 2.2, (tx, ty, 1.1), M('canvas'), 4); o.rotation_euler = (0, 0, math.pi / 4)
+    mesh_from('flap', [(tx - 0.5, ty - 1.14, 0.02), (tx + 0.5, ty - 1.14, 0.02), (tx, ty - 0.9, 1.3)], [(0, 1, 2)], M('cave'), 0.0)
+    for k in range(7):
+        a = k / 7 * math.tau
+        K.sphere('ring', 0.18, (tx - 2.6 + math.cos(a) * 0.55, ty - 0.6 + math.sin(a) * 0.55, 0.1), M('stone_dk'), (1, 1, 0.7), 1)
+    K.cone('fire', 0.35, 0.8, (tx - 2.6, ty - 0.6, 0.45), M('fire', 3.0), 8); K.cone('fire_in', 0.18, 0.5, (tx - 2.6, ty - 0.6, 0.35), M('fire_core', 3.0), 6)
+    o = K.cyl('log', 0.22, 1.6, (tx - 2.6, ty + 0.6, 0.22), M('wood'), 8, 0.0); o.rotation_euler = (0, math.pi / 2, 0.3)
+    for (x, y) in ((-3.5, 14.0), (-2.2, 14.6), (-24.0, 12.8)):
+        K.cyl('hay', 0.75, 1.0, (x, y, 0.5), M('hay'), 14, 0.04).rotation_euler = (0, math.pi / 2, R.uniform(0, 3))
+    # a signpost at the road's edge pointing to the gate
+    K.cyl('post', 0.08, 1.8, (-7.0, ROADY + RHALF + 0.9, 0.9), M('wood_dk'), 6, 0.0)
+    block((-6.5, ROADY + RHALF + 0.9, 1.55), (0.9, 0.08, 0.28), M('wood'), 0.02)
+    K.cone('arrow', 0.18, 0.3, (-6.0, ROADY + RHALF + 0.9, 1.55), M('wood'), 3).rotation_euler = (0, -math.pi / 2, 0)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # the ground: a valley. Meadow in front of the wall; rocky hills where the wall ends on both sides; a wooded ridge
@@ -549,10 +606,23 @@ def ground():
         vs = [(cx + math.cos(i / n * math.tau) * rr * R.uniform(0.7, 1.2), cy + math.sin(i / n * math.tau) * rr * R.uniform(0.5, 0.9), 0.025) for i in range(n)]
         mesh_from('swathe', vs, [tuple(range(n))], M(R.choice(('grass2', 'grass3'))), 0.0)
     for (x, y) in [(R.uniform(-44, 16), R.uniform(20, 30)) for _ in range(7)]: tree(x, y, R.uniform(1.0, 1.3))
+    props()
     # dark framing clumps at the bottom corners of the view
     for (cx, cy) in ((17, 17), (19, 21), (-36, 17), (-39, 21)):
         for k in range(3): tree(cx + R.uniform(-2, 2), cy + R.uniform(-1.5, 1.5), R.uniform(1.4, 1.8), 0, 'round', far=True)
     return K.export('ground')
+
+def marker():
+    """Where to rebuild next (fresh-eyes review 2: lead with one plot): a ring of gold with glowing runes on the ground and
+    a fat gold arrow above it. The game bobs the arrow and pulses the ring; origin on the ground at the ring's centre."""
+    bpy.ops.mesh.primitive_torus_add(major_radius=2.5, minor_radius=0.12, location=(0, 0, 0.12))
+    K.finish(bpy.context.object, M('gold', 1.2), 0.0)
+    for i in range(10):
+        a = i / 10 * math.tau
+        o = block((math.cos(a) * 2.5, math.sin(a) * 2.5, 0.2), (0.22, 0.42, 0.06), M('fire_core', 2.0), 0.0); o.rotation_euler = (0, 0, a)
+    K.cyl('stem', 0.22, 0.9, (0, 0, 6.9), M('gold', 1.0), 10, 0.02)
+    K.cone('head', 0.6, 0.85, (0, 0, 6.05), M('gold', 1.0), 12).rotation_euler = (math.pi, 0, 0)
+    return K.export('marker')
 
 # ---------------------------------------------------------------------------------------------------------------------
 # the fountain: the town's centrepiece. An octagonal basin on steps, water, a two-tier column, a gold hearth flame.

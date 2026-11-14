@@ -31,7 +31,8 @@ namespace Hearthgate.EditorTools
             {
                 var c = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color;
                 m.EnableKeyword("_EMISSION");
-                m.SetColor("_EmissionColor", c * (n.Contains("window") ? 1.4f : 2.4f));
+                // gentle: the bloom does the rest; at 2.4 fire and frost blew out to white and the elements stopped reading
+                m.SetColor("_EmissionColor", c * (n.Contains("window") ? 1.0f : 1.3f));
                 m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             }
             else if (m.HasProperty("_EmissionColor")) { m.SetColor("_EmissionColor", Color.black); m.DisableKeyword("_EMISSION"); }

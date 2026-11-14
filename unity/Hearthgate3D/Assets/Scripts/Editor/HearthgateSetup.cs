@@ -67,6 +67,7 @@ namespace Hearthgate.EditorTools
             art.topStone = M("top_stone"); art.topFire = M("top_fire"); art.topFrost = M("top_frost"); art.topStorm = M("top_storm");
             art.slime = M("slime"); art.beetle = M("beetle"); art.golem = M("golem"); art.ruin = M("ruin"); art.villager = M("villager"); art.fountain = M("fountain");
             art.buildings = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("building_" + id)).ToArray();
+            art.ruins = Hearthgate.Core.HG.BUILDING_IDS.Select(id => M("ruin_" + id)).ToArray(); art.marker = M("marker");
             EditorUtility.SetDirty(art);
             int have = new[] { art.ground, art.road, art.gate, art.wall, art.towerBase, art.topStone, art.topFire, art.topFrost, art.topStorm, art.slime, art.beetle, art.golem, art.ruin, art.fountain }.Count(x => x) + art.buildings.Count(x => x);
             Debug.Log($"[Hearthgate] art set: {have} of 24 models found in {MODELS}");
@@ -128,7 +129,7 @@ namespace Hearthgate.EditorTools
             Get<Tonemapping>().mode.Override(TonemappingMode.Neutral);
             var ca = Get<ColorAdjustments>(); ca.postExposure.Override(0.0f); ca.contrast.Override(16f); ca.saturation.Override(4f);
             var bl = Get<Bloom>(); bl.threshold.Override(1.0f); bl.intensity.Override(0.85f); bl.scatter.Override(0.65f);
-            var vg = Get<Vignette>(); vg.intensity.Override(0.2f); vg.smoothness.Override(0.45f);
+            var vg = Get<Vignette>(); vg.intensity.Override(0.32f); vg.smoothness.Override(0.5f); vg.color.Override(new Color(0.12f, 0.08f, 0.1f));
             EditorUtility.SetDirty(p); AssetDatabase.SaveAssets();
             return p;
         }
