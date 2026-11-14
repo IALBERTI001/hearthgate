@@ -453,15 +453,15 @@ def road():
         tufts(R.uniform(-56, -GX - 1.5), ROADY + R.choice((-1, 1)) * (RHALF - 0.1), 2, (0.6, 0.12))
     # forecourt: rounded cobbles in rows, darker toward its edges, a kerb of dark stones round it
     y = GY + 0.3
-    while y < ROADY + RHALF - 0.15:
-        x = -GX - 1.6 + R.uniform(0, 0.25)
+    while y < ROADY + RHALF - 0.15:   # small rounded setts, warm and dark toward the edges (the big grey slabs read as a car park)
+        x = -GX - 1.6 + R.uniform(0, 0.2)
         while x < GX + 1.6:
-            L = R.uniform(0.45, 0.8)
-            edge = min(abs(x + L / 2) - 0, 99) > GX + 0.6 or y > ROADY + RHALF - 0.7
-            m = M('cobble2' if edge or R.random() < 0.4 else 'cobble')
-            block((x + L / 2, y + 0.22, 0.09), (L - 0.07, 0.42, 0.1), m, 0.05)
+            L = R.uniform(0.3, 0.52)
+            edge = abs(x + L / 2) > GX + 0.6 or y > ROADY + RHALF - 0.7
+            m = M('cobble2' if edge or R.random() < 0.35 else R.choice(('cobble', 'dirt', 'stone2')))
+            block((x + L / 2, y + 0.15, 0.08), (L - 0.06, 0.28, 0.09), m, 0.045)
             x += L
-        y += 0.48
+        y += 0.33
     for x in [-GX - 1.75 + i * 0.5 for i in range(int((2 * GX + 3.5) / 0.5) + 1)]:
         block((x, ROADY + RHALF - 0.05, 0.1), (0.46, 0.22, 0.14), M('stone_dk'), 0.03)
     x = -54
