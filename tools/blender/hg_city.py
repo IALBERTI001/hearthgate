@@ -464,7 +464,7 @@ def ruin_of(bid):
         o.rotation_euler = (R.uniform(0.9, 1.3), 0, R.uniform(0, 3))
     rubble(0.6, 1.0, 10, (w / 3, d / 4))
     for k in range(6): K.sphere('ember', 0.08, (R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.12), M('fire', 2.5), sub=1)
-    # no baked smoke: balls in a stone colour read as rocks floating over the keeper (Nov 14 2026); the game raises live wisps (GameLoop.TickWisps)
+    # no baked smoke: balls in a stone colour read as rocks floating over the keeper (Nov 14 2026); the game raises live wisps (GameLoop.TickRuinSmoke)
     for (x, y) in ((-hx + 0.2, -hy - 0.5), (-hx + 2.2, -hy - 0.5)): block((x, y, 1.6), (0.1, 0.1, 3.2), M('wood'), 0.0)   # scaffolding
     for z in (1.2, 2.6): block((-hx + 1.2, -hy - 0.5, z), (2.2, 0.1, 0.1), M('wood'), 0.0)
     block((-hx + 1.2, -hy - 0.32, 2.65), (2.2, 0.45, 0.08), M('wood'), 0.0)
