@@ -87,12 +87,28 @@ namespace Hearthgate.Game
             r.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(0, -4);
             return t;
         }
-        // keep a label inside its box: wrap, and shrink to fit rather than spill (game-polish rule 5: nothing ever clips)
+        // keep a label inside its box: wrap at the box width (game-polish rule 5: nothing ever clips). Not Unity's best fit:
+        // when it judges the text cannot fit it draws nothing, and the button labels vanished at 800x450 (Nov 13 2026).
+        // Instead the size steps down here until the wrapped text fits the box, never below min.
         static void Fit(Text t, Vector2 box, int min)
         {
             var r = t.rectTransform; r.pivot = new Vector2(0.5f, 0.5f); r.sizeDelta = box;
-            t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Truncate;
-            t.resizeTextForBestFit = true; t.resizeTextMinSize = min; t.resizeTextMaxSize = t.fontSize;
+            t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
+            t.resizeTextForBestFit = false;
+            fits.Add((t, t.fontSize, min, box.y));
+        }
+        static readonly System.Collections.Generic.List<(Text t, int max, int min, float h)> fits = new System.Collections.Generic.List<(Text, int, int, float)>();
+        static readonly System.Collections.Generic.Dictionary<Text, string> fitText = new System.Collections.Generic.Dictionary<Text, string>();
+        static void Refit()
+        {
+            fits.RemoveAll(f => f.t == null);
+            foreach (var f in fits)
+            {
+                if (fitText.TryGetValue(f.t, out var was) && was == f.t.text) continue;   // measure only when the words change
+                fitText[f.t] = f.t.text;
+                int size = f.max; f.t.fontSize = size;
+                while (size > f.min && f.t.preferredHeight > f.h) f.t.fontSize = --size;
+            }
         }
         Pressable Btn(string n, Vector2 pos, System.Action act, System.Func<bool> on, out Text lbl)
         {
@@ -114,6 +130,7 @@ namespace Hearthgate.Game
             upLbl.text = $"Upgrade gate\n{HG.Fmt(g.UpgradeCost)}   [U]"; 
             var nb = g.NextBuilding;
             reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n{HG.Fmt(g.RestoreCost)}   [R]"; 
+            Refit();
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
         }
 
