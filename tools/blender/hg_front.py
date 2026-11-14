@@ -13,7 +13,7 @@
 #   - a value structure: mid-tone world, the brightest colours only on enemies, caps and effects
 #   - nothing pasted on: plinths, moss, rubble and grass at every foot; props clustered, never sprinkled
 import bpy, bmesh, math, random
-from mathutils import Vector
+from mathutils import Vector, Euler
 import hg_kit as K
 import hg_layout as L
 
@@ -21,6 +21,30 @@ R = random.Random(13)
 STONES = ('stone', 'stone2', 'stone3')
 
 def M(name, glow=0.0): return K.mat(name, glow)
+
+# batched primitives: spheres, cylinders and cones added straight into one bmesh per material (an operator per part made
+# the ground with its gardens take minutes: each new object slows the next). export() flushes them into meshes.
+from mathutils import Matrix
+BATCH = {}
+def _bm(m):
+    key = m.name
+    if key not in BATCH: BATCH[key] = (bmesh.new(), m)
+    return BATCH[key][0]
+def _place(loc, scale=(1, 1, 1), rot=None):
+    mx = Matrix.Translation(loc)
+    if rot: mx = mx @ Euler(rot).to_matrix().to_4x4()
+    return mx @ Matrix.Diagonal((scale[0], scale[1], scale[2], 1.0))
+def bsphere(name, r, loc, m, scale=(1, 1, 1), sub=2, rot=None):
+    bmesh.ops.create_icosphere(_bm(m), subdivisions=sub, radius=r, matrix=_place(loc, scale, rot))
+def bcyl(name, r, h, loc, m, verts=16, bevel=0.0, r2=None, rot=None):
+    bmesh.ops.create_cone(_bm(m), cap_ends=True, cap_tris=False, segments=verts, radius1=r, radius2=r if r2 is None else r2, depth=h, matrix=_place(loc, rot=rot))
+def bcone(name, r, h, loc, m, verts=16, rot=None): bcyl(name, r, h, loc, m, verts, 0.0, 0.0, rot)
+def flush_batch():
+    for key, (bm, m) in list(BATCH.items()):
+        me = bpy.data.meshes.new('batch_' + key); bm.to_mesh(me); bm.free()
+        o = bpy.data.objects.new('batch_' + key, me); bpy.context.collection.objects.link(o); K.finish(o, m)
+    BATCH.clear()
+def export(name): flush_batch(); return K.export(name)
 
 def block(loc, size, m, bevel=0.035, rot=0.0):   # a chamfered box, batched into one mesh per material (hg_kit.Blk)
     o = K.Blk(loc, size, m, bevel)
@@ -67,7 +91,7 @@ def tufts(cx, cy, n, spread, mats=('grass', 'grass2', 'grass3')):
     for _ in range(n):
         x, y = cx + R.uniform(-spread[0], spread[0]), cy + R.uniform(-spread[1], spread[1])
         for k in range(3):
-            o = K.cone('tuft', R.uniform(0.07, 0.12), R.uniform(0.3, 0.55), (x + R.uniform(-0.12, 0.12), y + R.uniform(-0.12, 0.12), 0.18), M(R.choice(mats)), 4)
+            o = bcone('tuft', R.uniform(0.07, 0.12), R.uniform(0.3, 0.55), (x + R.uniform(-0.12, 0.12), y + R.uniform(-0.12, 0.12), 0.18), M(R.choice(mats)), 4)
             o.rotation_euler = (R.uniform(-0.35, 0.35), R.uniform(-0.35, 0.35), 0)
 
 def moss(x0, x1, y, z=0.05, n=6):   # low dark-green clumps along the foot of a wall
@@ -533,7 +557,7 @@ def lanes():
             block((s * (L.ROAD_HALF + 0.7), zz, 0.45), (0.36, 0.26, 0.9), M('stone3'), 0.06)
             K.sphere('cap', 0.2, (s * (L.ROAD_HALF + 0.7), zz, 0.95), M('stone2'), (1, 0.8, 0.6), 1)
     for k in range(10): tufts(R.choice((-1, 1)) * (L.ROAD_HALF + 0.45), R.uniform(3, 30), 2, (0.2, 0.4))
-    return K.export('road')
+    return export('road')
 road = lanes   # exported as 'road' (ArtSet.road)
 
 def spot(x, z, r):
@@ -589,13 +613,13 @@ PLOTS = L.PLOTS
 def tree(x, y, s, z=0.0, kind=None, far=False):
     kind = kind or R.choice(('round', 'round', 'pine'))
     if kind == 'pine':
-        K.cyl('trunk', 0.18 * s, 1.2 * s, (x, y, z + 0.6 * s), M('wood_dk'), 6, 0.0)
+        bcyl('trunk', 0.18 * s, 1.2 * s, (x, y, z + 0.6 * s), M('wood_dk'), 6, 0.0)
         for k, (dz, r, h) in enumerate(((1.4, 1.25, 1.9), (2.4, 0.95, 1.6), (3.3, 0.65, 1.3))):
-            K.cone('needles', r * s, h * s, (x, y, z + dz * s), M('tree_far' if far else 'pine'), 8)
+            bcone('needles', r * s, h * s, (x, y, z + dz * s), M('tree_far' if far else 'pine'), 8)
     else:
-        K.cyl('trunk', 0.22 * s, 1.6 * s, (x, y, z + 0.8 * s), M('wood_dk'), 8, 0.0, r2=0.15 * s)
+        bcyl('trunk', 0.22 * s, 1.6 * s, (x, y, z + 0.8 * s), M('wood_dk'), 8, 0.0, r2=0.15 * s)
         for (dz, r, dx, dy) in ((1.9, 1.15, 0, 0), (2.6, 0.9, 0.35, 0.1), (2.55, 0.85, -0.4, -0.15), (3.25, 0.65, 0.05, 0.05)):
-            K.sphere('crown', r * s, (x + dx * s, y + dy * s, z + dz * s), M('tree_far' if far else R.choice(('tree', 'tree2'))), (1, 1, 0.88), 2)
+            bsphere('crown', r * s, (x + dx * s, y + dy * s, z + dz * s), M('tree_far' if far else R.choice(('tree', 'tree2'))), (1, 1, 0.88), 2)
 
 def outcrop(x, y, n, spread, scale=1.0):   # a cluster of big angular rocks
     for _ in range(n):
@@ -655,10 +679,10 @@ def setts_rings(bag, cx, cy, A, B, course=0.46, length=0.56):
 def ellipse_pts(cx, cy, A, B, n=96): return [(cx + A * math.cos(k / n * math.tau), cy + B * math.sin(k / n * math.tau)) for k in range(n)]
 
 def lamp(x, y):
-    K.cyl('lamp_base', 0.16, 0.3, (x, y, 0.15), M('stone_dk'), 8, 0.02)
-    K.cyl('lamp_post', 0.06, 2.6, (x, y, 1.45), M('iron'), 8, 0.0)
+    bcyl('lamp_base', 0.16, 0.3, (x, y, 0.15), M('stone_dk'), 8, 0.02)
+    bcyl('lamp_post', 0.06, 2.6, (x, y, 1.45), M('iron'), 8, 0.0)
     block((x, y, 2.85), (0.34, 0.34, 0.42), M('window', 1.6), 0.03)
-    K.cone('lamp_cap', 0.3, 0.25, (x, y, 3.18), M('iron'), 4).rotation_euler = (0, 0, math.pi / 4)
+    bcone('lamp_cap', 0.3, 0.25, (x, y, 3.18), M('iron'), 4, rot=(0, 0, math.pi / 4))
     for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)): block((x + sx * 0.17, y + sy * 0.17, 2.85), (0.04, 0.04, 0.44), M('iron'), 0.0)
 
 def bench(x, y, f):
@@ -675,10 +699,10 @@ def stall(x, y, f):
     block(P(0, 0.1, 0.48), (2.2, 0.9, 0.9), M('wood'), 0.03, rot)          # the counter
     block(P(0, 0.1, 0.95), (2.3, 1.0, 0.06), M('wood_dk'), 0.02, rot)
     for k, m in enumerate(('flower_y', 'roof_red', 'hay', 'tree2')):        # goods in baskets
-        u = -0.8 + k * 0.53; K.cyl('basket', 0.2, 0.16, P(u, 0.25, 1.06), M('wood'), 10, 0.01)
-        for _ in range(3): K.sphere('goods', 0.08, P(u + R.uniform(-0.08, 0.08), 0.25 + R.uniform(-0.08, 0.08), 1.16), M(m), sub=1)
+        u = -0.8 + k * 0.53; bcyl('basket', 0.2, 0.16, P(u, 0.25, 1.06), M('wood'), 10, 0.01)
+        for _ in range(3): bsphere('goods', 0.08, P(u + R.uniform(-0.08, 0.08), 0.25 + R.uniform(-0.08, 0.08), 1.16), M(m), sub=1)
     for u in (-1.05, 1.05):
-        for v in (-0.35, 0.55): K.cyl('pole', 0.04, 2.2, P(u, v, 1.1), M('wood_dk'), 6, 0.0)
+        for v in (-0.35, 0.55): bcyl('pole', 0.04, 2.2, P(u, v, 1.1), M('wood_dk'), 6, 0.0)
     for k in range(5):   # a striped awning sloping down toward the customers
         u0 = -1.2 + k * 0.48; m = 'awning' if k % 2 == 0 else 'canvas'
         vs = [P(u0, -0.45, 2.25), P(u0 + 0.48, -0.45, 2.25), P(u0 + 0.48, 0.85, 1.95), P(u0, 0.85, 1.95)]
@@ -686,19 +710,19 @@ def stall(x, y, f):
 
 def barrels(x, y):
     for dx, dy, h in ((0, 0, 0), (0.45, 0.1, 0), (0.2, -0.38, 0)):
-        K.cyl('barrel', 0.24, 0.62, (x + dx, y + dy, 0.31), M('wood'), 12, 0.02)
-        K.cyl('hoop', 0.25, 0.05, (x + dx, y + dy, 0.5), M('iron'), 12, 0.0)
+        bcyl('barrel', 0.24, 0.62, (x + dx, y + dy, 0.31), M('wood'), 12, 0.02)
+        bcyl('hoop', 0.25, 0.05, (x + dx, y + dy, 0.5), M('iron'), 12, 0.0)
     block((x - 0.4, y + 0.3, 0.2), (0.4, 0.4, 0.4), M('wood'), 0.03, R.uniform(0, 1))
 
 def flower_bed(x, y, r):
     n = 12
     mesh_from('soil', [(x + math.cos(k / n * math.tau) * r, y + math.sin(k / n * math.tau) * r, 0.1) for k in range(n)], [tuple(range(n))], M('soil'), 0.0)
-    for k in range(n): K.sphere('kerb', 0.13, (x + math.cos(k / n * math.tau) * r, y + math.sin(k / n * math.tau) * r, 0.08), M('stone2'), (1.3, 1, 0.7), 1)
+    for k in range(n): bsphere('kerb', 0.13, (x + math.cos(k / n * math.tau) * r, y + math.sin(k / n * math.tau) * r, 0.08), M('stone2'), (1.3, 1, 0.7), 1)
     c = R.choice(('flower_y', 'flower_w', 'flower_p'))
     for _ in range(int(r * 18)):
         a, d = R.uniform(0, math.tau), R.uniform(0, r * 0.8)
-        K.sphere('flower', 0.08, (x + math.cos(a) * d, y + math.sin(a) * d, 0.22), M(c if R.random() < 0.7 else 'flower_w'), sub=1)
-    for _ in range(4): K.sphere('leaves', 0.16, (x + R.uniform(-r, r) * 0.6, y + R.uniform(-r, r) * 0.6, 0.15), M('bush'), (1, 1, 0.6), 1)
+        bsphere('flower', 0.08, (x + math.cos(a) * d, y + math.sin(a) * d, 0.22), M(c if R.random() < 0.7 else 'flower_w'), sub=1)
+    for _ in range(4): bsphere('leaves', 0.16, (x + R.uniform(-r, r) * 0.6, y + R.uniform(-r, r) * 0.6, 0.15), M('bush'), (1, 1, 0.6), 1)
 
 def town():
     cx, cy = L.CENTRE
@@ -738,7 +762,7 @@ def town():
         elif kind == 'barrels': barrels(x, y)
         elif kind == 'bed': flower_bed(x, y, rad)
         elif kind == 'bush':
-            for k in range(R.randint(3, 5)): K.sphere('bush', R.uniform(0.35, 0.6), (x + R.uniform(-0.4, 0.4), y + R.uniform(-0.4, 0.4), 0.3), M(R.choice(('bush', 'grass2', 'tree'))), (1, 1, 0.8), 2)
+            for k in range(R.randint(3, 5)): bsphere('bush', R.uniform(0.35, 0.6), (x + R.uniform(-0.4, 0.4), y + R.uniform(-0.4, 0.4), 0.3), M(R.choice(('bush', 'grass2', 'tree'))), (1, 1, 0.8), 2)
         elif kind == 'tree': tree(x, y, rad * R.uniform(1.0, 1.15), 0.0, 'round')
     # tufts along the house walls and the lawn edges
     for i in range(len(L.IDS)):
@@ -775,11 +799,11 @@ def ground():
     box = ((-L.RX - 8, L.RX + 8), (-2, 30))
     def flowers(cx, cy):
         c = R.choice(('flower_y', 'flower_w', 'flower_p'))
-        for k in range(R.randint(5, 10)): K.sphere('flower', 0.07, (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.6, 0.6), 0.12), M(c), sub=1)
+        for k in range(R.randint(5, 10)): bsphere('flower', 0.07, (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.6, 0.6), 0.12), M(c), sub=1)
     scatter(30, 1.0, box, flowers)
     scatter(8, 1.0, box, lambda x, y: (outcrop(x, y, 2, 0.6, 0.35), tufts(x, y, 3, (0.9, 0.7))))
     def bushes(cx, cy):
-        for k in range(R.randint(3, 6)): K.sphere('bush', R.uniform(0.45, 0.95), (cx + R.uniform(-1.0, 1.0), cy + R.uniform(-0.6, 0.6), 0.35), M(R.choice(('bush', 'grass2', 'tree'))), (1, 1, 0.8), 2)
+        for k in range(R.randint(3, 6)): bsphere('bush', R.uniform(0.45, 0.95), (cx + R.uniform(-1.0, 1.0), cy + R.uniform(-0.6, 0.6), 0.35), M(R.choice(('bush', 'grass2', 'tree'))), (1, 1, 0.8), 2)
     scatter(22, 1.6, box, bushes)
     def swathe(cx, cy):
         n = 9; rr = R.uniform(1.5, 3.0)
@@ -793,7 +817,7 @@ def ground():
         for k in range(3):
             x, y = cx + R.uniform(-2, 2), cy + R.uniform(-1.5, 1.5)
             if free(x, y, 1.6): tree(x, y, R.uniform(1.4, 1.8), 0, 'round', far=True)
-    return K.export('ground')
+    return export('ground')
 
 def marker():
     """Where to rebuild next (fresh-eyes review 2: lead with one plot): a ring of gold with glowing runes on the ground and
