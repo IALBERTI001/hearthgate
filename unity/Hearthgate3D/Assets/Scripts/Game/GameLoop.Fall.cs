@@ -60,6 +60,7 @@ namespace Hearthgate.Game
                 else gateObj.transform.SetPositionAndRotation(gatePos, gateRot);
             }
             if (beaconFlame) beaconFlame.gameObject.SetActive(!on);
+            if (Debug.isDebugBuild) Debug.Log($"[fall] shambles {on}: gate {(gateObj ? gateObj.transform.position + " " + gateObj.transform.eulerAngles : "none")}, breach {(breachObj ? "yes" : "no")}");
         }
 
         // smoke and embers drift up over the ruins while the card is up

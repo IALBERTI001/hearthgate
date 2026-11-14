@@ -1106,23 +1106,23 @@ def breach():
     """The walls fallen (owner, Nov 14 2026: "a loss screen of the walls and town in shambles"): laid over the gatehouse while
     the loss card is up. The gate's doors are smashed, planks thrown out on the road with their iron bands, a heap of fallen
     wall blocks spills through the arch and down the front, scorch marks and embers glow in the rubble. Its origin is the
-    gate's; the road runs to -y."""
-    for (x, y, rz, ry) in ((-0.9, -2.6, 0.5, 0.2), (0.6, -3.3, -0.3, -0.15), (1.4, -2.2, 1.2, 0.1), (-0.2, -4.0, 0.9, 0.05)):   # door planks thrown out
+    gate's; the road (and the camera) are to +y, as the gate's banners face."""
+    for (x, y, rz, ry) in ((-0.9, 2.9, 0.5, 0.2), (0.6, 3.6, -0.3, -0.15), (1.4, 2.6, 1.2, 0.1), (-0.2, 4.3, 0.9, 0.05)):   # door planks thrown out
         o = block((x, y, 0.12), (0.36, 1.8, 0.1), M('wood_dk' if x < 0 else 'wood'), 0.02); o.rotation_euler = (0, ry, rz)
         o = block((x, y, 0.19), (0.38, 0.08, 0.04), M('iron'), 0.0); o.rotation_euler = (0, ry, rz)
-    for (x, y, h, rz) in ((-AW + 0.2, -0.9, 1.6, 0.0), (AW - 0.3, -0.95, 1.1, 0.0)):   # stumps of the doors still on their hinges
+    for (x, y, h, rz) in ((-AW + 0.2, GY - 0.3, 1.6, 0.0), (AW - 0.3, GY - 0.3, 1.1, 0.0)):   # stumps of the doors still on their hinges
         block((x, y, 0.62 + h / 2), (0.35, 0.16, h), M('wood_dk'), 0.02)
         block((x, y, 0.62 + h + 0.03), (0.36, 0.17, 0.06), M('char'), 0.0)
     for k in range(34):   # the fallen blocks: a heap in the arch, spilling forward
-        t = k / 34; y = -0.5 - t * 3.2 + R.uniform(-0.3, 0.3); spread = 1.0 + t * 1.4
+        t = k / 34; y = 0.5 + t * 3.2 + R.uniform(-0.3, 0.3); spread = 1.0 + t * 1.4
         s = R.uniform(0.3, 0.6) * (1.2 - 0.5 * t)
-        z = max(s * 0.3, (1.0 - t) * 1.1 + R.uniform(0, 0.3))
+        z = max(s * 0.3, (1.0 - t) * 1.1 + R.uniform(0, 0.3)) + (0.62 if y < GY + 0.25 else 0.0)   # the arch's floor stands 0.62 m up
         o = block((R.uniform(-spread, spread), y, z), (s * 1.4, s, s * 0.75), M(R.choice(('mortar', 'stone2', 'stone_dk', 'stone2'))), 0.05)
         o.rotation_euler = (R.uniform(-0.35, 0.35), R.uniform(-0.35, 0.35), R.uniform(0, 3.1))
-    for (x, y, r) in ((-0.4, -1.8, 1.3), (1.0, -3.0, 0.9), (-1.5, -3.4, 0.8)):   # scorch on the road
-        K.cyl('scorch', r, 0.02, (x, y, 0.64 if y > -2 else 0.01), M('char'), 20, 0.0)
-    for k in range(9): K.sphere('ember', R.uniform(0.05, 0.1), (R.uniform(-1.2, 1.2), R.uniform(-3.2, -0.6), 0.25 + R.uniform(0, 0.4)), M('fire', 2.8), sub=1)
-    for (x, y) in ((-2.6, -2.6), (2.7, -2.4)):   # merlons knocked off the top lie at the foot of the wall
+    for (x, y, r) in ((-0.4, 1.4, 1.3), (1.0, 3.3, 0.9), (-1.5, 3.7, 0.8)):   # scorch on the road
+        K.cyl('scorch', r, 0.02, (x, y, 0.64 if y < GY else 0.02), M('char'), 20, 0.0)
+    for k in range(9): K.sphere('ember', R.uniform(0.05, 0.1), (R.uniform(-1.2, 1.2), R.uniform(0.6, 3.6), 0.25 + R.uniform(0, 0.4)), M('fire', 2.8), sub=1)
+    for (x, y) in ((-2.9, 2.9), (3.0, 2.7)):   # merlons knocked off the top lie at the foot of the wall
         o = block((x, y, 0.3), (0.62, 0.5, 0.6), M('mortar'), 0.04); o.rotation_euler = (0.4, R.uniform(-0.3, 0.3), R.uniform(0, 3))
     return K.export('breach')
 

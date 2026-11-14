@@ -58,6 +58,7 @@ namespace Hearthgate.Game
         public static void Dud() { if (I) I.Shot("dud", I.dud, 0.3f, false); }
         public static void Knock() { if (I) I.Shot("knock", I.knock, 0.4f, true); }
         public static void Step() { if (I) I.Shot("step", I.step, 0.13f, true); }
+        float windowAt; int inWindow;
         void Shot(string name, AudioClip c, float vol, bool jitter)
         {
             if (!SfxOn || c == null || !unlocked) return;   // before the first tap the browser plays nothing, and asking a clip then floods the console
@@ -66,7 +67,12 @@ namespace Hearthgate.Game
                 float at = Time.unscaledTime; if (askAt.TryGetValue(c, out var nextAsk) && at < nextAsk) return; askAt[c] = at + 0.5f;
                 if (c.loadState == AudioDataLoadState.Loaded) ready.Add(c); else { if (c.loadState == AudioDataLoadState.Unloaded) c.LoadAudioData(); return; }
             }
-            float now = Time.unscaledTime; if (last.TryGetValue(name, out var t) && now - t < 0.07f) return; last[name] = now;
+            float now = Time.unscaledTime; if (last.TryGetValue(name, out var t) && now - t < 0.07f) return;
+            // a voice budget: at most 10 one-shots a quarter second. A busy wave asked for more and the audio engine ran
+            // out of channels, logging an error each time (FMOD_ERR_CHANNEL_ALLOC, thousands of lines in a session)
+            if (now - windowAt > 0.25f) { windowAt = now; inWindow = 0; }
+            if (++inWindow > 10) return;
+            last[name] = now;
             var s = pool[next = (next + 1) % pool.Length];
             s.pitch = jitter ? 0.94f + (float)rnd.NextDouble() * 0.12f : 1f; s.PlayOneShot(c, vol * SFX_VOL);
         }
