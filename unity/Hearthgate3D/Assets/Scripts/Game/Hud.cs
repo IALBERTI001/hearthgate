@@ -157,10 +157,10 @@ namespace Hearthgate.Game
             // the wizard walks the town; behind the HUD controls, so the cards and buttons stay on top
             for (int i = 0; i < signs.Length; i++)
             {
-                var r = Box("Sign" + i, transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(210, 58)); r.pivot = new Vector2(0.5f, 0.5f);
+                var r = Box("Sign" + i, transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(240, 66)); r.pivot = new Vector2(0.5f, 0.5f);
                 var im = r.gameObject.AddComponent<Image>(); im.sprite = Panel(PLUM, BRASS, 10, 3); im.type = Image.Type.Sliced; im.raycastTarget = false;
-                signTxt[i] = Label("T", r, new Vector2(0.5f, 0.5f), Vector2.zero, 17, TextAnchor.MiddleCenter);
-                signTxt[i].font = body; Fit(signTxt[i], new Vector2(196, 52), 11);
+                signTxt[i] = Label("T", r, new Vector2(0.5f, 0.5f), Vector2.zero, 19, TextAnchor.MiddleCenter);
+                signTxt[i].font = body; Fit(signTxt[i], new Vector2(226, 60), 14);
                 r.SetSiblingIndex(1); r.gameObject.SetActive(false); signs[i] = r;
             }
         }
@@ -184,7 +184,7 @@ namespace Hearthgate.Game
                 if (!show) continue;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp);
                 signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f;
-                signs[i].localScale = Vector3.one * Mathf.Clamp(16f / dist, 0.6f, 1.05f);
+                signs[i].localScale = Vector3.one * Mathf.Clamp(18f / dist, 0.85f, 1.1f);   // never below about 16 px text (fresh-eyes review, Nov 14 2026: signs unreadable)
                 var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
                 if (P.restored.Contains(id))
                 {
