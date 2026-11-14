@@ -940,15 +940,15 @@ def variant(kind):
     elif kind == 'sprinter':  # pale and lean: it dashes for the walls
         _remap({'beetle_gloss': 'stone3'})
     elif kind == 'splitter':  # violet with a dark seam round its middle: it bursts into two
-        _remap({'slime_gloss': 'flower_p', 'slime_dk': 'robe'})
-        bcyl('seam', 0.82, 0.08, (0, 0, 0.72), M('robe_dk'), 32, 0.0)
+        _remap({'slime_gloss': 'roof_purple', 'slime_dk': 'robe_dk'})   # violet, far from the plain slime's pink
+        bcyl('seam', 0.86, 0.1, (0, 0, 0.72), M('robe_dk'), 32, 0.0)
     elif kind == 'mender':    # green, a glowing ring over its head: it heals its friends until it burns
         _remap({'slime_gloss': 'bush', 'slime_dk': 'grass2'})
         bpy.ops.mesh.primitive_torus_add(major_radius=0.42, minor_radius=0.06, location=(0, 0, 1.95)); K.finish(bpy.context.object, M('tree2', 1.5))
     elif kind == 'ironhide':  # dark iron plates and a bubble: Storm breaks the shield, then Fire the armour
-        _remap({'storm': ('iron',)}); _shield(1.9, 1.3)
+        _remap({'golem': 'iron', 'rock': 'iron', 'rock_dk': 'pupil', 'storm': ('water_gloss', 3.0)}); _shield(1.9, 1.3)   # dark iron, blue light in its cracks
     elif kind == 'bulwark':   # grey stone with a great slab carried in front: combos crack it for double
-        _remap({'storm': 'stone2'})
+        _remap({'golem': 'stone3', 'rock': 'stone2', 'rock_dk': 'stone_dk', 'storm': ('fire_core', 2.0)})   # pale stone, ember cracks
         block((0, -1.05, 1.3), (1.6, 0.25, 1.9), M('stone3'), 0.06); block((0, -1.2, 1.3), (0.3, 0.1, 1.2), M('iron'), 0.02)
     return K.export(kind)
 
