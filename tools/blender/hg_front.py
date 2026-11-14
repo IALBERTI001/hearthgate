@@ -676,7 +676,7 @@ def golem(kind='golem'):
                 t = k / 4; p = (s * (0.45 + 0.5 * t), 0.05 + 0.35 * t * t, 2.15 + 0.55 * t)
                 K.sphere('horn', 0.17 - 0.03 * k, p, M('bone' if k < 4 else 'gold'), (1, 1, 1.25), 2)
         for (x, z, rot) in ((0.12, 1.3, 0.3), (-0.1, 1.05, -0.4), (0.05, 0.85, 0.2)): block((x, -0.84, z), (0.08, 0.06, 0.32), M('fire', 3.0), 0.0).rotation_euler = (0, rot, 0)   # the plate cracked over a molten heart
-        cloth('cape', -0.95, 0.95, 1.95, 0.25, 0.72, M('banner'), wave=0.12, tail=True)
+        cloth('cape', -0.5, 0.5, 1.85, 0.75, 0.78, M('banner'), wave=0.1, tail=True)   # short and narrow: from behind (the game camera) his spiked back still shows
     if kind in ('ironhide', 'knight'): _shield(1.9, 1.3)
 
 def totem_titan():

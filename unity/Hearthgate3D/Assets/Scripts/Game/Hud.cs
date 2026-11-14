@@ -150,8 +150,9 @@ namespace Hearthgate.Game
             gateBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
             gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter);
 
-            // a boss's name and health across the top while one lives (it reads as the event it is)
-            bossBox = Box("BossBar", transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -92), new Vector2(420, 34)); bossBox.pivot = new Vector2(0.5f, 1);
+            // a boss's name and health while one lives, over the walls' own bar (the top is full of readouts and buttons on a
+            // narrow window: the first try there ran under both)
+            bossBox = Box("BossBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 76), new Vector2(360, 32)); bossBox.pivot = new Vector2(0.5f, 0);
             var bf = bossBox.gameObject.AddComponent<Image>(); bf.sprite = Panel(INK, new Color(0.78f, 0.22f, 0.16f), 10, 3); bf.type = Image.Type.Sliced; bf.raycastTarget = false;
             var bfb = Box("FillBox", bossBox, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
             bossFill = bfb.gameObject.AddComponent<Image>(); bossFill.type = Image.Type.Filled; bossFill.fillMethod = Image.FillMethod.Horizontal; bossFill.raycastTarget = false;
