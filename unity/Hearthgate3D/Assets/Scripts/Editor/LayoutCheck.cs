@@ -164,7 +164,7 @@ namespace Hearthgate.EditorTools
                     var p = new Vector3(x, 0, z);
                     if (!InRing(p, 2.4f) || Enumerable.Range(0, 10).Any(i => Wizard.InFootprint(i, p, 0.4f)) || Vector3.Distance(p, Field.PLAZA) < Wizard.FOUNTAIN_R) continue;
                     spots++;
-                    var from = p + Wizard.FOLLOW; var to = p + Vector3.up * 1.3f; var d = to - from;
+                    var from = Wizard.FollowFrom(p); var to = p + Vector3.up * 1.3f; var d = to - from;
                     if (Physics.Raycast(from, d.normalized, out var hitInfo, d.magnitude - 0.5f))
                     {
                         var who = hitInfo.collider.transform.root.name;

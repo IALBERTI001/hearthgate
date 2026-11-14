@@ -22,6 +22,18 @@ namespace Hearthgate.Game
         // in the square, left of the gatehouse's keep as seen from the walls (LayoutCheck: seen from the wall camera)
         public static readonly Vector3 HOME = new Vector3(-6f, 0, -8f);
         public static readonly Vector3 FOLLOW = new Vector3(0, 8f, -6.5f), LOOK = new Vector3(0, 1.0f, 2.6f);   // the walk camera, from his feet
+        // the walk camera for a spot: behind him on the town side, pulled in and up when that would put it outside the ring
+        // wall (from outside, the wall came between it and him near the back of the town)
+        public static Vector3 FollowFrom(Vector3 p)
+        {
+            for (float k = 1f; k > 0.05f; k -= 0.1f)
+            {
+                var c = p + new Vector3(0, FOLLOW.y + (1 - k) * 3f, FOLLOW.z * k);
+                float ex = c.x / (Field.RX - 1.2f), ez = (c.z + Field.RZ) / (Field.RZ - 1.2f);
+                if (ex * ex + ez * ez < 1) return c;
+            }
+            return p + new Vector3(0, FOLLOW.y + 3f, -0.5f);
+        }
 
         Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift;
         GameObject goal;   // a little gold ring where a tap sent him
@@ -128,7 +140,7 @@ namespace Hearthgate.Game
             // high enough to look over a room's walls when he is inside
             blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
-            var followLook = pos + LOOK; var followPos = pos + FOLLOW;
+            var followLook = pos + LOOK; var followPos = FollowFrom(pos);
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
             var r = Quaternion.Slerp(Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS), Quaternion.LookRotation(followLook - followPos), k);
             Fx.I.camHome = p; cam.transform.rotation = r;
