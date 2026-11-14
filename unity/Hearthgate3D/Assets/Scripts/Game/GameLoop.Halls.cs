@@ -65,6 +65,8 @@ namespace Hearthgate.Game
         // the first time the player could use a hall, say once where it is
         void TellHalls()
         {
+            // the gamble, said once: past the Ascension point, a fall loses the whole run (GameLoop.Fall)
+            if (CanAscend && !told.Contains("lockin") && !Hud.Paused) { told.Add("lockin"); Hud.Banner("You can Ascend! It locks this run in. If the walls fall first, the run is lost"); }
             if (P.ascensions > 0 && P.perkPts > 0 && !told.Contains("hallPerks") && !(Wizard.I && Wizard.I.On))
             { told.Add("hallPerks"); Hud.Banner("Walk the town into the Watchtower: its star table keeps your perks"); }
         }

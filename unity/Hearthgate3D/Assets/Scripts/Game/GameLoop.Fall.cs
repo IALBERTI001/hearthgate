@@ -6,7 +6,8 @@
 //  - Restore the town for Starshards (3 + 1 per 10 waves): all of it stands again and the same wave is fought again;
 //  - without enough Starshards, a rewarded ad restores it instead (only where the CrazyGames SDK offers one: Basic Launch
 //    has ads off, so the button is not shown there);
-//  - Start over at wave 1 (asked twice): the town is rebuilt as it was, the waves begin again from the first.
+//  - Start over (asked twice): the run is lost as if this Ascension had just begun: towers, town and Resonance gone,
+//    wave 1 (owner, Nov 14 2026: "progress locks after ascending"). Perks, stars, Starshards, Feats and looks stay.
 // Nothing is lost while the card is up: a reload comes back to the same choice (P.fallen is saved).
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -117,11 +118,18 @@ namespace Hearthgate.Game
             if (paid) { if (!CanPayRestore) { Sound.Dud(); return; } P.shards -= FallCost; }
             Rise($"The town stands again! Wave {P.wave}, once more");
         }
+        // the gamble lost: the run is gone, back to the start of this Ascension (HG.Collapse). Ascending locks progress in;
+        // anything past the last Ascension is at stake every time the walls fall.
         public void StartOver()
         {
             if (!P.fallen) return;
-            P.wave = 1;
-            Rise("The town is rebuilt. The waves begin again from wave 1");
+            FlushWisps(); ShowShambles(false);
+            P = HG.Collapse(P); Refresh(); gateHp = HG.GateMax(P, B); cheer = cheerT = 0; betweenT = 3f;
+            for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
+            RefreshTowers(); Hud.CloseCard();
+            Sound.Play("ascension", 0.45f); Fx.I.Burst(Field.PLAZA + Vector3.up * 3, new Color(0.6f, 0.55f, 0.5f), 30);
+            Hud.Banner(P.ascensions > 0 ? $"The run is lost. Ascension {P.ascensions} begins again from wave {P.wave}" : $"The run is lost. The city begins again from wave {P.wave}");
+            Save();
         }
         void Rise(string line)
         {

@@ -146,18 +146,24 @@ namespace Hearthgate.Core
         public static bool CityWhole(Profile p) => p.restored.Count >= BUILDINGS.Length;
         public static bool CanAscend(Profile p) => CityWhole(p) && Math.Max(p.runWave, p.wave) >= AscendWave(p);
         public static int PerkPtsFor(Profile p) => 1 + Math.Max(p.runWave, p.wave) / 25;   // wave 50 pays 3, wave 100 pays 5
-        public static Profile Ascend(Profile p)
+        public static Profile Ascend(Profile p) => Reset(p, true);
+        // the walls fell and the player chose to start over (owner, Nov 14 2026: "the player has to lose something so the
+        // game gives the player a reason to worry about losing progress ... progress locks after ascending"): the run is
+        // gone as if this Ascension had just begun (towers, town, Resonance, wave 1), with no Ascension gained, no perk
+        // points and no Starshards; everything an Ascension keeps is kept.
+        public static Profile Collapse(Profile p) => Reset(p, false);
+        static Profile Reset(Profile p, bool ascend)
         {
             var q = new Profile
             {
-                ascensions = p.ascensions + 1, bestWave = p.bestWave, combos = new List<string>(p.combos), firstSession = false, lastSeen = p.lastSeen,
+                ascensions = p.ascensions + (ascend ? 1 : 0), bestWave = p.bestWave, combos = new List<string>(p.combos), firstSession = false, lastSeen = p.lastSeen,
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
-                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
-                shards = p.shards + (p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(),
+                perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + (ascend ? PerkPtsFor(p) : 0), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
+                shards = p.shards + (ascend && p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(),
                 stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars), flies = new List<string>(p.flies), relics = new List<string>(p.relics), steward = p.steward,
                 questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
-            foreach (var x in STARS) if (x.asc <= p.ascensions && !q.stars.Contains(x.id)) q.stars.Add(x.id);   // the run just finished: its sky is whole
+            if (ascend) foreach (var x in STARS) if (x.asc <= p.ascensions && !q.stars.Contains(x.id)) q.stars.Add(x.id);   // the run just finished: its sky is whole
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
             return q;
         }

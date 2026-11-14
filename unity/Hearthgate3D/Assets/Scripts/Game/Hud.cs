@@ -605,7 +605,7 @@ namespace Hearthgate.Game
             if (!I || !GameLoop.I || !GameLoop.I.CanAscend) return;
             var g = GameLoop.I; var P = g.P; int n = P.ascensions + 1;
             var box = I.Modal($"Ascend to Ascension {n}?", new Vector2(640, 430));
-            I.Line(box, -74, "The city returns to ruins and the waves start again from wave 1.", 19);
+            I.Line(box, -74, "The city returns to ruins and the waves start again from wave 1. Ascending locks your progress in.", 19);
             I.Line(box, -128, $"<color=#FFD56B>For good:</color> towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, n):0.##} (now x{g.B.ascend:0.##})", 19);
             I.Line(box, -168, $"<color=#FFD56B>+{HG.PerkPtsFor(P)} perk points</color> to spend at the Watchtower", 19);
             I.Line(box, -208, "Kept: your best wave, combos, perks, stars, Feats, looks and settings.", 17, new Color(0.85f, 0.8f, 0.88f));
@@ -623,32 +623,34 @@ namespace Hearthgate.Game
             if (!I || !GameLoop.I || !GameLoop.I.Fallen) return;
             var g = GameLoop.I; var P = g.P; int cost = g.FallCost; bool can = g.CanPayRestore, ad = !can && GameLoop.AdReady;
             if (I.settingsBox) I.ShowSettings(false);
-            var box = I.Modal(confirm ? "Start over at wave 1?" : "The walls have fallen!", new Vector2(700, 300));
+            var box = I.Modal(confirm ? "Lose this run?" : "The walls have fallen!", new Vector2(700, 320));
             Time.timeScale = 1;   // the shambles stay alive behind the card (the fight itself waits: GameLoop.FixedUpdate)
             I.settingsBox.GetComponent<Image>().color = new Color(0.08f, 0.02f, 0.04f, 0.28f);
             box.anchorMin = box.anchorMax = new Vector2(0.5f, 0); box.pivot = new Vector2(0.5f, 0); box.anchoredPosition = new Vector2(0, 24);
             if (confirm)
             {
-                I.Line(box, -72, $"The town is rebuilt as it was, and the waves begin again from wave 1 (you were on wave {P.wave}).", 19);
-                I.Line(box, -136, "Your buildings, towers, perks and best wave are kept.", 17, new Color(0.85f, 0.8f, 0.88f));
-                I.Choice(box, "F_Back", new Vector2(-130, 26), new Vector2(230, 56), "Back", () => ShowFallen());
-                I.Choice(box, "F_Over", new Vector2(130, 26), new Vector2(230, 56), "Start over", () => { I.ShowSettings(false); g.StartOver(); }, null, true);
+                string since = P.ascensions > 0 ? $"since Ascension {P.ascensions}" : "this game";
+                I.Line(box, -66, $"<color=#FF8C7A>Lost:</color> everything {since}: the towers' levels, every rebuilt building, {HG.Fmt(P.res)} Resonance, and wave {P.wave}.", 18);
+                I.Line(box, -128, "Kept: your Ascensions, perks, stars, Starshards, Feats and looks.", 17, new Color(0.85f, 0.8f, 0.88f));
+                I.Choice(box, "F_Back", new Vector2(-130, 26), new Vector2(230, 56), "Back", () => ShowFallen(), null, true);   // the safe choice is the bright one
+                I.Choice(box, "F_Over", new Vector2(130, 26), new Vector2(230, 56), "Lose the run", () => { I.ShowSettings(false); g.StartOver(); });
                 return;
             }
             I.Line(box, -70, $"Wave {P.wave} broke through and the town lies in ruins.", 20);
             I.Line(box, -108, can ? $"Restore it for <color=#FFE68C>{cost} Starshards</color> (you have {P.shards}) and fight wave {P.wave} again."
                                   : $"Restoring it costs <color=#FFE68C>{cost} Starshards</color>; you have {P.shards}. Bosses, Trials, quests and Feats pay them.", 18);
+            I.Line(box, -168, P.ascensions > 0 ? $"Or give it up: back to wave 1 as Ascension {P.ascensions} began, the town in ruins." : "Or give it up: back to wave 1 with the city in ruins.", 16, new Color(0.85f, 0.8f, 0.88f));
             float y = 26;
             if (ad)
             {
                 I.Choice(box, "F_Ad", new Vector2(-170, y), new Vector2(300, 56), "Watch an ad to restore", () => { I.ShowSettings(false); g.WatchAdToRestore(); }, null, true);
-                I.Choice(box, "F_Over", new Vector2(170, y), new Vector2(300, 56), "Start over at wave 1", () => ShowFallen(true));
+                I.Choice(box, "F_Over", new Vector2(170, y), new Vector2(300, 56), "Give up the run", () => ShowFallen(true));
             }
             else
             {
                 I.BtnAt("F_Pay", new Vector2(0.5f, 0), new Vector2(-170, y), new Vector2(300, 56), () => { I.ShowSettings(false); g.RestoreFallen(true); }, () => g.CanPayRestore, out var pl, box, "starshard", true);
                 pl.text = $"Restore for {cost}";
-                I.Choice(box, "F_Over", new Vector2(170, y), new Vector2(300, 56), "Start over at wave 1", () => ShowFallen(true));
+                I.Choice(box, "F_Over", new Vector2(170, y), new Vector2(300, 56), "Give up the run", () => ShowFallen(true));
             }
         }
 
