@@ -39,6 +39,7 @@ namespace Hearthgate.Game
 
         Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift;
         GameObject goal;   // a little gold ring where a tap sent him
+        int log;
 
         public void Init(ArtSet art)
         {
@@ -52,7 +53,7 @@ namespace Hearthgate.Game
         {
             On = !On; target = null; goal.SetActive(false);
             Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14);
-            if (On) Hud.Banner("Walk the town: step inside to rebuild and upgrade");
+            if (On) Hud.Banner("Walk into a building to work on it");
         }
 
         // a plot's footprint in world space: the building faces +z (Field.PLOT_FACING), so its door is on its +z side
@@ -75,6 +76,11 @@ namespace Hearthgate.Game
             if (cam == null) return;
             float dt = Time.deltaTime; idle += dt;
             if (Input.GetKeyDown(KeyCode.T)) Toggle();
+            if (Input.GetMouseButtonDown(0) && Debug.isDebugBuild == false && Application.isEditor == false && log < 12)
+            {   // QA trace of taps (Nov 13 2026: taps in the browser pane sent him the wrong way); the first dozen only
+                log++; Ground(Input.mousePosition, out var g0);
+                Debug.Log($"[Hearthgate] tap {Input.mousePosition} screen {Screen.width}x{Screen.height} onHud {Hud.OnHud(Input.mousePosition)} ground {g0} wizard {pos} cam {cam.transform.position}");
+            }
             if (Input.GetMouseButtonDown(0) && !Hud.OnHud(Input.mousePosition))
             {
                 if (!On)
