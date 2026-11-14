@@ -155,7 +155,7 @@ namespace Hearthgate.Game
             foreach (var e in enemies) Destroy(e.t.gameObject);
             enemies.Clear(); queue.Clear(); waveLive = false; betweenT = 2f;
             P.wave = Mathf.Max(1, P.wave - 1); gateHp = HG.GateMax(P, B);
-            Hud.Banner("The gate held you back a wave. Upgrade it!"); Fx.I.Shake(0.4f); Sound.Play("boss_horn", 0.4f);
+            Hud.Banner("The walls fell. Back a wave: upgrade the towers!"); Fx.I.Shake(0.4f); Sound.Play("boss_horn", 0.4f);
         }
 
         void WaveWon()

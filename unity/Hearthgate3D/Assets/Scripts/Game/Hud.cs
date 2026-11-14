@@ -134,7 +134,7 @@ namespace Hearthgate.Game
             // cost with the gem, the key as a small keycap on desktop. Upgrade gate is the primary action (rule 2): a
             // brighter rim that breathes when it is affordable. A finished goal leaves (rule 4): no "City rebuilt" button.
             var tr = new Vector2(1, 1);
-            up = Action("Upgrade", tr, new Vector2(-16, -16), new Vector2(230, 56), "gate", "U", () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, true);
+            up = Action("Upgrade", tr, new Vector2(-16, -16), new Vector2(230, 56), "tower", "U", () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, true);
             re = Action("Rebuild", tr, new Vector2(-16, -78), new Vector2(230, 56), "rebuild", "R", () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, false);
 
             // the town walk and, while walking, the work on the building in reach: in the same group as the other actions
@@ -247,9 +247,10 @@ namespace Hearthgate.Game
         public const float GAP = 8f, EDGE = 16f, LABELS_W = 266f;
         void LayoutActions()
         {
-            var list = new System.Collections.Generic.List<RectTransform> { up.p.rt };
+            // Upgrade in the corner, Walk always right beside it (owner, Nov 14 2026: "make the walk town and back to the
+            // walls button stay there"), then Rebuild and the work card, which come and go
+            var list = new System.Collections.Generic.List<RectTransform> { up.p.rt, walk.p.rt };
             if (re.p.rt.gameObject.activeSelf) list.Add(re.p.rt);
-            list.Add(walk.p.rt);
             if (work.p.rt.gameObject.activeSelf) list.Add(work.p.rt);
             float width = ((RectTransform)transform).rect.width, row = list.Sum(r => r.sizeDelta.x) + GAP * (list.Count - 1);
             bool asRow = width - LABELS_W - EDGE >= row;
@@ -347,9 +348,9 @@ namespace Hearthgate.Game
             res.text = HG.Fmt(shownRes);
             double r = HG.CityRate(P, g.B); rate.text = r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
-            gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Gate {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
+            gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
             float now = Time.unscaledTime;
-            Show(up, "Upgrade gate", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
+            Show(up, "Upgrade towers", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
             var nb = g.NextBuilding; if (re.p.rt.gameObject.activeSelf != (nb != null)) re.p.rt.gameObject.SetActive(nb != null);
             if (nb != null) Show(re, $"Rebuild {HG.ById(nb).name}", HG.Fmt(g.RestoreCost), g.CanRestore, now);
             Signs(g, P);
@@ -403,7 +404,7 @@ namespace Hearthgate.Game
             BtnAt("S_Sfx", new Vector2(0.5f, 1), new Vector2(140, -76), new Vector2(250, 50), () => { Sound.SetSfx(!Sound.SfxOn); RefreshSettings(); }, null, out sfxLbl).rt.SetParent(box, false);
             var ct = Label("Controls", box, new Vector2(0.5f, 1), new Vector2(0, -148), 22, TextAnchor.UpperCenter); ct.text = "Controls";
             string[,] rows = {
-                { "U", "Upgrade the gate" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
+                { "U", "Upgrade the towers" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
                 { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
                 { "M", "Sound on or off" }, { "P", "This menu" } };
             for (int k = 0; k < rows.GetLength(0); k++)
@@ -432,7 +433,7 @@ namespace Hearthgate.Game
             if (!I || I.forkBox) return;
             var box = I.Box("Fork", I.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(640, 260));
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced; I.forkBox = box;
-            I.Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 28, TextAnchor.UpperCenter).text = "The gate grows. Choose one:";
+            I.Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 28, TextAnchor.UpperCenter).text = "The towers grow. Choose one:";
             var opts = HG.FORKS[stage];
             for (int k = 0; k < opts.Length; k++)
             {

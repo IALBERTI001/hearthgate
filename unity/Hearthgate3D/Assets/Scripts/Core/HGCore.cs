@@ -46,7 +46,7 @@ namespace Hearthgate.Core
             B("tavern", "Tavern", null, "cheer", "Combos fill the Cheer meter: when full, towers fire twice as fast.", ("fireRate", 0.10)),
             B("granary", "Granary", null, "store", "Stores 50% more while you are away, and 4 more hours.", ("offline", 0.5)),
             B("library", "Library", null, "quests", "Home of Quests and Feats. Combos hit 25% harder.", ("combo", 0.25)),
-            B("cottages", "Cottages", null, "repair", "Villagers repair the gate after every wave.", ("gateHp", 0.25)),
+            B("cottages", "Cottages", null, "repair", "Villagers repair the walls after every wave.", ("gateHp", 0.25)),
             B("watchtower", "Watchtower", null, "tower5", "Its beacon joins the fight as a fifth tower. Home of the Perks.", ("damage", 0.15)),
         };
         public static readonly string[] BUILDING_IDS = BUILDINGS.Select(b => b.id).ToArray();
@@ -73,7 +73,7 @@ namespace Hearthgate.Core
         public static readonly Dictionary<int, Fork[]> FORKS = new Dictionary<int, Fork[]>
         {
             { 2, new[] { F("ballistae", "Heavy Bolts", "+40% tower damage", ("damage", 0.40)), F("crews", "Swift Crews", "+35% fire rate", ("fireRate", 0.35)) } },
-            { 3, new[] { F("focus", "Elemental Focus", "Combos hit 50% harder", ("combo", 0.50)), F("ironGate", "Iron Gate", "Double gate health, slow repair", ("gateHp", 1.0), ("regen", 0.02)) } },
+            { 3, new[] { F("focus", "Elemental Focus", "Combos hit 50% harder", ("combo", 0.50)), F("ironGate", "Iron Walls", "Double wall health, slow repair", ("gateHp", 1.0), ("regen", 0.02)) } },
             { 4, new[] { F("volleys", "Rapid Volleys", "Towers fire 50% faster", ("fireRate", 0.5)), F("cores", "Searing Cores", "+60% tower damage", ("damage", 0.6)) } },
             { 5, new[] { F("resonant", "Resonant Strikes", "+50% Resonance from enemies", ("res", 0.5)), F("kingslayer", "Kingslayer", "Bosses take double damage", ("bossDmg", 1)) } },
         };
