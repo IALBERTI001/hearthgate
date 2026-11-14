@@ -22,6 +22,7 @@ namespace Hearthgate.Game
                 case "flies": foreach (var f in meadow) Debug.Log($"[dev] fly {f.kind.id} at {f.tr.position} screen {Camera.main.WorldToScreenPoint(f.tr.position)} scale {f.tr.localScale} rot {f.tr.eulerAngles} t {f.t}"); Debug.Log($"[dev] meadow {meadow.Count} flyT {flyT}"); break;
                 case "goto": { int bi = System.Array.IndexOf(HG.BUILDING_IDS, a[1]); if (!Wizard.I.On) Wizard.I.Toggle(); Wizard.I.Teleport(Field.Door(bi, a.Length > 2 ? float.Parse(a[2]) : 1.2f)); break; }
                 case "fall": gateHp = 0; GateFell(); break;
+                case "puffs": Debug.Log($"[dev] puff model {(art && art.puff ? "yes" : "NO")}, heap {(art && art.rubbleHeap ? "yes" : "NO")}, puffs {puffs.Count}" + (puffs.Count > 0 ? $" first {puffs[0].t.position} scale {puffs[0].t.lossyScale} age {puffs[0].age}" : "")); break;
                 case "rise": if (P.fallen) StartOver(); break;
                 case "pause": Time.timeScale = a[1] == "1" ? 0 : 1; break;
                 case "shop": foreach (var id in HG.BUILDING_IDS.Where(id => !P.restored.Contains(id)).ToArray()) { P.res += RestoreCost; Restore(id); } break;
