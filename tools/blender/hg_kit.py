@@ -13,8 +13,15 @@ os.makedirs(OUT, exist_ok=True)
 random.seed(7)
 
 PAL = {
-    'stone': (0.86, 0.79, 0.64), 'stone_dk': (0.6, 0.54, 0.45), 'gold': (1.0, 0.78, 0.3), 'roof_red': (0.78, 0.27, 0.2),
-    'roof_blue': (0.25, 0.42, 0.75), 'roof_purple': (0.5, 0.3, 0.7), 'wood': (0.55, 0.36, 0.2), 'grass': (0.42, 0.68, 0.26),
+    # the front's materials (hg_front.py); '_gloss' names get a high smoothness in Unity (HGMaterialImport)
+    'stone2': (0.74, 0.66, 0.53), 'stone3': (0.86, 0.79, 0.65), 'mortar': (0.45, 0.40, 0.34), 'iron': (0.18, 0.18, 0.21),
+    'banner': (0.66, 0.12, 0.12), 'cobble': (0.62, 0.57, 0.50), 'cobble2': (0.55, 0.50, 0.44), 'dirt': (0.58, 0.45, 0.31),
+    'wood_dk': (0.33, 0.21, 0.13), 'roof_slate': (0.30, 0.34, 0.45), 'grass2': (0.30, 0.50, 0.18), 'grass3': (0.44, 0.62, 0.26),
+    'bush': (0.24, 0.45, 0.20), 'tree': (0.25, 0.48, 0.20), 'tree2': (0.32, 0.55, 0.22), 'flower_y': (1.0, 0.85, 0.30),
+    'flower_w': (0.97, 0.95, 0.90), 'flower_p': (0.85, 0.45, 0.70), 'snow': (0.90, 0.95, 1.0), 'slime_gloss': (0.38, 0.82, 0.32),
+    'slime_dk': (0.22, 0.60, 0.20), 'white_gloss': (1.0, 1.0, 1.0), 'blush': (1.0, 0.50, 0.50), 'water_gloss': (0.30, 0.62, 0.90),
+    'stone': (0.80, 0.72, 0.58), 'stone_dk': (0.52, 0.46, 0.39), 'gold': (1.0, 0.78, 0.3), 'roof_red': (0.78, 0.27, 0.2),
+    'roof_blue': (0.25, 0.42, 0.75), 'roof_purple': (0.5, 0.3, 0.7), 'wood': (0.55, 0.36, 0.2), 'grass': (0.36, 0.56, 0.22),
     'road': (0.8, 0.68, 0.5), 'slime': (0.42, 0.86, 0.38), 'beetle': (0.32, 0.26, 0.55), 'golem': (0.55, 0.5, 0.46),
     'eye': (1, 1, 1), 'pupil': (0.08, 0.05, 0.08), 'fire': (1.0, 0.5, 0.15), 'frost': (0.55, 0.88, 1.0), 'storm': (0.75, 0.5, 1.0),
     'plaster': (0.96, 0.9, 0.78), 'water': (0.35, 0.7, 0.95), 'skin': (0.96, 0.75, 0.6), 'cloth': (0.3, 0.5, 0.8),
@@ -232,6 +239,11 @@ def villager():   # a 0.9 m chibi; the walk is a rig in the art pass
     return export('villager')
 
 if __name__ == '__main__':
+    # the front (gate, wall, towers, tops, road, ground, fountain, slime) is built to the art standard in hg_front.py
+    sys.modules['hg_kit'] = sys.modules['__main__']
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import hg_front as F
+    ground, road, wall, gate, tower_base, slime, fountain, top = F.ground, F.road, F.wall, F.gate, F.tower_base, F.slime, F.fountain, F.top
     clear()
     report = {}
     for fn in (ground, road, wall, gate, tower_base, slime, beetle, golem, ruin, fountain, villager):
