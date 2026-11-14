@@ -20,6 +20,10 @@ ok = True
 if UNITY_ONLY: pass
 elif not SKIP_TEST: ok = blend_all(["-P", B + r"\tools\blender\hg_kit_test.py"], B + r"\log-kittest")
 ok = ok and (UNITY_ONLY or blend_all(["-P", B + r"\tools\blender\hg_kit.py", "--", U + r"\Assets\Art\Models"], B + r"\log-kit"))
+if ok and not UNITY_ONLY:   # the HUD icons, rendered from the models just exported
+    r = subprocess.run([BL, "-b", "--factory-startup", "--python-exit-code", "1", "-P", B + r"\tools\blender\hg_icons.py", "--", U + r"\Assets\Art\Models", U + r"\Assets\Resources\Icons"],
+                       stdout=open(B + r"\log-icons.txt", "w"), stderr=subprocess.STDOUT, creationflags=0x08000000)
+    ok = r.returncode == 0
 if ok:
     subprocess.run([r"C:\Program Files\Unity\Hub\Editor\6000.6.7f1\Editor\Unity.exe", "-batchmode", "-quit", "-projectPath", U, "-buildTarget", "WebGL",
                     "-executeMethod", "Hearthgate.EditorTools.HearthgateSetup.BuildWebGL", "-logFile", B + r"\log-build.txt"], creationflags=0x08000000)

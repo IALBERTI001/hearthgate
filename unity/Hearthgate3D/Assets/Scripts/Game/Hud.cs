@@ -11,8 +11,9 @@ namespace Hearthgate.Game
     public class Hud : MonoBehaviour
     {
         static Hud I;
-        Font font, body; Text wave, res, rate, banner, upLbl, reLbl, gateTxt; Image gateBar; RectTransform forkBox;
-        Pressable up, re, walk, work; Text walkLbl, workLbl; RectTransform workCard;
+        Font font, body; Text wave, res, rate, banner, gateTxt; Image gateBar; RectTransform forkBox;
+        Act up, re, walk, work; RectTransform workCard; double shownRes = -1;
+        Sprite gemSprite; static Sprite Icon(string n) => Resources.Load<Sprite>("Icons/icon_" + n);
         readonly RectTransform[] signs = new RectTransform[10]; readonly Text[] signTxt = new Text[10];   // the buildings' signs, written over their boards
 
         // A control this HUD answers itself, from the raw pointer. uGUI's event system drops pointer input whenever the page
@@ -109,7 +110,7 @@ namespace Hearthgate.Game
             var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.55f); si.raycastTarget = false;
             wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -12), 28, TextAnchor.UpperLeft);
             var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -52), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
-            var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = Gem(); gi.raycastTarget = false;
+            gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
             res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -46), 40, TextAnchor.UpperLeft); res.color = RES;
             rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -94), 18, TextAnchor.UpperLeft); rate.font = body;
             banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -22), 34, TextAnchor.UpperCenter); banner.color = RES;
@@ -124,15 +125,21 @@ namespace Hearthgate.Game
             gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter);
 
             // top right, over the far meadow: the city fills the bottom of the view (LayoutCheck keeps it clear)
-            up = Btn("Upgrade", new Vector2(-16, -16), () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, out upLbl);
-            re = Btn("Rebuild", new Vector2(-16, -78), () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, out reLbl);
+            // (owner, Nov 14 2026: "Buttons are a mess, doesnt look polished"): one action kit for every button (game-polish
+            // rule 7): an icon rendered from the game's own model in a brass medallion, the action in the display font, its
+            // cost with the gem, the key as a small keycap on desktop. Upgrade gate is the primary action (rule 2): a
+            // brighter rim that breathes when it is affordable. A finished goal leaves (rule 4): no "City rebuilt" button.
+            var tr = new Vector2(1, 1);
+            up = Action("Upgrade", tr, new Vector2(-16, -16), new Vector2(230, 56), "gate", "U", () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, true);
+            re = Action("Rebuild", tr, new Vector2(-16, -78), new Vector2(230, 56), "rebuild", "R", () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, false);
 
             // the town walk (owner, Nov 13 2026): one button over the gate bar, between the inner lanes; while walking, a
             // card over it offers the work on the building in reach
-            walk = BtnAt("Walk", new Vector2(0.5f, 0), new Vector2(0, 62), new Vector2(230, 50), () => Wizard.I?.Toggle(), null, out walkLbl);
-            work = BtnAt("Work", new Vector2(0.5f, 0), new Vector2(0, 122), new Vector2(430, 78), () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
-                () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), out workLbl);
-            workCard = work.rt; workCard.gameObject.SetActive(false);
+            var bc = new Vector2(0.5f, 0);
+            walk = Action("Walk", bc, new Vector2(0, 62), new Vector2(230, 50), "walk", "T", () => Wizard.I?.Toggle(), null, false);
+            work = Action("Work", bc, new Vector2(0, 122), new Vector2(360, 66), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
+                () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
+            workCard = work.p.rt; workCard.gameObject.SetActive(false);
 
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
             // buildings"): a small plum board with its name, level and output, pinned over the signpost in its yard while
@@ -222,6 +229,57 @@ namespace Hearthgate.Game
                 while (size > f.min && f.t.preferredHeight > f.h) f.t.fontSize = --size;
             }
         }
+        // ---------- the action kit ----------
+        class Act { public Pressable p; public Text title, cost; public Image icon, gem, glow; public RectTransform cap, costRow; public bool primary; }
+        static readonly Color PLUM_DIM = new Color(0.2f, 0.14f, 0.22f, 0.94f), BRASS_HI = new Color(1f, 0.82f, 0.42f), SHORT = new Color(0.93f, 0.62f, 0.55f);
+        Act Action(string n, Vector2 anchor, Vector2 pos, Vector2 size, string icon, string key, System.Action act, System.Func<bool> on, bool primary)
+        {
+            var a = new Act { primary = primary };
+            var r = Box(n, transform, anchor, anchor, pos, size); r.pivot = anchor;
+            if (primary)
+            {   // the breathing gold glow behind the primary action
+                var g = Box("Glow", r, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(14, 14));
+                a.glow = g.gameObject.AddComponent<Image>(); a.glow.sprite = Panel(new Color(1f, 0.8f, 0.35f, 0.0f), new Color(1f, 0.8f, 0.35f, 0.55f), 18, 7);
+                a.glow.type = Image.Type.Sliced; a.glow.raycastTarget = false;
+            }
+            var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, primary ? BRASS_HI : BRASS, 14, primary ? 4 : 3); img.type = Image.Type.Sliced;
+            float h = size.y, m = h - 12;
+            var med = Box("Medal", r, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(6 + m / 2, 0), new Vector2(m, m));
+            var mi = med.gameObject.AddComponent<Image>(); mi.sprite = Panel(INK, BRASS, (int)(m / 2) - 1, 3); mi.type = Image.Type.Sliced; mi.raycastTarget = false;
+            var ic = Box("Icon", med, Vector2.zero, Vector2.one, new Vector2(0, 1), new Vector2(2, 2));
+            a.icon = ic.gameObject.AddComponent<Image>(); a.icon.sprite = Icon(icon); a.icon.preserveAspect = true; a.icon.raycastTarget = false;
+            if (!a.icon.sprite) a.icon.enabled = false;
+            float left = m + 14, w = size.x - left - 10;
+            a.title = Label("Title", r, new Vector2(0, 0.5f), Vector2.zero, h >= 60 ? 22 : 20, TextAnchor.MiddleLeft);
+            var tr = a.title.rectTransform; tr.pivot = new Vector2(0, 0.5f); tr.sizeDelta = new Vector2(w, h * 0.5f); tr.anchoredPosition = new Vector2(left, h * 0.18f);
+            a.title.horizontalOverflow = HorizontalWrapMode.Overflow;
+            a.costRow = Box("Cost", r, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(left, -h * 0.2f), new Vector2(w, h * 0.4f)); a.costRow.pivot = new Vector2(0, 0.5f);
+            var gm = Box("Gem", a.costRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(8, 0), new Vector2(17, 17));
+            a.gem = gm.gameObject.AddComponent<Image>(); a.gem.sprite = gemSprite; a.gem.raycastTarget = false;
+            a.cost = Label("C", a.costRow, new Vector2(0, 0.5f), new Vector2(20, 0), 17, TextAnchor.MiddleLeft); a.cost.font = body;
+            a.cost.rectTransform.pivot = new Vector2(0, 0.5f); a.cost.rectTransform.sizeDelta = new Vector2(w - 20, h * 0.4f);
+            if (!Application.isMobilePlatform)
+            {   // the key, as a keycap on the corner (desktop only)
+                a.cap = Box("Key", r, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-4, -4), new Vector2(24, 21)); a.cap.pivot = new Vector2(1, 1);
+                var ci = a.cap.gameObject.AddComponent<Image>(); ci.sprite = Panel(INK, new Color(0.62f, 0.5f, 0.3f), 6, 2); ci.type = Image.Type.Sliced; ci.raycastTarget = false;
+                var kt = Label("K", a.cap, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 13, TextAnchor.MiddleCenter); kt.font = body; kt.text = key;
+                kt.rectTransform.pivot = new Vector2(0.5f, 0.5f); kt.rectTransform.sizeDelta = new Vector2(24, 21); kt.color = new Color(0.93f, 0.86f, 0.72f);
+                Destroy(kt.GetComponent<Shadow>());
+            }
+            a.p = Press(r, act, on);
+            return a;
+        }
+        // one action's look for this frame: its words, its cost (or none), and whether it can be pressed
+        void Show(Act a, string title, string cost, bool can, float t)
+        {
+            a.title.text = title;
+            bool hasCost = !string.IsNullOrEmpty(cost); a.costRow.gameObject.SetActive(hasCost);
+            var tr = a.title.rectTransform; float h = a.p.rt.sizeDelta.y;
+            tr.anchoredPosition = new Vector2(tr.anchoredPosition.x, hasCost ? h * 0.18f : 0);
+            if (hasCost) { a.cost.text = cost; a.cost.color = can ? RES : SHORT; }
+            if (a.icon) a.icon.color = can || !hasCost ? Color.white : new Color(0.75f, 0.72f, 0.78f, 0.85f);
+            if (a.glow) { var c = a.glow.color; c.a = can && hasCost ? 0.55f + 0.45f * Mathf.Sin(t * 3.2f) : 0f; a.glow.color = c; }
+        }
         Pressable BtnAt(string n, Vector2 anchor, Vector2 pos, Vector2 size, System.Action act, System.Func<bool> on, out Text lbl)
         {
             var r = Box(n, transform, anchor, anchor, pos, size); r.pivot = anchor;
@@ -244,30 +302,33 @@ namespace Hearthgate.Game
             var g = GameLoop.I; if (g == null) return; var P = g.P;
             Pointer();
             wave.text = $"Wave {P.wave}";
-            res.text = HG.Fmt(P.res);
+            shownRes = shownRes < 0 ? P.res : shownRes + (P.res - shownRes) * Mathf.Min(1f, Time.deltaTime * 9f);   // the number counts toward the truth (game-polish 14)
+            if (System.Math.Abs(P.res - shownRes) < 1) shownRes = P.res;
+            res.text = HG.Fmt(shownRes);
             double r = HG.CityRate(P, g.B); rate.text = r > 0 ? $"+{HG.Fmt(r)}/s from the city" : "";
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Gate {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
-            // keyboard keys on desktop only (game-polish rule 12); a phone or tablet shows just the action and its cost
-            string keyU = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[U]</color>", keyR = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[R]</color>";
-            upLbl.text = $"Upgrade gate\n<color=#FFD56B>{HG.Fmt(g.UpgradeCost)}</color>{keyU}";
-            var nb = g.NextBuilding;
-            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n<color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>{keyR}";
+            float now = Time.unscaledTime;
+            Show(up, "Upgrade gate", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
+            var nb = g.NextBuilding; if (re.p.rt.gameObject.activeSelf != (nb != null)) re.p.rt.gameObject.SetActive(nb != null);
+            if (nb != null) Show(re, $"Rebuild {HG.ById(nb).name}", HG.Fmt(g.RestoreCost), g.CanRestore, now);
             Signs(g, P);
             // the town walk
-            var wz = Wizard.I; string keyT = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[T]</color>", keyE = Application.isMobilePlatform ? "" : "   <color=#D9C9A8>[E]</color>";
-            walkLbl.text = (wz && wz.On ? "Back to the walls" : "Walk the town") + keyT;
+            var wz = Wizard.I;
+            Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", null, true, now);
             bool showWork = wz && wz.On && wz.Near >= 0; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);
             if (showWork)
             {
                 var id = HG.BUILDING_IDS[wz.Near]; var b = HG.ById(id);
+                bool can = g.CanWork(wz.Near); work.title.fontSize = 22;
                 if (P.restored.Contains(id))
                 {
-                    int L = HG.LevelOf(P, id); double now = HG.BuildingRate(P, id, g.B), next = HG.BuildingRate(P, id, g.B, L + 1);
-                    workLbl.text = $"Upgrade {b.name}  ·  level {L} to {L + 1}\n+{(next - now < 10 ? (next - now).ToString("0.##") : HG.Fmt(next - now))}/s   <color=#FFD56B>{HG.Fmt(g.LevelCost(wz.Near))}</color>{keyE}";
+                    int L = HG.LevelOf(P, id); double cur = HG.BuildingRate(P, id, g.B), next = HG.BuildingRate(P, id, g.B, L + 1); double gain = next - cur;
+                    work.icon.sprite = Icon("upgrade") ?? work.icon.sprite;
+                    Show(work, $"{b.name}: level {L + 1}", $"{HG.Fmt(g.LevelCost(wz.Near))}     <color=#CFE9B0>+{(gain < 10 ? gain.ToString("0.##") : HG.Fmt(gain))}/s</color>", can, now);
                 }
-                else if (HG.RestoreOffer(P).Contains(id)) workLbl.text = $"Rebuild {b.name}\n{b.line}   <color=#FFD56B>{HG.Fmt(g.RestoreCost)}</color>{keyE}";
-                else workLbl.text = $"Ruined {b.name}\n<color=#D9C9A8>Rebuild the marked plot first</color>";
+                else if (HG.RestoreOffer(P).Contains(id)) { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, now); }
+                else { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"The {b.name} lies in ruins", null, false, now); work.title.fontSize = 18; }
             }
             Refit();
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }

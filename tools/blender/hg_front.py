@@ -486,6 +486,26 @@ def lanes():
         for _ in range(int(L0 * 0.7)):
             u = R.uniform(3, u1 - 1); side = R.choice((-1, 1)); off = side * (L.LANE_HALF + 0.1)
             tufts(fx + dx * u + px * off, fz + dz * u + pz * off, 2, (0.4, 0.4))
+    # the road to the gate: a cobbled way straight up the middle from beyond the frame to the gatehouse's step, kerbed,
+    # worn smoother down its middle, with milestones; traders' road, not a lane (the monsters keep to their four)
+    z0, z1 = 2.2, 34.0; n = 30
+    for (half, m, z, jit) in ((L.ROAD_HALF, 'cobble', 0.035, 0.12), (1.1, 'cobble2', 0.05, 0.15)):
+        left, right = [], []
+        for k in range(n + 1):
+            zz = z0 + (z1 - z0) * k / n
+            left.append((half + R.uniform(-jit, jit), zz, z)); right.append((-half + R.uniform(-jit, jit), zz, z))
+        vs = left + right; N = n + 1
+        mesh_from('road', vs, [(k, k + 1, N + k + 1, N + k) for k in range(n)], M(m), 0.0)
+    for s in (-1, 1):   # kerbs, a stone every 0.9 m
+        zz = z0 + 0.3
+        while zz < z1:
+            L0 = R.uniform(0.6, 0.85)
+            block((s * (L.ROAD_HALF + 0.1), zz + L0 / 2, 0.1), (0.26, L0 - 0.05, 0.2), M(R.choice(('stone2', 'stone3', 'stone_dk'))), 0.03)
+            zz += L0
+        for zz in (9.0, 20.0):   # milestones
+            block((s * (L.ROAD_HALF + 0.7), zz, 0.45), (0.36, 0.26, 0.9), M('stone3'), 0.06)
+            K.sphere('cap', 0.2, (s * (L.ROAD_HALF + 0.7), zz, 0.95), M('stone2'), (1, 0.8, 0.6), 1)
+    for k in range(10): tufts(R.choice((-1, 1)) * (L.ROAD_HALF + 0.45), R.uniform(3, 30), 2, (0.2, 0.4))
     return K.export('road')
 road = lanes   # exported as 'road' (ArtSet.road)
 

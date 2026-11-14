@@ -85,8 +85,11 @@ def lane(i):
 
 LANES = [lane(i) for i in range(4)]
 
+ROAD_HALF = 2.4   # the road to the gate (owner, Nov 14 2026: "the no road to gate part is a bit bad"), down the middle
+
 def lane_clear(x, z, r):
-    """True when a circle of radius r at (x, z) keeps off every lane and its 0.8 m verge."""
+    """True when a circle of radius r at (x, z) keeps off every lane, the road to the gate, and their 0.8 m verges."""
+    if z > 1.0 and abs(x) < ROAD_HALF + 0.8 + r: return False
     for (fx, fz), (sx, sz) in LANES:
         dx, dz = sx - fx, sz - fz; L2 = dx * dx + dz * dz
         t = max(0.0, min(1.0, ((x - fx) * dx + (z - fz) * dz) / L2))

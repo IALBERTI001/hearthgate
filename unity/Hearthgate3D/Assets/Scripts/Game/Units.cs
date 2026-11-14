@@ -57,6 +57,6 @@ namespace Hearthgate.Game
 
     public class Shot
     {
-        public Vector3 p; public Enemy target; public string el; public float speed; public Transform t; public TrailRenderer trail;
+        public Vector3 p, from; public Enemy target; public string el; public float speed, k, dur; public Transform t; public TrailRenderer trail;   // k: 0..1 along the arc
     }
 }

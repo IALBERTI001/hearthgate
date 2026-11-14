@@ -168,7 +168,7 @@ namespace Hearthgate.Game
             foreach (var tw in towers)
             {
                 if ((tw.cool -= DT) > 0) continue;
-                var tg = Pick(tw.el); if (tg == null) continue;
+                var tg = Pick(tw); if (tg == null) continue;
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f);
                 var go = new GameObject("shot");
                 var mr = Art.Shape(PrimitiveType.Sphere, Art.Mat(Field.Of(tw.el), true));
@@ -177,13 +177,18 @@ namespace Hearthgate.Game
                 var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.3f; tr.startWidth = 0.55f; tr.endWidth = 0f;
                 tr.material = Art.Mat(Field.Of(tw.el), true);
                 go.transform.position = tw.Muzzle;
-                shots.Add(new Shot { p = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
+                shots.Add(new Shot { p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
             }
         }
-        // frost picks someone not yet chilled; fire, storm and stone prefer the chilled (that is how combos happen)
-        Enemy Pick(string el)
+        // frost picks someone not yet chilled; fire, storm and stone prefer the chilled (that is how combos happen). A tower
+        // shoots down its own side of the gate first (lanes on the same side), so its shots fly out over the field and not
+        // across the gatehouse and the town (owner, Nov 14 2026: "the projectiles clipping the town is bad")
+        Enemy Pick(Tower tw)
         {
-            var live = enemies.Where(e => e.dying <= 0 && e.z < e.spawn - 1.5f).OrderBy(e => e.z).ToList();   // on screen, nearest the wall first
+            string el = tw.el; float side = Mathf.Sign(tw.x);
+            var all = enemies.Where(e => e.dying <= 0 && e.z < e.spawn - 1.5f).OrderBy(e => e.z).ToList();   // on screen, nearest the wall first
+            var live = all.Where(e => Mathf.Sign(Field.Lane(e.lane, 0, 0).x) == side).ToList();
+            if (live.Count == 0) live = all;
             if (live.Count == 0) return null;
             if (el == "frost") return live.FirstOrDefault(e => e.chill <= 0.6f) ?? live[0];
             return live.FirstOrDefault(e => e.chill > 0.25f) ?? live[0];
@@ -194,9 +199,15 @@ namespace Hearthgate.Game
             {
                 var s = shots[i];
                 if (s.target == null || s.target.dying > 0) { Destroy(s.t.gameObject); shots.RemoveAt(i); continue; }
-                var to = s.target.Pos - s.p; float step = s.speed * DT;
-                if (to.magnitude <= step) { Hit(s.target, s.el); Destroy(s.t.gameObject); shots.RemoveAt(i); continue; }
-                s.p += to.normalized * step; s.t.position = s.p;
+                // a shot flies on an arc from the tower top to its (moving) target: high enough to clear the gatehouse's keep
+                // when it has to cross the middle, a gentle lob otherwise; it never passes through a wall or a roof
+                var goal = s.target.Pos; float dist = Vector3.Distance(s.from, goal);
+                if (s.dur <= 0) s.dur = Mathf.Max(0.12f, dist / s.speed);
+                s.k = Mathf.Min(1f, s.k + DT / s.dur);
+                bool crosses = Mathf.Sign(s.from.x) != Mathf.Sign(goal.x) || Mathf.Abs(goal.x) < Field.GATE_HALF + 1f;
+                float apex = s.el == "storm" ? 0.6f : crosses ? Mathf.Max(0f, 12f - Mathf.Max(s.from.y, goal.y)) + 1.5f : 1.2f + dist * 0.06f;
+                s.p = Vector3.Lerp(s.from, goal, s.k) + Vector3.up * (4f * apex * s.k * (1 - s.k)); s.t.position = s.p;
+                if (s.k >= 1f) { Hit(s.target, s.el); Destroy(s.t.gameObject); shots.RemoveAt(i); continue; }
             }
         }
 
