@@ -44,8 +44,8 @@ els = ['fire', 'frost', 'storm', 'fire'] if STATE == 'mid' else ['stone'] * 4
 for (x, z), el in zip(L.TOWERS, els):
     place('tower_base', (x, z, 0)); place('top_' + el, (x, z, TOWER_TOP))
 built = {'forge', 'frostSpire', 'stormBell', 'bakery', 'cottages'} if STATE == 'mid' else set()
-for (x, y), bid in zip(PLOTS, IDS):
-    place('building_' + bid if bid in built else 'ruin_' + bid, (x, y, 0), 180)   # Field.PLOT_FACING: fronts to the camera
+for (x, y), bid, yaw in zip(PLOTS, IDS, L.YAWS):
+    place('building_' + bid if bid in built else 'ruin_' + bid, (x, y, 0), yaw)   # Field.PlotRot: fronts to the square
 if os.path.exists(os.path.join(MODELS, 'wizard.fbx')):   # the wizard in the square, facing the walls
     place('wizard', (-6.0, -8.0, 0), 180, 0.66)   # Wizard.HOME, Wizard.SCALE
 if STATE == 'mid':

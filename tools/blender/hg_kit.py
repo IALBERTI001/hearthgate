@@ -36,6 +36,9 @@ PAL = {
     'water_gloss': (0.25, 0.55, 0.85), 'window': (1.0, 0.72, 0.32), 'skin': (0.96, 0.75, 0.6), 'cloth': (0.3, 0.5, 0.8),
     'road': (0.52, 0.39, 0.26),
     'robe': (0.33, 0.22, 0.62), 'robe_dk': (0.20, 0.13, 0.40), 'beard': (0.95, 0.94, 0.90),   # the wizard (the town walk)
+    # the townsfolk (Nov 14 2026)
+    'tunic_g': (0.33, 0.50, 0.28), 'tunic_b': (0.28, 0.42, 0.66), 'dress': (0.64, 0.22, 0.30), 'apron': (0.95, 0.93, 0.88),
+    'hair': (0.36, 0.22, 0.12), 'hair2': (0.78, 0.56, 0.26), 'trousers': (0.38, 0.29, 0.21), 'soil': (0.30, 0.21, 0.14),
 }
 _mats = {}
 def mat(name, glow=0.0):
@@ -328,7 +331,7 @@ if __name__ == '__main__':
     jobs += [('top_' + k, (lambda k=k: top(k))) for k in ('stone', 'fire', 'frost', 'storm')]
     jobs += [('building_' + b, (lambda b=b: building(b))) for b in ROOF]
     jobs += [('ruin_' + b, (lambda b=b: C.ruin_of(b))) for b in ROOF]
-    jobs += [('marker', F.marker), ('wizard', F.wizard)]
+    jobs += [('marker', F.marker), ('wizard', F.wizard)] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc']
     k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))
     report = {}
     for i, (nm, fn) in enumerate(jobs):

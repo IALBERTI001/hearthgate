@@ -462,23 +462,32 @@ def lanes():
         L0 = math.hypot(sx - fx, sz - fz); dx, dz = (sx - fx) / L0, (sz - fz) / L0; px, pz = -dz, dx
         u0, u1 = 1.0, L0 + 9.0
         n = int((u1 - u0) / 1.5) + 1
-        for (half, m, z, jit) in ((L.LANE_HALF, 'dirt', 0.03, 0.18), (0.75, 'dirt_dk', 0.045, 0.22)):
-            left, right = [], []
-            for k in range(n + 1):
-                u = u0 + (u1 - u0) * k / n
-                hl, hr = half + R.uniform(-jit, jit), half + R.uniform(-jit, jit)
-                left.append((fx + dx * u + px * hl, fz + dz * u + pz * hl, z)); right.append((fx + dx * u - px * hr, fz + dz * u - pz * hr, z))
-            vs = left + right; N = n + 1
-            mesh_from('lane', vs, [(N + k, N + k + 1, k + 1, k) for k in range(n)], M(m), 0.0)
+        # a trail worn by the horde, not a dug road (owner, Nov 14 2026: "fix the paths of dirt. Not sure if they are really
+        # required"): bare earth in scuffed patches down the middle, thicker toward the tower where they mass, the
+        # meadow grass showing through between
+        u = u0
+        while u < u1:
+            near = 1 - (u - u0) / (u1 - u0)
+            for _ in range(2 if R.random() < 0.45 + 0.4 * near else 1):
+                if R.random() > 0.35 + 0.55 * near: continue
+                off = R.uniform(-1.0, 1.0); cx, cy = fx + dx * u + px * off, fz + dz * u + pz * off
+                rr = R.uniform(0.45, 0.95) * (0.8 + 0.4 * near); n_ = 7
+                vs = []
+                for k in range(n_):   # a scuff drawn out along the lane
+                    a_, j = k / n_ * math.tau, R.uniform(0.7, 1.2)
+                    vs.append((cx + dx * math.cos(a_) * rr * 1.6 * j + px * math.sin(a_) * rr * j, cy + dz * math.cos(a_) * rr * 1.6 * j + pz * math.sin(a_) * rr * j, 0.03 + R.uniform(0, 0.006)))
+                if (dx * pz - dz * px) < 0: vs.reverse()   # counter-clockwise from above
+                mesh_from('trail', vs, [tuple(range(n_))], M(R.choice(('dirt', 'dirt', 'dirt_dk'))), 0.0)
+            u += R.uniform(0.9, 1.4)
         # the apron at the tower's foot: trampled earth in a rough half disc, rubble from the fighting
         vs = [(fx, fz, 0.035)]
         for k in range(13):
             ang = math.atan2(dz, dx) - math.pi / 2 - 0.35 + (math.pi + 0.7) * k / 12
-            r = 3.0 * R.uniform(0.85, 1.1); vs.append((fx + math.cos(ang) * r, fz + math.sin(ang) * r, 0.035))
+            r = 2.4 * R.uniform(0.8, 1.1); vs.append((fx + math.cos(ang) * r, fz + math.sin(ang) * r, 0.035))
         mesh_from('apron', vs, [(0, k + 1, k + 2) for k in range(12)], M('dirt'), 0.0)
         rubble(fx + px * 2.2, fz + pz * 2.2, 3, (0.5, 0.5)); rubble(fx - px * 2.2, fz - pz * 2.2, 3, (0.5, 0.5))
-        for _ in range(int(L0 * 1.6)):   # pebbles in clusters along both edges, grass bleeding in
-            u = R.uniform(2.5, u1 - 1); side = R.choice((-1, 1)); off = side * (L.LANE_HALF - R.uniform(0.0, 0.4))
+        for _ in range(int(L0 * 0.5)):   # a few stones kicked aside
+            u = R.uniform(2.5, u1 - 1); side = R.choice((-1, 1)); off = side * R.uniform(0.9, 1.6)
             for k in range(R.randint(1, 3)):
                 sz_ = R.uniform(0.14, 0.28)
                 o = block((fx + dx * u + px * off + R.uniform(-0.3, 0.3), fz + dz * u + pz * off + R.uniform(-0.3, 0.3), 0.07), (sz_ * 1.3, sz_, sz_ * 0.5), M(R.choice(('cobble2', 'rock', 'rock_dk'))), 0.03)
@@ -596,6 +605,145 @@ def outcrop(x, y, n, spread, scale=1.0):   # a cluster of big angular rocks
         for v in b.data.vertices: v.co *= R.uniform(0.85, 1.12)
         K.finish(b, M(R.choice(('rock', 'rock_dk', 'stone2'))), 0.0, smooth=False)
 
+# ---------------------------------------------------------------------------------------------------------------------
+# the town (owner, Nov 14 2026: "you can do the housing spaced inside circular facing the interior. makes the inside match
+# a circular cobble floor matching the path of the gate"): grass inside the ring, a cobbled square laid in rings round the
+# fountain and kerbed, the road through the gate running on into it, a short path from each door, and gardens between
+SETT_MATS = ('cobble', 'cobble', 'cobble2', 'cobble2', 'stone2')
+
+def _sett_bag(): return {m: ([], []) for m in SETT_MATS + ('stone_dk', 'stone3')}
+def _flush(bag, name='setts'):
+    for m, (vs, fs) in bag.items():
+        if vs: mesh_from(name, vs, fs, M(m), 0.0)
+
+def setts_rect(bag, org, eu, ev, u0, u1, v0, v1, size=(0.52, 0.44), keep=None):
+    """Setts in courses across u, laid from v0 to v1 in the frame (org, eu, ev) on the ground; a stone's camera-facing
+    edge (+y) shows its thickness. keep(x, y) can drop a stone (where another floor already lies)."""
+    v, row = v0 + 0.03, 0
+    while v < v1 - 0.2:
+        d = min(size[1] * R.uniform(0.9, 1.1), v1 - v); u = u0 + 0.03 + (size[0] * 0.5 * R.uniform(0.6, 1.0) if row % 2 else 0)
+        while u < u1 - 0.12:
+            w = min(size[0] * R.uniform(0.8, 1.2), u1 - 0.03 - u)
+            a, b, c, e = u, u + w - 0.06, v, v + d - 0.06
+            P = lambda uu, vv: (org[0] + eu[0] * uu + ev[0] * vv, org[1] + eu[1] * uu + ev[1] * vv)
+            cx, cy = P((a + b) / 2, (c + e) / 2)
+            if keep is None or keep(cx, cy):
+                m = R.choice(SETT_MATS); top = 0.03 + R.uniform(0.05, 0.08); j = R.uniform(-0.012, 0.012)
+                q = [P(a + j, c), P(b, c - j), P(b - j, e), P(a, e + j)]   # counter-clockwise from above when eu x ev points up
+                vs, fs = bag[m]; i = len(vs)
+                vs += [(x, y, top) for x, y in q]; fs.append((i, i + 1, i + 2, i + 3))
+                k = max(range(4), key=lambda n: (q[n][1] + q[(n + 1) % 4][1]))   # the edge nearest the camera (+y)
+                (x0, y0), (x1, y1) = q[k], q[(k + 1) % 4]
+                vs += [(x0, y0, 0.03), (x1, y1, 0.03)]; fs.append((i + k, i + 4, i + 5, i + (k + 1) % 4))
+            u += w
+        v += d; row += 1
+
+def setts_rings(bag, cx, cy, A, B, course=0.46, length=0.56):
+    """The square: setts in rings round its centre, out to the ellipse A x B; only whole stones inside it."""
+    r = 1.0
+    while r < max(A, B):
+        n = max(6, int(math.tau * r / length)); ph = R.uniform(0, math.tau)
+        for k in range(n):
+            t0, t1 = ph + k / n * math.tau, ph + (k + 1) / n * math.tau - 0.055 / r
+            r0, r1 = r, r + course - 0.055
+            q = [(cx + rr * math.cos(t), cy + rr * math.sin(t)) for rr, t in ((r0, t0), (r1, t0), (r1, t1), (r0, t1))]   # counter-clockwise from above
+            if any(((x - cx) / A) ** 2 + ((y - cy) / B) ** 2 > 0.985 for x, y in q): continue
+            m = R.choice(SETT_MATS); top = 0.03 + R.uniform(0.05, 0.08); vs, fs = bag[m]; i = len(vs)
+            vs += [(x, y, top) for x, y in q]; fs.append((i, i + 1, i + 2, i + 3))
+        r += course
+
+def ellipse_pts(cx, cy, A, B, n=96): return [(cx + A * math.cos(k / n * math.tau), cy + B * math.sin(k / n * math.tau)) for k in range(n)]
+
+def lamp(x, y):
+    K.cyl('lamp_base', 0.16, 0.3, (x, y, 0.15), M('stone_dk'), 8, 0.02)
+    K.cyl('lamp_post', 0.06, 2.6, (x, y, 1.45), M('iron'), 8, 0.0)
+    block((x, y, 2.85), (0.34, 0.34, 0.42), M('window', 1.6), 0.03)
+    K.cone('lamp_cap', 0.3, 0.25, (x, y, 3.18), M('iron'), 4).rotation_euler = (0, 0, math.pi / 4)
+    for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)): block((x + sx * 0.17, y + sy * 0.17, 2.85), (0.04, 0.04, 0.44), M('iron'), 0.0)
+
+def bench(x, y, f):
+    r = (f[1], -f[0]); P = lambda u, v, z: (x + r[0] * u + f[0] * v, y + r[1] * u + f[1] * v, z)
+    rot = math.atan2(r[1], r[0])
+    block(P(0, 0, 0.45), (1.5, 0.44, 0.07), M('wood'), 0.02, rot)
+    block(P(0, -0.2, 0.75), (1.5, 0.06, 0.32), M('wood'), 0.02, rot)
+    for u in (-0.6, 0.6):
+        block(P(u, 0, 0.22), (0.08, 0.4, 0.44), M('iron'), 0.0, rot); block(P(u, -0.2, 0.6), (0.06, 0.06, 0.4), M('iron'), 0.0, rot)
+
+def stall(x, y, f):
+    r = (f[1], -f[0]); P = lambda u, v, z: (x + r[0] * u + f[0] * v, y + r[1] * u + f[1] * v, z)
+    rot = math.atan2(r[1], r[0])
+    block(P(0, 0.1, 0.48), (2.2, 0.9, 0.9), M('wood'), 0.03, rot)          # the counter
+    block(P(0, 0.1, 0.95), (2.3, 1.0, 0.06), M('wood_dk'), 0.02, rot)
+    for k, m in enumerate(('flower_y', 'roof_red', 'hay', 'tree2')):        # goods in baskets
+        u = -0.8 + k * 0.53; K.cyl('basket', 0.2, 0.16, P(u, 0.25, 1.06), M('wood'), 10, 0.01)
+        for _ in range(3): K.sphere('goods', 0.08, P(u + R.uniform(-0.08, 0.08), 0.25 + R.uniform(-0.08, 0.08), 1.16), M(m), sub=1)
+    for u in (-1.05, 1.05):
+        for v in (-0.35, 0.55): K.cyl('pole', 0.04, 2.2, P(u, v, 1.1), M('wood_dk'), 6, 0.0)
+    for k in range(5):   # a striped awning sloping down toward the customers
+        u0 = -1.2 + k * 0.48; m = 'awning' if k % 2 == 0 else 'canvas'
+        vs = [P(u0, -0.45, 2.25), P(u0 + 0.48, -0.45, 2.25), P(u0 + 0.48, 0.85, 1.95), P(u0, 0.85, 1.95)]
+        mesh_from('awning', vs, [(0, 1, 2, 3), (3, 2, 1, 0)], M(m), 0.0)   # seen from above and below
+
+def barrels(x, y):
+    for dx, dy, h in ((0, 0, 0), (0.45, 0.1, 0), (0.2, -0.38, 0)):
+        K.cyl('barrel', 0.24, 0.62, (x + dx, y + dy, 0.31), M('wood'), 12, 0.02)
+        K.cyl('hoop', 0.25, 0.05, (x + dx, y + dy, 0.5), M('iron'), 12, 0.0)
+    block((x - 0.4, y + 0.3, 0.2), (0.4, 0.4, 0.4), M('wood'), 0.03, R.uniform(0, 1))
+
+def flower_bed(x, y, r):
+    n = 12
+    mesh_from('soil', [(x + math.cos(k / n * math.tau) * r, y + math.sin(k / n * math.tau) * r, 0.1) for k in range(n)], [tuple(range(n))], M('soil'), 0.0)
+    for k in range(n): K.sphere('kerb', 0.13, (x + math.cos(k / n * math.tau) * r, y + math.sin(k / n * math.tau) * r, 0.08), M('stone2'), (1.3, 1, 0.7), 1)
+    c = R.choice(('flower_y', 'flower_w', 'flower_p'))
+    for _ in range(int(r * 18)):
+        a, d = R.uniform(0, math.tau), R.uniform(0, r * 0.8)
+        K.sphere('flower', 0.08, (x + math.cos(a) * d, y + math.sin(a) * d, 0.22), M(c if R.random() < 0.7 else 'flower_w'), sub=1)
+    for _ in range(4): K.sphere('leaves', 0.16, (x + R.uniform(-r, r) * 0.6, y + R.uniform(-r, r) * 0.6, 0.15), M('bush'), (1, 1, 0.6), 1)
+
+def town():
+    cx, cy = L.CENTRE
+    # the square: a mortar bed, setts in rings round the fountain, a kerb of dark stones round its edge
+    mesh_from('square_bed', [(x, y, 0.025) for x, y in ellipse_pts(cx, cy, L.SQUARE_A, L.SQUARE_B)], [tuple(range(96))], M('mortar'), 0.0)
+    bag = _sett_bag(); setts_rings(bag, cx, cy, L.SQUARE_A - 0.25, L.SQUARE_B - 0.25)
+    pts = ellipse_pts(cx, cy, L.SQUARE_A, L.SQUARE_B, 260)
+    for k in range(0, 260, 1):
+        (x0, y0), (x1, y1) = pts[k], pts[(k + 1) % 260]
+        if abs((x0 + x1) / 2) < L.GATE_HALF_ST and (y0 + y1) / 2 > cy: continue   # the gate road runs in here
+        block(((x0 + x1) / 2, (y0 + y1) / 2, 0.06), (math.dist((x0, y0), (x1, y1)) - 0.05, 0.22, 0.12), M('stone_dk'), 0.02, math.atan2(y1 - y0, x1 - x0))
+    # the road through the gate, on to the square (setts like the road outside, courses across it)
+    g0, g1 = cy + L.SQUARE_B - 1.2, -1.2
+    mesh_from('gate_bed', [(-L.GATE_HALF_ST, g0, 0.025), (L.GATE_HALF_ST, g0, 0.025), (L.GATE_HALF_ST, g1, 0.025), (-L.GATE_HALF_ST, g1, 0.025)], [(0, 1, 2, 3)], M('mortar'), 0.0)
+    setts_rect(bag, (0, 0), (1, 0), (0, 1), -L.GATE_HALF_ST, L.GATE_HALF_ST, g0, g1, keep=lambda x, y: not L.in_square(x, y, -0.3))
+    for sx in (-1, 1):   # its kerbs
+        y = g0
+        while y < g1 - 0.3:
+            Ln = R.uniform(0.6, 0.85); block((sx * (L.GATE_HALF_ST + 0.08), y + Ln / 2, 0.08), (0.2, Ln - 0.05, 0.16), M(R.choice(('stone2', 'stone_dk'))), 0.02); y += Ln
+    # a path from each door to the square, in the house's own frame
+    for i, bid in enumerate(L.IDS):
+        d = L.SIZES[bid][1] / 2; Ln = L.door_path(i) + 0.4
+        (ox, oy), r, f = L.frame(i)
+        org = L.world(i, 0, d)
+        corners = [L.world(i, u, v) for u, v in ((-L.PATH_HALF, d), (L.PATH_HALF, d), (L.PATH_HALF, d + Ln), (-L.PATH_HALF, d + Ln))]
+        if (r[0] * f[1] - r[1] * f[0]) < 0: corners.reverse()
+        mesh_from('path_bed', [(x, y, 0.024) for x, y in corners], [(0, 1, 2, 3)], M('mortar'), 0.0)
+        eu, ev = (r, f) if (r[0] * f[1] - r[1] * f[0]) > 0 else ((-r[0], -r[1]), f)
+        setts_rect(bag, org, eu, ev, -L.PATH_HALF, L.PATH_HALF, 0.0, Ln, keep=lambda x, y: not L.in_square(x, y, -0.3))
+    _flush(bag)
+    # the gardens and the square's furniture (hg_layout.TOWN_PROPS: the wizard walks round each one)
+    for kind, x, y, rad, yaw in L.TOWN_PROPS:
+        f = ((cx - x), (cy - y)); Lf = math.hypot(*f) or 1; f = (f[0] / Lf, f[1] / Lf)   # facing the fountain
+        if kind == 'lamp': lamp(x, y)
+        elif kind == 'bench': bench(x, y, f)
+        elif kind == 'stall': stall(x, y, f)
+        elif kind == 'barrels': barrels(x, y)
+        elif kind == 'bed': flower_bed(x, y, rad)
+        elif kind == 'bush':
+            for k in range(R.randint(3, 5)): K.sphere('bush', R.uniform(0.35, 0.6), (x + R.uniform(-0.4, 0.4), y + R.uniform(-0.4, 0.4), 0.3), M(R.choice(('bush', 'grass2', 'tree'))), (1, 1, 0.8), 2)
+        elif kind == 'tree': tree(x, y, rad * R.uniform(1.0, 1.15), 0.0, 'round')
+    # tufts along the house walls and the lawn edges
+    for i in range(len(L.IDS)):
+        for c in L.corners(i, 0.2): tufts(c[0], c[1], 2, (0.3, 0.3))
+
 def ground():
     bpy.ops.mesh.primitive_grid_add(x_subdivisions=76, y_subdivisions=76, size=1, location=(0, 0, 0))
     g = bpy.context.object; g.scale = (190, 180, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
@@ -608,28 +756,7 @@ def ground():
     for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
     K.finish(g, M('grass'))
     def free(x, y, r): return not L.inside(x, y, -1.8 - r) and L.lane_clear(x, y, r)   # outside the ring and off the lanes
-    # the town's ground: packed earth filling the ring, its rim ragged under the wall, a cobbled plaza and yards
-    pts = []
-    for i in range(48):
-        a = i / 48 * math.tau; k = R.uniform(0.93, 0.99)
-        pts.append((L.RX * k * math.cos(a), -L.RZ + L.RZ * k * math.sin(a)))
-    mesh_from('town', [(x, y, 0.02) for x, y in pts], [tuple(range(len(pts)))], M('dirt'), 0.0)
-    def patch(cx, cy, r, m, n=9, z=0.035):
-        vs = [(cx + math.cos(a) * r * R.uniform(0.8, 1.15), cy + math.sin(a) * r * R.uniform(0.8, 1.15), z) for a in [i / n * math.tau for i in range(n)]]
-        mesh_from('patch', vs, [tuple(range(n))], m, 0.0)
-    patch(PLAZA[0], PLAZA[1], 5.6, M('cobble'), 14)
-    mesh_from('street', [(-2.2, -1.6, 0.03), (2.2, -1.6, 0.03), (2.2, PLAZA[1] + 4.5, 0.03), (-2.2, PLAZA[1] + 4.5, 0.03)], [(3, 2, 1, 0)], M('cobble2'), 0.0)   # gate to plaza
-    for (px, py), bid in zip(PLOTS, L.IDS):   # a cobbled yard before each door (fronts face the gate, +y)
-        w, d = L.SIZES[bid]; y0 = py + d / 2 + 0.2
-        mesh_from('yard', [(px - w / 2, y0, 0.03), (px + w / 2, y0, 0.03), (px + w / 2 - 0.5, y0 + 2.6, 0.03), (px - w / 2 + 0.5, y0 + 2.6, 0.03)], [(0, 1, 2, 3)], M('cobble2'), 0.0)
-    def on_plot(x, y, m):
-        return any(abs(x - px) < L.SIZES[b][0] / 2 + m and abs(y - py) < L.SIZES[b][1] / 2 + m for (px, py), b in zip(PLOTS, L.IDS))
-    n = 0
-    while n < 40:   # grass creeping over the town's ground, clear of the yards
-        x, y = R.uniform(-L.RX, L.RX), R.uniform(-2 * L.RZ, 0)
-        if L.inside(x, y, 2.5) and not on_plot(x, y, 2.0) and math.hypot(x - PLAZA[0], y - PLAZA[1]) > 6.5 and abs(x) > 2.6:
-            patch(x, y, R.uniform(0.6, 1.6), M(R.choice(('grass2', 'grass'))), 7, 0.03); n += 1
-            if n % 2: tufts(x, y, 2, (0.5, 0.5))
+    town()   # the square, the gate road, the door paths and the town's gardens (owner, Nov 14 2026)
     # the slopes either side of the ring and the wooded ridge behind it: a darker, bluer back row for depth
     for (x, y) in ((L.RX + 5, -12), (L.RX + 6, -L.RZ - 4), (-L.RX - 5, -12), (-L.RX - 6, -L.RZ - 4), (L.RX + 3, 2), (-L.RX - 3, 2)): outcrop(x, y, 4, 1.8, 1.2)
     for _ in range(12):
@@ -748,3 +875,47 @@ def wizard():
     K.sphere('orb_core', 0.08, (0.7, -0.26, 2.3), M('gold', 3.0), sub=2)
     for s in (-1, 1): K.sphere('boot', 0.13, (s * 0.2, -0.22, 0.07), M('wood_dk'), (1, 1.5, 0.6), 2)
     return K.export('wizard')
+
+def villager(v):
+    """The townsfolk (owner, Nov 14 2026: a town that is lived in), in the wizard's style and units (the game scales them to
+    about 1.6 m): a: the baker (cream tunic, white apron and cap), b: the farmer (green tunic, straw hat), c: a townswoman
+    (red dress, apron, headscarf, a basket on her arm). Faces -y like the wizard."""
+    from mathutils import Euler
+    top = {'a': 'canvas', 'b': 'tunic_g', 'c': 'dress'}[v]
+    if v == 'c':   # a long skirt to the ground
+        K.cyl('skirt', 0.5, 0.95, (0, 0, 0.5), M('dress'), 18, 0.03, r2=0.32)
+        K.cyl('hem', 0.51, 0.06, (0, 0, 0.05), M('apron'), 18, 0.0)
+    else:
+        for sx in (-1, 1): K.cyl('leg', 0.13, 0.5, (sx * 0.14, 0, 0.3), M('trousers'), 10, 0.02)
+        K.cyl('tunic', 0.42, 0.55, (0, 0, 0.78), M(top), 18, 0.03, r2=0.33)
+    for sx in (-1, 1): K.sphere('boot', 0.13, (sx * 0.15, -0.08, 0.07), M('wood_dk'), (1, 1.5, 0.6), 2)
+    K.cyl('belt', 0.36, 0.08, (0, 0, 0.98), M('wood_dk'), 16, 0.02)
+    K.sphere('chest', 0.36, (0, 0, 1.12), M(top), (1, 0.85, 0.85), 3)
+    if v in 'ac':   # an apron over the front
+        block((0, -0.36, 0.72), (0.5, 0.05, 0.62 if v == 'a' else 0.75), M('apron'), 0.02).rotation_euler = (-0.12, 0, 0)
+    for sx in (-1, 1):   # sleeves hanging from the shoulders, hands at the cuffs
+        c = Vector((sx * 0.4, -0.04, 1.15)); rot = Euler((-0.2, -sx * 0.32, 0))
+        def along(d): w = Vector((0, 0, d)); w.rotate(rot); return c + w
+        o = K.cyl('sleeve', 0.13, 0.48, tuple(along(-0.2)), M(top), 10, 0.02, r2=0.11); o.rotation_euler = rot
+        K.sphere('hand', 0.1, tuple(along(-0.47)), M('skin'), sub=2)
+    if v == 'c':   # a basket on her right arm
+        K.cyl('basket', 0.17, 0.18, (0.5, -0.12, 0.72), M('wood'), 12, 0.01)
+        for k in range(3): K.sphere('bread', 0.07, (0.46 + k * 0.05, -0.12, 0.84), M('hay'), sub=1)
+    # the head: round face, little eyes, a rosy nose, hair
+    K.sphere('head', 0.3, (0, -0.02, 1.55), M('skin'), sub=3)
+    K.sphere('nose', 0.06, (0, -0.31, 1.53), M('blush'), sub=2)
+    for sx in (-1, 1):
+        K.sphere('eye', 0.05, (sx * 0.11, -0.27, 1.62), M('pupil'), (1, 0.6, 1.2), 2)
+        K.sphere('catch', 0.015, (sx * 0.1, -0.31, 1.64), M('white_gloss', 0.5), sub=1)
+    hair = 'hair2' if v == 'b' else 'hair'
+    K.sphere('hair', 0.31, (0, 0.05, 1.62), M(hair), (1, 1, 0.9), 3)
+    if v == 'a':   # the baker's cap
+        K.cyl('cap', 0.3, 0.22, (0, 0.02, 1.85), M('apron'), 16, 0.03, r2=0.34)
+    elif v == 'b':   # a wide straw hat
+        K.cyl('brim', 0.55, 0.05, (0, 0, 1.78), M('hay'), 24, 0.02)
+        K.cyl('crown', 0.3, 0.24, (0, 0, 1.92), M('hay'), 18, 0.02, r2=0.24)
+        K.cyl('band', 0.31, 0.06, (0, 0, 1.84), M('wood_dk'), 18, 0.0)
+    else:   # a headscarf, knotted at the back
+        K.sphere('scarf', 0.33, (0, 0.06, 1.66), M('canvas'), (1, 1, 0.85), 3)
+        K.sphere('knot', 0.09, (0, 0.34, 1.52), M('canvas'), sub=2)
+    return K.export('villager_' + v)

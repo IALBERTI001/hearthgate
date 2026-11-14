@@ -37,6 +37,7 @@ jobs = [(name, fn, extra) for fn, name, extra in ((F.gate, 'gate', None), (F.wal
 jobs += [('top_' + k, (lambda k=k: F.top(k)), None) for k in ('stone', 'fire', 'frost', 'storm')]
 jobs += [('building_' + b, C.BUILDERS[b], None) for b in C.BUILDERS] + [('ruin_' + b, (lambda b=b: C.ruin_of(b)), None) for b in C.SHELLS]
 jobs += [('marker', F.marker, None)]
+jobs += [('villager_' + v, (lambda v=v: F.villager(v)), None) for v in 'abc']
 part, parts = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))   # the chain runs the test in parallel parts
 for i, (name, fn, extra) in enumerate(jobs):
     if i % parts != part: continue

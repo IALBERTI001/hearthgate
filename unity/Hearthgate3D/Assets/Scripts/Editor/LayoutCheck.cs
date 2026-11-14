@@ -71,7 +71,7 @@ namespace Hearthgate.EditorTools
             for (int i = 0; i < art.buildings.Length; i++)
             {
                 var at = Field.Plot(i);
-                var rot = Field.PLOT_FACING;
+                var rot = Field.PlotRot(i);
                 var b = Measure(art.buildings[i], at, rot); var pp = Pts(); b.Encapsulate(Measure(art.Ruin(i), at, rot)); pp.AddRange(lastPts);
                 items.Add(new Item { name = "plot " + Hearthgate.Core.HG.BUILDING_IDS[i], b = b, pts = pp });
             }
@@ -86,11 +86,11 @@ namespace Hearthgate.EditorTools
             for (int i = 0; i < items.Count; i++)
             {
                 for (int j = i + 1; j < items.Count; j++)
-                    if (Overlap(items[i].b, items[j].b)) bad.Add($"{items[i].name} overlaps {items[j].name} ({R(items[i].b)} / {R(items[j].b)})");
+                    if (!(items[i].name.StartsWith("plot") && items[j].name.StartsWith("plot")) && Overlap(items[i].b, items[j].b))   // houses turned round the ring: their boxes are measured exactly by hg_layout.check_town bad.Add($"{items[i].name} overlaps {items[j].name} ({R(items[i].b)} / {R(items[j].b)})");
                 if (OnLane(items[i].b)) bad.Add($"{items[i].name} stands on a lane ({R(items[i].b)})");
             }
             foreach (var it in items.Where(x => x.name.StartsWith("plot") || x.name == "fountain"))
-                if (Corners(it.b).Any(c => !InRing(c, 1.4f))) bad.Add($"{it.name} is not inside the ring wall ({R(it.b)})");
+                if (it.pts.Any(c => !InRing(c, 1.4f))) bad.Add($"{it.name} is not inside the ring wall ({R(it.b)})");
             // each lane ends at the foot of its own tower, in front of it (outside the ring)
             for (int k = 0; k < 4; k++)
             {
@@ -141,7 +141,7 @@ namespace Hearthgate.EditorTools
                 PlaceSolid(art.towerBase, Field.Tower(i), Quaternion.identity);
                 PlaceSolid(art.topFrost, Field.Tower(i) + Vector3.up * Field.TOWER_TOP, Quaternion.identity);
             }
-            for (int i = 0; i < art.buildings.Length; i++) PlaceSolid(art.buildings[i], Field.Plot(i), Field.PLOT_FACING);
+            for (int i = 0; i < art.buildings.Length; i++) PlaceSolid(art.buildings[i], Field.Plot(i), Field.PlotRot(i));
             Physics.SyncTransforms();
             string blocker = null;
             bool Hidden(Vector3 target)
@@ -162,9 +162,10 @@ namespace Hearthgate.EditorTools
                 for (float z = -2 * Field.RZ + 2.5f; z <= -3.2f; z += 1.5f)
                 {
                     var p = new Vector3(x, 0, z);
-                    if (!InRing(p, 2.4f) || Enumerable.Range(0, 10).Any(i => Wizard.InFootprint(i, p, 0.4f)) || Vector3.Distance(p, Field.PLAZA) < Wizard.FOUNTAIN_R) continue;
+                    if (!InRing(p, 2.4f) || Enumerable.Range(0, 10).Any(i => Wizard.InFootprint(i, p, 0.4f)) || Vector3.Distance(p, Field.PLAZA) < Wizard.FOUNTAIN_R
+                        || Field.PROPS.Any(q => Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.y)) < q.z + Wizard.RADIUS)) continue;
                     spots++;
-                    var from = Wizard.FollowFrom(p); var to = p + Vector3.up * 1.3f; var d = to - from;
+                    var from = Wizard.FollowFrom(p, 0f, Wizard.HeadingAt(p, Wizard.START_HEADING)); var to = p + Vector3.up * 1.3f; var d = to - from;
                     if (Physics.Raycast(from, d.normalized, out var hitInfo, d.magnitude - 0.5f))
                     {
                         var who = hitInfo.collider.transform.root.name;
@@ -186,11 +187,15 @@ namespace Hearthgate.EditorTools
             // pixel boxes measured from the screen corner they are anchored to
             Rect TopLeft(float x1, float y1) => Rect.MinMaxRect(0, 1 - y1 * s / h, x1 * s / w, 1);
             Rect TopRight(float x0, float y0, float x1, float y1) => Rect.MinMaxRect(1 - x1 * s / w, 1 - y1 * s / h, 1 - x0 * s / w, 1 - y0 * s / h);
+            // the action group (Hud.LayoutActions): a row along the top when it fits beside the labels, else a column
+            float canvasW = w / s, rowW = 3 * 230 + 2 * Hearthgate.Game.Hud.GAP;
+            var actions = canvasW - Hearthgate.Game.Hud.LABELS_W - Hearthgate.Game.Hud.EDGE >= rowW
+                ? ("actions", TopRight(Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE + rowW, Hearthgate.Game.Hud.EDGE + 56))
+                : ("actions", TopRight(Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE + 230, Hearthgate.Game.Hud.EDGE + 3 * 56 + 2 * Hearthgate.Game.Hud.GAP));
             return new List<(string, Rect)> {
                 ("labels", TopLeft(250, 118)),                       // wave, Resonance, rate
-                ("buttons", TopRight(16, 16, 246, 134)),             // Upgrade and Rebuild (Hud.Btn: 230 x 56, 6 apart)
+                actions,                                             // Hud.LayoutActions: Upgrade, Rebuild and Walk as a row or a column
                 ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 27 * s / h, 0.5f + 180 * s / w, 53 * s / h)),
-                ("walk button", Rect.MinMaxRect(0.5f - 115 * s / w, 62 * s / h, 0.5f + 115 * s / w, 112 * s / h)),   // Hud: the town walk
             };
         }
 

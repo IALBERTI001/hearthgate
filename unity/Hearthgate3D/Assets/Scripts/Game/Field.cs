@@ -58,24 +58,68 @@ namespace Hearthgate.Game
             var d = Dir(k); float prog = Vector2.Dot(new Vector2(g.x, g.z) - FEET[k], d) + 1.5f;
             return Mathf.Clamp(Mathf.Max(far, prog), far, far + 8f);   // the lane art runs 9 m past its 16:9 start
         }
-        public static readonly Vector3 PLAZA = new Vector3(0.000f, 0, -10.000f);   // straight behind the gatehouse: the town's square
+        public static readonly Vector3 PLAZA = new Vector3(0.000f, 0, -28.000f);   // the ring's centre: the fountain in the square
+        public const float SQUARE_A = 30.40f, SQUARE_B = 14.40f;   // the cobbled square, an ellipse round the fountain
 
-        // the ten building plots inside the ring, in the order of HG.BUILDINGS (tools/layout/ring.py: every roof line seen
-        // over the front wall, the gatehouse and the towers; the tall ones where they hide nothing behind them)
+        // the ten houses round the inside of the wall, in the order of HG.BUILDINGS, each turned to face the square (owner,
+        // Nov 14 2026: "the housing spaced inside circular facing the interior"; tools/blender/hg_layout.py place_ring)
         static readonly Vector2[] PLOTS = {
-            new Vector2(-31.000f, -20.160f), new Vector2(-29.000f, -35.840f), new Vector2(2.500f, -35.340f), new Vector2(15.500f, -46.500f), new Vector2(-15.500f, -20.160f),
-            new Vector2(18.000f, -32.840f), new Vector2(-15.500f, -46.000f), new Vector2(0.000f, -48.500f), new Vector2(30.000f, -19.660f), new Vector2(34.000f, -35.840f) };
+            new Vector2(-19.104f, -45.570f), new Vector2(-30.223f, -39.700f), new Vector2(-7.748f, -47.547f), new Vector2(3.608f, -48.403f), new Vector2(36.493f, -28.428f),
+            new Vector2(-36.765f, -25.555f), new Vector2(-26.806f, -13.324f), new Vector2(17.201f, -46.685f), new Vector2(27.252f, -14.768f), new Vector2(28.554f, -40.353f) };
+        static readonly float[] YAWS = { 198.524f, 219.535f, 186.756f, 176.927f, 91.999f, 280.947f, 329.631f, 163.945f, 32.454f, 144.343f };
         public static Vector3 Plot(int i) => new Vector3(PLOTS[i].x, 0, PLOTS[i].y);
+        public static Quaternion PlotRot(int i) => Quaternion.Euler(0, YAWS[i], 0);
+        // a house's own frame on the ground: u along its width (the model's +x), v toward its door (its front)
+        public static Vector2 Right(int i) { float y = YAWS[i] * Mathf.Deg2Rad; return new Vector2(Mathf.Cos(y), -Mathf.Sin(y)); }
+        public static Vector2 Front(int i) { float y = YAWS[i] * Mathf.Deg2Rad; return new Vector2(-Mathf.Sin(y), -Mathf.Cos(y)); }
+        public static Vector2 Local(int i, Vector3 p) { var d = new Vector2(p.x - PLOTS[i].x, p.z - PLOTS[i].y); return new Vector2(Vector2.Dot(d, Right(i)), Vector2.Dot(d, Front(i))); }
+        public static Vector3 World(int i, float u, float v, float y = 0f) { var w = PLOTS[i] + Right(i) * u + Front(i) * v; return new Vector3(w.x, y, w.y); }
         // each building's footprint (across its front x deep) and height, at human scale (tools/blender/hg_layout.py):
-        // a room with its doorway centred on the front, which faces the gate (+z)
+        // a room with its doorway centred on the front
         static readonly Vector2[] SIZES = { new Vector2(8.000f, 7.000f), new Vector2(7.000f, 7.000f), new Vector2(6.000f, 6.000f), new Vector2(8.000f, 7.000f), new Vector2(10.000f, 7.000f), new Vector2(10.000f, 8.000f), new Vector2(8.000f, 8.000f), new Vector2(10.000f, 8.000f), new Vector2(10.000f, 6.000f), new Vector2(6.000f, 6.000f) };
         static readonly float[] HEIGHTS = { 7.600f, 14.800f, 12.900f, 10.400f, 6.600f, 10.600f, 8.800f, 9.000f, 6.800f, 13.200f };
         public static Vector2 PlotSize(int i) => SIZES[i];
         public static float PlotHeight(int i) => HEIGHTS[i];
-        // the board of a building's sign (hg_city.signpost): by the yard, right of the door as seen from the gate side
-        public static Vector3 SignPoint(int i) => Plot(i) + new Vector3(-(SIZES[i].x / 2 - 0.7f), 2.0f, SIZES[i].y / 2 + 1.5f);
+        public static Vector3 Door(int i, float out_ = 0f, float y = 0f) => World(i, 0, SIZES[i].y / 2 + out_, y);
+        // the board of a building's sign (hg_city.signpost): in the yard, left of the door as you face the house
+        public static Vector3 SignPoint(int i) => World(i, SIZES[i].x / 2 - 0.7f, SIZES[i].y / 2 + 1.5f, 2.0f);
         public const float DOOR_W = 1.2f, WALL_T = 0.3f, FLOOR = 0.34f;   // every door 1.2 x 2.4 m; the room floor on its plinth
-        public static readonly Quaternion PLOT_FACING = Quaternion.Euler(0, 180, 0);   // fronts toward the wall and the camera
+
+        // the town's props the wizard walks round: x, z, radius (lamps, benches, stalls, barrels, trees, beds, bushes)
+        public static readonly Vector3[] PROPS = {
+            new Vector3(-19.160f, -29.650f, 1.300f), new Vector3(-6.654f, -36.931f, 1.300f), new Vector3(12.506f, -35.280f, 1.300f), new Vector3(19.267f, -29.323f, 1.300f),
+            new Vector3(3.677f, -24.323f, 0.700f), new Vector3(-1.346f, -22.977f, 0.700f), new Vector3(-5.023f, -26.654f, 0.700f), new Vector3(-3.677f, -31.677f, 0.700f),
+            new Vector3(1.346f, -33.023f, 0.700f), new Vector3(5.023f, -29.346f, 0.700f), new Vector3(30.599f, -25.926f, 0.200f), new Vector3(28.848f, -22.660f, 0.200f),
+            new Vector3(22.228f, -17.650f, 0.200f), new Vector3(16.829f, -15.504f, 0.200f), new Vector3(5.366f, -13.326f, 0.200f), new Vector3(-5.896f, -13.374f, 0.200f),
+            new Vector3(-12.568f, -14.388f, 0.200f), new Vector3(-18.596f, -16.100f, 0.200f), new Vector3(-25.617f, -19.668f, 0.200f), new Vector3(-28.848f, -22.660f, 0.200f),
+            new Vector3(-30.825f, -29.039f, 0.200f), new Vector3(-29.550f, -32.356f, 0.200f), new Vector3(-24.999f, -36.758f, 0.200f), new Vector3(-20.272f, -39.245f, 0.200f),
+            new Vector3(-14.507f, -41.156f, 0.200f), new Vector3(-4.834f, -42.717f, 0.200f), new Vector3(5.366f, -42.674f, 0.200f), new Vector3(13.059f, -41.504f, 0.200f),
+            new Vector3(19.024f, -39.741f, 0.200f), new Vector3(27.532f, -34.764f, 0.200f), new Vector3(29.982f, -31.605f, 0.200f), new Vector3(-14.577f, -42.446f, 0.500f),
+            new Vector3(-25.262f, -38.089f, 0.500f), new Vector3(-5.005f, -43.944f, 0.500f), new Vector3(6.668f, -43.833f, 0.500f), new Vector3(32.245f, -23.977f, 0.500f),
+            new Vector3(-32.770f, -30.707f, 0.500f), new Vector3(-27.176f, -19.220f, 0.500f), new Vector3(19.978f, -40.787f, 0.500f), new Vector3(21.531f, -15.751f, 0.500f),
+            new Vector3(28.150f, -35.843f, 0.500f), new Vector3(38.531f, -21.107f, 1.100f), new Vector3(-34.894f, -36.561f, 1.100f), new Vector3(-36.000f, -17.318f, 1.100f),
+            new Vector3(34.649f, -19.270f, 1.100f), new Vector3(33.013f, -35.647f, 1.100f), new Vector3(-38.020f, -32.749f, 1.100f), new Vector3(-25.021f, -43.576f, 1.100f),
+            new Vector3(24.340f, -43.968f, 1.100f), new Vector3(-2.778f, -51.894f, 1.100f), new Vector3(-32.409f, -17.487f, 1.100f), new Vector3(36.660f, -36.933f, 1.100f),
+            new Vector3(35.097f, -16.166f, 1.100f), new Vector3(10.378f, -51.230f, 1.100f), new Vector3(9.875f, -47.899f, 1.100f), new Vector3(-13.464f, -50.236f, 1.100f),
+            new Vector3(-33.114f, -34.160f, 1.100f), new Vector3(34.836f, -40.006f, 1.100f), new Vector3(-2.636f, -47.813f, 1.100f), new Vector3(-25.744f, -46.814f, 0.800f),
+            new Vector3(24.550f, -46.642f, 0.800f), new Vector3(30.139f, -33.861f, 0.800f), new Vector3(-29.411f, -20.855f, 0.800f), new Vector3(-12.868f, -46.055f, 0.800f),
+            new Vector3(-12.185f, -43.612f, 0.800f), new Vector3(-38.402f, -35.475f, 0.800f), new Vector3(31.982f, -20.399f, 0.800f), new Vector3(-27.847f, -45.637f, 0.800f),
+            new Vector3(13.258f, -10.932f, 0.900f), new Vector3(-18.206f, -9.834f, 0.900f), new Vector3(-10.419f, -6.524f, 0.900f), new Vector3(-18.138f, -7.196f, 0.900f),
+            new Vector3(15.147f, -14.058f, 0.900f), new Vector3(7.642f, -10.749f, 0.900f), new Vector3(15.618f, -6.942f, 0.900f), new Vector3(-7.634f, -11.380f, 0.900f),
+            new Vector3(-15.534f, -11.264f, 0.900f), new Vector3(19.452f, -13.474f, 0.900f), new Vector3(7.765f, -7.964f, 0.900f), new Vector3(-3.919f, -6.005f, 0.900f),
+            new Vector3(-3.898f, -9.716f, 0.800f), new Vector3(4.815f, -7.409f, 0.800f), new Vector3(18.850f, -6.287f, 0.800f), new Vector3(-17.687f, -13.882f, 0.800f),
+            new Vector3(-21.865f, -8.465f, 0.800f), new Vector3(-9.459f, -9.730f, 0.800f), new Vector3(-31.280f, -32.186f, 0.800f), new Vector3(10.708f, -4.704f, 0.800f),
+            new Vector3(13.918f, -5.060f, 0.800f), new Vector3(9.926f, -12.612f, 0.800f) };
+        // the villagers' walks along the paving; a walk that ends where it starts goes round and round
+        public static readonly Vector2[][] WALKS = {
+            new[] { new Vector2(25.536f, -28.000f), new Vector2(24.896f, -25.437f), new Vector2(23.007f, -23.002f), new Vector2(19.965f, -20.817f), new Vector2(15.921f, -18.993f), new Vector2(11.080f, -17.621f), new Vector2(5.682f, -16.769f), new Vector2(0.000f, -16.480f), new Vector2(-5.682f, -16.769f), new Vector2(-11.080f, -17.621f), new Vector2(-15.921f, -18.993f), new Vector2(-19.965f, -20.817f), new Vector2(-23.007f, -23.002f), new Vector2(-24.896f, -25.437f), new Vector2(-25.536f, -28.000f), new Vector2(-24.896f, -30.563f), new Vector2(-23.007f, -32.998f), new Vector2(-19.965f, -35.183f), new Vector2(-15.921f, -37.007f), new Vector2(-11.080f, -38.379f), new Vector2(-5.682f, -39.231f), new Vector2(-0.000f, -39.520f), new Vector2(5.682f, -39.231f), new Vector2(11.080f, -38.379f), new Vector2(15.921f, -37.007f), new Vector2(19.965f, -35.183f), new Vector2(23.007f, -32.998f), new Vector2(24.896f, -30.563f), new Vector2(25.536f, -28.000f) },
+            new[] { new Vector2(12.768f, -28.000f), new Vector2(12.143f, -25.553f), new Vector2(10.330f, -23.345f), new Vector2(7.505f, -21.593f), new Vector2(3.946f, -20.468f), new Vector2(0.000f, -20.080f), new Vector2(-3.946f, -20.468f), new Vector2(-7.505f, -21.593f), new Vector2(-10.330f, -23.345f), new Vector2(-12.143f, -25.553f), new Vector2(-12.768f, -28.000f), new Vector2(-12.143f, -30.447f), new Vector2(-10.330f, -32.655f), new Vector2(-7.505f, -34.407f), new Vector2(-3.946f, -35.532f), new Vector2(-0.000f, -35.920f), new Vector2(3.946f, -35.532f), new Vector2(7.505f, -34.407f), new Vector2(10.330f, -32.655f), new Vector2(12.143f, -30.447f), new Vector2(12.768f, -28.000f) },
+            new[] { new Vector2(0.000f, -3.000f), new Vector2(0.000f, -23.500f) },
+            new[] { new Vector2(-17.738f, -41.492f), new Vector2(-16.626f, -38.174f), new Vector2(-6.749f, -34.723f) },
+            new[] { new Vector2(15.873f, -42.072f), new Vector2(14.877f, -38.613f), new Vector2(6.017f, -34.985f) },
+            new[] { new Vector2(-32.052f, -26.466f), new Vector2(-28.517f, -27.150f), new Vector2(-12.703f, -27.204f) },
+            new[] { new Vector2(25.213f, -17.974f), new Vector2(23.335f, -20.928f), new Vector2(9.779f, -22.908f) },
+            new[] { new Vector2(-7.301f, -43.773f), new Vector2(-6.878f, -40.198f), new Vector2(-2.735f, -35.736f) } };
 
         // the one steady camera (owner's rule: "one steady art and working area")
         public static readonly Vector3 CAM_LOOK = new Vector3(0.000f, 0, -3.000f);

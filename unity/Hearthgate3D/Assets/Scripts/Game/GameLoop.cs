@@ -56,6 +56,7 @@ namespace Hearthgate.Game
             for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
             if (art && art.marker) marker = Art.Spawn(art.marker, "marker", Vector3.zero, world).transform;
             new GameObject("Wizard").AddComponent<Wizard>().Init(art);   // the town walk
+            new GameObject("Townsfolk").AddComponent<Townsfolk>().Init(art);   // villagers walking the square
             var sun = new GameObject("Sun").AddComponent<Light>(); sun.type = LightType.Directional;
             // a warm sun from the upper left of the screen, in front (art/STYLE.md: "warm golden light from the upper left"):
             // the faces the camera sees are lit, shadows fall back and to the right; a cool sky fill keeps shadows coloured
@@ -83,7 +84,7 @@ namespace Hearthgate.Game
             bool up = P.restored.Contains(HG.BUILDINGS[i].id);
             var prefab = art == null ? null : up ? art.buildings[i] : art.Ruin(i);
             plots[i] = Art.Spawn(prefab, up ? HG.BUILDINGS[i].id : "ruin", Field.Plot(i), world);
-            plots[i].transform.rotation = Field.PLOT_FACING;
+            plots[i].transform.rotation = Field.PlotRot(i);   // facing the square
             uppers[i] = null;
             foreach (var t in plots[i].GetComponentsInChildren<Transform>(true)) if (t.name == "upper") uppers[i] = t;
         }
@@ -293,11 +294,11 @@ namespace Hearthgate.Game
         // building"): gold sparks rise from its walls and sign instead
         void Glow(int i, int n)
         {
-            var c = Field.Plot(i); var s = Field.PlotSize(i);
+            var s = Field.PlotSize(i);
             for (int k = 0; k < 6; k++)
             {
                 float a = k / 6f * Mathf.PI * 2;
-                Fx.I.Burst(c + new Vector3(Mathf.Cos(a) * s.x * 0.5f, 1.2f + (k % 2) * 1.4f, Mathf.Sin(a) * s.y * 0.5f), Field.GOLD, Mathf.Max(3, n / 6));
+                Fx.I.Burst(Field.World(i, Mathf.Cos(a) * s.x * 0.5f, Mathf.Sin(a) * s.y * 0.5f, 1.2f + (k % 2) * 1.4f), Field.GOLD, Mathf.Max(3, n / 6));
             }
             Fx.I.Burst(Field.SignPoint(i), Field.GOLD, n / 2);
         }
@@ -309,7 +310,7 @@ namespace Hearthgate.Game
             P.res -= cost; int L = HG.LevelOf(P, id) + 1; P.SetLevel(id, L); B = HG.Bonuses(P);
             bool big = System.Array.IndexOf(HG.MILESTONES, L) >= 0; Sound.Play(big ? "tier_up" : "level_up", big ? 0.5f : 0.42f);
             Glow(i, big ? 28 : 10);
-            Fx.I.Pop(Field.Plot(i) + new Vector3(0, 3.8f, Field.PlotSize(i).y / 2), $"Level {L}", Field.GOLD, 34);   // over the door, in view inside and out
+            Fx.I.Pop(Field.Door(i, 0f, 3.8f), $"Level {L}", Field.GOLD, 34);   // over the door, in view inside and out
             if (System.Array.IndexOf(HG.MILESTONES, L) >= 0) { Hud.Banner($"{b.name} reaches level {L}: its output doubles!"); Fx.I.Shake(0.15f); }
             Save();
         }
@@ -326,7 +327,7 @@ namespace Hearthgate.Game
                 {
                     int i = System.Array.IndexOf(HG.BUILDING_IDS, nb); float t = Time.time;
                     // in the yard before its door (the buildings are rooms now: a ring at their centre would sit inside)
-                    marker.position = Field.Plot(i) + new Vector3(0, 0.15f + Mathf.Sin(t * 2.4f) * 0.15f, Field.PlotSize(i).y / 2 + 1.8f);
+                    marker.position = Field.Door(i, 1.8f, 0.15f + Mathf.Sin(t * 2.4f) * 0.15f);
                     marker.rotation = Quaternion.Euler(0, t * 25f, 0);
                     marker.localScale = Vector3.one * (CanRestore ? 1f + Mathf.Sin(t * 5f) * 0.05f : 0.8f);
                 }

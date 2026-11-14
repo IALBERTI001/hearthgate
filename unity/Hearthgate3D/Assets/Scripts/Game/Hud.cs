@@ -2,6 +2,7 @@
 // rule 1): wave and Resonance top left, the two actions top right with their keys, one banner line, the fork choice.
 // Style from art/STYLE.md: Lilita One for display, Nunito for body text, plum #4a2a4f panels with a brass #c9a24a rim,
 // cream #fff4dc ink with a dark plum outline; readouts are plain text (game-polish rule 3), only pressables get a panel.
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using Hearthgate.Core;
@@ -136,11 +137,11 @@ namespace Hearthgate.Game
             up = Action("Upgrade", tr, new Vector2(-16, -16), new Vector2(230, 56), "gate", "U", () => GameLoop.I.Upgrade(), () => GameLoop.I.CanUpgrade, true);
             re = Action("Rebuild", tr, new Vector2(-16, -78), new Vector2(230, 56), "rebuild", "R", () => GameLoop.I.Restore(), () => GameLoop.I.CanRestore, false);
 
-            // the town walk (owner, Nov 13 2026): one button over the gate bar, between the inner lanes; while walking, a
-            // card over it offers the work on the building in reach
-            var bc = new Vector2(0.5f, 0);
-            walk = Action("Walk", bc, new Vector2(0, 62), new Vector2(230, 50), "walk", "T", () => Wizard.I?.Toggle(), null, false);
-            work = Action("Work", bc, new Vector2(0, 122), new Vector2(360, 66), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
+            // the town walk and, while walking, the work on the building in reach: in the same group as the other actions
+            // (owner, Nov 14 2026: "the walk the town button should be with the other buttons. No reason to separate
+            // actions"); LayoutActions places the group every frame
+            walk = Action("Walk", tr, new Vector2(-16, -140), new Vector2(230, 56), "walk", "T", () => Wizard.I?.Toggle(), null, false);
+            work = Action("Work", tr, new Vector2(-16, -202), new Vector2(280, 56), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
 
@@ -240,6 +241,28 @@ namespace Hearthgate.Game
                 while (size > f.min && f.t.preferredHeight > f.h) f.t.fontSize = --size;
             }
         }
+        // the actions as one group in the top-right corner: a row along the top when the window is wide enough (the sky and
+        // the far meadow), else a column down the right side (portrait: the sky above the town). Upgrade gate, the primary
+        // action, sits in the corner; a finished or idle action leaves and the rest close up. LayoutCheck mirrors this.
+        public const float GAP = 8f, EDGE = 16f, LABELS_W = 266f;
+        void LayoutActions()
+        {
+            var list = new System.Collections.Generic.List<RectTransform> { up.p.rt };
+            if (re.p.rt.gameObject.activeSelf) list.Add(re.p.rt);
+            list.Add(walk.p.rt);
+            if (work.p.rt.gameObject.activeSelf) list.Add(work.p.rt);
+            float width = ((RectTransform)transform).rect.width, row = list.Sum(r => r.sizeDelta.x) + GAP * (list.Count - 1);
+            bool asRow = width - LABELS_W - EDGE >= row;
+            float x = -EDGE, y = -EDGE;
+            foreach (var r in list)
+            {
+                r.anchoredPosition = new Vector2(x, y);
+                if (asRow) x -= r.sizeDelta.x + GAP; else y -= r.sizeDelta.y + GAP;
+            }
+            // the banner sits below the group (under the top row, or under the column, never beside it)
+            var bp = banner.rectTransform.anchoredPosition; bp.y = asRow ? -136f : Mathf.Min(-136f, y - 12f); banner.rectTransform.anchoredPosition = bp;
+        }
+
         // ---------- the action kit ----------
         class Act { public Pressable p; public Text title, cost; public Image icon, gem, glow; public RectTransform cap, costRow; public bool primary; }
         static readonly Color PLUM_DIM = new Color(0.2f, 0.14f, 0.22f, 0.94f), BRASS_HI = new Color(1f, 0.82f, 0.42f), SHORT = new Color(0.93f, 0.62f, 0.55f);
@@ -347,6 +370,7 @@ namespace Hearthgate.Game
                 else if (HG.RestoreOffer(P).Contains(id)) { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, now); }
                 else { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"The {b.name} lies in ruins", null, false, now); }
             }
+            LayoutActions();
             Refit();
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
             if (Input.GetKeyDown(KeyCode.M)) { bool on = !(Sound.MusicOn || Sound.SfxOn); Sound.SetMusic(on); Sound.SetSfx(on); Banner(on ? "Sound on" : "Sound off"); RefreshSettings(); }

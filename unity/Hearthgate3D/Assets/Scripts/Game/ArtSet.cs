@@ -14,6 +14,7 @@ namespace Hearthgate.Game
         public GameObject[] ruins = new GameObject[10];       // each plot's own burnt shell, same order
         public GameObject marker;                             // where to rebuild next
         public GameObject wizard;                             // the town walk's wizard
+        public GameObject[] villagers = new GameObject[0];   // the townsfolk, three outfits (hg_front.villager)
         public GameObject Ruin(int i) => ruins != null && i < ruins.Length && ruins[i] ? ruins[i] : ruin;
         public Material lit, glow, particle;                   // material templates, so the build keeps their shaders
         // Unity's built-in shape meshes, without the colliders CreatePrimitive adds: the WebGL build strips the physics

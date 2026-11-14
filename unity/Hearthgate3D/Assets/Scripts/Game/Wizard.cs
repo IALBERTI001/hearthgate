@@ -18,6 +18,7 @@ namespace Hearthgate.Game
         public bool On;               // walking the town (the camera follows him)
         public int Near = -1;         // the plot he can work on, or -1
         public int Inside = -1;       // the building he is standing in, or -1
+        public Vector3 Position => pos;
         public const float SCALE = 0.66f, SPEED = 4.2f, RADIUS = 0.32f, REACH = 2.6f, FOUNTAIN_R = 3.4f;
         // in the square, left of the gatehouse's keep as seen from the walls (LayoutCheck: seen from the wall camera)
         public static readonly Vector3 HOME = new Vector3(-6f, 0, -8f);
@@ -27,19 +28,34 @@ namespace Hearthgate.Game
         // the walk camera for a spot: behind him on the town side, pulled in and up when that would put it outside the ring
         // wall (from outside, the wall came between it and him near the back of the town)
         public static readonly Vector3 INDOORS = new Vector3(0, 11f, 3.2f);   // steeper over a room, to look past its front wall
-        public static Vector3 FollowFrom(Vector3 p, float indoors = 0f)
+        // the way the walk camera looks, on the ground: into the town from the gate at first; at a house it turns to look at
+        // that house's front from the square (the houses face the square from all round the ring), and keeps that heading
+        // when he walks on
+        public static readonly Vector2 START_HEADING = new Vector2(0, -1);
+        public static Vector2 HeadingAt(Vector3 p, Vector2 keep)
         {
-            var off = Vector3.Lerp(FOLLOW, INDOORS, indoors);
+            int best = -1; float bd = REACH;
+            for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
+            {
+                Rect(i, out float hx, out float hz); var l = Field.Local(i, p);
+                float dx = Mathf.Max(0, Mathf.Abs(l.x) - hx), dz = Mathf.Max(0, Mathf.Abs(l.y) - hz), d = Mathf.Sqrt(dx * dx + dz * dz);
+                if (d < bd) { bd = d; best = i; }
+            }
+            return best >= 0 ? -Field.Front(best) : keep;
+        }
+        public static Vector3 FollowFrom(Vector3 p, float indoors = 0f, Vector2? heading = null)
+        {
+            var off = Vector3.Lerp(FOLLOW, INDOORS, indoors); var h = (heading ?? START_HEADING).normalized;
             for (float k = 1f; k > 0.05f; k -= 0.1f)
             {
-                var c = p + new Vector3(0, off.y + (1 - k) * 3f, off.z * k);
+                var c = p + new Vector3(-h.x * off.z * k, off.y + (1 - k) * 3f, -h.y * off.z * k);
                 float ex = c.x / (Field.RX - 1.2f), ez = (c.z + Field.RZ) / (Field.RZ - 1.2f);
                 if (ex * ex + ez * ez < 1) return c;
             }
-            return p + new Vector3(0, off.y + 3f, 0.5f);
+            return p + new Vector3(-h.x * 0.5f, off.y + 3f, -h.y * 0.5f);
         }
 
-        Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift, indoors;
+        Vector2 heading = START_HEADING; Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift, indoors;
         GameObject goal;   // a little gold ring where a tap sent him
         int log;
 
@@ -58,12 +74,13 @@ namespace Hearthgate.Game
             if (On) Hud.Banner("Walk into a building to work on it");
         }
 
-        // a plot's footprint in world space: the building faces +z (Field.PLOT_FACING), so its door is on its +z side
-        static void Rect(int i, out Vector3 c, out float hx, out float hz) { c = Field.Plot(i); var s = Field.PlotSize(i); hx = s.x / 2; hz = s.y / 2; }
+        // a house's footprint, in its own frame (Field.Local: u across its front, v toward its door); the houses face the
+        // square from all round the ring (owner, Nov 14 2026)
+        static void Rect(int i, out float hx, out float hz) { var s = Field.PlotSize(i); hx = s.x / 2; hz = s.y / 2; }
         public static bool InFootprint(int i, Vector3 p, float margin)
         {
-            Rect(i, out var c, out float hx, out float hz);
-            return Mathf.Abs(p.x - c.x) < hx + margin && Mathf.Abs(p.z - c.z) < hz + margin;
+            Rect(i, out float hx, out float hz); var l = Field.Local(i, p);
+            return Mathf.Abs(l.x) < hx + margin && Mathf.Abs(l.y) < hz + margin;
         }
 
         bool Ground(Vector2 screen, out Vector3 at)
@@ -114,7 +131,7 @@ namespace Hearthgate.Game
             pos += vel * dt; Collide();
             float speed = vel.magnitude;
             if (speed > 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-vel.x, -vel.z) * Mathf.Rad2Deg, 540f * dt);   // models face -Z
-            else if (!On) yaw = Mathf.MoveTowardsAngle(yaw, 180f, 180f * dt);   // at rest in the square he faces the walls
+            else if (!On) yaw = Mathf.MoveTowardsAngle(yaw, 180f, 180f * dt);   // at rest by the gate he faces the walls
             float was = step; step += dt * (speed > 0.25f ? 10f : 0f);
             if (Mathf.Floor(step / Mathf.PI) != Mathf.Floor(was / Mathf.PI)) Sound.Step();   // a footfall at each low point of the hop
 
@@ -140,8 +157,8 @@ namespace Hearthgate.Game
                 float best = REACH;
                 for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
                 {
-                    Rect(i, out var c, out float hx, out float hz);
-                    float dx = Mathf.Max(0, Mathf.Abs(pos.x - c.x) - hx), dz = Mathf.Max(0, Mathf.Abs(pos.z - c.z) - hz), d = Mathf.Sqrt(dx * dx + dz * dz);
+                    Rect(i, out float hx, out float hz); var l = Field.Local(i, pos);
+                    float dx = Mathf.Max(0, Mathf.Abs(l.x) - hx), dz = Mathf.Max(0, Mathf.Abs(l.y) - hz), d = Mathf.Sqrt(dx * dx + dz * dz);
                     if (d < best) { best = d; Near = i; }
                 }
             }
@@ -153,7 +170,10 @@ namespace Hearthgate.Game
             blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
             indoors = Mathf.MoveTowards(indoors, Inside >= 0 ? 1 : 0, dt / 0.5f);
-            var followLook = pos + Vector3.Lerp(LOOK, new Vector3(0, 0.6f, -0.8f), indoors); var followPos = FollowFrom(pos, Mathf.SmoothStep(0, 1, indoors));
+            var want = On ? HeadingAt(pos, heading) : START_HEADING;   // the camera turns, gently, to the house he is at
+            float ang = Vector2.SignedAngle(heading, want); heading = (Quaternion.Euler(0, 0, Mathf.MoveTowards(0, ang, 120f * dt)) * heading); heading.Normalize();
+            var lk = Vector3.Lerp(LOOK, new Vector3(0, 0.6f, -0.8f), indoors);   // ahead along the heading (-z of LOOK is "ahead")
+            var followLook = pos + new Vector3(heading.x * -lk.z, lk.y, heading.y * -lk.z); var followPos = FollowFrom(pos, Mathf.SmoothStep(0, 1, indoors), heading);
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
             var r = Quaternion.Slerp(Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS), Quaternion.LookRotation(followLook - followPos), k);
             Fx.I.camHome = p; cam.transform.rotation = r;
@@ -168,42 +188,48 @@ namespace Hearthgate.Game
                 if (HG.BUILDING_IDS[i] == "market") continue;
                 bool goalIn = InFootprint(i, goalAt, 0f), meIn = InFootprint(i, pos, 0f);
                 if (goalIn == meIn) continue;
-                Rect(i, out var c, out float hx, out float hz);
-                var outside = new Vector3(c.x, 0, c.z + hz + 0.9f); var inside = new Vector3(c.x, 0, c.z + hz - 1.0f);
-                if (Mathf.Abs(pos.x - c.x) < 0.15f && pos.z > c.z + hz - 1.2f && pos.z < c.z + hz + 1.1f) return goalIn ? inside : outside;   // in the doorway: straight through
+                Rect(i, out float hx, out float hz); var l = Field.Local(i, pos);
+                var outside = Field.World(i, 0, hz + 0.9f); var inside = Field.World(i, 0, hz - 1.0f);
+                if (Mathf.Abs(l.x) < 0.15f && l.y > hz - 1.2f && l.y < hz + 1.1f) return goalIn ? inside : outside;   // in the doorway: straight through
                 return goalIn ? outside : inside;
             }
             return goalAt;
         }
 
-        // inside the ring; out of the fountain and the gatehouse; buildings stop him at their walls but let him through
-        // their doorway (centred on the +z wall, 1.2 m wide)
+        // inside the ring; out of the fountain, the gatehouse and the town's props; houses stop him at their walls but let
+        // him through their doorway (centred on the front wall, 1.2 m wide). The walls are worked in each house's own frame.
         void Collide()
         {
             Push(Field.PLAZA, FOUNTAIN_R);
+            foreach (var pr in Field.PROPS) Push(new Vector3(pr.x, 0, pr.y), pr.z + RADIUS);
             if (pos.z > -3.2f && Mathf.Abs(pos.x) < Field.GATE_HALF + 0.8f) pos.z = -3.2f;
             float m = 2.4f, ex = pos.x / (Field.RX - m), ez = (pos.z + Field.RZ) / (Field.RZ - m), e = Mathf.Sqrt(ex * ex + ez * ez);
             if (e > 1) { pos.x /= e; pos.z = (pos.z + Field.RZ) / e - Field.RZ; vel *= 0.5f; }
             for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
             {
-                Rect(i, out var c, out float hx, out float hz);
                 if (!InFootprint(i, pos, RADIUS + 0.3f)) continue;
+                Rect(i, out float hx, out float hz); house = i;
                 if (HG.BUILDING_IDS[i] == "market")
                 {   // an open hall: only its posts stop him
                     foreach (float fx in new[] { -1f, -1f / 3, 1f / 3, 1f })
-                        foreach (float fz in new[] { -1f, 1f }) Push(new Vector3(c.x + fx * (hx - 0.3f), 0, c.z + fz * (hz - 0.3f)), 0.15f + RADIUS);
+                        foreach (float fz in new[] { -1f, 1f }) Push(Field.World(i, fx * (hx - 0.3f), fz * (hz - 0.3f)), 0.15f + RADIUS);
                     continue;
                 }
-                float t = Field.WALL_T / 2 + RADIUS, door = Field.DOOR_W / 2 - RADIUS + 0.05f;
-                Segment(new Vector3(c.x - hx, 0, c.z - hz + Field.WALL_T / 2), new Vector3(c.x + hx, 0, c.z - hz + Field.WALL_T / 2), t);   // back
-                Segment(new Vector3(c.x - hx + Field.WALL_T / 2, 0, c.z - hz), new Vector3(c.x - hx + Field.WALL_T / 2, 0, c.z + hz), t);   // sides
-                Segment(new Vector3(c.x + hx - Field.WALL_T / 2, 0, c.z - hz), new Vector3(c.x + hx - Field.WALL_T / 2, 0, c.z + hz), t);
-                float fz2 = c.z + hz - Field.WALL_T / 2;   // the front, either side of the doorway
-                if (Mathf.Abs(pos.z - fz2) < 0.9f && Mathf.Abs(pos.x - c.x) < 0.9f) pos.x = Mathf.MoveTowards(pos.x, c.x, 2.5f * Time.deltaTime);   // keys: eased into the doorway
-                Segment(new Vector3(c.x - hx, 0, fz2), new Vector3(c.x - door - RADIUS, 0, fz2), t);
-                Segment(new Vector3(c.x + door + RADIUS, 0, fz2), new Vector3(c.x + hx, 0, fz2), t);
+                float t = Field.WALL_T / 2 + RADIUS, door = Field.DOOR_W / 2 - RADIUS + 0.05f, wt = Field.WALL_T / 2;
+                Wall(-hx, -hz + wt, hx, -hz + wt, t);   // back
+                Wall(-hx + wt, -hz, -hx + wt, hz, t);   // sides
+                Wall(hx - wt, -hz, hx - wt, hz, t);
+                float fz2 = hz - wt; var l = Field.Local(i, pos);   // the front, either side of the doorway
+                if (Mathf.Abs(l.y - fz2) < 0.9f && Mathf.Abs(l.x) < 0.9f)   // keys: eased into the doorway
+                {
+                    var c = Field.World(i, 0, l.y); pos = Vector3.MoveTowards(pos, new Vector3(c.x, 0, c.z), 2.5f * Time.deltaTime);
+                }
+                Wall(-hx, fz2, -door - RADIUS, fz2, t);
+                Wall(door + RADIUS, fz2, hx, fz2, t);
             }
         }
+        int house;
+        void Wall(float u0, float v0, float u1, float v1, float r) => Segment(Field.World(house, u0, v0), Field.World(house, u1, v1), r);
         void Push(Vector3 c, float r)
         {
             var d = new Vector3(pos.x - c.x, 0, pos.z - c.z); float L = d.magnitude;

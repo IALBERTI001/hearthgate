@@ -5,6 +5,7 @@ import os, re, sys, math
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'blender'))
 import hg_layout as L
+print('town check:', L.check_town())
 p = os.path.join(ROOT, 'unity', 'Hearthgate3D', 'Assets', 'Scripts', 'Game', 'Field.cs'); s = open(p).read()
 f = lambda v: f'{v:.3f}f'
 V = lambda a, b: f'new Vector2({f(a)}, {f(b)})'
@@ -19,6 +20,10 @@ sub(r'static readonly Vector2\[\] STARTS = \{.*?\};', 'static readonly Vector2[]
 sub(r'public static readonly Vector3 PLAZA = new Vector3\([^)]*\);', f'public static readonly Vector3 PLAZA = new Vector3({f(L.PLAZA[0])}, 0, {f(L.PLAZA[1])});')
 pl = [V(x, z) for x, z in L.PLOTS]
 sub(r'static readonly Vector2\[\] PLOTS = \{.*?\};', 'static readonly Vector2[] PLOTS = {\n            ' + ', '.join(pl[:5]) + ',\n            ' + ', '.join(pl[5:]) + ' };')
+sub(r'static readonly float\[\] YAWS = \{.*?\};', 'static readonly float[] YAWS = { ' + ', '.join(f(y) for y in L.YAWS) + ' };')
+sub(r'public const float SQUARE_A = [^;]*;', f'public const float SQUARE_A = {L.SQUARE_A:.2f}f, SQUARE_B = {L.SQUARE_B:.2f}f;')
+sub(r'public static readonly Vector3\[\] PROPS = \{.*?\};', 'public static readonly Vector3[] PROPS = {\n            ' + ',\n            '.join(', '.join(f'new Vector3({f(x)}, {f(z)}, {f(r)})' for _, x, z, r, _ in L.TOWN_PROPS[k:k + 4]) for k in range(0, len(L.TOWN_PROPS), 4)) + ' };')
+sub(r'public static readonly Vector2\[\]\[\] WALKS = \{.*?\};', 'public static readonly Vector2[][] WALKS = {\n            ' + ',\n            '.join('new[] { ' + ', '.join(V(x, z) for x, z in w) + ' }' for w in L.WALKS) + ' };')
 sub(r'static readonly Vector2\[\] SIZES = \{.*?\};', 'static readonly Vector2[] SIZES = { ' + ', '.join(V(*L.SIZES[b]) for b in L.IDS) + ' };')
 sub(r'static readonly float\[\] HEIGHTS = \{.*?\};', 'static readonly float[] HEIGHTS = { ' + ', '.join(f(L.HEIGHT[b]) for b in L.IDS) + ' };')
 sub(r'public static readonly Vector3 CAM_LOOK = new Vector3\([^)]*\);', f'public static readonly Vector3 CAM_LOOK = new Vector3({f(L.CAM_LOOK[0])}, 0, {f(L.CAM_LOOK[2])});')
