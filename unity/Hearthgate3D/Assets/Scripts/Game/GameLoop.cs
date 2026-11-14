@@ -66,7 +66,7 @@ namespace Hearthgate.Game
             sun.transform.rotation = Quaternion.LookRotation(new Vector3(-0.45f, -0.8f, -0.4f));
             sun.color = new Color(1f, 0.9f, 0.74f); sun.intensity = 1.3f; sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.9f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.42f, 0.5f, 0.7f); RenderSettings.ambientEquatorColor = new Color(0.4f, 0.42f, 0.4f); RenderSettings.ambientGroundColor = new Color(0.22f, 0.2f, 0.17f);
+            RenderSettings.ambientSkyColor = new Color(0.42f, 0.5f, 0.7f); RenderSettings.ambientEquatorColor = new Color(0.54f, 0.52f, 0.48f);   // warmer and lighter: the wall's inner face, seen from the town walk, read near-black (fresh-eyes review) RenderSettings.ambientGroundColor = new Color(0.22f, 0.2f, 0.17f);
         }
 
         // each tower takes one element of those the city has (fire, frost, storm in restore order), like the 2D game
