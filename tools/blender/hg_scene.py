@@ -46,6 +46,8 @@ for (x, z), el in zip(L.TOWERS, els):
 built = {'forge', 'frostSpire', 'stormBell', 'bakery', 'cottages'} if STATE == 'mid' else set()
 for (x, y), bid in zip(PLOTS, IDS):
     place('building_' + bid if bid in built else 'ruin_' + bid, (x, y, 0), 180)   # Field.PLOT_FACING: fronts to the camera
+if os.path.exists(os.path.join(MODELS, 'wizard.fbx')):   # Wizard.HOME: by the fountain, facing the walls
+    place('wizard', (PLAZA[0] + 0.6, PLAZA[1] + 3.9, 0), 180, 1.15)
 if STATE == 'mid':
     # a wave on the lanes: slimes walking up to the towers, a few gathered at a tower's foot, a beetle and a golem
     import random as _r; rr = _r.Random(5)
