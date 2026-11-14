@@ -21,7 +21,7 @@ namespace Hearthgate.Game
             m = tpl != null ? new Material(tpl) : new Material(Shader.Find("Universal Render Pipeline/Lit"));
             m.color = c;
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.15f);
-            if (glow) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", c * 2.2f); }
+            if (glow) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", c * 1.0f); }   // at 2.2 every shot bloomed to white (fresh-eyes review 4: "every shot is a white streak")
             mats[(c, glow)] = m;
             return m;
         }

@@ -512,15 +512,25 @@ def props():
     cart(*spot(-12.0, 9.0, 1.4), 0)
     # the camp before the gate: a canvas tent, a campfire with stones round it, a log to sit on
     tx, ty = spot(2.6, 11.0, 1.7)
-    o = K.cone('tent', 1.6, 2.2, (tx, ty, 1.1), M('canvas'), 4); o.rotation_euler = (0, 0, math.pi / 4)
-    mesh_from('flap', [(tx - 0.5, ty - 1.14, 0.02), (tx + 0.5, ty - 1.14, 0.02), (tx, ty - 0.9, 1.3)], [(0, 1, 2)], M('cave'), 0.0)
+    # a ridge tent of striped canvas on poles (a four-sided cone read as an untextured pyramid: fresh-eyes review 4)
+    hl, hw, hh = 1.5, 1.25, 1.7
+    vs = [(tx - hl, ty - hw, 0.02), (tx + hl, ty - hw, 0.02), (tx + hl, ty, hh), (tx - hl, ty, hh), (tx - hl, ty + hw, 0.02), (tx + hl, ty + hw, 0.02)]
+    mesh_from('tent_s', vs[:4], [(0, 1, 2, 3)], M('canvas'), 0.0); mesh_from('tent_n', [vs[3], vs[2], vs[5], vs[4]], [(0, 1, 2, 3)], M('canvas'), 0.0)
+    for k in range(3):   # red stripes across the slope the camera sees
+        u0 = -hl + 0.35 + k * 1.0
+        mesh_from('stripe', [(tx + u0, ty + 0.02, hh + 0.02), (tx + u0 + 0.3, ty + 0.02, hh + 0.02), (tx + u0 + 0.3, ty + hw + 0.01, 0.04), (tx + u0, ty + hw + 0.01, 0.04)], [(0, 1, 2, 3)], M('banner'), 0.0)
+    for sx in (-1, 1):
+        mesh_from('gable', [(tx + sx * hl, ty - hw, 0.02), (tx + sx * hl, ty + hw, 0.02), (tx + sx * hl, ty, hh)], [(0, 1, 2) if sx > 0 else (2, 1, 0)], M('canvas'), 0.0)
+        K.cyl('pole', 0.05, hh + 0.5, (tx + sx * (hl + 0.05), ty, (hh + 0.5) / 2), M('wood_dk'), 6, 0.0)
+    mesh_from('flap', [(tx - hl - 0.01, ty - 0.5, 0.03), (tx - hl - 0.01, ty + 0.5, 0.03), (tx - hl - 0.01, ty, 1.2)], [(2, 1, 0)], M('cave'), 0.0)
+    K.cyl('ridge', 0.05, 2 * hl + 0.3, (tx, ty, hh + 0.02), M('wood_dk'), 6, 0.0).rotation_euler = (0, math.pi / 2, 0)
     fx, fy = tx - 2.8, ty + 0.6
     for k in range(7):
         a = k / 7 * math.tau
         K.sphere('ring', 0.18, (fx + math.cos(a) * 0.55, fy + math.sin(a) * 0.55, 0.1), M('stone_dk'), (1, 1, 0.7), 1)
     K.cone('fire', 0.35, 0.8, (fx, fy, 0.45), M('fire', 3.0), 8); K.cone('fire_in', 0.18, 0.5, (fx, fy, 0.35), M('fire_core', 3.0), 6)
     o = K.cyl('log', 0.22, 1.6, (fx, fy + 1.1, 0.22), M('wood'), 8, 0.0); o.rotation_euler = (0, math.pi / 2, 0.3)
-    for (x, y) in ((-3.2, 14.0), (-2.0, 15.4), (-23.0, 6.0), (24.0, 8.0)):
+    for (x, y) in ((tx + 2.6, ty + 0.4), (tx + 2.9, ty + 1.9), (tx - 4.6, ty - 1.0)):   # hay with the camp, never at the frame's edges
         x, y = spot(x, y, 0.9)
         K.cyl('hay', 0.75, 1.0, (x, y, 0.5), M('hay'), 14, 0.04).rotation_euler = (0, math.pi / 2, R.uniform(0, 3))
 
@@ -550,13 +560,12 @@ def outcrop(x, y, n, spread, scale=1.0):   # a cluster of big angular rocks
         K.finish(b, M(R.choice(('rock', 'rock_dk', 'stone2'))), 0.0, smooth=False)
 
 def ground():
-    bpy.ops.mesh.primitive_grid_add(x_subdivisions=76, y_subdivisions=60, size=1, location=(0, 0, 0))
-    g = bpy.context.object; g.scale = (150, 115, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    g.location = (0, -10, 0); bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
-    def height(x, y):
+    bpy.ops.mesh.primitive_grid_add(x_subdivisions=76, y_subdivisions=76, size=1, location=(0, 0, 0))
+    g = bpy.context.object; g.scale = (160, 160, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    g.location = (0, -28, 0); bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
+    def height(x, y):   # flat where the lanes run (a rolling meadow poked through them: fresh-eyes review 4)
         h = 0.0
-        if y < -35: h += (min(-35 - y, 18) / 18) ** 1.5 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)
-        if y > 10: h += 0.22 * math.sin(x * 0.3) * math.cos(y * 0.35)
+        if y < -35: h += (min(-35 - y, 40) / 18) ** 1.4 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)   # the ridge climbs on past the top of a tall window
         if abs(x) > 31: h += (min(abs(x) - 31, 14) / 14) ** 1.4 * 7.0
         return h - 0.02
     for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
@@ -583,7 +592,8 @@ def ground():
     for (x, y) in ((31, -8), (32, -20), (-31, -8), (-32, -20), (29, 4), (-29, 4)): outcrop(x, y, 4, 1.8, 1.2)
     for _ in range(12):
         x, y = R.choice((1, -1)) * R.uniform(31, 44), R.uniform(-34, 6); tree(x, y, R.uniform(1.0, 1.4), height(x, y))
-    for (x, y) in [(R.uniform(-44, 44), R.uniform(-48, -36)) for _ in range(40)]: tree(x, y, R.uniform(1.0, 1.6), height(x, y), far=True)
+    for (x, y) in [(R.uniform(-48, 48), R.uniform(-48, -36)) for _ in range(40)] + [(R.uniform(-60, 60), R.uniform(-75, -48)) for _ in range(45)]:
+        tree(x, y, R.uniform(1.1, 1.8), height(x, y), far=True)
     for _ in range(14):   # trees behind the ring's shoulders, between the wall and the ridge
         x, y = R.choice((1, -1)) * R.uniform(18, 30), R.uniform(-36, -30)
         if free(x, y, 1.5): tree(x, y, R.uniform(1.0, 1.4), height(x, y))
