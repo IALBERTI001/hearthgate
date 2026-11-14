@@ -55,7 +55,7 @@ namespace Hearthgate.Game
                 var c = p + new Vector3(-h.x * off.z * k, off.y * (0.62f + 0.38f * k), -h.y * off.z * k);   // pulled in, it comes down too: an over-the-shoulder shot, not a crane looking at his hat
                 if (Mathf.Abs(c.x) < 11f) c.y += Mathf.Clamp01((c.z + 5f) / 3f) * 2.6f;   // over the gatehouse and its towers when he is just inside the gate
                 float ex = c.x / (Field.RX - 1.2f), ez = (c.z + Field.RZ) / (Field.RZ - 1.2f);
-                if (ex * ex + ez * ez < 0.8f) return c;   // well inside: right against the ring the wall walk filled the bottom third of the first shot
+                if (ex * ex + ez * ez < 0.9f) return c;   // well inside: right against the ring the wall walk filled the bottom third of the first shot
             }
             return p + new Vector3(-h.x * 0.5f, off.y + 3f, -h.y * 0.5f);
         }
