@@ -13,11 +13,13 @@ namespace Hearthgate.Game
         static readonly Color ROSE_TXT = new Color(1f, 0.72f, 0.9f);
         static readonly (string cat, string label)[] TABS = { ("tower", "Towers"), ("trail", "Shots"), ("hit", "Hits"), ("wisp", "Wisps"), ("town", "Town") };
 
-        public static void ShowShop(string cat)
+        public static void ShowShop(string cat, int page = 0)
         {
             if (!I || !GameLoop.I) return;
-            var g = GameLoop.I; var items = HG.SHOP.Where(l => l.cat == cat).ToArray();
-            var box = I.Modal("Shop", new Vector2(720, 236 + items.Length * 62));
+            var g = GameLoop.I; var all = HG.SHOP.Where(l => l.cat == cat).ToArray();
+            int pages = (all.Length + PAGE - 1) / PAGE; page = Mathf.Clamp(page, 0, Mathf.Max(0, pages - 1));
+            var items = all.Skip(page * PAGE).Take(PAGE).ToArray();
+            var box = I.Modal("Shop", new Vector2(720, CARD_H));
             var bal = I.Line(box, -62, "", 19, ROSE_TXT);
             for (int k = 0; k < TABS.Length; k++)
             {
@@ -29,15 +31,18 @@ namespace Hearthgate.Game
             for (int i = 0; i < items.Length; i++)
             {
                 var l = items[i]; float y = -170 - i * 62;
-                var name = I.Label("N" + i, box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = l.name + (l.el != null ? $"  <size=14><color=#D9C9A8>{(l.el == "fire" ? "Fire" : l.el == "frost" ? "Frost" : "Storm")} towers</color></size>" : "");
-                name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(420, 24);
-                var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = l.line; line.color = new Color(0.85f, 0.8f, 0.88f);
-                line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(440, 22);
+                var name = I.Label("N" + i, box, new Vector2(0, 1), new Vector2(32, y), 20, TextAnchor.UpperLeft); name.text = l.name;
+                name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(420, 26);
+                // which towers it dresses goes in the plain line under the name: the small tag beside it was unreadable
+                var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 26), 16, TextAnchor.UpperLeft); line.font = I.body;
+                line.text = (l.el != null ? $"<color=#FFD56B>{(l.el == "fire" ? "Fire" : l.el == "frost" ? "Frost" : l.el == "earth" ? "Earth" : "Storm")} towers</color>  ·  " : "") + l.line; line.color = new Color(0.88f, 0.84f, 0.9f);
+                line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(440, 24);
                 var lk = l;
                 I.BtnAt("B_" + l.id, new Vector2(1, 1), new Vector2(-24, y + 4), new Vector2(180, 56), () => g.BuyOrEquip(lk), () => HG.Equipped(g.P, HG.Slot(lk)) != lk.id && (g.Owns(lk) || g.P.shards >= lk.price), out var bt, box, g.Owns(l) ? null : "shard");
                 rows.Add((l, bt));
             }
             I.Choice(box, "S_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
+            I.Pager(box, page, pages, p => ShowShop(cat, p));
             I.perkRefresh = () =>
             {
                 bal.text = $"{g.P.shards} Starshards  ·  looks only: nothing in the fight changes";
@@ -55,7 +60,7 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P; HG.QuestsFor(P, GameLoop.Today());
-            var box = I.Modal("The Library", new Vector2(720, 680));
+            var box = I.Modal("The Library", new Vector2(720, CARD_H));
             var tabs = new (string id, string label)[] { ("quests", "Quests"), ("feats", $"Feats {P.feats.Count}/{HG.FEATS.Count}"), ("beasts", $"Beasts {HG.BESTIARY.Count(r => P.seenRoles.Contains(r))}/{HG.BESTIARY.Length}"), ("garden", $"Garden {P.flies.Count}/{HG.BUTTERFLIES.Length}") };
             for (int k = 0; k < tabs.Length; k++)
             {
@@ -82,12 +87,13 @@ namespace Hearthgate.Game
             var r = Label("R" + i, box, new Vector2(1, 1), new Vector2(-36, y - 6), 18, TextAnchor.UpperRight); r.text = right; r.color = rightCol;
             r.rectTransform.pivot = new Vector2(1, 1); r.rectTransform.sizeDelta = new Vector2(150, 48);
         }
-        void Pager(RectTransform box, string tab, int page, int pages)
+        void Pager(RectTransform box, string tab, int page, int pages) => Pager(box, page, pages, p => ShowQuests(tab, p));
+        void Pager(RectTransform box, int page, int pages, System.Action<int> go)
         {
             if (pages <= 1) return;
             var pg = Label("Pg", box, new Vector2(0.5f, 0), new Vector2(0, 92), 16, TextAnchor.MiddleCenter); pg.font = body; pg.text = $"Page {page + 1} of {pages}"; pg.color = new Color(0.85f, 0.8f, 0.88f);
-            Choice(box, "Prev", new Vector2(-250, 18), new Vector2(150, 56), "Previous", () => ShowQuests(tab, page - 1), () => page > 0);
-            Choice(box, "Next", new Vector2(250, 18), new Vector2(150, 56), "Next", () => ShowQuests(tab, page + 1), () => page < pages - 1);
+            Choice(box, "Prev", new Vector2(-250, 18), new Vector2(150, 56), "Previous", () => go(page - 1), () => page > 0);
+            Choice(box, "Next", new Vector2(250, 18), new Vector2(150, 56), "Next", () => go(page + 1), () => page < pages - 1);
         }
         static void FeatsTab(RectTransform box, Profile P, int page)
         {

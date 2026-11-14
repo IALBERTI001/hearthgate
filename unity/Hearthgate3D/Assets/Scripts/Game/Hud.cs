@@ -250,7 +250,7 @@ namespace Hearthgate.Game
                 if (!show) continue;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp);
                 signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f;
-                signs[i].localScale = Vector3.one * Mathf.Clamp(18f / dist, 0.85f, 1.1f);   // never below about 16 px text (fresh-eyes review, Nov 14 2026: signs unreadable)
+                signs[i].localScale = Vector3.one;   // never scaled: scaled text is blurry (owner, Nov 14 2026); its font is sized to read
                 var id = HG.BUILDING_IDS[i]; var b = HG.ById(id);
                 if (P.restored.Contains(id))
                 {
@@ -499,8 +499,8 @@ namespace Hearthgate.Game
             var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size);
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = title;
-            var cv = ((RectTransform)transform).rect.size;   // a tall card shrinks to fit a short screen, never runs off it
-            box.localScale = Vector3.one * Mathf.Min(1f, (cv.y - 24f) / size.y, (cv.x - 24f) / size.x);
+            // never a scale transform: text shrunk by one is drawn blurry (owner, Nov 14 2026: "unreadable because its blurry").
+            // Cards are kept to CARD_H or less (long lists turn pages), which fits the 720 px reference height.
             return box;
         }
         Text Line(RectTransform box, float y, string text, int size = 18, Color? col = null)
@@ -543,11 +543,12 @@ namespace Hearthgate.Game
         }
 
         // the Watchtower's perks (2D: "Home of the Perks"): one row each, its level, its cost in points, Buy
-        public static void ShowPerks(string tab = "perks")
+        public const float CARD_H = 660f;   // every list card: fits the 720 px reference height with room to spare
+        public static void ShowPerks(string tab = "perks", int page = 0)
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
-            var box = I.Modal("The Watchtower", new Vector2(700, 262 + HG.PERKS.Length * 64));   // room for the close button under the last row
+            var box = I.Modal("The Watchtower", new Vector2(700, CARD_H));
             var tabs = new System.Collections.Generic.List<(string id, string label)> { ("perks", "Perks"), ("stars", $"Stars {P.stars.Count}/{HG.STARS.Length}") };
             if (HG.Unlocked(P, "relics")) tabs.Add(("relics", $"Relics {P.relics.Count}/2"));
             for (int k = 0; k < tabs.Count; k++)
@@ -557,16 +558,17 @@ namespace Hearthgate.Game
                 tl.text = t.label;
             }
             I.perkRefresh = null;
-            if (tab == "stars") StarsTab(box, P); else if (tab == "relics") RelicsTab(box, g); else PerksTab(box, g);
+            if (tab == "stars") StarsTab(box, P); else if (tab == "relics") RelicsTab(box, g, page); else PerksTab(box, g, page);
             I.Choice(box, "P_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
         }
-        static void PerksTab(RectTransform box, GameLoop g)
+        static void PerksTab(RectTransform box, GameLoop g, int page)
         {
             var pts = I.Line(box, -136, "", 18, RES);
             var rows = new System.Collections.Generic.List<(HG.Perk k, Text lv, Text cost)>();
-            for (int i = 0; i < HG.PERKS.Length; i++)
+            int pages = (HG.PERKS.Length + 5) / 6; page = Mathf.Clamp(page, 0, pages - 1);
+            for (int i = 0; i < 6 && page * 6 + i < HG.PERKS.Length; i++)
             {
-                var k = HG.PERKS[i]; float y = -172 - i * 64;
+                var k = HG.PERKS[page * 6 + i]; float y = -172 - i * 64;
                 var name = I.Label("N" + i, box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = k.name;
                 name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
                 var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = k.line; line.color = new Color(0.85f, 0.8f, 0.88f);
@@ -587,27 +589,29 @@ namespace Hearthgate.Game
                 }
             };
             I.perkRefresh();
+            I.Pager(box, page, pages, p => ShowPerks("perks", p));
         }
         // Relics (3rd Ascension): two at a time; the Steward's switch lives here too once he comes (6th Ascension)
-        static void RelicsTab(RectTransform box, GameLoop g)
+        static void RelicsTab(RectTransform box, GameLoop g, int page)
         {
             I.Line(box, -136, "Equip two. They stay with you through every Ascension.", 18, RES);
             var rows = new System.Collections.Generic.List<(HG.Relic r, Text b)>();
-            for (int i = 0; i < HG.RELICS.Length; i++)
+            int n = HG.RELICS.Length + (HG.Unlocked(g.P, "steward") ? 1 : 0), pages = (n + 5) / 6; page = Mathf.Clamp(page, 0, pages - 1);
+            for (int i = 0; i < 6 && page * 6 + i < HG.RELICS.Length; i++)
             {
-                var r = HG.RELICS[i]; float y = -172 - i * 64;
+                var r = HG.RELICS[page * 6 + i]; float y = -172 - i * 64;
                 var name = I.Label("N" + i, box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = r.name;
                 name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
                 var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = r.line; line.color = new Color(0.85f, 0.8f, 0.88f);
                 line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(420, 22);
                 var id = r.id;
-                I.BtnAt("R_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.EquipRelic(id); ShowPerks("relics"); }, null, out var bt, box);
+                I.BtnAt("R_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.EquipRelic(id); ShowPerks("relics", page); }, null, out var bt, box);
                 rows.Add((r, bt));
             }
             Text stew = null;
-            if (HG.Unlocked(g.P, "steward"))
+            if (HG.Unlocked(g.P, "steward") && page == pages - 1)
             {
-                float y = -172 - HG.RELICS.Length * 64;
+                float y = -172 - (HG.RELICS.Length - page * 6) * 64;
                 var name = I.Label("NS", box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = "The Steward";
                 name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
                 var line = I.Label("DS", box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = "Levels your cheapest building by himself"; line.color = new Color(0.85f, 0.8f, 0.88f);
@@ -620,6 +624,7 @@ namespace Hearthgate.Game
                 if (stew) stew.text = g.P.steward ? "On" : "Off";
             };
             I.perkRefresh();
+            I.Pager(box, page, pages, p => ShowPerks("relics", p));
         }
         // the constellation of this run: five stars lit at fixed waves on the way to the Ascend wave; earlier runs' skies whole
         static void StarsTab(RectTransform box, Profile P)
