@@ -113,7 +113,10 @@ namespace Hearthgate.Game
             gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
             res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -46), 40, TextAnchor.UpperLeft); res.color = RES;
             rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -94), 18, TextAnchor.UpperLeft); rate.font = body;
-            banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -22), 34, TextAnchor.UpperCenter); banner.color = RES;
+            // the banner sits under the top row of the HUD, never across it (QA, Nov 14 2026: in a portrait window the walk
+            // banner ran under the cog and the Upgrade button), and wraps to the window's width
+            banner = Label("Banner", transform, new Vector2(0.5f, 1), new Vector2(0, -136), 34, TextAnchor.UpperCenter); banner.color = RES;
+            banner.horizontalOverflow = HorizontalWrapMode.Wrap; banner.verticalOverflow = VerticalWrapMode.Overflow;
 
             // the gate's health, centred over the bottom of the view
             var bar = Box("GateBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(360, 26));
@@ -188,7 +191,7 @@ namespace Hearthgate.Game
                     double r = HG.BuildingRate(P, id, g.B); string rs = r < 10 ? r.ToString("0.##") : HG.Fmt(r);
                     signTxt[i].text = $"<b>{b.name}</b>  ·  level {HG.LevelOf(P, id)}\n<color=#FFD56B>+{rs}/s</color>";
                 }
-                else signTxt[i].text = HG.RestoreOffer(P).Contains(id) ? $"<b>{b.name}</b>  ·  ruined\n<color=#FFD56B>rebuild {HG.Fmt(g.RestoreCost)}</color>" : $"<b>{b.name}</b>  ·  ruined\n<color=#D9C9A8>not yet</color>";
+                else signTxt[i].text = HG.RestoreOffer(P).Contains(id) ? $"<b>{b.name}</b>  ·  ruined\n<color=#FFD56B>rebuild {HG.Fmt(g.RestoreCost)}</color>" : $"<b>{b.name}</b>  ·  ruined\n<color=#D9C9A8>{(g.NextBuilding != null ? "after the " + HG.ById(g.NextBuilding).name : "rebuilt later")}</color>";   // says what comes first, not a bare "not yet"
             }
         }
 
@@ -346,7 +349,13 @@ namespace Hearthgate.Game
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
         }
 
-        public static void Banner(string s) { if (!I) return; I.banner.text = s; I.bannerT = 2.6f; var c = I.banner.color; c.a = 1; I.banner.color = c; }
+        public static void Banner(string s)
+        {
+            if (!I) return; var b = I.banner; b.text = s; I.bannerT = 2.6f; var c = b.color; c.a = 1; b.color = c;
+            float w = Mathf.Min(900f, ((RectTransform)I.transform).rect.width - 48f); b.rectTransform.sizeDelta = new Vector2(w, 90);
+            int size = 34; b.fontSize = size;
+            while (size > 18 && b.preferredHeight > 84) b.fontSize = --size;   // two lines at most, then smaller
+        }
         public static void Toast(string s) => Banner(s);
 
         // ---------- settings and controls ----------
@@ -359,7 +368,7 @@ namespace Hearthgate.Game
             Time.timeScale = 0;   // the fight waits while the menu is open
             var dim = Box("SettingsDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, 0.55f); settingsBox = dim;
-            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 470));
+            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 520));   // tall enough for every control row above the stamp
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = "Settings";
             BtnAt("S_Music", new Vector2(0.5f, 1), new Vector2(-140, -76), new Vector2(250, 50), () => { Sound.SetMusic(!Sound.MusicOn); RefreshSettings(); }, null, out musicLbl).rt.SetParent(box, false);

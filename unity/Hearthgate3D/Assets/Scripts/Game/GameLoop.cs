@@ -173,7 +173,7 @@ namespace Hearthgate.Game
                 var tg = Pick(tw); if (tg == null) continue;
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f);
                 var go = new GameObject("shot");
-                var col = Field.Of(tw.el); var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
+                var col = tw.el == "fire" || tw.el == "frost" || tw.el == "storm" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
                 // fat, glowing shots with long trails: the fight has to read across the screen (fresh-eyes review 2)
                 mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : 0.65f);
                 var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f; tr.endWidth = 0f;
@@ -207,8 +207,18 @@ namespace Hearthgate.Game
                 if (s.dur <= 0) s.dur = Mathf.Max(0.12f, dist / s.speed);
                 s.k = Mathf.Min(1f, s.k + DT / s.dur);
                 bool crosses = Mathf.Sign(s.from.x) != Mathf.Sign(goal.x) || Mathf.Abs(goal.x) < Field.GATE_HALF + 1f;
-                float apex = s.el == "storm" ? 0.6f : crosses ? Mathf.Max(0f, 12f - Mathf.Max(s.from.y, goal.y)) + 1.5f : 1.2f + dist * 0.06f;
-                s.p = Vector3.Lerp(s.from, goal, s.k) + Vector3.up * (4f * apex * s.k * (1 - s.k)); s.t.position = s.p;
+                if (crosses)
+                {   // across the middle: a curve that swings out in front of the gatehouse, over the road, never over the
+                    // keep and the town behind it (a high lob over the keep still read as a shot into the town)
+                    var ctrl = new Vector3(0f, Mathf.Max(s.from.y, 5f) + 1.5f, Mathf.Max(s.from.z, goal.z) + 7f);
+                    float u = s.k, v = 1 - u; s.p = v * v * s.from + 2 * u * v * ctrl + u * u * goal;
+                }
+                else
+                {
+                    float apex = s.el == "storm" ? 0.6f : 1.2f + dist * 0.06f;
+                    s.p = Vector3.Lerp(s.from, goal, s.k) + Vector3.up * (4f * apex * s.k * (1 - s.k));
+                }
+                s.t.position = s.p;
                 if (s.k >= 1f) { Hit(s.target, s.el); Destroy(s.t.gameObject); shots.RemoveAt(i); continue; }
             }
         }
