@@ -13,18 +13,24 @@ os.makedirs(OUT, exist_ok=True)
 random.seed(7)
 
 PAL = {
-    # the front's materials (hg_front.py); '_gloss' names get a high smoothness in Unity (HGMaterialImport)
-    'stone2': (0.74, 0.66, 0.53), 'stone3': (0.86, 0.79, 0.65), 'mortar': (0.45, 0.40, 0.34), 'iron': (0.18, 0.18, 0.21),
-    'banner': (0.66, 0.12, 0.12), 'cobble': (0.62, 0.57, 0.50), 'cobble2': (0.55, 0.50, 0.44), 'dirt': (0.58, 0.45, 0.31),
-    'wood_dk': (0.33, 0.21, 0.13), 'roof_slate': (0.30, 0.34, 0.45), 'grass2': (0.30, 0.50, 0.18), 'grass3': (0.44, 0.62, 0.26),
-    'bush': (0.24, 0.45, 0.20), 'tree': (0.25, 0.48, 0.20), 'tree2': (0.32, 0.55, 0.22), 'flower_y': (1.0, 0.85, 0.30),
-    'flower_w': (0.97, 0.95, 0.90), 'flower_p': (0.85, 0.45, 0.70), 'snow': (0.90, 0.95, 1.0), 'slime_gloss': (0.38, 0.82, 0.32),
-    'slime_dk': (0.22, 0.60, 0.20), 'white_gloss': (1.0, 1.0, 1.0), 'blush': (1.0, 0.50, 0.50), 'water_gloss': (0.30, 0.62, 0.90),
-    'stone': (0.80, 0.72, 0.58), 'stone_dk': (0.52, 0.46, 0.39), 'gold': (1.0, 0.78, 0.3), 'roof_red': (0.78, 0.27, 0.2),
-    'roof_blue': (0.25, 0.42, 0.75), 'roof_purple': (0.5, 0.3, 0.7), 'wood': (0.55, 0.36, 0.2), 'grass': (0.36, 0.56, 0.22),
-    'road': (0.8, 0.68, 0.5), 'slime': (0.42, 0.86, 0.38), 'beetle': (0.32, 0.26, 0.55), 'golem': (0.55, 0.5, 0.46),
-    'eye': (1, 1, 1), 'pupil': (0.08, 0.05, 0.08), 'fire': (1.0, 0.5, 0.15), 'frost': (0.55, 0.88, 1.0), 'storm': (0.75, 0.5, 1.0),
-    'plaster': (0.96, 0.9, 0.78), 'water': (0.35, 0.7, 0.95), 'skin': (0.96, 0.75, 0.6), 'cloth': (0.3, 0.5, 0.8),
+    # values tuned for a value structure (fresh-eyes review, Nov 13 2026): a mid-tone, saturated world; the brightest,
+    # hottest colours are kept for enemies, tower tops and effects. '_gloss' names get a high smoothness in Unity.
+    'stone': (0.66, 0.61, 0.55), 'stone2': (0.60, 0.55, 0.49), 'stone3': (0.72, 0.67, 0.60), 'stone_dk': (0.42, 0.38, 0.34),
+    'mortar': (0.30, 0.27, 0.24), 'iron': (0.16, 0.16, 0.19), 'gold': (1.0, 0.76, 0.28), 'banner': (0.62, 0.10, 0.10),
+    'cobble': (0.50, 0.46, 0.41), 'cobble2': (0.43, 0.40, 0.36), 'dirt': (0.52, 0.39, 0.26), 'dirt_dk': (0.40, 0.29, 0.19),
+    'grass': (0.44, 0.66, 0.24), 'grass2': (0.36, 0.58, 0.20), 'grass3': (0.52, 0.72, 0.28), 'moss': (0.30, 0.45, 0.18),
+    'bush': (0.22, 0.46, 0.18), 'tree': (0.20, 0.44, 0.18), 'tree2': (0.30, 0.52, 0.20), 'pine': (0.13, 0.33, 0.20),
+    'tree_far': (0.22, 0.38, 0.33), 'rock': (0.50, 0.47, 0.44), 'rock_dk': (0.37, 0.35, 0.33),
+    'flower_y': (1.0, 0.85, 0.30), 'flower_w': (0.97, 0.95, 0.90), 'flower_p': (0.85, 0.40, 0.65),
+    'wood': (0.50, 0.32, 0.18), 'wood_dk': (0.30, 0.19, 0.11), 'timber': (0.32, 0.20, 0.12), 'char': (0.15, 0.12, 0.11),
+    'plaster': (0.93, 0.86, 0.72), 'plaster2': (0.88, 0.78, 0.62),
+    'roof_red': (0.72, 0.24, 0.16), 'roof_terra': (0.80, 0.40, 0.22), 'roof_slate': (0.26, 0.30, 0.42), 'roof_blue': (0.24, 0.40, 0.70),
+    'roof_purple': (0.46, 0.26, 0.64), 'awning': (0.80, 0.18, 0.16),
+    'slime_gloss': (0.18, 0.86, 0.52), 'slime_dk': (0.08, 0.52, 0.34), 'beetle_gloss': (0.34, 0.20, 0.62), 'golem': (0.48, 0.44, 0.40),
+    'eye': (1.0, 1.0, 1.0), 'pupil': (0.06, 0.04, 0.06), 'white_gloss': (1.0, 1.0, 1.0), 'blush': (1.0, 0.45, 0.45),
+    'fire': (1.0, 0.48, 0.12), 'frost': (0.55, 0.88, 1.0), 'storm': (0.72, 0.45, 1.0), 'snow': (0.90, 0.95, 1.0),
+    'water_gloss': (0.25, 0.55, 0.85), 'window': (1.0, 0.72, 0.32), 'skin': (0.96, 0.75, 0.6), 'cloth': (0.3, 0.5, 0.8),
+    'road': (0.52, 0.39, 0.26),
 }
 _mats = {}
 def mat(name, glow=0.0):
@@ -35,7 +41,7 @@ def mat(name, glow=0.0):
     bsdf = m.node_tree.nodes.get('Principled BSDF')
     c = PAL[name] + (1.0,)
     bsdf.inputs['Base Color'].default_value = c
-    bsdf.inputs['Roughness'].default_value = 0.8
+    bsdf.inputs['Roughness'].default_value = 0.25 if 'gloss' in name else 0.8
     if glow:
         bsdf.inputs['Emission Color'].default_value = c
         bsdf.inputs['Emission Strength'].default_value = glow
@@ -244,6 +250,9 @@ if __name__ == '__main__':
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import hg_front as F
     ground, road, wall, gate, tower_base, slime, fountain, top = F.ground, F.road, F.wall, F.gate, F.tower_base, F.slime, F.fountain, F.top
+    beetle, golem = F.beetle, F.golem
+    import hg_city as C   # the city's buildings and ruins
+    building, ruin = C.building, C.ruin
     clear()
     report = {}
     for fn in (ground, road, wall, gate, tower_base, slime, beetle, golem, ruin, fountain, villager):

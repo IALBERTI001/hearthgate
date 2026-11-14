@@ -17,11 +17,11 @@ def cam(pos,look,fov,aspect=16/9):
 ROADZ=5.4; SPAWN=27
 TOWERS=[-7.5,-13,-18.5,-24]
 def boxes(plots,plaza):
-    B=[('gate',(-4,4,-2.1,2.1,0,5.6))]
+    B=[('gate',(-4,4,-2.1,2.1,0,6.2)),('gate_keep',(-2.7,2.7,-1.6,1.6,0,9.8))]   # gatehouse and its roofed upper block
     B+= [('wall',(-31,16,-0.9,0.9,0,4.0))]
-    B+= [(f'tower{x}',(x-1.7,x+1.7,-1.7,1.7,0,7.8)) for x in TOWERS]
-    B+= [(f'plot{i}',(x-2.2,x+2.2,z-2.2,z+2.2,0,4.5)) for i,(x,z) in enumerate(plots)]
-    B+= [('fountain',(plaza[0]-2.6,plaza[0]+2.6,plaza[1]-2.6,plaza[1]+2.6,0,2.2))]
+    B+= [(f'tower{x}',(x-2.0,x+2.0,-2.0,2.0,0,8.2)) for x in TOWERS]   # 5 m tower + element cap
+    B+= [(f'plot{i}',(x-2.3,x+2.3,z-2.3,z+2.3,0,6.0)) for i,(x,z) in enumerate(plots)]
+    B+= [('fountain',(plaza[0]-3.0,plaza[0]+3.0,plaza[1]-3.0,plaza[1]+3.0,0,3.8))]
     return B
 def ray_hits(o,d,b,tmax):
     lo=np.array([b[0],b[4],b[2]]); hi=np.array([b[1],b[5],b[3]])
@@ -47,6 +47,7 @@ def check(camp,look,fov,plots,plaza,verbose=False):
             if max(xs)>a and min(xs)<b2 and max(ys)>c and min(ys)<d: probs.append(f'{n} under {h}')
     for (n1,b1),(n2,b2) in itertools.combinations(B,2):
         if 'wall' in (n1,n2) and not (n1.startswith('plot') or n2.startswith('plot') or 'fountain' in (n1,n2)): continue
+        if {n1,n2}=={'gate','gate_keep'}: continue
         if b1[0]+.05<b2[1] and b2[0]+.05<b1[1] and b1[2]+.05<b2[3] and b2[2]+.05<b1[3]: probs.append(f'overlap {n1} {n2}')
     # every plot: its roof centre must be seen (sight line clear of gate, wall, towers, other plots)
     o=np.array(camp,float)
@@ -65,15 +66,15 @@ def check(camp,look,fov,plots,plaza,verbose=False):
 th=math.radians(40); lx=-7.5; lz=-3.5; dist=46
 camp=(lx,dist*math.sin(th),lz+dist*math.cos(th)); look=(lx,0,lz); fov=38
 P=cam(camp,look,fov); o=np.array(camp)
-fixed=boxes([], (100,100))[:-1]   # gate, wall, towers
+fixed=boxes([], (100,100))[:-1]   # gate, keep, wall, towers
 HUD=[(0,0.235,0.8,1),(0.747,0.981,0.76,0.967),(0.36,0.64,0.043,0.068)]
-def seen(x,z,h=3.0,r=2.2):
+def seen(x,z,h=3.6,r=2.3):
     # the whole roof line (3 points across the front) must be visible over gate, wall and towers
     for dx in (-r*0.6,0,r*0.6):
         tgt=np.array([x+dx,h,z+r*0.5]); d=tgt-o; L=np.linalg.norm(d); d/=L
         if any(ray_hits(o,d,b,L-0.2) for n,b in fixed): return False
     return True
-def framed(x,z,r=2.2,h=5):
+def framed(x,z,r=2.3,h=6):
     cs=[P((x+a,y,z+b)) for a in (-r,r) for b in (-r,r) for y in (0,h)]
     xs=[c[0] for c in cs]; ys=[c[1] for c in cs]
     if min(xs)<0.01 or max(xs)>0.99 or min(ys)<0.01 or max(ys)>0.99: return False
@@ -84,15 +85,25 @@ for z in np.arange(-5.0,-22,-0.5):
         if seen(x,z) and framed(x,z): cands.append((x,z))
 print(len(cands),'candidate spots')
 # plaza first: as close behind the gate as possible and seen (low object, 1.2 m)
-pl=[(x,z) for z in np.arange(-5,-16,-0.5) for x in np.arange(-3,10,0.5) if seen(x,z,1.0,2.6) and framed(x,z,2.6,2)]
+pl=[(x,z) for z in np.arange(-5,-16,-0.5) for x in np.arange(-6,14,0.5) if seen(x,z,1.2,3.0) and framed(x,z,3.0,3.8)]
 pl.sort(key=lambda p:(abs(p[0])+abs(p[1])))
 plaza=pl[0]; print('plaza',plaza)
 # greedy: rank spots by screen size (nearer = bigger), keep 5.6 m apart from each other and 5.8 from the plaza
 cands.sort(key=lambda p:(-p[1]*0.0 + abs(p[1]+6)*1.0 + abs(p[0]+5)*0.15))
 chosen=[]
+def pbox(x,z): return (x-2.3,x+2.3,z-2.3,z+2.3,0,6.0)
+def seen_by(x,z,others):   # roof line clear of the fixed structures and of the plots already chosen
+    if not seen(x,z): return False
+    for dx in (-1.5,0,1.5):
+        tgt=np.array([x+dx,3.6,z+1.25]); d=tgt-o; L=np.linalg.norm(d); d/=L
+        if any(ray_hits(o,d,pbox(*q),L-0.2) for q in others): return False
+    return True
 for c in cands:
-    if math.dist(c,plaza)<6.2: continue
-    if all(math.dist(c,q)>=5.8 for q in chosen): chosen.append(c)
+    if math.dist(c,plaza)<6.6: continue
+    if not all(max(abs(c[0]-q[0]),abs(c[1]-q[1]))>=5.2 for q in chosen): continue   # square footprints 0.6 m apart
+    if not seen_by(*c,chosen): continue
+    if not all(seen_by(*q,[c]+[r for r in chosen if r!=q]) for q in chosen): continue
+    chosen.append(c)
     if len(chosen)==10: break
 chosen.sort(key=lambda p:(-p[1],p[0]))
 print('plots',[(float(a),float(b)) for a,b in chosen])

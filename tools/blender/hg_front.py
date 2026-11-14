@@ -1,14 +1,17 @@
-# Hearthgate 3D, the front (Nov 13 2026): the gatehouse, the curtain wall, the element towers and their tops, the road,
-# the ground, the fountain and the slime, built to the art standard rather than as block-outs. Imported by hg_kit.py,
-# which owns the helpers, the palette and the export.
+# Hearthgate 3D, the front (Nov 13 2026, second pass after the fresh-eyes review): the gatehouse, the curtain wall, the
+# element towers and their caps, the road, the ground, the fountain and the enemies, built to the art standard. Imported
+# by hg_kit.py, which owns the helpers, the palette and the export.
 #
 # Coordinates are Unity's: x right as seen from the city (the camera stands north, so screen right is world -x), y in
 # Blender = Unity z (north, toward the camera), z up. The camera looks at the +y faces, so those carry the detail.
-# Layout numbers (gate at the origin, wall along y = 0, towers at x = -7.5, -13, -18.5, -24, road centre y = 5.4,
-# plaza at (0, -10)) match Assets/Scripts/Game/Field.cs; LayoutCheck verifies them on these models.
+# Layout numbers (gate at the origin, wall along y = 0, towers at x = -7.5, -13, -18.5, -24 with their platform at
+# 5.0 m, road centre y = 5.4, plaza at (8.5, -6)) match Assets/Scripts/Game/Field.cs; LayoutCheck verifies them.
 #
-# Owner's rules this file answers: no towers crowding the entrance (one gatehouse, towers spaced on the wall); nothing
-# looks pasted on (every structure sits on a plinth with rubble and grass at its foot); effects match each tower's element.
+# Owner's and reviewer's rules this file answers:
+#   - one gatehouse, the hero of the frame (raised keep, red roof, flag, crest); towers spaced on the wall, shorter
+#   - each element tower reads by its own silhouette and colour from across the screen (oversized glowing caps)
+#   - a value structure: mid-tone world, the brightest colours only on enemies, caps and effects
+#   - nothing pasted on: plinths, moss, rubble and grass at every foot; props clustered, never sprinkled
 import bpy, bmesh, math, random
 from mathutils import Vector
 import hg_kit as K
@@ -20,16 +23,25 @@ def M(name, glow=0.0): return K.mat(name, glow)
 
 def block(loc, size, m, bevel=0.035, rot=0.0):
     o = K.cube('blk', size, loc, m, bevel)
+    for md in o.modifiers:
+        if md.type == 'BEVEL': md.segments = 1          # one segment: the chamfer reads at game size, half the triangles
     if rot: o.rotation_euler = (0, 0, rot)
     return o
 
+def mesh_from(name, verts, faces, m, bevel=0.0, smooth=False):
+    me = bpy.data.meshes.new(name); me.from_pydata(verts, [], faces); me.update()
+    o = bpy.data.objects.new(name, me); bpy.context.collection.objects.link(o)
+    K.finish(o, m, bevel, smooth)
+    for md in o.modifiers:
+        if md.type == 'BEVEL': md.segments = 1
+    return o
+
 # ---------------------------------------------------------------------------------------------------------------------
-# masonry: rows of bevelled stones laid on a face, with the joints showing, in three tints
-def masonry(u0, u1, z0, z1, place, course=0.52, depth=0.1, skip=None, lmin=0.55, lmax=1.25):
-    """place(u, z, length, height) -> (loc, size, rot) for one stone; skip(u0, u1, z0, z1) -> True to leave a gap."""
+# masonry: rows of chamfered stones laid on a face, joints showing, in three tints
+def masonry(u0, u1, z0, z1, place, course=0.52, skip=None, lmin=0.55, lmax=1.25):
     z, row = z0, 0
     while z < z1 - 0.05:
-        h = min(course, z1 - z)
+        h = min(course * R.uniform(0.85, 1.15), z1 - z)
         u = u0 - (R.uniform(0.2, 0.5) if row % 2 else 0)
         while u < u1 - 0.05:
             L = R.uniform(lmin, lmax)
@@ -40,397 +52,511 @@ def masonry(u0, u1, z0, z1, place, course=0.52, depth=0.1, skip=None, lmin=0.55,
             u += L
         z += h; row += 1
 
-def face_y(y, sign, depth=0.1):   # stones on a face whose normal is +-y
+def face_y(y, sign, depth=0.1):
     return lambda u, z, L, h: ((u, y + sign * depth / 2, z), (L, depth, h), 0.0)
-def face_x(x, sign, depth=0.1):   # stones on a face whose normal is +-x
+def face_x(x, sign, depth=0.1):
     return lambda u, z, L, h: ((x + sign * depth / 2, u, z), (depth, L, h), 0.0)
 
-def rubble(cx, cy, n, spread, zmax=0.35):
+def rubble(cx, cy, n, spread):
     for _ in range(n):
-        s = R.uniform(0.18, 0.42)
-        o = block((cx + R.uniform(-spread[0], spread[0]), cy + R.uniform(-spread[1], spread[1]), s * 0.35), (s * 1.3, s, s * 0.7), M('stone_dk'), 0.06)
+        s = R.uniform(0.18, 0.4)
+        o = block((cx + R.uniform(-spread[0], spread[0]), cy + R.uniform(-spread[1], spread[1]), s * 0.3), (s * 1.3, s, s * 0.7), M(R.choice(('stone_dk', 'rock_dk'))), 0.06)
         o.rotation_euler = (R.uniform(-0.2, 0.2), R.uniform(-0.2, 0.2), R.uniform(0, 3.1))
 
-def tufts(cx, cy, n, spread):
+def tufts(cx, cy, n, spread, mats=('grass', 'grass2', 'grass3')):
     for _ in range(n):
         x, y = cx + R.uniform(-spread[0], spread[0]), cy + R.uniform(-spread[1], spread[1])
         for k in range(3):
-            o = K.cone('tuft', R.uniform(0.07, 0.12), R.uniform(0.35, 0.6), (x + R.uniform(-0.12, 0.12), y + R.uniform(-0.12, 0.12), 0.2), M(R.choice(('grass', 'grass2'))), 4)
+            o = K.cone('tuft', R.uniform(0.07, 0.12), R.uniform(0.3, 0.55), (x + R.uniform(-0.12, 0.12), y + R.uniform(-0.12, 0.12), 0.18), M(R.choice(mats)), 4)
             o.rotation_euler = (R.uniform(-0.35, 0.35), R.uniform(-0.35, 0.35), 0)
 
-def merlons(u0, u1, z, place, w=0.62, gap=0.42, h=0.6):
+def moss(x0, x1, y, z=0.05, n=6):   # low dark-green clumps along the foot of a wall
+    for _ in range(n):
+        x = R.uniform(x0, x1)
+        K.sphere('moss', R.uniform(0.25, 0.5), (x, y, z), M(R.choice(('moss', 'grass2'))), (1.6, 0.7, 0.45), 1)
+
+def merlons(u0, u1, z, place, w=0.62, gap=0.42, h=0.6, vary=0.0):
     n = int((u1 - u0 + gap) // (w + gap)); start = u0 + ((u1 - u0) - (n * w + (n - 1) * gap)) / 2
     for i in range(n):
         u = start + i * (w + gap) + w / 2
-        loc, size = place(u, z + h / 2, w, h)
+        hh = h * (1 + R.uniform(-vary, vary))
+        loc, size = place(u, z + hh / 2, w, hh)
         block(loc, size, M(R.choice(STONES)), 0.045)
 
-def banner(x, y, ztop, zbot, w, cloth='banner', trim='gold'):
-    """A hanging banner on a +y face: a rod, a cloth with a gentle wave and a swallowtail, a gold hearth sigil."""
-    K.cyl('rod', 0.05, w + 0.35, (x, y + 0.12, ztop + 0.05), M('iron'), 8, 0.0).rotation_euler = (0, math.pi / 2, 0)
-    for s in (-1, 1): K.sphere('knob', 0.08, (x + s * (w / 2 + 0.18), y + 0.12, ztop + 0.05), M(trim), sub=2)
-    bm = bmesh.new(); nx, nz = 6, 14
-    verts = []
+def cloth(name, x0, x1, ztop, zbot, y, m, wave=0.08, tail=True, axis='x', nx=6, nz=12):
+    """A hanging (axis 'x') or flying (axis 'y' for a flag along +x from a pole) cloth with a gentle wave."""
+    vs, fs = [], []
     for j in range(nz + 1):
-        t = j / nz; z = ztop - t * (ztop - zbot)
-        row = []
+        t = j / nz
         for i in range(nx + 1):
-            u = i / nx; xx = x - w / 2 + u * w
-            zz = z
-            if j == nz: zz = zbot + abs(u - 0.5) * 0.9 * w   # swallowtail cut
-            yy = y + 0.1 + 0.06 * math.sin(t * 5.5 + u * 1.3) * t
-            row.append(bm.verts.new((xx, yy, zz)))
-        verts.append(row)
+            u = i / nx
+            if axis == 'x':
+                xx = x0 + u * (x1 - x0); zz = ztop - t * (ztop - zbot)
+                if tail and j == nz: zz = zbot + abs(u - 0.5) * 0.9 * (x1 - x0)
+                yy = y + wave * math.sin(t * 5.5 + u * 1.3) * t
+            else:   # a flag: u runs along +x away from the pole, t down its height
+                xx = x0 + u * (x1 - x0); zz = ztop - t * (ztop - zbot) - 0.12 * u * u
+                yy = y + wave * math.sin(u * 6.0 + t) * u
+            vs.append((xx, yy, zz))
     for j in range(nz):
         for i in range(nx):
-            bm.faces.new((verts[j][i], verts[j][i + 1], verts[j + 1][i + 1], verts[j + 1][i]))
-    me = bpy.data.meshes.new('banner'); bm.to_mesh(me); bm.free()
-    o = bpy.data.objects.new('banner', me); bpy.context.collection.objects.link(o)
-    sol = o.modifiers.new('thick', 'SOLIDIFY'); sol.thickness = 0.04
-    K.finish(o, M(cloth), 0.0)
-    # gold trim along the sides and a diamond sigil with a flame
-    for s in (-1, 1): block((x + s * (w / 2 - 0.05), y + 0.17, (ztop + zbot) / 2 + 0.15), (0.08, 0.04, ztop - zbot - 0.4), M(trim), 0.0)
-    d = block((x, y + 0.2, ztop - (ztop - zbot) * 0.38), (0.42, 0.04, 0.42), M(trim), 0.01); d.rotation_euler = (0, math.pi / 4, 0)
-    K.sphere('sigil', 0.12, (x, y + 0.24, ztop - (ztop - zbot) * 0.38 - 0.02), M('fire', 1.5), (1, 0.5, 1.4), 2)
+            a = j * (nx + 1) + i
+            fs.append((a, a + 1, a + nx + 2, a + nx + 1))
+    o = mesh_from(name, vs, fs, m, 0.0, smooth=True)
+    sol = o.modifiers.new('thick', 'SOLIDIFY'); sol.thickness = 0.05
+    return o
+
+def banner(x, y, ztop, zbot, w):
+    K.cyl('rod', 0.05, w + 0.35, (x, y + 0.12, ztop + 0.05), M('iron'), 8, 0.0).rotation_euler = (0, math.pi / 2, 0)
+    for s in (-1, 1): K.sphere('knob', 0.08, (x + s * (w / 2 + 0.18), y + 0.12, ztop + 0.05), M('gold'), sub=2)
+    cloth('banner', x - w / 2, x + w / 2, ztop, zbot, y + 0.1, M('banner'))
+    for s in (-1, 1): block((x + s * (w / 2 - 0.06), y + 0.2, (ztop + zbot) / 2 + 0.2), (0.08, 0.04, ztop - zbot - 0.5), M('gold'), 0.0)
+    d = block((x, y + 0.22, ztop - (ztop - zbot) * 0.36), (0.44, 0.04, 0.44), M('gold'), 0.0); d.rotation_euler = (0, math.pi / 4, 0)
+    K.cone('sigil', 0.11, 0.3, (x, y + 0.26, ztop - (ztop - zbot) * 0.36 + 0.02), M('fire', 2.0), 8).rotation_euler = (0, 0, 0)
 
 def torch(x, y, z):
     block((x, y + 0.08, z - 0.15), (0.16, 0.16, 0.34), M('iron'), 0.02)
-    K.cyl('cup', 0.17, 0.2, (x, y + 0.22, z + 0.08), M('iron'), 10, 0.02, r2=0.1)
-    K.cone('flame', 0.13, 0.45, (x, y + 0.22, z + 0.38), M('fire', 4.0), 10)
-    K.cone('flame_in', 0.07, 0.3, (x, y + 0.24, z + 0.34), M('gold', 5.0), 8)
+    K.cyl('cup', 0.18, 0.2, (x, y + 0.22, z + 0.08), M('iron'), 10, 0.02, r2=0.1)
+    K.cone('flame', 0.15, 0.55, (x, y + 0.22, z + 0.43), M('fire', 4.0), 10)
+    K.cone('flame_in', 0.08, 0.35, (x, y + 0.25, z + 0.36), M('gold', 5.0), 8)
+
+def window(x, y, z, w=0.55, h=0.8, arched=True):   # a warm lit window set in a stone frame (+y face)
+    block((x, y + 0.03, z), (w + 0.2, 0.08, h + 0.2), M('stone3'), 0.02)
+    block((x, y + 0.07, z - 0.05), (w, 0.04, h - 0.1), M('window', 1.6), 0.0)
+    if arched: K.cyl('arch', w / 2, 0.04, (x, y + 0.07, z + h / 2 - 0.1), M('window', 1.6), 12, 0.0).rotation_euler = (math.pi / 2, 0, 0)
+    block((x, y + 0.1, z), (0.05, 0.03, h), M('wood_dk'), 0.0)
+    block((x, y + 0.1, z), (w, 0.03, 0.05), M('wood_dk'), 0.0)
+
+def hip_roof(cx, cy, z0, hx, hy, rise, ridge, m, battens=True):
+    """A hipped roof: base rectangle (half sizes hx, hy) at z0, ridge along x of half length 'ridge'."""
+    vs = [(cx - hx, cy - hy, z0), (cx + hx, cy - hy, z0), (cx + hx, cy + hy, z0), (cx - hx, cy + hy, z0),
+          (cx - ridge, cy, z0 + rise), (cx + ridge, cy, z0 + rise)]
+    fs = [(0, 1, 5, 4), (2, 3, 4, 5), (1, 2, 5), (3, 0, 4), (3, 2, 1, 0)]
+    o = mesh_from('roof', vs, fs, m, 0.03)
+    if battens:   # tile courses on the front slope: thin strips parallel to the eaves
+        for k in range(1, 6):
+            t = k / 6
+            z = z0 + rise * t; yy = cy + hy * (1 - t) + 0.03; half = hx - (hx - ridge) * t
+            block((cx, yy, z), (2 * half, 0.06, 0.06), M('roof_red' if m.name.endswith('terra') else 'wood_dk'), 0.0).rotation_euler = (-math.atan2(rise, hy), 0, 0)
+    return o
 
 # ---------------------------------------------------------------------------------------------------------------------
-# the gatehouse: one mass over the road's end, an arched passage with a half-raised portcullis and closed doors behind,
-# voussoirs and quoins, a corbel band, a parapet with merlons, the hearth crest, banners and torches
+# the gatehouse: the hero. An arched passage with a half-raised portcullis and closed doors, voussoirs and quoins, a
+# corbel band and crenellated parapet, a raised keep with lit windows, a steep red hipped roof, a flag and the hearth crest
 GX, GY = 4.0, 2.1          # half width, half depth
 AW, ASPR = 1.5, 2.4        # arch half width and springing height
-BODY, PARA = 4.8, 5.45     # top of the body, top of the parapet wall
+BODY, PARA = 4.8, 5.45     # top of the body, top of the parapet
+KX, KY, KTOP = 2.6, 1.45, 7.5   # the keep: half width, half depth, top of its walls
 
 def arch_top(x): return ASPR + math.sqrt(max(0.0, AW * AW - x * x))
 
 def gate():
-    # plinth with a batter, then the body with the passage cut through it
     K.cube('plinth', (2 * GX + 0.5, 2 * GY + 0.5, 0.6), (0, 0, 0.3), M('stone_dk'), 0.06)
     body = K.cube('body', (2 * GX, 2 * GY, BODY - 0.6), (0, 0, 0.6 + (BODY - 0.6) / 2), M('mortar'), 0.0)
     cut = K.cube('cut', (2 * AW, 2 * GY + 2, ASPR + 0.1), (0, 0, ASPR / 2 - 0.05), M('mortar'), 0.0)
     bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=AW, depth=2 * GY + 2, location=(0, 0, ASPR), rotation=(math.pi / 2, 0, 0))
-    cyl = bpy.context.object
-    for c in (cut, cyl):
+    cy = bpy.context.object
+    for c in (cut, cy):
         bo = body.modifiers.new('arch', 'BOOLEAN'); bo.operation = 'DIFFERENCE'; bo.object = c; bo.solver = 'EXACT'
         bpy.context.view_layer.objects.active = body; bpy.ops.object.modifier_apply(modifier=bo.name)
-    for c in (cut, cyl): bpy.data.objects.remove(c, do_unlink=True)
-    # the passage floor and the dark doors at its far end
-    K.cube('floor', (2 * AW, 2 * GY, 0.62), (0, 0, 0.31), M('cobble'), 0.0)
+    for c in (cut, cy): bpy.data.objects.remove(c, do_unlink=True)
+    K.cube('floor', (2 * AW, 2 * GY, 0.62), (0, 0, 0.31), M('cobble2'), 0.0)
     for s in (-1, 1):
-        for k in range(4):   # planks of each door leaf
+        for k in range(4):
             x = s * (AW - 0.19 - k * 0.37)
             h = arch_top(abs(x) + 0.18) - 0.65
             block((x, -0.9, 0.62 + h / 2), (0.35, 0.16, h), M('wood_dk' if k % 2 else 'wood'), 0.02)
-    for zb in (1.1, 2.1, 3.0):   # iron bands and studs
+    for zb in (1.1, 2.1, 3.0):
         w = 2 * math.sqrt(max(0.0, AW * AW - max(0.0, zb - ASPR) ** 2)) - 0.1 if zb > ASPR else 2 * AW - 0.1
         block((0, -0.8, zb), (w, 0.05, 0.12), M('iron'), 0.0)
-    # portcullis, raised to 1.35 m, in its groove just behind the front face
     yp = GY - 0.45
     for i in range(8):
         x = -AW + 0.2 + i * (2 * AW - 0.4) / 7
         top = arch_top(abs(x)) - 0.05
-        block((x, yp, (1.35 + top) / 2), (0.09, 0.09, top - 1.35), M('iron'), 0.0)
-        K.cone('spike', 0.07, 0.28, (x, yp, 1.22), M('iron'), 6).rotation_euler = (math.pi, 0, 0)
+        block((x, yp, (1.35 + top) / 2), (0.1, 0.1, top - 1.35), M('iron'), 0.0)
+        K.cone('spike', 0.08, 0.3, (x, yp, 1.2), M('iron'), 6).rotation_euler = (math.pi, 0, 0)
     for zb in (1.5, 2.05, 2.6, 3.15, 3.65):
         if zb >= arch_top(0): continue
         hw = math.sqrt(max(0.0, AW * AW - max(0.0, zb - ASPR) ** 2)) if zb > ASPR else AW
-        block((0, yp, zb), (2 * hw - 0.12, 0.07, 0.07), M('iron'), 0.0)
-    # masonry on the front (+y) and the two outer sides, leaving the arch and its stone ring clear
+        block((0, yp, zb), (2 * hw - 0.12, 0.08, 0.08), M('iron'), 0.0)
     def skip_front(a, b, z0, z1):
-        if b > -2.15 and a < 2.15 and z0 < ASPR + 2.1: # inside the voussoir ring or the jambs
-            for x in (a, b, (a + b) / 2):
-                ax = abs(x)
-                if ax < 2.1 and z0 < ASPR + math.sqrt(max(0.0, 2.1 ** 2 - min(ax, 2.1) ** 2)): return True
+        for x in (a, b, (a + b) / 2):
+            ax = abs(x)
+            if ax < 2.1 and z0 < ASPR + math.sqrt(max(0.0, 2.1 ** 2 - min(ax, 2.1) ** 2)): return True
         return False
     masonry(-GX, GX, 0.6, BODY, face_y(GY, 1), skip=skip_front)
     for s in (-1, 1): masonry(-GY, GY, 0.6, BODY, face_x(s * GX, s))
-    masonry(-GX, GX, 0.6, BODY, face_y(-GY, -1), skip=skip_front, lmin=0.8, lmax=1.6)   # the city side, plainer
-    # voussoirs: a ring of wedge stones round the arch, the keystone proud and gold-capped
     n = 11
     for i in range(n):
         a0, a1 = math.pi * i / n, math.pi * (i + 1) / n
-        am = (a0 + a1) / 2
-        r0, r1 = AW + 0.02, AW + (0.68 if i == n // 2 else 0.55)
-        bm = bmesh.new()
-        pts = []
-        for (r, a) in ((r0, a0 + 0.012), (r1, a0 + 0.012), (r1, a1 - 0.012), (r0, a1 - 0.012)):
-            pts.append((math.cos(a) * r, math.sin(a) * r + ASPR))
-        depth = 0.18 if i == n // 2 else 0.13
-        vs = [bm.verts.new((x, GY + yy, z)) for yy in (0.0, depth) for (x, z) in pts]
-        for f in ((0, 1, 2, 3), (7, 6, 5, 4), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)):
-            bm.faces.new([vs[k] for k in f])
-        me = bpy.data.meshes.new('vous'); bm.to_mesh(me); bm.free()
-        o = bpy.data.objects.new('vous', me); bpy.context.collection.objects.link(o)
-        K.finish(o, M('stone3' if i == n // 2 else R.choice(STONES)), 0.025, smooth=False)
-    # quoins: alternating long and short stones up both jambs
+        r0, r1 = AW + 0.02, AW + (0.7 if i == n // 2 else 0.56)
+        pts = [(math.cos(a) * r, math.sin(a) * r + ASPR) for (r, a) in ((r0, a0 + 0.012), (r1, a0 + 0.012), (r1, a1 - 0.012), (r0, a1 - 0.012))]
+        depth = 0.2 if i == n // 2 else 0.14
+        vs = [(x, GY + yy, z) for yy in (0.0, depth) for (x, z) in pts]
+        fs = [(0, 1, 2, 3), (7, 6, 5, 4), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)]
+        mesh_from('vous', vs, fs, M('stone3' if i == n // 2 else R.choice(STONES)), 0.025)
     for s in (-1, 1):
         z, k = 0.6, 0
         while z < ASPR - 0.05:
             L = 0.62 if k % 2 else 0.42; h = min(0.45, ASPR - z)
             block((s * (AW + L / 2 + 0.02), GY + 0.07, z + h / 2), (L - 0.04, 0.14, h - 0.04), M('stone3'), 0.03)
             z += h; k += 1
-    # the passage walls inside the arch, so the opening reads deep
     for s in (-1, 1): block((s * (AW + 0.05), 0, 0.62 + (ASPR - 0.62) / 2), (0.1, 2 * GY - 0.2, ASPR - 0.62), M('stone_dk'), 0.0)
-    # corbel band and the overhanging parapet with merlons on front and sides
+    # corbel band, parapet and merlons (varied a little)
     for x in [-GX + 0.3 + i * 0.62 for i in range(13)]:
         block((x, GY + 0.14, BODY - 0.12), (0.34, 0.28, 0.24), M('stone_dk'), 0.03)
         block((x, GY + 0.08, BODY - 0.32), (0.26, 0.16, 0.18), M('stone_dk'), 0.03)
     K.cube('parapet', (2 * GX + 0.36, 2 * GY + 0.36, PARA - BODY), (0, 0, BODY + (PARA - BODY) / 2), M('stone'), 0.05)
     masonry(-GX - 0.18, GX + 0.18, BODY, PARA, face_y(GY + 0.18, 1, 0.06), course=0.33, lmin=0.4, lmax=0.8)
-    merlons(-GX - 0.1, GX + 0.1, PARA, lambda u, z, w, h: ((u, GY + 0.0, z), (w, 0.38, h)))
-    merlons(-GX - 0.1, GX + 0.1, PARA, lambda u, z, w, h: ((u, -GY - 0.0, z), (w, 0.38, h)))
-    for s in (-1, 1): merlons(-GY + 0.4, GY - 0.4, PARA, lambda u, z, w, h, s=s: ((s * (GX + 0.0), u, z), (0.38, w, h)))
-    # the hearth crest over the arch: a gold disc with a flame, on a raised stone
-    block((0, GY + 0.05, PARA + 0.35), (1.3, 0.5, 0.75), M('stone3'), 0.05)
-    K.cyl('crest', 0.5, 0.1, (0, GY + 0.33, PARA + 0.45), M('gold'), 24, 0.02).rotation_euler = (math.pi / 2, 0, 0)
-    K.cone('crest_flame', 0.24, 0.62, (0, GY + 0.42, PARA + 0.47), M('fire', 2.5), 10)
-    K.cone('crest_core', 0.12, 0.38, (0, GY + 0.47, PARA + 0.42), M('gold', 3.0), 8)
-    # banners over the piers and torches beside the arch
+    K.cube('walk', (2 * GX + 0.2, 2 * GY + 0.2, 0.08), (0, 0, PARA + 0.04), M('cobble2'), 0.0)
+    merlons(-GX - 0.1, GX + 0.1, PARA, lambda u, z, w, h: ((u, GY + 0.0, z), (w, 0.38, h)), vary=0.08)
+    merlons(-GX - 0.1, GX + 0.1, PARA, lambda u, z, w, h: ((u, -GY, z), (w, 0.38, h)), vary=0.08)
+    for s in (-1, 1): merlons(-GY + 0.4, GY - 0.4, PARA, lambda u, z, w, h, s=s: ((s * GX, u, z), (0.38, w, h)), vary=0.08)
+    # the keep: masonry walls, two lit arched windows and the hearth crest on its front, corbels under a red hipped roof
+    K.cube('keep', (2 * KX, 2 * KY, KTOP - PARA), (0, 0, PARA + (KTOP - PARA) / 2), M('mortar'), 0.0)
+    masonry(-KX, KX, PARA, KTOP, face_y(KY, 1), course=0.45, lmin=0.5, lmax=1.0,
+            skip=lambda a, b, z0, z1: (z1 > 5.75 and z0 < 7.05 and ((a < -0.75 and b > -1.85) or (a < 1.85 and b > 0.75) or (a < 0.6 and b > -0.6))))
+    for s in (-1, 1): masonry(-KY, KY, PARA, KTOP, face_x(s * KX, s), course=0.45)
+    for s in (-1, 1): window(s * 1.3, KY + 0.1, 6.4, 0.6, 0.95)
+    K.cyl('crest_back', 0.6, 0.12, (0, KY + 0.12, 6.45), M('stone3'), 24, 0.02).rotation_euler = (math.pi / 2, 0, 0)
+    K.cyl('crest', 0.5, 0.1, (0, KY + 0.2, 6.45), M('gold'), 24, 0.02).rotation_euler = (math.pi / 2, 0, 0)
+    K.cone('crest_flame', 0.26, 0.66, (0, KY + 0.3, 6.5), M('fire', 2.5), 10)
+    K.cone('crest_core', 0.13, 0.4, (0, KY + 0.34, 6.44), M('gold', 3.0), 8)
+    for x in [-KX + 0.25 + i * 0.58 for i in range(10)]:
+        block((x, KY + 0.12, KTOP - 0.1), (0.3, 0.24, 0.2), M('stone_dk'), 0.03)
+    block((0, 0, KTOP + 0.06), (2 * KX + 0.5, 2 * KY + 0.5, 0.12), M('wood_dk'), 0.02)   # eaves board
+    hip_roof(0, 0, KTOP + 0.12, KX + 0.45, KY + 0.45, 2.1, 1.3, M('roof_terra'))
+    for s in (-1, 1): K.cone('finial', 0.1, 0.55, (s * 1.3, 0, KTOP + 2.5), M('gold'), 8)
+    # the flag on the ridge, big enough to read at game size
+    K.cyl('pole', 0.06, 2.4, (0, 0, KTOP + 3.3), M('wood_dk'), 8, 0.0)
+    K.sphere('pole_knob', 0.12, (0, 0, KTOP + 4.52), M('gold'), sub=2)
+    cloth('flag', 0.06, 1.9, KTOP + 4.3, KTOP + 3.25, 0.0, M('banner'), wave=0.16, tail=False, axis='y', nx=8, nz=4)
+    # banners on the piers, torches beside the arch
     for s in (-1, 1):
         banner(s * 2.95, GY + 0.1, BODY - 0.45, 2.0, 0.92)
-        torch(s * 2.08, GY + 0.1, 2.75)
-    # feet: rubble and grass where the plinth meets the ground (front and outer corners)
+        torch(s * 2.1, GY + 0.1, 2.75)
     for s in (-1, 1):
-        rubble(s * (GX + 0.2), GY + 0.25, 6, (0.35, 0.3)); tufts(s * (GX + 0.35), GY + 0.4, 4, (0.3, 0.25))
-        rubble(s * (AW + 0.5), GY + 0.35, 3, (0.25, 0.15))
+        rubble(s * (GX + 0.25), GY + 0.3, 5, (0.35, 0.3)); tufts(s * (GX + 0.4), GY + 0.45, 4, (0.3, 0.25))
+        moss(s * GX - 0.6 * s, s * GX + 0.2 * s, GY + 0.3, n=3)
     return K.export('gate')
 
 # ---------------------------------------------------------------------------------------------------------------------
-# the curtain wall: either side of the gatehouse, off both edges of the view; stones on the front, merlons, a batter
-WX0, WX1, WH = -40.0, 30.0, 3.4
+# the curtain wall: from rocky hills on the left to rocky hills on the right; stones, a coping course, varied merlons,
+# buttresses between the towers, moss and grass at the foot
+WX0, WX1, WH = -31.0, 21.0, 3.4
+TOWERS = (-7.5, -13.0, -18.5, -24.0)
 def wall():
     for (a, b) in ((WX0, -GX + 0.02), (GX - 0.02, WX1)):
         K.cube('core', (b - a, 1.8, WH), ((a + b) / 2, 0, WH / 2), M('mortar'), 0.0)
         K.cube('batter', (b - a, 2.2, 0.55), ((a + b) / 2, 0.05, 0.27), M('stone_dk'), 0.05)
-        masonry(a, b, 0.55, WH, face_y(0.9, 1), lmin=0.7, lmax=1.5)
-        K.cube('walk', (b - a, 1.9, 0.22), ((a + b) / 2, 0, WH + 0.11), M('stone2'), 0.03)
-        merlons(a + 0.2, b - 0.2, WH + 0.22, lambda u, z, w, h: ((u, 0.72, z), (w, 0.42, h)), w=0.7, gap=0.48, h=0.62)
-        merlons(a + 0.2, b - 0.2, WH + 0.22, lambda u, z, w, h: ((u, -0.72, z), (w, 0.32, h * 0.7)), w=0.7, gap=0.48, h=0.62)
-        # buttresses and drainage spouts at intervals, rubble and grass along the foot
-        x = a + 2.5
-        while x < b - 2:
-            if all(abs(x - tx) > 2.6 for tx in (-7.5, -13, -18.5, -24)):
-                block((x, 1.12, 1.0), (0.7, 0.45, 2.0), M(R.choice(STONES)), 0.05)
-                block((x, 1.02, 2.1), (0.62, 0.3, 0.35), M('stone_dk'), 0.05)
-            if R.random() < 0.6: rubble(x + R.uniform(-1, 1), 1.35, 2, (0.5, 0.15))
-            if R.random() < 0.7: tufts(x + R.uniform(-1.5, 1.5), 1.45, 2, (0.6, 0.15))
-            x += R.uniform(4.0, 5.5)
+        masonry(a, b, 0.55, WH - 0.25, face_y(0.9, 1), lmin=0.7, lmax=1.5)
+        K.cube('coping', (b - a, 2.05, 0.25), ((a + b) / 2, 0.04, WH - 0.12), M('stone3'), 0.04)
+        K.cube('walk', (b - a, 1.9, 0.18), ((a + b) / 2, 0, WH + 0.09), M('stone2'), 0.03)
+        merlons(a + 0.2, b - 0.2, WH + 0.18, lambda u, z, w, h: ((u, 0.72, z), (w, 0.42, h)), w=0.7, gap=0.48, h=0.62, vary=0.12)
+        merlons(a + 0.2, b - 0.2, WH + 0.18, lambda u, z, w, h: ((u, -0.72, z), (w, 0.32, h)), w=0.7, gap=0.48, h=0.42)
+        x = a + 2.2
+        while x < b - 1.5:
+            if all(abs(x - tx) > 2.7 for tx in TOWERS):
+                block((x, 1.12, 1.0), (0.75, 0.48, 2.0), M(R.choice(STONES)), 0.05)
+                block((x, 1.02, 2.12), (0.66, 0.32, 0.35), M('stone_dk'), 0.05)
+            x += R.uniform(4.2, 5.6)
+        moss(a, b, 1.25, n=int((b - a) / 2.5))
+        for _ in range(int((b - a) / 4)):
+            xx = R.uniform(a + 1, b - 1)
+            if R.random() < 0.5: rubble(xx, 1.35, 2, (0.6, 0.15))
+            tufts(xx + R.uniform(-1, 1), 1.45, 2, (0.6, 0.15))
     return K.export('wall')
 
 # ---------------------------------------------------------------------------------------------------------------------
-# the element tower: a round tower astride the wall, battered foot, stone courses, arrow slits, corbels, a crenellated
-# platform at 6.3 m where the element top stands (Field.TOWER_TOP)
-TR, TTOP = 1.7, 6.3
+# the element tower: twelve-sided, battered foot, coursed stone on each face, arrow slits to the road, a corbel ring and a
+# crenellated platform at 5.0 m (Field.TOWER_TOP) where the element cap stands
+TR, TTOP, TN = 1.75, 5.0, 12
+def ring_pts(r, n=TN, off=0.0): return [(math.cos((i + off) / n * math.tau) * r, math.sin((i + off) / n * math.tau) * r) for i in range(n)]
+def prism(name, r0, r1, z0, z1, m, n=TN, bevel=0.03):
+    p0, p1 = ring_pts(r0, n, 0.5), ring_pts(r1, n, 0.5)
+    vs = [(x, y, z0) for x, y in p0] + [(x, y, z1) for x, y in p1]
+    fs = [tuple(range(n - 1, -1, -1)), tuple(range(n, 2 * n))] + [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    return mesh_from(name, vs, fs, m, bevel)
 def tower_base():
-    K.cyl('foot', TR + 0.35, 1.0, (0, 0, 0.5), M('stone_dk'), 28, 0.05, r2=TR + 0.05)
-    K.cyl('core', TR - 0.05, TTOP - 0.9, (0, 0, 0.9 + (TTOP - 0.9) / 2), M('mortar'), 28, 0.0)
-    z, row, n = 1.0, 0, 15
-    while z < TTOP - 0.75:
-        h = 0.5
-        for i in range(n):
-            a = (i + (0.5 if row % 2 else 0)) / n * math.tau
-            L = math.tau * TR / n - 0.06
-            o = block((math.cos(a) * (TR + 0.02), math.sin(a) * (TR + 0.02), z + h / 2), (0.12, L, h - 0.05), M(R.choice(STONES)), 0.03)
-            o.rotation_euler = (0, 0, a)
-        z += h; row += 1
-    for k, a in enumerate((math.pi / 2 - 0.6, math.pi / 2 + 0.6, math.pi / 2)):   # arrow slits facing the road
-        zc = 2.4 if k < 2 else 4.2
+    prism('foot', TR + 0.4, TR + 0.08, 0, 1.0, M('stone_dk'))
+    prism('core', TR, TR, 0.9, TTOP - 0.55, M('mortar'), bevel=0.0)
+    side = 2 * TR * math.sin(math.pi / TN)
+    for i in range(TN):
+        a = (i + 0.5) / TN * math.tau + math.pi / TN   # the face's middle direction
+        rm = TR * math.cos(math.pi / TN)
+        cx, cy = math.cos(a) * rm, math.sin(a) * rm
+        tx, ty = -math.sin(a), math.cos(a)
+        def place(u, z, L, h, cx=cx, cy=cy, tx=tx, ty=ty, a=a):
+            return ((cx + tx * u + math.cos(a) * 0.05, cy + ty * u + math.sin(a) * 0.05, z), (0.1, L, h), a)
+        masonry(-side / 2, side / 2, 1.0, TTOP - 0.6, place, course=0.48, lmin=0.3, lmax=0.62)
+    for k, a in enumerate((math.pi / 2 - 0.55, math.pi / 2 + 0.55, math.pi / 2)):
+        zc = 2.2 if k < 2 else 3.7
         o = block((math.cos(a) * (TR + 0.08), math.sin(a) * (TR + 0.08), zc), (0.06, 0.16, 0.75), M('pupil'), 0.0); o.rotation_euler = (0, 0, a)
-        o = block((math.cos(a) * (TR + 0.1), math.sin(a) * (TR + 0.1), zc - 0.42), (0.1, 0.34, 0.1), M('stone3'), 0.02); o.rotation_euler = (0, 0, a)
-    # corbel ring and the crenellated platform
-    for i in range(18):
-        a = i / 18 * math.tau
+        o = block((math.cos(a) * (TR + 0.1), math.sin(a) * (TR + 0.1), zc - 0.42), (0.1, 0.36, 0.1), M('stone3'), 0.02); o.rotation_euler = (0, 0, a)
+    for i in range(TN * 2):
+        a = (i + 0.5) / (TN * 2) * math.tau
         o = block((math.cos(a) * (TR + 0.12), math.sin(a) * (TR + 0.12), TTOP - 0.62), (0.3, 0.26, 0.26), M('stone_dk'), 0.03); o.rotation_euler = (0, 0, a)
-    K.cyl('ring', TR + 0.32, 0.5, (0, 0, TTOP - 0.25), M('stone'), 32, 0.04)
-    K.cyl('floor', TR + 0.1, 0.12, (0, 0, TTOP + 0.0), M('stone2'), 28, 0.0)
-    for i in range(10):
-        a = (i + 0.5) / 10 * math.tau
-        o = block((math.cos(a) * (TR + 0.12), math.sin(a) * (TR + 0.12), TTOP + 0.3), (0.32, 0.62, 0.6), M(R.choice(STONES)), 0.04); o.rotation_euler = (0, 0, a)
-    # a pennant on the back rim, and rubble and grass at the foot on the road side
-    K.cyl('pole', 0.04, 2.0, (0.9, -1.25, TTOP + 1.0), M('wood'), 6, 0.0)
-    flag = block((0.9 + 0.35, -1.25, TTOP + 1.75), (0.7, 0.03, 0.4), M('banner'), 0.0)
-    rubble(0, TR + 0.45, 4, (1.0, 0.2)); tufts(0, TR + 0.55, 4, (1.1, 0.2))
+    prism('ring', TR + 0.32, TR + 0.32, TTOP - 0.5, TTOP, M('stone'))
+    prism('floor', TR + 0.1, TR + 0.1, TTOP - 0.02, TTOP + 0.06, M('cobble2'), bevel=0.0)
+    for i in range(TN):
+        a = (i + 0.5) / TN * math.tau + math.pi / TN
+        o = block((math.cos(a) * (TR + 0.14), math.sin(a) * (TR + 0.14), TTOP + 0.3), (0.32, 0.55, 0.6 * R.uniform(0.92, 1.08)), M(R.choice(STONES)), 0.04); o.rotation_euler = (0, 0, a)
+    rubble(0, TR + 0.5, 4, (1.1, 0.2)); tufts(0, TR + 0.6, 4, (1.2, 0.2)); moss(-1.2, 1.2, TR + 0.35, n=3)
     return K.export('tower_base')
 
 # ---------------------------------------------------------------------------------------------------------------------
-# element tops: each says its element from across the screen. They sit on the platform (origin at its floor).
+# element caps: oversized, each its own silhouette and colour, a glowing core. Origin at the platform floor.
+#   stone: a slate cone roof (no element yet)  fire: a squat iron furnace crown with a roaring flame
+#   frost: a tall spire of glowing ice           storm: a needle of bronze coils under a crackling violet orb
 def top(kind):
-    if kind == 'stone':   # no element yet: a slate cone roof on a short drum, a pennant
-        K.cyl('drum', 1.1, 0.7, (0, 0, 0.35), M('stone2'), 20, 0.04)
-        K.cyl('roof', 1.55, 1.9, (0, 0, 1.65), M('roof_slate'), 20, 0.0, r2=0.06)
-        K.cyl('eave', 1.6, 0.12, (0, 0, 0.72), M('wood_dk'), 20, 0.02)
-        K.cyl('spire', 0.05, 0.9, (0, 0, 2.95), M('gold'), 6, 0.0)
-        block((0.3, 0, 3.15), (0.55, 0.03, 0.32), M('banner'), 0.0)
-    elif kind == 'fire':   # an iron brazier on three legs, coals, a three-tongue flame and sparks
-        for i in range(3):
-            a = i / 3 * math.tau
-            o = block((math.cos(a) * 0.6, math.sin(a) * 0.6, 0.45), (0.12, 0.12, 0.9), M('iron'), 0.02); o.rotation_euler = (math.sin(a) * 0.25, -math.cos(a) * 0.25, 0)
-        K.cyl('bowl', 1.0, 0.55, (0, 0, 1.05), M('iron'), 20, 0.04, r2=0.62)
-        K.cyl('rim', 1.05, 0.1, (0, 0, 1.33), M('gold'), 20, 0.02)
-        for i in range(9):
-            a = i / 9 * math.tau; r = 0.35 + 0.3 * (i % 2)
-            K.sphere('coal', R.uniform(0.18, 0.26), (math.cos(a) * r, math.sin(a) * r, 1.35), M('fire', 3.0), (1, 1, 0.7), 2)
-        K.cone('flame', 0.75, 2.0, (0, 0, 2.3), M('fire', 3.5), 12)
-        for i in range(3):
-            a = i / 3 * math.tau + 0.5
-            K.cone('tongue', 0.35, 1.3, (math.cos(a) * 0.35, math.sin(a) * 0.35, 2.0), M('fire', 3.5), 10)
-        K.cone('core', 0.4, 1.3, (0, 0, 1.95), M('gold', 5.0), 10)
-        for i in range(5): K.sphere('spark', 0.07, (R.uniform(-0.6, 0.6), R.uniform(-0.6, 0.6), R.uniform(2.6, 3.4)), M('gold', 5.0), sub=1)
-    elif kind == 'frost':   # a cluster of glowing ice crystals in a stone ring, rime round the base
-        K.cyl('ring', 1.05, 0.35, (0, 0, 0.18), M('stone3'), 20, 0.04)
-        spec = [(0.38, 2.4, 0, 0, 0), (0.26, 1.6, 0.55, 0.4, 0.25), (0.24, 1.4, -0.5, 0.35, -0.3), (0.22, 1.2, 0.1, -0.55, 0.2), (0.2, 1.0, -0.45, -0.4, -0.25), (0.18, 0.9, 0.6, -0.3, 0.3)]
-        for (r, h, x, y, tilt) in spec:
-            o = K.cyl('crystal', r, h, (x, y, 0.3 + h / 2), M('frost', 1.6), 6, 0.0)
-            tip = K.cone('tip', r, r * 2.0, (x, y, 0.3 + h + r), M('frost', 1.6), 6)
-            for q in (o, tip):
-                q.rotation_euler = (tilt * (y / (abs(y) + 1e-3)), -tilt * (x / (abs(x) + 1e-3)), R.uniform(0, 1))
+    if kind == 'stone':
+        prism('drum', 1.35, 1.35, 0.0, 0.6, M('stone2'))
+        K.cyl('eave', 2.15, 0.14, (0, 0, 0.65), M('wood_dk'), TN, 0.02)
+        K.cyl('roof', 2.1, 2.8, (0, 0, 2.1), M('roof_slate'), TN, 0.0, r2=0.08)
+        for k in range(1, 4):
+            r = 2.1 * (1 - k / 4) + 0.08 * k / 4
+            K.cyl('course', r + 0.04, 0.07, (0, 0, 0.72 + 2.8 * k / 4), M('roof_slate'), TN, 0.0)
+        K.cyl('spire', 0.06, 1.0, (0, 0, 3.9), M('gold'), 6, 0.0)
+        cloth('pennant', 0.06, 1.0, 4.35, 3.95, 0.0, M('banner'), wave=0.1, tail=False, axis='y', nx=5, nz=2)
+    elif kind == 'fire':
+        prism('crown', 2.0, 1.85, -0.2, 0.55, M('iron'))
+        for i in range(TN):   # glowing vents round the crown
+            a = (i + 0.5) / TN * math.tau + math.pi / TN
+            o = block((math.cos(a) * 1.93, math.sin(a) * 1.93, 0.18), (0.06, 0.32, 0.22), M('fire', 3.0), 0.0); o.rotation_euler = (0, 0, a)
+        for i in range(6):   # iron prongs holding the bowl
+            a = i / 6 * math.tau
+            o = block((math.cos(a) * 1.35, math.sin(a) * 1.35, 0.95), (0.16, 0.16, 0.9), M('iron'), 0.02)
+            o.rotation_euler = (-math.sin(a) * 0.35, math.cos(a) * 0.35, 0)
+        K.cyl('bowl', 1.5, 0.7, (0, 0, 1.2), M('iron'), 20, 0.04, r2=0.95)
+        K.cyl('rim', 1.55, 0.12, (0, 0, 1.55), M('gold'), 20, 0.02)
         for i in range(10):
-            a = i / 10 * math.tau
-            K.sphere('rime', 0.14, (math.cos(a) * 0.9, math.sin(a) * 0.9, 0.38), M('snow'), (1, 1, 0.6), 1)
-    elif kind == 'storm':   # a bronze bell in a frame under a lightning rod with coils and a crackling orb
-        for s in (-1, 1):
-            block((s * 0.75, 0, 1.2), (0.2, 0.2, 2.4), M('wood_dk'), 0.03)
-            block((s * 0.75, 0, 0.12), (0.5, 0.5, 0.24), M('stone3'), 0.03)
-        block((0, 0, 2.45), (1.9, 0.26, 0.26), M('wood_dk'), 0.03)
-        K.cyl('bell', 0.55, 0.9, (0, 0, 1.75), M('gold'), 20, 0.03, r2=0.28)
-        K.cyl('lip', 0.6, 0.1, (0, 0, 1.33), M('gold'), 20, 0.02)
-        K.sphere('clapper', 0.12, (0, 0, 1.25), M('iron'), sub=2)
-        K.cyl('rod', 0.06, 1.6, (0, 0, 3.35), M('gold'), 8, 0.0)
-        for k in range(3):
-            bpy.ops.mesh.primitive_torus_add(major_radius=0.22 - k * 0.04, minor_radius=0.04, location=(0, 0, 2.8 + k * 0.35))
+            a = i / 10 * math.tau; r = 0.5 + 0.45 * (i % 2)
+            K.sphere('coal', R.uniform(0.22, 0.32), (math.cos(a) * r, math.sin(a) * r, 1.58), M('fire', 3.0), (1, 1, 0.7), 2)
+        K.cone('flame', 1.15, 2.9, (0, 0, 3.0), M('fire', 3.5), 14)
+        for i in range(5):
+            a = i / 5 * math.tau + 0.4
+            K.cone('tongue', 0.45, R.uniform(1.4, 2.0), (math.cos(a) * 0.65, math.sin(a) * 0.65, 2.3), M('fire', 3.5), 10)
+        K.cone('core', 0.6, 2.0, (0, 0, 2.55), M('gold', 5.0), 12)
+        for i in range(7): K.sphere('spark', R.uniform(0.07, 0.12), (R.uniform(-0.9, 0.9), R.uniform(-0.9, 0.9), R.uniform(3.6, 4.8)), M('gold', 5.0), sub=1)
+    elif kind == 'frost':
+        prism('ring', 1.55, 1.45, -0.1, 0.45, M('stone3'))
+        for i in range(TN):
+            a = (i + 0.5) / TN * math.tau
+            K.sphere('rime', 0.2, (math.cos(a) * 1.45, math.sin(a) * 1.45, 0.5), M('snow'), (1, 1, 0.55), 1)
+        spec = [(0.5, 3.4, 0, 0, 0), (0.32, 2.2, 0.75, 0.3, 0.3), (0.3, 2.0, -0.7, 0.35, -0.32), (0.28, 1.7, 0.2, -0.75, 0.25),
+                (0.26, 1.5, -0.55, -0.55, -0.28), (0.22, 1.2, 0.85, -0.35, 0.38), (0.2, 1.0, -0.95, 0.0, -0.4)]
+        for (r, h, x, y, tilt) in spec:
+            rx = tilt * (1 if y >= 0 else -1) * min(1.0, abs(y) * 2); ry = -tilt * (1 if x >= 0 else -1) * min(1.0, abs(x) * 2)
+            for (o_r, o_h, off, m) in ((r, h, 0.0, M('frost', 1.4)), (r * 0.45, h * 0.9, 0.02, M('white_gloss', 1.0))):
+                o = K.cyl('crystal', o_r, o_h, (x, y, 0.4 + o_h / 2), m, 6, 0.0)
+                tip = K.cone('tip', o_r, o_r * 2.2, (x, y, 0.4 + o_h + o_r * 1.1), m, 6)
+                for q in (o, tip): q.rotation_euler = (rx, ry, 0.3)
+        for i in range(6): K.sphere('mote', 0.08, (R.uniform(-1, 1), R.uniform(-1, 1), R.uniform(2.6, 4.2)), M('white_gloss', 2.0), sub=1)
+    elif kind == 'storm':
+        prism('base', 1.4, 1.2, -0.1, 0.5, M('stone3'))
+        K.cyl('needle', 0.32, 3.6, (0, 0, 2.3), M('gold'), 10, 0.0, r2=0.06)
+        for k in range(5):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.55 - k * 0.08, minor_radius=0.06, location=(0, 0, 1.1 + k * 0.62))
             K.finish(bpy.context.object, M('gold'), 0.0)
-        K.sphere('orb', 0.32, (0, 0, 4.35), M('storm', 3.5), sub=3)
-        K.sphere('halo', 0.45, (0, 0, 4.35), M('storm', 1.2), (1, 1, 1), 1)
+        for s in (-1, 1):   # two arms carrying small orbs
+            o = block((s * 0.55, 0, 2.2), (1.1, 0.1, 0.1), M('gold'), 0.0); o.rotation_euler = (0, s * -0.4, 0)
+            K.sphere('arm_orb', 0.16, (s * 1.08, 0, 2.45), M('storm', 3.0), sub=2)
+        K.sphere('orb', 0.55, (0, 0, 4.5), M('storm', 3.5), sub=3)
+        K.sphere('orb_core', 0.3, (0, 0, 4.5), M('white_gloss', 3.0), sub=2)
+        for k in range(3):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.85, minor_radius=0.035, location=(0, 0, 4.5), rotation=(k * 1.05, k * 0.7, 0))
+            K.finish(bpy.context.object, M('storm', 2.5), 0.0)
     return K.export('top_' + kind)
 
 # ---------------------------------------------------------------------------------------------------------------------
-# the slime: a glossy teardrop blob, big eyes with catchlights, a smile, a painted highlight, drips at its foot.
-# 1.5 m tall, faces -y (Field.WALK turns it along the road, three-quarters to the camera).
-def slime():
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=40, ring_count=24, radius=0.82, location=(0, 0, 0.7))
+# enemies. Each faces -y; Field.WALK turns them along the road, three-quarters to the camera.
+def face(y, z, spread, r=0.2, brows=True, mouth=0.13):
+    for s in (-1, 1):
+        K.sphere('eye', r, (s * spread, y, z), M('eye'), (1, 0.7, 1.15), 3)
+        K.sphere('pupil', r * 0.58, (s * spread * 0.92, y - r * 0.62, z - r * 0.05), M('pupil'), (1, 0.6, 1.2), 2)
+        K.sphere('catch', r * 0.2, (s * spread * 0.8, y - r * 0.95, z + r * 0.28), M('white_gloss', 0.5), sub=1)
+        if brows:
+            o = block((s * spread * 1.02, y - r * 0.35, z + r * 1.15), (r * 1.5, r * 0.4, r * 0.32), M('pupil'), 0.02)
+            o.rotation_euler = (0, s * 0.42, 0)
+    if mouth:
+        K.sphere('mouth', mouth, (0, y - 0.04, z - r * 1.9), M('pupil'), (1.4, 0.5, 0.7), 2)
+        K.sphere('tongue', mouth * 0.55, (0, y - 0.1, z - r * 2.05), M('blush'), (1.3, 0.5, 0.5), 1)
+
+def slime():   # 1.5 m: a glossy teal teardrop with a darker puddle foot, an angry-cute face
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=18, radius=0.8, location=(0, 0, 0.72))
     o = bpy.context.object
     for v in o.data.vertices:
         x, y, z = v.co.x, v.co.y, v.co.z
-        if z > 0: z *= 1.0 + 0.28 * (z / 0.82) ** 3                  # a soft peak on top
-        else: z *= 0.62; x *= 1.08 + 0.1 * (-z / 0.5); y *= 1.08 + 0.1 * (-z / 0.5)   # a heavy, spreading base
+        if z > 0: z *= 1.0 + 0.32 * (z / 0.8) ** 3
+        else: z *= 0.7; k = 1.06 + 0.12 * (-z / 0.56); x *= k; y *= k
         v.co = Vector((x, y, z))
     o.data.update(); K.finish(o, M('slime_gloss'))
-    o.modifiers.new('sub', 'SUBSURF').levels = 1
-    K.sphere('belly', 0.6, (0, -0.25, 0.52), M('slime_dk'), (1.05, 0.7, 0.75), 3)          # a darker core showing through
-    K.sphere('shine', 0.22, (-0.28, -0.42, 1.28), M('white_gloss', 0.4), (1.2, 0.6, 0.8), 2)   # painted highlight
-    K.sphere('shine2', 0.08, (-0.05, -0.58, 1.38), M('white_gloss', 0.4), sub=1)
-    for s in (-1, 1):
-        K.sphere('eye', 0.2, (s * 0.27, -0.66, 0.98), M('eye'), (1, 0.75, 1.15), 3)
-        K.sphere('pupil', 0.12, (s * 0.25, -0.79, 0.95), M('pupil'), (1, 0.6, 1.2), 2)
-        K.sphere('catch', 0.04, (s * 0.21, -0.86, 1.02), M('white_gloss', 0.6), sub=1)
-        K.sphere('cheek', 0.1, (s * 0.5, -0.6, 0.72), M('blush'), (1, 0.4, 0.6), 2)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.13, minor_radius=0.028, location=(0, -0.79, 0.72), rotation=(math.pi / 2, 0, 0))
-    sm = bpy.context.object
-    bm = bmesh.new(); bm.from_mesh(sm.data)
-    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z > -0.02], context='VERTS')   # keep the lower half: a smile
-    bm.to_mesh(sm.data); bm.free(); K.finish(sm, M('pupil'))
-    for (x, y, s) in ((0.62, 0.3, 0.2), (-0.58, 0.35, 0.16), (0.2, -0.75, 0.13), (-0.4, -0.55, 0.11)):
-        K.sphere('drip', s, (x, y, s * 0.4), M('slime_gloss'), (1.2, 1.2, 0.55), 2)
+    K.cyl('puddle', 1.0, 0.12, (0, 0, 0.06), M('slime_dk'), 24, 0.0, r2=0.9)
+    for (x, y, s) in ((0.78, 0.25, 0.2), (-0.72, 0.4, 0.17), (0.35, -0.82, 0.14), (-0.5, -0.66, 0.12)):
+        K.sphere('drip', s, (x, y, s * 0.35), M('slime_gloss'), (1.25, 1.25, 0.5), 2)
+    face(-0.68, 1.0, 0.3, 0.21)
     return K.export('slime')
 
+def beetle():   # a shiny armoured beetle: domed split shell, horned head, thick jointed legs
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=28, ring_count=14, radius=0.75, location=(0, 0.15, 0.65))
+    sh = bpy.context.object; sh.scale = (0.95, 1.25, 0.7); bpy.ops.object.transform_apply(scale=True); K.finish(sh, M('beetle_gloss'))
+    block((0, 0.15, 1.17), (0.06, 1.6, 0.05), M('pupil'), 0.0)
+    K.sphere('head', 0.42, (0, -0.85, 0.6), M('iron'), (1, 0.9, 0.85), 2)
+    K.cone('horn', 0.16, 0.75, (0, -1.15, 0.98), M('gold'), 8).rotation_euler = (-0.6, 0, 0)
+    for s in (-1, 1):
+        o = K.cone('mandible', 0.08, 0.4, (s * 0.2, -1.2, 0.45), M('iron'), 6); o.rotation_euler = (-1.4, 0, s * 0.4)
+        for k in range(3):
+            y = -0.45 + k * 0.5
+            o = block((s * 0.85, y, 0.42), (0.55, 0.18, 0.18), M('iron'), 0.04); o.rotation_euler = (0, s * -0.5, 0)
+            block((s * 1.12, y, 0.18), (0.18, 0.2, 0.42), M('iron'), 0.04)
+    face(-1.08, 0.72, 0.2, 0.13, brows=True, mouth=0)
+    return K.export('beetle')
+
+def golem():   # a boss: lumpy boulders bound by glowing cracks, big fists, a small glowing-eyed head
+    def boulder(loc, r, sc):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=r, location=loc)
+        b = bpy.context.object; b.scale = sc
+        for v in b.data.vertices: v.co *= R.uniform(0.86, 1.12)
+        b.data.update(); bpy.ops.object.transform_apply(scale=True); K.finish(b, M(R.choice(('golem', 'rock', 'rock_dk'))), 0.0, smooth=False)
+        return b
+    boulder((0, 0, 1.15), 0.8, (1.15, 0.9, 1.0))            # chest
+    boulder((0, 0.05, 0.45), 0.55, (1.1, 0.85, 0.7))         # hips
+    boulder((0, -0.15, 1.95), 0.38, (1.0, 0.95, 0.85))       # head
+    for s in (-1, 1):
+        boulder((s * 1.0, 0, 1.35), 0.42, (1, 1, 1))         # shoulder
+        boulder((s * 1.15, -0.1, 0.8), 0.36, (0.9, 0.9, 1.2))  # arm
+        boulder((s * 1.2, -0.2, 0.32), 0.42, (1.1, 1.1, 0.9))  # fist
+        boulder((s * 0.42, 0, 0.2), 0.32, (1, 1.1, 0.75))      # foot
+        K.sphere('eye', 0.08, (s * 0.15, -0.5, 2.0), M('storm', 4.0), sub=1)
+    for (x, z, rot) in ((0.0, 1.2, 0.3), (-0.35, 1.0, -0.6), (0.4, 1.35, 1.0), (0.1, 0.5, 0.0)):   # glowing cracks on the front
+        o = block((x, -0.8, z), (0.5, 0.05, 0.07), M('storm', 3.5), 0.0); o.rotation_euler = (0, rot, 0)
+    K.sphere('core', 0.18, (0, -0.86, 1.15), M('storm', 4.0), sub=2)
+    return K.export('golem')
+
 # ---------------------------------------------------------------------------------------------------------------------
-# the road: a packed-earth way along the front of the wall, flagstones on the forecourt before the gate, kerbs, cobbles
+# the road: worn earth along the front of the wall with darker ruts, pebbles and grass along its edges, a cobbled
+# forecourt centred on the gate, a low fence on the meadow side (0.7 m: never hides an enemy)
 ROADY, RHALF = 5.4, 3.0
 def road():
-    K.cube('way', (60, 2 * RHALF, 0.06), (-28 + 3, ROADY, 0.03), M('dirt'), 0.0)
-    for i in range(260):   # cobbles pressed into the way, denser near its middle
-        x = R.uniform(-55, 2); y = ROADY + R.gauss(0, 1.2)
-        if abs(y - ROADY) > RHALF - 0.25: continue
-        s = R.uniform(0.25, 0.5)
-        o = block((x, y, 0.07), (s * 1.2, s, 0.08), M(R.choice(('cobble', 'cobble2'))), 0.03); o.rotation_euler = (0, 0, R.uniform(0, 3.1))
-    # forecourt: flagstones in rows in front of the gatehouse
-    y = GY + 0.15
-    while y < ROADY + RHALF - 0.1:
-        x = -GX - 1.3 + R.uniform(0, 0.4)
-        while x < GX + 1.5:
-            L = R.uniform(0.6, 1.1)
-            block((x + L / 2, y + 0.3, 0.08), (L - 0.06, 0.56, 0.09), M(R.choice(('cobble', 'cobble2', 'stone2'))), 0.025)
+    K.cube('way', (60, 2 * RHALF, 0.06), (-28, ROADY, 0.03), M('dirt'), 0.0)
+    for dy in (-1.05, 1.05):
+        K.cube('rut', (60, 0.55, 0.02), (-28, ROADY + dy, 0.065), M('dirt_dk'), 0.0)
+    for _ in range(170):   # pebbles in clusters along both edges, grass bleeding in
+        side = R.choice((-1, 1)); x = R.uniform(-56, -GX - 1.0)
+        for k in range(R.randint(1, 3)):
+            s = R.uniform(0.14, 0.3)
+            o = block((x + R.uniform(-0.4, 0.4), ROADY + side * (RHALF - R.uniform(0.05, 0.45)), 0.07), (s * 1.3, s, s * 0.5), M(R.choice(('cobble2', 'rock', 'rock_dk'))), 0.03)
+            o.rotation_euler = (0, 0, R.uniform(0, 3.1))
+    for _ in range(36):
+        tufts(R.uniform(-56, -GX - 1.5), ROADY + R.choice((-1, 1)) * (RHALF - 0.1), 2, (0.6, 0.12))
+    # forecourt: rounded cobbles in rows, darker toward its edges, a kerb of dark stones round it
+    y = GY + 0.3
+    while y < ROADY + RHALF - 0.15:
+        x = -GX - 1.6 + R.uniform(0, 0.25)
+        while x < GX + 1.6:
+            L = R.uniform(0.45, 0.8)
+            edge = min(abs(x + L / 2) - 0, 99) > GX + 0.6 or y > ROADY + RHALF - 0.7
+            m = M('cobble2' if edge or R.random() < 0.4 else 'cobble')
+            block((x + L / 2, y + 0.22, 0.09), (L - 0.07, 0.42, 0.1), m, 0.05)
             x += L
-        y += 0.62
-    for x in [-55 + i * 1.6 for i in range(36)]:   # kerb along the road's outer edge
-        if x > -GX - 1.3: break
-        block((x, ROADY + RHALF + 0.12, 0.1), (1.5, 0.28, 0.2), M('stone_dk'), 0.04)
-    # a low split-rail fence along the meadow side: reads as a road, never hides an enemy (0.7 m)
-    x = -52
-    while x < -GX - 3:
-        K.cyl('post', 0.07, 0.75, (x, ROADY + RHALF + 0.6, 0.37), M('wood_dk'), 6, 0.0)
-        if x + 2.4 < -GX - 3:
-            for zz in (0.32, 0.62):
-                o = K.cyl('rail', 0.045, 2.45, (x + 1.2, ROADY + RHALF + 0.6, zz), M('wood'), 6, 0.0); o.rotation_euler = (0, math.pi / 2, R.uniform(-0.04, 0.04))
+        y += 0.48
+    for x in [-GX - 1.75 + i * 0.5 for i in range(int((2 * GX + 3.5) / 0.5) + 1)]:
+        block((x, ROADY + RHALF - 0.05, 0.1), (0.46, 0.22, 0.14), M('stone_dk'), 0.03)
+    x = -54
+    while x < -GX - 3.5:
+        K.cyl('post', 0.08, 0.75, (x, ROADY + RHALF + 0.7, 0.37), M('wood_dk'), 6, 0.0)
+        if x + 2.4 < -GX - 3.5:
+            for zz in (0.32, 0.6):
+                o = K.cyl('rail', 0.05, 2.45, (x + 1.2, ROADY + RHALF + 0.7, zz), M('wood'), 6, 0.0); o.rotation_euler = (0, math.pi / 2, R.uniform(-0.05, 0.05))
         x += 2.4
     return K.export('road')
 
 # ---------------------------------------------------------------------------------------------------------------------
-# the ground: meadow in front of the wall, the city's ground behind it, hills closing the view, edges dressed
+# the ground: a valley. Meadow in front of the wall; rocky hills where the wall ends on both sides; a wooded ridge
+# behind the city; the town's packed earth inside the walls; dark tree clumps framing the bottom corners
+PLAZA = (8.5, -6.0)
+PLOTS = [(15.5, -6.0), (-3.5, -7.5), (-14.5, -10.5), (-9.0, -10.5), (-20.0, -15.0), (1.0, -13.5), (-5.0, -16.0), (6.5, -16.5), (-10.5, -19.0), (-16.0, -20.5)]
+
+def tree(x, y, s, z=0.0, kind=None, far=False):
+    kind = kind or R.choice(('round', 'round', 'pine'))
+    if kind == 'pine':
+        K.cyl('trunk', 0.18 * s, 1.2 * s, (x, y, z + 0.6 * s), M('wood_dk'), 6, 0.0)
+        for k, (dz, r, h) in enumerate(((1.4, 1.25, 1.9), (2.4, 0.95, 1.6), (3.3, 0.65, 1.3))):
+            K.cone('needles', r * s, h * s, (x, y, z + dz * s), M('tree_far' if far else 'pine'), 8)
+    else:
+        K.cyl('trunk', 0.22 * s, 1.6 * s, (x, y, z + 0.8 * s), M('wood_dk'), 8, 0.0, r2=0.15 * s)
+        for (dz, r, dx, dy) in ((1.9, 1.15, 0, 0), (2.6, 0.9, 0.35, 0.1), (2.55, 0.85, -0.4, -0.15), (3.25, 0.65, 0.05, 0.05)):
+            K.sphere('crown', r * s, (x + dx * s, y + dy * s, z + dz * s), M('tree_far' if far else R.choice(('tree', 'tree2'))), (1, 1, 0.88), 2)
+
+def outcrop(x, y, n, spread, scale=1.0):   # a cluster of big angular rocks
+    for _ in range(n):
+        r = R.uniform(0.8, 1.9) * scale
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r, location=(x + R.uniform(-spread, spread), y + R.uniform(-spread, spread), r * 0.35))
+        b = bpy.context.object; b.scale = (R.uniform(0.9, 1.4), R.uniform(0.8, 1.2), R.uniform(0.6, 1.0)); b.rotation_euler = (0, 0, R.uniform(0, 3))
+        for v in b.data.vertices: v.co *= R.uniform(0.85, 1.12)
+        K.finish(b, M(R.choice(('rock', 'rock_dk', 'stone2'))), 0.0, smooth=False)
+
 def ground():
-    bpy.ops.mesh.primitive_grid_add(x_subdivisions=60, y_subdivisions=50, size=1, location=(0, 0, 0))
-    g = bpy.context.object; g.scale = (120, 100, 1); bpy.ops.object.transform_apply(scale=True)
+    bpy.ops.mesh.primitive_grid_add(x_subdivisions=70, y_subdivisions=56, size=1, location=(0, 0, 0))
+    g = bpy.context.object; g.scale = (130, 105, 1); bpy.ops.object.transform_apply(scale=True)
     g.location = (-10, -10, 0); bpy.ops.object.transform_apply(location=True)
-    for v in g.data.vertices:
-        x, y = v.co.x, v.co.y
+    def height(x, y):
         h = 0.0
-        if y < -22: h += (min(-22 - y, 18) / 18) ** 1.6 * 9.0 + 0.6 * math.sin(x * 0.21) * math.cos(y * 0.17)   # hills behind the city
-        if y > 12: h += 0.25 * math.sin(x * 0.3) * math.cos(y * 0.35)                                                   # rolling meadow
-        if x > 22 or x < -42: h += min(abs(x) - (22 if x > 0 else 42), 10) * 0.25                                     # rising sides
-        v.co.z = h - 0.02
+        if y < -23: h += (min(-23 - y, 18) / 18) ** 1.5 * 9.0 + 0.5 * math.sin(x * 0.21) * math.cos(y * 0.17)
+        if y > 11: h += 0.22 * math.sin(x * 0.3) * math.cos(y * 0.35)
+        if x > 21: h += (min(x - 21, 14) / 14) ** 1.4 * 7.0
+        if x < -31: h += (min(-31 - x, 14) / 14) ** 1.4 * 7.0
+        return h - 0.02
+    for v in g.data.vertices: v.co.z = height(v.co.x, v.co.y)
     K.finish(g, M('grass'))
-    # meadow dressing in front of the wall: clover patches, flowers, rocks, bushes; trees only well clear of the road
-    for _ in range(90):
-        x, y = R.uniform(-48, 22), R.uniform(9.6, 30)
-        K.cyl('patch', R.uniform(0.8, 2.2), 0.03, (x, y, 0.02), M(R.choice(('grass2', 'grass3'))), 10, 0.0).scale = (1, R.uniform(0.5, 1), 1)
-    for _ in range(140):
-        x, y = R.uniform(-48, 22), R.uniform(9.4, 28)
-        K.sphere('flower', 0.06, (x, y, 0.12), M(R.choice(('flower_y', 'flower_w', 'flower_p'))), sub=1)
-    for _ in range(18):
-        x, y = R.uniform(-46, 20), R.uniform(10.5, 26)
-        s = R.uniform(0.3, 0.7)
-        o = K.sphere('rock', s, (x, y, s * 0.25), M(R.choice(('stone_dk', 'stone2'))), (1.3, 1.0, 0.65), 1); o.rotation_euler = (0, 0, R.uniform(0, 3))
+    # the town's ground inside the walls: packed earth with cobbled yards and a cobbled plaza
+    pts = [(-30, -1.2), (20.5, -1.2), (20.5, -12), (14, -22), (-6, -24.5), (-24, -24), (-30, -18)]
+    mesh_from('town', [(x, y, 0.02) for x, y in pts], [tuple(range(len(pts) - 1, -1, -1))], M('dirt'), 0.0)
+    def patch(cx, cy, r, m, n=9, z=0.035):
+        vs = [(cx + math.cos(a) * r * R.uniform(0.8, 1.15), cy + math.sin(a) * r * R.uniform(0.8, 1.15), z) for a in [i / n * math.tau for i in range(n)]]
+        mesh_from('patch', vs, [tuple(range(n))], m, 0.0)
+    patch(PLAZA[0], PLAZA[1], 4.4, M('cobble'), 12)
+    for (px, py) in PLOTS: patch(px, py, 3.0, M('cobble2'), 9, 0.03)
+    for _ in range(40):   # grass creeping over the town's ground and tufts at its edges
+        patch(R.uniform(-28, 19), R.uniform(-23, -2), R.uniform(0.6, 1.6), M(R.choice(('grass2', 'grass'))), 7, 0.03)
+    for _ in range(24): tufts(R.uniform(-28, 19), R.uniform(-23, -2), 2, (0.5, 0.5))
+    # rocky hills where the wall ends, rocks and trees on them
+    for (x, y) in ((22.5, 0.5), (24, -5), (23, 5), (-33, 0.5), (-34.5, 5), (-33.5, -5)): outcrop(x, y, 4, 1.8, 1.2)
+    for (x, y) in [(R.uniform(23, 34), R.uniform(-28, 18)) for _ in range(10)]: tree(x, y, R.uniform(1.0, 1.4), height(x, y))
+    for (x, y) in [(R.uniform(-46, -33), R.uniform(-28, 18)) for _ in range(10)]: tree(x, y, R.uniform(1.0, 1.4), height(x, y))
+    # the wooded ridge behind the town: a darker, bluer back row for depth
+    for (x, y) in [(R.uniform(-40, 30), R.uniform(-34, -25)) for _ in range(30)]: tree(x, y, R.uniform(1.0, 1.6), height(x, y), far=True)
+    # the meadow: clustered flowers, rocks with tufts, bush clumps; trees only away from the road
     for _ in range(26):
-        x, y = R.uniform(-46, 20), R.uniform(11, 28)
-        for k in range(3): K.sphere('bush', R.uniform(0.45, 0.8), (x + R.uniform(-0.6, 0.6), y + R.uniform(-0.4, 0.4), 0.4), M(R.choice(('grass2', 'bush'))), (1, 1, 0.8), 2)
-    for (x, y) in [(R.uniform(-46, 20), R.uniform(19, 30)) for _ in range(7)] + [(R.uniform(20, 30), R.uniform(-30, 10)) for _ in range(6)] + [(R.uniform(-48, -38), R.uniform(-30, 10)) for _ in range(6)]:
-        tree(x, y, R.uniform(0.9, 1.3))
-    for (x, y) in [(R.uniform(-40, 25), R.uniform(-30, -24)) for _ in range(16)]:   # a wooded ridge behind the city
-        tree(x, y, R.uniform(1.0, 1.5), z=(min(-22 - y, 18) / 18) ** 1.6 * 9.0)
-    # the city's ground: a cobbled plaza round the fountain and lanes from the gate and to the plots
-    K.cyl('plaza', 4.6, 0.05, (0, -10, 0.025), M('cobble'), 32, 0.0)
-    K.cyl('plaza_rim', 4.8, 0.04, (0, -10, 0.015), M('stone_dk'), 32, 0.0)
-    block((0, -6.0, 0.02), (3.0, 8.2, 0.05), M('cobble2'), 0.0)
-    for (px, py) in ((7, -6), (13, -6), (17.5, -10), (-18.5, -10.5), (-12.5, -10.5), (-6.5, -10.5), (10, -11), (5, -14), (-9.5, -15.5), (-3.5, -15.5)):
-        d = Vector((px - 0, py + 10, 0)); L = d.length
-        o = block(((px) / 2, (py - 10) / 2, 0.015), (1.4, L, 0.04), M('dirt'), 0.0); o.rotation_euler = (0, 0, math.atan2(d.x, d.y) * -1)
-        K.cyl('yard', 2.8, 0.04, (px, py, 0.02), M('dirt'), 20, 0.0)
+        cx, cy = R.uniform(-48, 20), R.uniform(9.8, 28); c = R.choice(('flower_y', 'flower_w', 'flower_p'))
+        for k in range(R.randint(5, 10)): K.sphere('flower', 0.07, (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.6, 0.6), 0.12), M(c), sub=1)
+    for _ in range(8):
+        cx, cy = R.uniform(-46, 18), R.uniform(11, 26); outcrop(cx, cy, 2, 0.6, 0.35); tufts(cx, cy, 3, (0.9, 0.7))
+    for _ in range(12):
+        cx, cy = R.uniform(-46, 18), R.uniform(12, 26)
+        for k in range(4): K.sphere('bush', R.uniform(0.45, 0.85), (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.5, 0.5), 0.35), M(R.choice(('bush', 'grass2'))), (1, 1, 0.8), 2)
+    for (x, y) in [(R.uniform(-44, 16), R.uniform(20, 30)) for _ in range(7)]: tree(x, y, R.uniform(1.0, 1.3))
+    # dark framing clumps at the bottom corners of the view
+    for (cx, cy) in ((17, 17), (19, 21), (-36, 17), (-39, 21)):
+        for k in range(3): tree(cx + R.uniform(-2, 2), cy + R.uniform(-1.5, 1.5), R.uniform(1.4, 1.8), 0, 'round', far=True)
     return K.export('ground')
 
-def tree(x, y, s, z=0.0):
-    K.cyl('trunk', 0.22 * s, 1.6 * s, (x, y, z + 0.8 * s), M('wood_dk'), 8, 0.0, r2=0.15 * s)
-    for k, (dz, r) in enumerate(((1.9, 1.2), (2.7, 0.95), (3.35, 0.65))):
-        K.sphere('crown', r * s, (x + R.uniform(-0.15, 0.15), y + R.uniform(-0.15, 0.15), z + dz * s), M(R.choice(('tree', 'tree2'))), (1, 1, 0.85), 2)
-
 # ---------------------------------------------------------------------------------------------------------------------
-# the fountain: an octagonal basin with a stone rim, water, a two-tier column and a gold hearth flame on top
+# the fountain: the town's centrepiece. An octagonal basin on steps, water, a two-tier column, a gold hearth flame.
 def fountain():
-    K.cyl('step', 2.5, 0.25, (0, 0, 0.12), M('stone_dk'), 8, 0.04)
-    K.cyl('basin', 2.15, 0.6, (0, 0, 0.55), M('stone'), 8, 0.05)
-    K.cyl('rim', 2.25, 0.14, (0, 0, 0.88), M('stone3'), 8, 0.03)
-    K.cyl('water', 1.95, 0.06, (0, 0, 0.8), M('water_gloss', 0.3), 32, 0.0)
-    K.cyl('column', 0.32, 1.5, (0, 0, 1.55), M('stone2'), 12, 0.03)
-    K.cyl('bowl', 0.95, 0.32, (0, 0, 2.25), M('stone'), 16, 0.03, r2=0.5)
-    K.cyl('bowl_water', 0.82, 0.05, (0, 0, 2.4), M('water_gloss', 0.3), 16, 0.0)
-    K.cyl('neck', 0.16, 0.6, (0, 0, 2.7), M('stone2'), 10, 0.02)
-    K.cyl('cup', 0.3, 0.2, (0, 0, 3.05), M('gold'), 12, 0.02, r2=0.18)
-    K.cone('flame', 0.2, 0.6, (0, 0, 3.45), M('fire', 3.0), 10)
-    for i in range(8):   # water falling from the upper bowl
+    K.cyl('step', 2.95, 0.22, (0, 0, 0.11), M('stone_dk'), 8, 0.04)
+    K.cyl('step2', 2.7, 0.2, (0, 0, 0.3), M('stone2'), 8, 0.04)
+    K.cyl('basin', 2.4, 0.55, (0, 0, 0.66), M('stone'), 8, 0.05)
+    K.cyl('rim', 2.5, 0.14, (0, 0, 0.98), M('stone3'), 8, 0.03)
+    K.cyl('water', 2.2, 0.06, (0, 0, 0.88), M('water_gloss', 0.3), 32, 0.0)
+    prism('column', 0.38, 0.3, 0.9, 2.3, M('stone2'), n=8)
+    K.cyl('bowl', 1.05, 0.36, (0, 0, 2.45), M('stone'), 16, 0.03, r2=0.55)
+    K.cyl('bowl_water', 0.92, 0.05, (0, 0, 2.62), M('water_gloss', 0.3), 16, 0.0)
+    K.cyl('neck', 0.18, 0.6, (0, 0, 2.95), M('stone2'), 10, 0.02)
+    K.cyl('cup', 0.34, 0.22, (0, 0, 3.32), M('gold'), 12, 0.02, r2=0.2)
+    K.cone('flame', 0.24, 0.75, (0, 0, 3.8), M('fire', 3.0), 10)
+    K.cone('flame_core', 0.12, 0.45, (0, 0, 3.7), M('gold', 4.0), 8)
+    for i in range(8):
         a = i / 8 * math.tau
-        K.cyl('fall', 0.05, 1.0, (math.cos(a) * 0.9, math.sin(a) * 0.9, 1.85), M('water_gloss', 0.5), 6, 0.0)
+        K.cyl('fall', 0.05, 1.4, (math.cos(a) * 1.0, math.sin(a) * 1.0, 1.85), M('water_gloss', 0.5), 6, 0.0)
     return K.export('fountain')

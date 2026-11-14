@@ -13,9 +13,9 @@ HUD = len(a) > 2 and a[2] == '1'
 STATE = a[3] if len(a) > 3 else 'mid'
 
 # ---- Field.cs, mirrored (Unity x, z) -> Blender (x, y)
-TOWER_X = [-7.5, -13.0, -18.5, -24.0]; TOWER_TOP = 6.3
-PLAZA = (0.0, -10.0)
-PLOTS = [(7, -6), (13, -6), (17.5, -10), (-18.5, -10.5), (-12.5, -10.5), (-6.5, -10.5), (10, -11), (5, -14), (-9.5, -15.5), (-3.5, -15.5)]
+TOWER_X = [-7.5, -13.0, -18.5, -24.0]; TOWER_TOP = 5.0
+PLAZA = (8.5, -6.0)
+PLOTS = [(15.5, -6.0), (-3.5, -7.5), (-14.5, -10.5), (-9.0, -10.5), (-20.0, -15.0), (1.0, -13.5), (-5.0, -16.0), (6.5, -16.5), (-10.5, -19.0), (-16.0, -20.5)]
 IDS = ['forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower']
 ROAD_Z = 5.4
 CAM_LOOK = Vector((-7.5, -3.5, 0.0)); CAM_POS = CAM_LOOK + Vector((0, 46 * 0.7660, 46 * 0.6428)); CAM_FOV = 38.0
@@ -69,7 +69,10 @@ if os.environ.get('HG_TOP'):   # a plan view of the whole layout, for finding st
 eng = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items]
 sc.render.engine = 'BLENDER_EEVEE' if 'BLENDER_EEVEE' in eng else 'BLENDER_EEVEE_NEXT'
 sc.render.resolution_x, sc.render.resolution_y = 1280, 720
-sc.view_settings.view_transform = 'Standard'
+try:
+    sc.view_settings.view_transform = 'AgX'; sc.view_settings.look = 'AgX - Medium High Contrast'
+except Exception:
+    sc.view_settings.view_transform = 'Filmic'
 sc.render.filepath = OUT
 bpy.ops.render.render(write_still=True)
 print('[hg_scene] wrote', OUT)
