@@ -138,8 +138,23 @@ namespace Hearthgate.Game
             var at = gold.tr.position; Destroy(gold.tr.gameObject); gold = null;
             Sound.Play("claim", 0.6f); Fx.I.Burst(at, Field.GOLD, 26);
             if (Random.value < 0.3f) { goldSurgeUntil = Now() + 15000; Fx.I.Pop(at + Vector3.up, "x2 for 15 s!", ROSE, 42, 1.4f); }
-            else { double amt = HG.FightRate(P, B) * 1.6 * 10 * SurgeX * (Ev("goldrush") ? 3 : 1); P.res += amt; Fx.I.Pop(at + Vector3.up, "+" + HG.Fmt(amt), Field.GOLD, 46, 1.4f); }
+            else { double amt = HG.FightRate(P, B) * 1.6 * 10 * SurgeX * (1 + B["wispX"]) * (Ev("goldrush") ? 3 : 1); P.res += amt; Fx.I.Pop(at + Vector3.up, "+" + HG.Fmt(amt), Field.GOLD, 46, 1.4f); }
             Save(); return true;
+        }
+
+        // ---------- constellations: a star lights when the run reaches its wave (js/game.js lightStars) ----------
+        void LightStars()
+        {
+            var due = HG.StarsDue(P); if (due.Count == 0) return;
+            bool first = P.stars.Count == 0;
+            foreach (var st in due) P.stars.Add(st.id);
+            B = HG.Bonuses(P); Save();
+            var sky = Field.PLAZA + new Vector3(0, 16f, 6f);
+            Fx.I.Burst(sky, Field.GOLD, 40); Sound.Play("level_up", 0.55f);
+            var last = due[due.Count - 1]; var c = HG.CONSTELLATIONS[last.asc - 1];
+            int lit = HG.STARS.Count(x => x.asc == last.asc && P.stars.Contains(x.id));
+            Hud.Banner(first ? $"A star lights in the {c}! {last.name}: {last.line}. Reach waves to light all five"
+                             : $"{last.name}: {last.line}  ·  {c} {lit}/5");
         }
 
         // ---------- the Tavern's Cheer ----------
@@ -150,7 +165,7 @@ namespace Hearthgate.Game
             cheer = Mathf.Min(1, cheer + 0.06f * (Ev("feast") ? 2 : 1));
             if (cheer >= 1)
             {
-                cheerT = CHEER_S; Sound.Play("feat", 0.5f); Hud.Banner("CHEER! Towers fire twice as fast");
+                cheerT = CheerLen; Sound.Play("feat", 0.5f); Hud.Banner("CHEER! Towers fire twice as fast");
                 int i = System.Array.IndexOf(HG.BUILDING_IDS, "tavern"); Fx.I.Burst(Field.Door(i, 1f, 2f), Field.GOLD, 24);
             }
         }
@@ -159,7 +174,8 @@ namespace Hearthgate.Game
             if (cheerT > 0 && (cheerT -= dt) <= 0) { cheerT = 0; cheer = 0; }
             if (cheerT > 0 && Random.value < dt * 10) foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 1);   // the towers glow gold
         }
-        public float CheerShown => cheerT > 0 ? cheerT / CHEER_S : cheer;
+        public float CheerShown => cheerT > 0 ? cheerT / CheerLen : cheer;
+        float CheerLen => B["cheerLong"] > 0 ? 10f : CHEER_S;   // the Feast Hall
 
         // ---------- the Watchtower's beacon ----------
         Tower beacon; Transform beaconFlame; int beaconShots;

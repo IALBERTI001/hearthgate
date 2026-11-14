@@ -149,6 +149,7 @@ namespace Hearthgate.Game
                 }
                 if (e.hp <= 0) Kill(e);
             }
+            if (B["regen"] > 0) gateHp = System.Math.Min(HG.GateMax(P, B), gateHp + HG.GateMax(P, B) * B["regen"] * DT);   // Iron Walls mend slowly
             if (gateHp <= 0) GateFell();
             else if (P.wave > 2 && gateHp < HG.GateMax(P, B) * 0.6) Guide.Say("gate");
         }
@@ -160,10 +161,15 @@ namespace Hearthgate.Game
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8); Sound.Play(e.boss ? "ascension" : "golem_death", e.boss ? 0.55f : 0.28f);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             Quest("kills");
-            if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); Quest("boss"); GiveShards(HG.SHARDS["boss"], e.Pos + Vector3.up * (e.size + 2.5f)); }
+            if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); Quest("boss"); GiveShards(HG.SHARDS["boss"] + (int)B["bossPlus"], e.Pos + Vector3.up * (e.size + 2.5f)); }
+            if (B["molten"] > 0 && e.burn > 0 && !e.boss)
+            {   // the Molten Forge: a burning enemy bursts and sets its friends alight
+                Fx.I.Burst(e.Pos, Field.FIRE, 18); Sound.Play("fire_contact_0", 0.3f);
+                foreach (var o in enemies) if (o != e && o.dying <= 0 && (o.Pos - e.Pos).sqrMagnitude < 9f) { o.burn = 2.2f; o.hp -= HG.TowerDamage(P, B) * 0.6; o.flash = 1; }
+            }
             if (e.R.chest)
             {   // an Elite's treasure chest
-                double amt = HG.FightRate(P, B) * 1.6 * 5 * SurgeX; P.res += amt; Sound.Play("claim", 0.5f);
+                double amt = HG.FightRate(P, B) * 1.6 * 5 * SurgeX * (1 + B["chestX"]); P.res += amt; Sound.Play("claim", 0.5f);
                 Fx.I.Burst(e.Pos, Field.GOLD, 26); Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1.5f), $"Treasure! +{HG.Fmt(amt)}", Field.GOLD, 40, 1.3f);
             }
             if (e.R.split > 0) for (int k = 0; k < e.R.split; k++) enemies.Add(new Enemy("swarm", P.wave, e.lane, Mathf.Clamp(e.x + Random.Range(-1.5f, 1.5f), -Field.LANE, Field.LANE), e.z + Random.Range(0, 1.5f), unitsRoot));
@@ -182,6 +188,12 @@ namespace Hearthgate.Game
             P.wave++; P.bestWave = Mathf.Max(P.bestWave, P.wave); P.runWave = Mathf.Max(P.runWave, P.wave); Quest("waves");
             if (P.restored.Contains("cottages")) gateHp = HG.GateMax(P, B);
             Sound.Play("claim", 0.22f);
+            if (B["harvest"] > 0)
+            {   // Harvest Stores: every cleared wave pays seconds of income
+                double amt = (HG.FightRate(P, B) * 1.6 + HG.CityRate(P, B)) * B["harvest"] * SurgeX; P.res += amt;
+                int gi = System.Array.IndexOf(HG.BUILDING_IDS, "granary"); Fx.I.Pop(Field.Plot(gi) + Vector3.up * (Field.PlotHeight(gi) + 2f), $"Harvest +{HG.Fmt(amt)}", Field.GOLD, 32, 1.1f);
+            }
+            LightStars();
         }
 
         // ---------- towers and shots ----------
@@ -192,7 +204,7 @@ namespace Hearthgate.Game
                 if ((tw.cool -= DT) > 0) continue;
                 if (tw.beacon) tw.el = BeaconElement();
                 var tg = Pick(tw); if (tg == null) continue;
-                tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f) * (cheerT > 0 ? 0.5f : 1f) * (Ev("frenzy") ? 0.7f : 1f); tw.flash = 1;   // the Tavern's Cheer: twice as fast
+                tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f) * (cheerT > 0 ? 0.5f : 1f) * (Ev("frenzy") ? 0.7f : 1f) * (tw.beacon && B["beacon"] > 0 ? 0.5f : 1f); tw.flash = 1;   // the Tavern's Cheer: twice as fast
                 var go = new GameObject("shot");
                 var col = tw.el == "fire" || tw.el == "frost" || tw.el == "storm" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
                 var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
@@ -258,7 +270,7 @@ namespace Hearthgate.Game
                 else d *= 0.2;
             }
             if (el == "fire") { if (e.chill > 0) { d *= 3 * cm; Combo("shatter", e, "SHATTER!", Field.FROST); e.bigHit = true; } e.burn = 2.2f; }
-            if (el == "frost") { e.chill = 2.2f; if (e.R.weak == "frost") d *= 1.3; }
+            if (el == "frost") { e.chill = B["deepFrost"] > 0 ? 3.3f : 2.2f; if (e.R.weak == "frost") d *= 1.3; }
             if (el == "storm")
             {
                 int jumps = (e.chill > 0 ? 4 : 2) + (int)B["chainPlus"] + (Ev("stormfront") ? 3 : 0);
@@ -306,7 +318,7 @@ namespace Hearthgate.Game
             P.res -= RestoreCost; P.restored.Add(id); B = HG.Bonuses(P);
             int i = System.Array.IndexOf(HG.BUILDING_IDS, id); RefreshPlot(i); RefreshTowers();
             Fx.I.Burst(Field.Plot(i) + Vector3.up * 2, Field.GOLD, 30); Fx.I.Shake(0.15f, true); Sound.Play("feat", 0.55f);
-            Hud.Banner($"{HG.ById(id).name} rebuilt! {HG.ById(id).line}"); Save();
+            Hud.Banner(P.ascensions >= 1 ? $"{HG.NameOf(P, id)}! {HG.LineOf(P, id)}" : $"{HG.ById(id).name} rebuilt! {HG.ById(id).line}"); Save();
             if (id == "market") OpenShop();
             Guide.Say(id); if (HG.CityWhole(P)) Guide.Say("whole", HG.AscendWave(P).ToString());
         }

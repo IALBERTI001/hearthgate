@@ -243,7 +243,7 @@ namespace Hearthgate.Game
                 if (P.restored.Contains(id))
                 {
                     double r = HG.BuildingRate(P, id, g.B); string rs = r < 10 ? r.ToString("0.##") : HG.Fmt(r);
-                    signTxt[i].text = $"<b>{b.name}</b>  ·  level {HG.LevelOf(P, id)}\n<color=#FFD56B>+{rs}/s</color>";
+                    signTxt[i].text = $"<b>{HG.NameOf(P, id)}</b>  ·  level {HG.LevelOf(P, id)}\n<color=#FFD56B>+{rs}/s</color>";
                 }
                 else signTxt[i].text = HG.RestoreOffer(P).Contains(id) ? $"<b>{b.name}</b>  ·  ruined\n<color=#FFD56B>rebuild {HG.Fmt(g.RestoreCost)}</color>" : $"<b>{b.name}</b>  ·  ruined\n<color=#D9C9A8>{(g.NextBuilding != null ? "after the " + HG.ById(g.NextBuilding).name : "rebuilt later")}</color>";   // says what comes first, not a bare "not yet"
             }
@@ -408,7 +408,7 @@ namespace Hearthgate.Game
             float now = Time.unscaledTime;
             Show(up, "Upgrade towers", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
             var nb = g.NextBuilding;
-            if (nb != null) { re.icon.sprite = Icon("rebuild") ?? re.icon.sprite; Show(re, $"Rebuild {HG.ById(nb).name}", HG.Fmt(g.RestoreCost), g.CanRestore, now); }
+            if (nb != null) { re.icon.sprite = Icon("rebuild") ?? re.icon.sprite; Show(re, $"Rebuild {HG.NameOf(g.P, nb)}", HG.Fmt(g.RestoreCost), g.CanRestore, now); }
             else
             {   // the city is whole: Ascend, once the run is deep enough
                 re.icon.sprite = Icon("ascend") ?? re.icon.sprite; int need = HG.AscendWave(P), got = System.Math.Max(P.runWave, P.wave);
@@ -468,6 +468,8 @@ namespace Hearthgate.Game
             var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size);
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = title;
+            var cv = ((RectTransform)transform).rect.size;   // a tall card shrinks to fit a short screen, never runs off it
+            box.localScale = Vector3.one * Mathf.Min(1f, (cv.y - 24f) / size.y, (cv.x - 24f) / size.x);
             return box;
         }
         Text Line(RectTransform box, float y, string text, int size = 18, Color? col = null)
@@ -497,15 +499,29 @@ namespace Hearthgate.Game
         }
 
         // the Watchtower's perks (2D: "Home of the Perks"): one row each, its level, its cost in points, Buy
-        public static void ShowPerks()
+        public static void ShowPerks(string tab = "perks")
         {
             if (!I || !GameLoop.I) return;
-            var g = GameLoop.I; var box = I.Modal("Perks", new Vector2(680, 200 + HG.PERKS.Length * 64));   // room for the close button under the last row
-            var pts = I.Line(box, -60, "", 19, RES);
+            var g = GameLoop.I; var P = g.P;
+            var box = I.Modal("The Watchtower", new Vector2(700, 236 + HG.PERKS.Length * 64));   // room for the close button under the last row
+            var tabs = new (string id, string label)[] { ("perks", "Perks"), ("stars", $"Stars {P.stars.Count}/{HG.STARS.Length}") };
+            for (int k = 0; k < tabs.Length; k++)
+            {
+                var t = tabs[k];
+                I.BtnAt("Tab" + k, new Vector2(0.5f, 1), new Vector2(-115 + k * 230, -70), new Vector2(220, 56), () => ShowPerks(t.id), () => t.id != tab, out var tl, box).rt.pivot = new Vector2(0.5f, 1);
+                tl.text = t.label;
+            }
+            I.perkRefresh = null;
+            if (tab == "stars") StarsTab(box, P); else PerksTab(box, g);
+            I.Choice(box, "P_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
+        }
+        static void PerksTab(RectTransform box, GameLoop g)
+        {
+            var pts = I.Line(box, -136, "", 18, RES);
             var rows = new System.Collections.Generic.List<(HG.Perk k, Text lv, Text cost)>();
             for (int i = 0; i < HG.PERKS.Length; i++)
             {
-                var k = HG.PERKS[i]; float y = -100 - i * 64;
+                var k = HG.PERKS[i]; float y = -172 - i * 64;
                 var name = I.Label("N" + i, box, new Vector2(0, 1), new Vector2(32, y), 19, TextAnchor.UpperLeft); name.text = k.name;
                 name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(360, 24);
                 var line = I.Label("D" + i, box, new Vector2(0, 1), new Vector2(32, y - 24), 15, TextAnchor.UpperLeft); line.font = I.body; line.text = k.line; line.color = new Color(0.85f, 0.8f, 0.88f);
@@ -515,7 +531,6 @@ namespace Hearthgate.Game
                 I.BtnAt("P_" + id, new Vector2(1, 1), new Vector2(-24, y + 2), new Vector2(160, 56), () => { g.BuyPerk(id); }, () => HG.CanBuyPerk(g.P, id), out var cost, box);
                 rows.Add((k, lv, cost));
             }
-            I.Choice(box, "P_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
             I.perkRefresh = () =>
             {
                 pts.text = $"{g.P.perkPts} perk point{(g.P.perkPts == 1 ? "" : "s")}  ·  each Ascension pays more";
@@ -527,6 +542,22 @@ namespace Hearthgate.Game
                 }
             };
             I.perkRefresh();
+        }
+        // the constellation of this run: five stars lit at fixed waves on the way to the Ascend wave; earlier runs' skies whole
+        static void StarsTab(RectTransform box, Profile P)
+        {
+            int run = Mathf.Clamp(P.ascensions, 1, HG.CONSTELLATIONS.Length);
+            if (P.ascensions == 0) { I.Line(box, -150, "Each city after an Ascension has its own constellation of five stars. They light as the waves climb, and each one is a lasting boon.", 18); return; }
+            string c = HG.CONSTELLATIONS[run - 1];
+            I.Line(box, -136, P.ascensions > HG.CONSTELLATIONS.Length ? "Every constellation is lit" : $"This city's sky: the {c}", 18, RES);
+            var mine = HG.STARS.Where(x => x.asc == run).ToArray();
+            for (int i = 0; i < mine.Length; i++)
+            {
+                var st = mine[i]; bool lit = P.stars.Contains(st.id);
+                I.Row(box, i, st.name, lit ? RES : new Color(0.6f, 0.55f, 0.62f), st.line, lit ? "Lit" : $"wave {HG.StarWave(P, st.k)}", lit ? RES : CREAM);
+            }
+            var done = HG.CONSTELLATIONS.Take(run - 1).ToArray();
+            if (done.Length > 0) I.Line(box, -176 - 5 * 64 - 6, $"Whole: {string.Join(", ", done)}", 16, new Color(0.85f, 0.8f, 0.88f));
         }
         System.Action perkRefresh;
 

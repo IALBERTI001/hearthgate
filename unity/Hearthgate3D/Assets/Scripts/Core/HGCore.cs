@@ -65,6 +65,40 @@ namespace Hearthgate.Core
             return o.Distinct().ToList();
         }
 
+        // ---------- Ascended buildings (js/core.js RANK2): after the first Ascension every building comes back with a second
+        // ability, so each restore in a new run brings something new ----------
+        public class Rank2 { public string name, line; public Dictionary<string, double> bonus = new Dictionary<string, double>(); }
+        static Rank2 R2(string name, string line, params (string, double)[] bonus) { var r = new Rank2 { name = name, line = line }; foreach (var (k, v) in bonus) r.bonus[k] = v; return r; }
+        public static readonly Dictionary<string, Rank2> RANK2 = new Dictionary<string, Rank2>
+        {
+            { "forge", R2("Molten Forge", "Burning enemies explode when they fall, setting their friends alight", ("fire", 0.25), ("molten", 1)) },
+            { "frostSpire", R2("Deep Frost", "Frost lingers half again as long and hits 25% harder", ("frost", 0.25), ("deepFrost", 1)) },
+            { "stormBell", R2("Thunder Bell", "Storm chains jump to two more enemies", ("storm", 0.25), ("chainPlus", 2)) },
+            { "bakery", R2("Golden Ovens", "Golden Wisps pay double", ("wispX", 1)) },
+            { "market", R2("Grand Bazaar", "Treasure chests pay double. Upgrades cost 5% less", ("chestX", 1), ("upgradeDiscount", 0.05)) },
+            { "tavern", R2("Feast Hall", "Cheer lasts 10 seconds instead of 6", ("cheerLong", 1)) },
+            { "granary", R2("Harvest Stores", "Every cleared wave pays 5 seconds of income", ("harvest", 5)) },
+            { "library", R2("Grand Archive", "Combos hit another 25% harder", ("combo", 0.25)) },
+            { "cottages", R2("Masons", "The walls are 25% stronger", ("gateHp", 0.25)) },
+            { "watchtower", R2("Bright Beacon", "The Watchtower beacon fires twice as fast", ("beacon", 1)) },
+        };
+        public static string NameOf(Profile p, string id) => p.ascensions >= 1 && RANK2.ContainsKey(id) ? RANK2[id].name : ById(id).name;
+        public static string LineOf(Profile p, string id) => p.ascensions >= 1 && RANK2.ContainsKey(id) ? RANK2[id].line : ById(id).line;
+
+        // ---------- constellations (js/core.js STARS): each of the first ten Ascension runs has five stars, lit at fixed waves
+        // on the way to that run's Ascend wave; each is a named, lasting boon ----------
+        public class Star { public string id, name, line; public int asc, k; public Dictionary<string, double> bonus = new Dictionary<string, double>(); }
+        public static readonly string[] CONSTELLATIONS = { "Anvil", "Lantern", "Hound", "Crown", "Serpent", "Harp", "Tower", "Phoenix", "Owl", "Dragon" };
+        static readonly (string part, string key, double v, string what)[][] STAR_KINDS =
+        {
+            new[] { ("Eye", "damage", 0.04, "damage"), ("Heart", "gateHp", 0.08, "wall health"), ("Spark", "fireRate", 0.03, "fire rate"), ("Crown", "res", 0.05, "Resonance"), ("Tail", "combo", 0.08, "combo damage") },
+            new[] { ("Ember", "fire", 0.08, "Fire damage"), ("Frost", "frost", 0.08, "Frost damage"), ("Bolt", "storm", 0.08, "Storm damage"), ("Hearth", "city", 0.06, "city output"), ("Wing", "bossDmg", 0.1, "boss damage") },
+        };
+        public static readonly Star[] STARS = CONSTELLATIONS.SelectMany((c, i) => STAR_KINDS[i % 2].Select((sk, k) =>
+        { var st = new Star { id = c.ToLower() + k, asc = i + 1, k = k, name = $"{c}'s {sk.part}", line = $"+{Math.Round(sk.v * 100)}% {sk.what}" }; st.bonus[sk.key] = sk.v; return st; })).ToArray();
+        public static int StarWave(Profile p, int k) => (int)Math.Round(AscendWave(p) * (k + 1) / 6.0);   // five stars spread before the Ascend wave
+        public static List<Star> StarsDue(Profile p) => STARS.Where(st => st.asc == p.ascensions && !p.stars.Contains(st.id) && Math.Max(p.runWave, p.wave) >= StarWave(p, st.k)).ToList();
+
         // ---------- gate stages and forks ----------
         public static readonly int[] STAGES = { 1, 15, 40, 60, 85 };
         public class Fork { public string id, name, line; public Dictionary<string, double> bonus = new Dictionary<string, double>(); }
@@ -96,6 +130,8 @@ namespace Hearthgate.Core
             foreach (var id in p.restored) { if (id == "granary") b["offlineH"] += 4; var d = ById(id); if (d != null) b.Add(d.bonus); }
             foreach (var s in FORK_STAGES) { var fid = p.ForkAt(s); var f = fid == null ? null : FORKS[s].FirstOrDefault(x => x.id == fid); if (f != null) b.Add(f.bonus); }
             foreach (var k in PERKS) { int n = p.PerkAt(k.id); if (n > 0) foreach (var kv in k.per) b[kv.Key] += kv.Value * n; }
+            if (p.ascensions >= 1) foreach (var id in p.restored) if (RANK2.TryGetValue(id, out var r2)) b.Add(r2.bonus);
+            foreach (var id in p.stars) { var st = STARS.FirstOrDefault(x => x.id == id); if (st != null) b.Add(st.bonus); }
             b.ascend = Math.Pow(ASCEND_MULT, p.ascensions);
             return b;
         }
@@ -116,7 +152,7 @@ namespace Hearthgate.Core
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
                 perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + PerkPtsFor(p), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
                 shards = p.shards + (p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(),
-                stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats),
+                stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars),
                 questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
             int st = q.PerkAt("start") * 5; if (st > 0) { q.wave = 1 + st; q.gateLevel = 1 + st; q.runWave = q.wave; }   // Head Start
@@ -320,6 +356,7 @@ namespace Hearthgate.Core
             foreach (var (n, nm, t) in new[] { (500, "Chain Reaction", 1), (5000, "Combo Master", 2) }) F("combos" + n, nm, t, $"Land {Fmt(n)} combos", p => p.Stat("combos"), n);
             foreach (var (n, nm, t) in new[] { (5, "Rebuilder", 1), (10, "Hearth Restored", 2) }) F("city" + n, nm, t, $"Rebuild {n} buildings in one city", p => p.restored.Count, n);
             foreach (var (n, nm, t) in new[] { (1, "Reborn", 2), (3, "Thrice Risen", 2), (10, "Eternal City", 3) }) F("ascend" + n, nm, t, n == 1 ? "Ascend once" : $"Ascend {n} times", p => p.ascensions, n);
+            foreach (var (n, nm, t) in new[] { (5, "First Light", 1), (20, "Stargazer", 2), (40, "Full Sky", 3) }) F("stars" + n, nm, t, $"Light {n} constellation stars", p => p.stars.Count, n);
             F("bestiary", "Monster Scholar", 2, "Meet every kind of enemy", p => p.seenRoles.Count(r => ROLES.ContainsKey(r)), ROLES.Count);
             foreach (var (n, nm, t) in new[] { (25, "Iron Ramparts", 1), (50, "Steel Ramparts", 2), (100, "Starforged Ramparts", 3) }) F("gate" + n, nm, t, $"Upgrade the towers to level {n}", p => p.gateLevel, n);
             foreach (var (n, nm, t) in new[] { (10, "Humming Halls", 1), (25, "Resonant", 2), (50, "Heart of the City", 3) }) F("blvl" + n, nm, t, $"Get one building to level {n}", p => p.restored.Count == 0 ? 0 : p.restored.Max(id => p.LevelAt(id)), n);
@@ -381,7 +418,7 @@ namespace Hearthgate.Core
         public List<string> owned = new List<string>();        // looks bought
         public List<KS> equip = new List<KS>();                // slot -> look
         public string questDay = ""; public bool questBonus; public List<QuestState> quests = new List<QuestState>();   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
-        public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>();   // lifetime counts and Feats earned (kept by Ascension)
+        public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>(), stars = new List<string>();   // lifetime counts and Feats earned (kept by Ascension)
         public int Stat(string k) { var e = stats.Find(x => x.k == k); return e == null ? 0 : e.v; }
         public void AddStat(string k, int n) { var e = stats.Find(x => x.k == k); if (e == null) stats.Add(new KV { k = k, v = n }); else e.v = (int)Math.Min(int.MaxValue, (long)e.v + n); }
         public bool firstSession = true;
@@ -410,6 +447,8 @@ namespace Hearthgate.Core
             shards = Math.Max(0, shards); owned = (owned ?? new List<string>()).Where(id => HG.SHOP.Any(l => l.id == id)).Distinct().ToList();
             equip = (equip ?? new List<KS>()).Where(e => HG.SHOP.Any(l => l.id == e.s && HG.Slot(l) == e.k)).ToList();
             stats = (stats ?? new List<KV>()).Where(e => HG.STATS.Contains(e.k) && e.v > 0).GroupBy(e => e.k).Select(g => g.First()).ToList();
+            stars = (stars ?? new List<string>()).Where(id => HG.STARS.Any(x => x.id == id)).Distinct().ToList();
+            foreach (var st in HG.STARS) if (st.asc < ascensions && !stars.Contains(st.id)) stars.Add(st.id);   // a finished run's constellation is whole
             feats = (feats ?? new List<string>()).Where(id => HG.FEATS.Any(f => f.id == id)).Distinct().ToList();
             quests = (quests ?? new List<QuestState>()).Where(q => HG.QUESTS.Any(d => d.id == q.id)).ToList(); questDay = questDay ?? "";
             perks = (perks ?? new List<KV>()).Where(e => HG.PERKS.Any(k => k.id == e.k) && e.v > 0).Select(e => new KV { k = e.k, v = Math.Min(e.v, HG.PERKS.First(k => k.id == e.k).max) }).ToList();
