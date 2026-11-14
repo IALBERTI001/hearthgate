@@ -35,7 +35,7 @@
     matchWebGLCanvasToContainer: true,
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2)
   }, function (p) { document.querySelector('#load i').style.width = (p * 100) + '%'; })
-  .then(function () { document.getElementById('load').remove(); canvas.focus(); })
+  .then(function (u) { window.hgUnity = u; document.getElementById('load').remove(); canvas.focus(); })
   .catch(function (m) { console.error(m); });
 </script>
 </body>
