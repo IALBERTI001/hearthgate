@@ -81,6 +81,7 @@ namespace Hearthgate.Game
         void TickFall(float dt)
         {
             if (adWaiting && (adT += dt) > 90f) AdDone("0");   // never wait on an ad for good
+            TickWisps(dt);
             if (!P.fallen) return;
             if (rewinding)
             {   // the rewind runs the smoke backward: every puff sinks and shrinks back into the ruins
@@ -124,6 +125,38 @@ namespace Hearthgate.Game
                 puffs.Add((g.transform, 0f, Random.Range(4f, 5.5f), Random.Range(4.5f, 7f), new Vector3(0.9f, 0, Random.Range(-0.3f, 0.3f))));   // seen from 55 m: a puff must be metres across to read
             }
             if (Random.value < 0.3f) Fx.I.Burst(at, Field.FIRE, 2);   // embers
+        }
+
+        // a thin thread of smoke from every burnt plot not yet rebuilt: small puffs that rise slowly, swell and fade (the
+        // ruins once carried three rock-coloured balls for smoke, which read as stones floating over the keeper, Nov 14 2026)
+        readonly System.Collections.Generic.List<(Transform t, float age, float life, float size, Vector3 drift)> wisps = new System.Collections.Generic.List<(Transform, float, float, float, Vector3)>();
+        float wispT;
+        void TickWisps(float dt)
+        {
+            for (int k = wisps.Count - 1; k >= 0; k--)
+            {
+                var p = wisps[k]; p.age += dt;
+                if (!p.t || p.age > p.life) { if (p.t) Destroy(p.t.gameObject); wisps.RemoveAt(k); continue; }
+                float u = p.age / p.life;
+                p.t.position += (Vector3.up * 0.9f + p.drift) * dt;
+                p.t.localScale = puffUnit * p.size * Mathf.Sin(Mathf.Min(1f, u * 2f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0f, 1f, (u - 0.55f) / 0.45f));
+                p.t.Rotate(0, 25f * dt, 0); wisps[k] = p;
+            }
+            if (!art || !art.puff || rewinding || (wispT -= dt) > 0) return;
+            wispT = 0.35f;
+            var ruined = new System.Collections.Generic.List<int>();
+            for (int b = 0; b < HG.BUILDINGS.Length; b++) if (!P.restored.Contains(HG.BUILDINGS[b].id)) ruined.Add(b);
+            if (ruined.Count == 0 || wisps.Count > 6 * ruined.Count) return;
+            int i = ruined[Random.Range(0, ruined.Count)];
+            var g = Instantiate(art.puff, world); g.transform.position = Field.World(i, Random.Range(-0.6f, 0.6f), Random.Range(0.4f, 1.4f), 1.4f);
+            if (puffUnit == Vector3.zero)
+            {
+                var mf = g.GetComponentInChildren<MeshFilter>(); float w = mf && mf.sharedMesh ? Mathf.Max(0.001f, mf.sharedMesh.bounds.size.x) : 1.27f;
+                puffUnit = Vector3.one / w;
+            }
+            g.transform.localScale = Vector3.zero;
+            foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            wisps.Add((g.transform, 0f, Random.Range(3.2f, 4.2f), Random.Range(0.7f, 1.3f), new Vector3(0.25f, 0, Random.Range(-0.1f, 0.1f))));
         }
 
         public void RestoreFallen(bool paid)
