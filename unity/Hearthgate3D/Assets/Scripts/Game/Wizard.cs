@@ -20,7 +20,7 @@ namespace Hearthgate.Game
         public int Inside = -1;       // the building he is standing in, or -1
         public int Looking = -1;      // the room whose centrepiece he stands at and looks at (GameLoop.Halls opens its card)
         public Vector3 Position => pos;
-        public const float SCALE = 0.66f, SPEED = 4.2f, RADIUS = 0.32f, REACH = 2.6f, FOUNTAIN_R = 3.4f;
+        public const float SCALE = 0.66f, SPEED = 3.4f, RADIUS = 0.32f, REACH = 2.6f, FOUNTAIN_R = 3.4f;
         // in the square, left of the gatehouse's keep as seen from the walls (LayoutCheck: seen from the wall camera)
         public static readonly Vector3 HOME = new Vector3(-6f, 0, -8f);
         // the walk camera, from his feet: on the gate side looking into the town, the way the wall view looks, so it sees
@@ -58,12 +58,14 @@ namespace Hearthgate.Game
 
         Vector2 heading = START_HEADING; Transform model; Camera cam; Vector3 pos, vel; Vector3? target; float yaw = 180f, blend, step, idle, lift, indoors;
         GameObject goal;   // a little gold ring where a tap sent him
+        Gait gait;
 
         public void Init(ArtSet art)
         {
             I = this; cam = Camera.main; pos = HOME;
             model = Art.Spawn(art ? art.wizard : null, "wizard", pos, transform).transform;
             model.localScale = Vector3.one * SCALE;
+            gait = model.gameObject.AddComponent<Gait>(); gait.LegLength = 0.76f * SCALE; gait.MaxCadence = 3.0f; gait.Step = Sound.Step;
             goal = Art.Spawn(art ? art.marker : null, "goal", pos, transform); goal.transform.localScale = Vector3.one * 0.25f; goal.SetActive(false);
         }
 
@@ -129,8 +131,8 @@ namespace Hearthgate.Game
             float speed = vel.magnitude;
             if (speed > 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-vel.x, -vel.z) * Mathf.Rad2Deg, 540f * dt);   // models face -Z
             else if (!On) yaw = Mathf.MoveTowardsAngle(yaw, 180f, 180f * dt);   // at rest by the gate he faces the walls
-            float was = step; step += dt * (speed > 0.25f ? 10f : 0f);
-            if (Mathf.Floor(step / Mathf.PI) != Mathf.Floor(was / Mathf.PI)) Sound.Step();   // a footfall at each low point of the hop
+            gait.Tick(dt, speed);   // legs, arms and hat (Gait: the stance foot planted, the swing knee bent, the hips over the stance leg)
+            if (!gait.HasLegs) { float was = step; step += dt * (speed > 0.25f ? 10f : 0f); if (Mathf.Floor(step / Mathf.PI) != Mathf.Floor(was / Mathf.PI)) Sound.Step(); }
 
             // indoors: which room he stands in (the floor is on a 0.34 m plinth: he steps up through the doorway)
             int wasIn = Inside; Inside = -1;
@@ -140,11 +142,12 @@ namespace Hearthgate.Game
             for (int i = 0; i < HG.BUILDING_IDS.Length && !onStep; i++) onStep = InFootprint(i, pos, 0.2f);
             lift = Mathf.MoveTowards(lift, Inside >= 0 || onStep ? Field.FLOOR : 0f, dt * 2.5f);
 
-            // the look: a hop and a forward lean as he walks, a slow breath when he stands
-            float hop = speed > 0.25f ? Mathf.Abs(Mathf.Sin(step)) * 0.09f : 0f, breath = Mathf.Sin(idle * 2f) * 0.015f;
+            // the look: the hips over the stance leg, a lean into the walk and the body turning against the hips; a slow breath
+            // when he stands (a model without legs keeps the old hop)
+            float hop = gait.HasLegs ? gait.Drop : speed > 0.25f ? Mathf.Abs(Mathf.Sin(step)) * 0.09f : 0f, breath = Mathf.Sin(idle * 2f) * 0.012f;
             model.position = pos + Vector3.up * (lift + hop);
-            model.rotation = Quaternion.Euler(Mathf.Clamp01(speed / SPEED) * 9f, yaw, Mathf.Sin(step) * 3f * Mathf.Clamp01(speed));
-            model.localScale = new Vector3(SCALE, SCALE * (1 + breath - hop * 0.3f), SCALE);
+            model.rotation = Quaternion.Euler(Mathf.Clamp01(speed / SPEED) * 7f, yaw + (gait.HasLegs ? gait.Twist : 0f), gait.HasLegs ? 0f : Mathf.Sin(step) * 3f * Mathf.Clamp01(speed));
+            model.localScale = new Vector3(SCALE, SCALE * (1 + breath), SCALE);
             if (goal.activeSelf) goal.transform.Rotate(0, 90 * dt, 0);
 
             // the plot he can work on: the room he is in, else the nearest building within reach of its walls

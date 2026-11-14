@@ -11,7 +11,7 @@ namespace Hearthgate.Game
     public class Townsfolk : MonoBehaviour
     {
         const float SCALE = 0.62f;   // the kit builds them at the wizard's units: about 1.65 m tall
-        class Folk { public Transform t; public int walk; public float s, speed, dir = 1, pause, step, yaw, phase; }
+        class Folk { public Transform t; public Gait gait; public int walk; public float s, speed, dir = 1, pause, step, yaw, phase; }
         readonly List<Folk> folk = new List<Folk>();
         readonly List<float[]> lengths = new List<float[]>();
 
@@ -35,6 +35,7 @@ namespace Hearthgate.Game
                 var go = Art.Spawn(prefab, "villager", Vector3.zero, transform); go.transform.localScale = Vector3.one * SCALE;
                 var L = lengths[w]; var f = new Folk { t = go.transform, walk = w, speed = 1.0f + (float)rnd.NextDouble() * 0.35f, phase = (float)rnd.NextDouble() * 6f };
                 f.s = L[L.Length - 1] * (float)rnd.NextDouble(); f.dir = rnd.NextDouble() < 0.5 ? 1 : -1;
+                f.gait = go.AddComponent<Gait>(); f.gait.LegLength = 0.6f * SCALE; f.gait.ArmSwing = 0.9f; f.gait.StaffArm = 0.9f;
                 folk.Add(f); n++;
             }
         }
@@ -77,10 +78,12 @@ namespace Hearthgate.Game
                 float want = Mathf.Atan2(-d.x * f.dir, -d.y * f.dir) * Mathf.Rad2Deg;   // models face -Z
                 if (!moving && f.pause > 0) want += Mathf.Sin(Time.time * 0.8f + f.phase) * 50f;   // looking about
                 f.yaw = Mathf.MoveTowardsAngle(f.yaw, want, 240f * dt);
+                // legs and arms (Gait); a model without legs keeps the old hop
+                float v = moving ? f.speed : 0f; f.gait.Tick(dt, v);
                 f.step += moving ? dt * f.speed * 8.5f : 0;
-                float hop = moving ? Mathf.Abs(Mathf.Sin(f.step)) * 0.06f : 0;
+                float hop = f.gait.HasLegs ? f.gait.Drop : moving ? Mathf.Abs(Mathf.Sin(f.step)) * 0.06f : 0;
                 f.t.position = new Vector3(p.x, hop, p.y);
-                f.t.rotation = Quaternion.Euler(moving ? 5f : 0, f.yaw, moving ? Mathf.Sin(f.step) * 3.5f : 0);
+                f.t.rotation = Quaternion.Euler(moving ? 4f : 0, f.yaw + (f.gait.HasLegs ? f.gait.Twist : 0f), f.gait.HasLegs || !moving ? 0 : Mathf.Sin(f.step) * 3.5f);
             }
         }
     }

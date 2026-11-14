@@ -54,6 +54,14 @@ def _clear_batch():
     BATCH.clear(); _k_clear()
 K.export, K.clear = _export_flushing, _clear_batch
 
+class Part:   # everything made inside `with Part('leg_L', (x, y, z)):` becomes a moving part turned about that pivot (hg_kit.PARTS)
+    def __init__(self, name, pivot, parent=None): self.name, self.pivot, self.parent = name, pivot, parent
+    def __enter__(self): K.flush_blocks(); flush_batch(); self.before = set(bpy.data.objects); return self
+    def __exit__(self, *a):
+        K.flush_blocks(); flush_batch()
+        for o in set(bpy.data.objects) - self.before: o.name = f'P_{self.name}__{o.name}'
+        K.PARTS[self.name] = (self.pivot, self.parent)
+
 def block(loc, size, m, bevel=0.035, rot=0.0):   # a chamfered box, batched into one mesh per material (hg_kit.Blk)
     o = K.Blk(loc, size, m, bevel)
     if rot: o.rotation_euler = (0, 0, rot)
@@ -879,47 +887,63 @@ def fountain():
 # and a star, a long white beard, rosy nose, and a gnarled staff topped with a glowing hearth-orb. About 2.3 m to the
 # hat's tip so he reads beside the 6 m buildings. Front toward Blender -Y, origin between the feet. The game bobs and
 # leans him as he walks.
+def legs(hip_z, x, mat, boot='wood_dk', thigh_r=0.11, shin_r=0.095, foot=0.13):
+    """Two jointed legs (owner, Nov 14 2026: "Legs move you know"): a thigh turning at the hip, a shin at the knee, a boot
+    on the shin. Faces -y. The game's Gait swings them: the stance leg straight, the swing leg's knee bending."""
+    knee = hip_z * 0.56
+    for sx, side in ((-1, 'L'), (1, 'R')):
+        with Part('thigh_' + side, (sx * x, 0, hip_z)):
+            K.cyl('thigh', thigh_r, hip_z - knee + 0.04, (sx * x, 0, (hip_z + knee) / 2), M(mat), 10, 0.02)
+        with Part('shin_' + side, (sx * x, 0, knee), 'thigh_' + side):
+            K.cyl('shin', shin_r, knee - 0.1, (sx * x, 0, knee / 2 + 0.05), M(mat), 10, 0.02)
+            K.sphere('knee', shin_r * 1.05, (sx * x, 0, knee), M(mat), sub=2)
+            K.sphere('boot', foot, (sx * x, -0.07, 0.075), M(boot), (1, 1.55, 0.62), 2)
+            K.cyl('cuff', shin_r * 1.25, 0.08, (sx * x, 0, 0.17), M(boot), 10, 0.02)
+
 def wizard():
-    # robe: a flared bell with a hem band and a gold trim strip down the front
-    K.cyl('robe', 0.62, 1.05, (0, 0, 0.55), M('robe'), 20, 0.03, r2=0.36)
-    K.cyl('hem', 0.64, 0.1, (0, 0, 0.07), M('gold'), 20, 0.02)
-    block((0, -0.47, 0.55), (0.12, 0.08, 0.95), M('gold'), 0.02).rotation_euler = (-0.27, 0, 0)
-    K.cyl('belt', 0.42, 0.1, (0, 0, 0.88), M('wood_dk'), 16, 0.02)
-    block((0, -0.42, 0.88), (0.16, 0.06, 0.13), M('gold'), 0.02)
-    K.sphere('chest', 0.42, (0, 0, 1.1), M('robe'), (1, 0.9, 0.85), 3)
-    # sleeves and hands; the right one holds the staff
+    # the robe: a flared bell to just above the ankles (his boots step out under it), a hem band, a gold trim strip
+    K.cyl('robe', 0.44, 0.74, (0, 0, 0.71), M('robe'), 20, 0.03, r2=0.36)
+    K.cyl('hem', 0.46, 0.08, (0, 0, 0.36), M('gold'), 20, 0.02)
+    block((0, -0.4, 0.7), (0.12, 0.08, 0.7), M('gold'), 0.02).rotation_euler = (-0.11, 0, 0)
+    K.cyl('belt', 0.42, 0.1, (0, 0, 0.98), M('wood_dk'), 16, 0.02)
+    block((0, -0.42, 0.98), (0.16, 0.06, 0.13), M('gold'), 0.02)
+    K.sphere('chest', 0.42, (0, 0, 1.18), M('robe'), (1, 0.9, 0.85), 3)
+    legs(0.78, 0.16, 'robe_dk')
+    # sleeves and hands, each arm turning at its shoulder; the right one holds the staff
     from mathutils import Euler
-    for s in (-1, 1):   # bell sleeves hanging down and out from the shoulders, a gold cuff at the open end, the hand in it
-        c = Vector((s * 0.48, -0.1, 1.04)); rot = Euler((-0.35, -s * 0.55, 0))
+    for s, side in ((-1, 'L'), (1, 'R')):   # bell sleeves hanging down and out from the shoulders, a gold cuff, the hand in it
+        c = Vector((s * 0.48, -0.1, 1.12)); rot = Euler((-0.35, -s * 0.55, 0))
         def along(d): v = Vector((0, 0, d)); v.rotate(rot); return c + v
-        o = K.cyl('sleeve', 0.23, 0.55, tuple(c), M('robe'), 12, 0.02, r2=0.15); o.rotation_euler = rot
-        o = K.cyl('cuff', 0.24, 0.07, tuple(along(-0.27)), M('gold'), 12, 0.0); o.rotation_euler = rot
-        K.sphere('hand', 0.12, tuple(along(-0.36)), M('skin'), sub=2)
+        with Part('arm_' + side, tuple(along(0.24))):
+            o = K.cyl('sleeve', 0.23, 0.55, tuple(c), M('robe'), 12, 0.02, r2=0.15); o.rotation_euler = rot
+            o = K.cyl('cuff', 0.24, 0.07, tuple(along(-0.27)), M('gold'), 12, 0.0); o.rotation_euler = rot
+            K.sphere('hand', 0.12, tuple(along(-0.36)), M('skin'), sub=2)
+            if side == 'R':   # the staff: a gnarled shaft in the hand, a claw holding a glowing hearth-orb above the brim
+                h = along(-0.36)
+                o = K.cyl('staff', 0.05, 2.2, (h.x + 0.08, h.y - 0.12, 1.13), M('wood_dk'), 8, 0.0, r2=0.04); o.rotation_euler = (0, 0.04, 0)
+                for k in range(3):
+                    a = k / 3 * math.tau
+                    o = K.cone('claw', 0.04, 0.3, (h.x + 0.12 + math.cos(a) * 0.1, h.y - 0.12 + math.sin(a) * 0.1, 2.26), M('wood_dk'), 6); o.rotation_euler = (-math.sin(a) * 0.5, math.cos(a) * 0.5, 0)
+                K.sphere('orb', 0.15, (h.x + 0.12, h.y - 0.12, 2.38), M('fire_core', 2.5), sub=3)
+                K.sphere('orb_core', 0.08, (h.x + 0.12, h.y - 0.12, 2.38), M('gold', 3.0), sub=2)
     # head: a round face, rosy nose, little eyes under bushy brows, and a long tapering beard
-    K.sphere('head', 0.33, (0, -0.02, 1.52), M('skin'), sub=3)
-    K.sphere('nose', 0.08, (0, -0.33, 1.5), M('blush'), sub=2)
+    K.sphere('head', 0.33, (0, -0.02, 1.6), M('skin'), sub=3)
+    K.sphere('nose', 0.08, (0, -0.33, 1.58), M('blush'), sub=2)
     for s in (-1, 1):
-        K.sphere('eye', 0.06, (s * 0.12, -0.29, 1.6), M('pupil'), (1, 0.6, 1.2), 2)
-        K.sphere('catch', 0.018, (s * 0.11, -0.34, 1.63), M('white_gloss', 0.5), sub=1)
-        o = block((s * 0.13, -0.29, 1.69), (0.17, 0.08, 0.06), M('beard'), 0.02); o.rotation_euler = (0, -s * 0.25, 0)
-        K.sphere('tuft', 0.12, (s * 0.3, -0.12, 1.47), M('beard'), (0.8, 0.9, 1.1), 2)
-    K.sphere('moustache', 0.13, (0, -0.3, 1.43), M('beard'), (1.6, 0.6, 0.55), 2)
-    o = K.cone('beard', 0.27, 0.75, (0, -0.24, 1.08), M('beard'), 12); o.rotation_euler = (math.pi + 0.12, 0, 0)
-    # the hat: a wide brim, a brass band with a gold star, a tall cone flopping forward at the tip
-    K.cyl('brim', 0.62, 0.06, (0, 0, 1.76), M('robe_dk'), 24, 0.02)
-    K.cyl('band', 0.37, 0.12, (0, 0, 1.84), M('gold'), 20, 0.02)
-    K.cyl('crown', 0.36, 0.42, (0, 0, 2.07), M('robe'), 20, 0.0, r2=0.22)
-    o = K.cone('tip', 0.22, 0.55, (0, 0.06, 2.48), M('robe'), 16); o.rotation_euler = (-0.45, 0, 0)
-    K.sphere('pom', 0.07, (0, 0.18, 2.72), M('gold', 1.0), sub=2)
-    o = K.cone('star', 0.1, 0.03, (0, -0.37, 1.85), M('gold', 1.2), 5); o.rotation_euler = (math.pi / 2, 0, 0)
-    # the staff: a gnarled shaft in the right hand, a claw holding a glowing hearth-orb above the hat brim
-    o = K.cyl('staff', 0.05, 2.2, (0.66, -0.26, 1.05), M('wood_dk'), 8, 0.0, r2=0.04); o.rotation_euler = (0, 0.04, 0)
-    for k in range(3):
-        a = k / 3 * math.tau
-        o = K.cone('claw', 0.04, 0.3, (0.7 + math.cos(a) * 0.1, -0.26 + math.sin(a) * 0.1, 2.18), M('wood_dk'), 6); o.rotation_euler = (-math.sin(a) * 0.5, math.cos(a) * 0.5, 0)
-    K.sphere('orb', 0.15, (0.7, -0.26, 2.3), M('fire_core', 2.5), sub=3)
-    K.sphere('orb_core', 0.08, (0.7, -0.26, 2.3), M('gold', 3.0), sub=2)
-    for s in (-1, 1): K.sphere('boot', 0.13, (s * 0.2, -0.22, 0.07), M('wood_dk'), (1, 1.5, 0.6), 2)
+        K.sphere('eye', 0.06, (s * 0.12, -0.29, 1.68), M('pupil'), (1, 0.6, 1.2), 2)
+        K.sphere('catch', 0.018, (s * 0.11, -0.34, 1.71), M('white_gloss', 0.5), sub=1)
+        o = block((s * 0.13, -0.29, 1.77), (0.17, 0.08, 0.06), M('beard'), 0.02); o.rotation_euler = (0, -s * 0.25, 0)
+        K.sphere('tuft', 0.12, (s * 0.3, -0.12, 1.55), M('beard'), (0.8, 0.9, 1.1), 2)
+    K.sphere('moustache', 0.13, (0, -0.3, 1.51), M('beard'), (1.6, 0.6, 0.55), 2)
+    o = K.cone('beard', 0.27, 0.75, (0, -0.24, 1.16), M('beard'), 12); o.rotation_euler = (math.pi + 0.12, 0, 0)
+    # the hat: a wide brim, a brass band with a gold star, a tall cone whose tip flops (a part: it lags his steps)
+    K.cyl('brim', 0.62, 0.06, (0, 0, 1.84), M('robe_dk'), 24, 0.02)
+    K.cyl('band', 0.37, 0.12, (0, 0, 1.92), M('gold'), 20, 0.02)
+    K.cyl('crown', 0.36, 0.42, (0, 0, 2.15), M('robe'), 20, 0.0, r2=0.22)
+    o = K.cone('star', 0.1, 0.03, (0, -0.37, 1.93), M('gold', 1.2), 5); o.rotation_euler = (math.pi / 2, 0, 0)
+    with Part('hat_tip', (0, 0, 2.34)):
+        o = K.cone('tip', 0.22, 0.55, (0, 0.06, 2.56), M('robe'), 16); o.rotation_euler = (-0.45, 0, 0)
+        K.sphere('pom', 0.07, (0, 0.18, 2.8), M('gold', 1.0), sub=2)
     return K.export('wizard')
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1029,25 +1053,27 @@ def villager(v):
     (red dress, apron, headscarf, a basket on her arm). Faces -y like the wizard."""
     from mathutils import Euler
     top = {'a': 'canvas', 'b': 'tunic_g', 'c': 'dress'}[v]
-    if v == 'c':   # a long skirt to the ground
-        K.cyl('skirt', 0.5, 0.95, (0, 0, 0.5), M('dress'), 18, 0.03, r2=0.32)
-        K.cyl('hem', 0.51, 0.06, (0, 0, 0.05), M('apron'), 18, 0.0)
+    if v == 'c':   # a long skirt to the ankles: her boots step out under it
+        K.cyl('skirt', 0.46, 0.8, (0, 0, 0.6), M('dress'), 18, 0.03, r2=0.32)
+        K.cyl('hem', 0.47, 0.06, (0, 0, 0.22), M('apron'), 18, 0.0)
+        legs(0.62, 0.14, 'trousers', thigh_r=0.1, shin_r=0.085, foot=0.12)
     else:
-        for sx in (-1, 1): K.cyl('leg', 0.13, 0.5, (sx * 0.14, 0, 0.3), M('trousers'), 10, 0.02)
-        K.cyl('tunic', 0.42, 0.55, (0, 0, 0.78), M(top), 18, 0.03, r2=0.33)
-    for sx in (-1, 1): K.sphere('boot', 0.13, (sx * 0.15, -0.08, 0.07), M('wood_dk'), (1, 1.5, 0.6), 2)
+        legs(0.62, 0.14, 'trousers', thigh_r=0.13, shin_r=0.115, foot=0.13)
+        K.cyl('tunic', 0.42, 0.5, (0, 0, 0.8), M(top), 18, 0.03, r2=0.33)
     K.cyl('belt', 0.36, 0.08, (0, 0, 0.98), M('wood_dk'), 16, 0.02)
     K.sphere('chest', 0.36, (0, 0, 1.12), M(top), (1, 0.85, 0.85), 3)
     if v in 'ac':   # an apron over the front
         block((0, -0.36, 0.72), (0.5, 0.05, 0.62 if v == 'a' else 0.75), M('apron'), 0.02).rotation_euler = (-0.12, 0, 0)
-    for sx in (-1, 1):   # sleeves hanging from the shoulders, hands at the cuffs
+    for sx, side in ((-1, 'L'), (1, 'R')):   # sleeves hanging from the shoulders, hands at the cuffs, each arm turning at its shoulder
         c = Vector((sx * 0.4, -0.04, 1.15)); rot = Euler((-0.2, -sx * 0.32, 0))
         def along(d): w = Vector((0, 0, d)); w.rotate(rot); return c + w
-        o = K.cyl('sleeve', 0.13, 0.48, tuple(along(-0.2)), M(top), 10, 0.02, r2=0.11); o.rotation_euler = rot
-        K.sphere('hand', 0.1, tuple(along(-0.47)), M('skin'), sub=2)
-    if v == 'c':   # a basket on her right arm
-        K.cyl('basket', 0.17, 0.18, (0.5, -0.12, 0.72), M('wood'), 12, 0.01)
-        for k in range(3): K.sphere('bread', 0.07, (0.46 + k * 0.05, -0.12, 0.84), M('hay'), sub=1)
+        with Part('arm_' + side, tuple(c)):
+            o = K.cyl('sleeve', 0.13, 0.48, tuple(along(-0.2)), M(top), 10, 0.02, r2=0.11); o.rotation_euler = rot
+            K.sphere('hand', 0.1, tuple(along(-0.47)), M('skin'), sub=2)
+            if v == 'c' and side == 'R':   # a basket on her right arm
+                h = along(-0.47)
+                K.cyl('basket', 0.17, 0.18, (h.x + 0.04, h.y - 0.05, h.z - 0.02), M('wood'), 12, 0.01)
+                for k in range(3): K.sphere('bread', 0.07, (h.x + k * 0.05, h.y - 0.05, h.z + 0.1), M('hay'), sub=1)
     # the head: round face, little eyes, a rosy nose, hair
     K.sphere('head', 0.3, (0, -0.02, 1.55), M('skin'), sub=3)
     K.sphere('nose', 0.06, (0, -0.31, 1.53), M('blush'), sub=2)

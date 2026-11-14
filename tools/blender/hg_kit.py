@@ -125,6 +125,11 @@ def sphere(name, r, loc, m, scale=(1, 1, 1), sub=3):
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=sub, radius=r, location=loc); o = bpy.context.object; o.name = name; o.scale = scale
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True); return finish(o, m)
 
+# moving parts (Nov 14 2026, owner: "Improve walking animations ... Legs move you know"): objects named 'P_<part>__*' are
+# joined into a child object <part> whose origin is its pivot (a hip, a knee, a shoulder), parented to PARTS[part][1] or
+# to the model, so the game can turn it about that joint. hg_front.Part names them.
+PARTS = {}
+
 def export(name):
     """Join the scene into one model and write <name>.fbx. Parts named 'UP_*' (hg_city's upper storeys and roofs) are
     joined into a second object, 'upper', parented to the model, so the game can hide them while the wizard is inside."""
@@ -149,11 +154,25 @@ def export(name):
         # turning it here puts Blender +Y on Unity +Z and Blender +X on Unity +X, so footprints read the same in both
         j.rotation_euler = (0, 0, math.pi); bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
         return j
-    up = [o for o in objs if o.name.startswith('UP_')]; main = [o for o in objs if not o.name.startswith('UP_')]
+    up = [o for o in objs if o.name.startswith('UP_')]
+    moving = {}
+    for ob in objs:
+        if ob.name.startswith('P_'): moving.setdefault(ob.name[2:].split('__')[0], []).append(ob)
+    main = [o for o in objs if not o.name.startswith('UP_') and not o.name.startswith('P_')]
     o = join(main, name); parts = [o]
     if up:
         u = join(up, 'upper'); u.parent = o; parts.append(u)
-    vs = [v.co for p in parts for v in p.data.vertices]
+    made = {}
+    for pn in sorted(moving, key=lambda n: PARTS[n][1] is not None):   # parents before their children
+        pv, par = PARTS[pn]
+        j = join(moving[pn], pn)
+        bpy.context.scene.cursor.location = (-pv[0], -pv[1], pv[2])   # the pivot, turned with the model (see join)
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR'); bpy.context.scene.cursor.location = (0, 0, 0)
+        pobj = made[par] if par else o; loc = j.location.copy()
+        j.parent = pobj; j.matrix_parent_inverse.identity(); j.location = loc - (pobj.location if par else Vector((0, 0, 0)))
+        made[pn] = j; parts.append(j)
+    bpy.context.view_layer.update()
+    vs = [p.matrix_world @ v.co for p in parts for v in p.data.vertices]
     lo2 = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs))); hi2 = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
     want_lo, want_hi = Vector((-hi.x, -hi.y, lo.z)), Vector((-lo.x, -lo.y, hi.z))
     if (lo2 - want_lo).length > 0.05 or (hi2 - want_hi).length > 0.05:
@@ -165,7 +184,8 @@ def export(name):
     bpy.ops.export_scene.fbx(filepath=path, use_selection=True, apply_scale_options='FBX_SCALE_UNITS', axis_forward='-Z', axis_up='Y',
                              bake_space_transform=True, object_types={'MESH'}, mesh_smooth_type='FACE', path_mode='COPY', embed_textures=False)
     tris = sum(len(p.vertices) - 2 for q in parts for p in q.data.polygons)
-    print(f'[hg_kit] {name}.fbx  {tris} tris' + (f' (upper part {sum(len(p.vertices) - 2 for p in parts[1].data.polygons)})' if len(parts) > 1 else ''))
+    print(f'[hg_kit] {name}.fbx  {tris} tris' + (f' (upper part {sum(len(p.vertices) - 2 for p in parts[1].data.polygons)})' if up else '') + (f' parts {sorted(made)}' if made else ''))
+    PARTS.clear()
     clear()
     return tris
 
