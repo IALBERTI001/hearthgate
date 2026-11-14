@@ -415,6 +415,20 @@ def top(kind):
         for k in range(3):
             bpy.ops.mesh.primitive_torus_add(major_radius=0.92, minor_radius=0.05, location=(0, 0, 4.45), rotation=(k * 1.05, k * 0.7, 0))
             K.finish(bpy.context.object, M('storm', 2.5), 0.0)
+    elif kind == 'earth':   # the 4th Ascension's element: a ring of standing stones with amber runes, a boulder held aloft
+        prism('ring', 1.5, 1.4, -0.1, 0.45, M('stone_dk'))
+        for i in range(6):
+            a = i / 6 * math.tau + 0.26; h = 1.5 + 0.35 * (i % 2)
+            o = block((math.cos(a) * 1.12, math.sin(a) * 1.12, 0.4 + h / 2), (0.42, 0.3, h), M('rock'), 0.06); o.rotation_euler = (-math.sin(a) * 0.12, math.cos(a) * 0.12, a)
+            o = block((math.cos(a) * 1.29, math.sin(a) * 1.29, 0.5 + h * 0.55), (0.18, 0.03, 0.42), M('amber', 2.6), 0.0); o.rotation_euler = (-math.sin(a) * 0.12, math.cos(a) * 0.12, a + math.pi / 2)   # a glowing rune on its face
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.85, location=(0, 0, 3.0))
+        b = bpy.context.object; b.scale = (1.0, 0.92, 0.8)
+        for v in b.data.vertices: v.co *= R.uniform(0.86, 1.1)
+        b.data.update(); bpy.ops.object.transform_apply(scale=True); K.finish(b, M('rock_dk'), 0.0, smooth=False)
+        for i in range(4):   # amber veins through the boulder
+            a = i / 4 * math.tau
+            K.sphere('vein', 0.2, (math.cos(a) * 0.72, math.sin(a) * 0.68, 3.0 + (i % 2) * 0.25), M('amber', 3.0), (1, 1, 0.5), 1)
+        for i in range(5): K.sphere('pebble', R.uniform(0.1, 0.16), (math.cos(i * 1.26) * 1.0, math.sin(i * 1.26) * 1.0, 2.1 + (i % 3) * 0.3), M('rock'), sub=1)
     return K.export('top_' + kind)
 
 # ---------------------------------------------------------------------------------------------------------------------

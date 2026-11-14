@@ -33,7 +33,7 @@ PAL = {
     'frost': (0.32, 0.80, 1.0), 'frost_dk': (0.14, 0.52, 0.92),
     'storm': (0.64, 0.34, 1.0), 'snow': (0.90, 0.95, 1.0), 'shingle': (0.46, 0.27, 0.16), 'shingle2': (0.37, 0.21, 0.12),
     'canvas': (0.90, 0.84, 0.70), 'hay': (0.90, 0.74, 0.36), 'cave': (0.07, 0.06, 0.07),
-    'water_gloss': (0.25, 0.55, 0.85), 'window': (1.0, 0.72, 0.32), 'skin': (0.96, 0.75, 0.6), 'cloth': (0.3, 0.5, 0.8),
+    'amber': (1.0, 0.62, 0.2), 'water_gloss': (0.25, 0.55, 0.85), 'window': (1.0, 0.72, 0.32), 'skin': (0.96, 0.75, 0.6), 'cloth': (0.3, 0.5, 0.8),
     'road': (0.52, 0.39, 0.26),
     'robe': (0.33, 0.22, 0.62), 'robe_dk': (0.20, 0.13, 0.40), 'beard': (0.95, 0.94, 0.90),   # the wizard (the town walk)
     # the townsfolk (Nov 14 2026)
@@ -328,7 +328,7 @@ if __name__ == '__main__':
     # every model, in a fixed order; HG_PART="k/n" builds only every n-th from the k-th, so the chain can run n Blenders
     # side by side (one Blender building all 37 took 10 minutes once the town grew)
     jobs = [(fn.__name__, fn) for fn in (ground, road, wall, gate, tower_base, slime, beetle, golem, ruin, fountain, villager)]
-    jobs += [('top_' + k, (lambda k=k: top(k))) for k in ('stone', 'fire', 'frost', 'storm')]
+    jobs += [('top_' + k, (lambda k=k: top(k))) for k in ('stone', 'fire', 'frost', 'storm', 'earth')]
     jobs += [('building_' + b, (lambda b=b: building(b))) for b in ROOF]
     jobs += [('ruin_' + b, (lambda b=b: C.ruin_of(b))) for b in ROOF]
     jobs += [('marker', F.marker), ('wizard', F.wizard)] + [(k, (lambda k=k: F.variant(k))) for k in ('elite', 'shielded', 'sprinter', 'splitter', 'mender', 'ironhide', 'bulwark', 'phantom', 'thief', 'bomber', 'totem')] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]

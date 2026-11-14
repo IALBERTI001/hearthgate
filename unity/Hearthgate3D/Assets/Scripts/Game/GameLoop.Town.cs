@@ -225,7 +225,8 @@ namespace Hearthgate.Game
             Sound.Play("ascension", 0.7f); Fx.I.Shake(0.3f, true);
             Fx.I.Burst(Field.PLAZA + Vector3.up * 3, Field.GOLD, 60);
             foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 16);
-            Hud.Banner($"Ascension {P.ascensions}! Towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, P.ascensions):0.##} for good. +{pts} perk points");
+            var nu = HG.UNLOCKS.FirstOrDefault(u => u.at == P.ascensions);
+            Hud.Banner($"Ascension {P.ascensions}! Towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, P.ascensions):0.##} for good. +{pts} perk points" + (nu != null ? $". New: {nu.name}" : ""));
             Save();
         }
         public void EquipRelic(string id) { if (HG.EquipRelic(P, id)) { B = HG.Bonuses(P); Sound.Play("claim", 0.45f); Save(); } else Sound.Dud(); }

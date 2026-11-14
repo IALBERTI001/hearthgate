@@ -8,7 +8,7 @@ namespace Hearthgate.Game
     [CreateAssetMenu(menuName = "Hearthgate/Art Set")]
     public class ArtSet : ScriptableObject
     {
-        public GameObject ground, road, gate, wall, towerBase, topStone, topFire, topFrost, topStorm;
+        public GameObject ground, road, gate, wall, towerBase, topStone, topFire, topFrost, topStorm, topEarth;
         public GameObject slime, beetle, golem, ruin, villager, fountain;
         public GameObject[] buildings = new GameObject[10];   // in the order of HG.BUILDINGS
         public GameObject[] ruins = new GameObject[10];       // each plot's own burnt shell, same order
@@ -30,7 +30,7 @@ namespace Hearthgate.Game
             foreach (var v in variants) if (v && v.name == model) return v;
             return model == "beetle" || model == "elite" || model == "shielded" || model == "sprinter" || model == "phantom" || model == "thief" ? beetle : model == "golem" || model == "ironhide" || model == "bulwark" || model == "totem" ? golem : slime;
         }
-        public GameObject Top(string el) => el == "fire" ? topFire : el == "frost" ? topFrost : el == "storm" ? topStorm : topStone;
+        public GameObject Top(string el) => el == "fire" ? topFire : el == "frost" ? topFrost : el == "storm" ? topStorm : el == "earth" && topEarth ? topEarth : topStone;
     }
 
 }

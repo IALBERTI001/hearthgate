@@ -69,7 +69,12 @@ namespace Hearthgate.Game
         }
 
         // each tower takes one element of those the city has (fire, frost, storm in restore order), like the 2D game
-        string[] Elements() => HG.BUILDINGS.Where(b => b.element != null && P.restored.Contains(b.id)).Select(b => b.element).ToArray();
+        string[] Elements()
+        {   // the elements the city has; Earth joins from the 4th Ascension once a building gives the towers any element
+            var e = HG.BUILDINGS.Where(b => b.element != null && P.restored.Contains(b.id)).Select(b => b.element).ToList();
+            if (e.Count > 0 && HG.Unlocked(P, "earth")) e.Add("earth");
+            return e.ToArray();
+        }
         void RefreshTowers()
         {
             var els = Elements();
@@ -163,7 +168,8 @@ namespace Hearthgate.Game
                 }
                 if (e.burn > 0) { e.burn -= DT; e.hp -= HG.TowerDamage(P, B) * (1 + B["fire"]) * 0.5 * DT * (e.R.weak == "fire" ? 2 : 1); }
                 e.chill = Mathf.Max(0, e.chill - DT); e.flash = Mathf.Max(0, e.flash - DT * 6);
-                float slow = e.chill > 0 ? (e.R.weak == "frost" ? 0.3f : 0.45f) : 1f;
+                e.stun = Mathf.Max(0, e.stun - DT);
+                float slow = e.stun > 0 ? 0f : e.chill > 0 ? (e.R.weak == "frost" ? 0.3f : 0.45f) : 1f;
                 if (e.z > e.stop) e.z = Mathf.Max(e.stop, e.z - e.speed * slow * DT);
                 else
                 {
@@ -247,10 +253,10 @@ namespace Hearthgate.Game
                 var tg = Pick(tw); if (tg == null) continue;
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f) * (cheerT > 0 ? 0.5f : 1f) * (Ev("frenzy") ? 0.7f : 1f) * (tw.beacon && B["beacon"] > 0 ? 0.5f : 1f); tw.flash = 1;   // the Tavern's Cheer: twice as fast
                 var go = new GameObject("shot");
-                var col = tw.el == "fire" || tw.el == "frost" || tw.el == "storm" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
+                var col = tw.el != "none" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
                 var mr = Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f));   // a little over 1: a soft halo, not a white blaze
                 // fat, glowing shots with long trails: the fight has to read across the screen (fresh-eyes review 2)
-                mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : 0.65f);
+                mr.transform.SetParent(go.transform, false); mr.transform.localScale = Vector3.one * (tw.el == "frost" ? 0.8f : tw.el == "storm" ? 0.6f : tw.el == "earth" ? 0.85f : 0.65f);
                 var tr = go.AddComponent<TrailRenderer>(); tr.time = 0.22f; tr.startWidth = 0.45f; tr.endWidth = 0f;
                 tr.material = Art.Flat(Color.Lerp(col, Color.black, 0.15f)); tr.numCapVertices = 3; StyleTrail(tr, col);
                 tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; var smr = mr.GetComponent<Renderer>(); if (smr) smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
@@ -312,6 +318,11 @@ namespace Hearthgate.Game
                 else d *= 0.2;
             }
             if (el == "fire") { if (e.chill > 0) { d *= 3 * cm; Combo("shatter", e, "SHATTER!", Field.FROST); e.bigHit = true; } e.burn = 2.2f; }
+            if (el == "earth")
+            {   // Earth stuns; on a frozen enemy it is QUAKE
+                Stun(e, 0.6f);
+                if (e.chill > 0) { d *= 2.5 * cm; Combo("quake", e, "QUAKE!", Field.EARTH); Fx.I.Shake(0.12f); e.bigHit = true; }
+            }
             if (el == "frost") { e.chill = B["deepFrost"] > 0 ? 3.3f : 2.2f; if (e.R.weak == "frost") d *= 1.3; }
             if (el == "storm")
             {
@@ -327,14 +338,20 @@ namespace Hearthgate.Game
             e.hp -= d; e.flash = 1; if (el != "none") Sound.Play(Sfx(el) + "_contact_0", 0.2f);
             HitBurst(e.Pos, Field.Of(el), el == "none" ? 4 : 7);
         }
-        static string Sfx(string el) => el == "frost" ? "ice" : el == "storm" ? "lightning" : "fire";   // the 2D game's file names
+        void Stun(Enemy e, float t)
+        {
+            if (Time.time < e.stunCd) return;
+            if (e.boss) { t *= 0.4f; Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.4f), "STUNNED!", Field.EARTH, 30); }
+            e.stun = Mathf.Max(e.stun, t); e.stunCd = Time.time + t + (e.boss ? 3f : 1f);
+        }
+        static string Sfx(string el) => el == "frost" ? "ice" : el == "storm" ? "lightning" : "fire";   // Earth thuds like fire   // the 2D game's file names
         void Combo(string id, Enemy e, string word, Color c)
         {
             if (!P.combos.Contains(id)) { P.combos.Add(id); Hud.Banner($"New combo: {word.TrimEnd('!')}"); GiveShards(HG.SHARDS["combo"], e.Pos + Vector3.up * 3); }
             Quest("combo"); if (id == "shatter") Quest("shatter");
             lastCombo = word; comboT = 1.2f; FillCheer();
             Fx.I.Pop(e.Pos + Vector3.up * (e.size + 0.6f), word, c, 40, 1.1f); Fx.I.Burst(e.Pos, c, 20);
-            Sound.Play(id == "shatter" ? "shatter_combo" : id == "frostStorm" ? "freeze_combo" : "conduction_combo", 0.4f);
+            Sound.Play(id == "shatter" || id == "quake" ? "shatter_combo" : id == "frostStorm" ? "freeze_combo" : "conduction_combo", 0.4f);
         }
 
         // ---------- the player's actions ----------
