@@ -654,7 +654,7 @@ def golem(kind='golem'):
     block((0, -0.52, 1.9), (0.66, 0.14, 0.4), M(arm), 0.05)
     block((0, -0.6, 2.0), (0.52, 0.04, 0.07), M('pupil'), 0.0)
     for s in (-1, 1): K.sphere('eye', 0.06, (s * 0.13, -0.63, 2.0), M(*glow), (1.4, 0.6, 0.7), 1)
-    block((0, -0.15, 2.42), (0.1, 0.8, 0.12), M(trim), 0.02)   # the helm's crest ridge
+    K.sphere('helm_rim', 0.47, (0, -0.12, 1.86), M(trim), (1.06, 1.02, 0.12), 2)   # a gold band round the helm (a crest ridge on top stood up like a stick from behind)
     # the breastplate: a broad plate with a trim and a glowing boss at its heart (the old cracks show at its edges)
     K.sphere('cuirass', 0.78, (0, -0.5, 1.22), M(arm), (1.0 if not heavy else 1.12, 0.42, 0.72), 3)   # a rounded breastplate
     block((0, -0.82, 1.22), (0.08, 0.1, 0.95), M(trim), 0.02)                                       # its centre ridge
@@ -665,7 +665,7 @@ def golem(kind='golem'):
         for z in (0.95, 1.3): block((0, -0.95, z), (1.5, 0.14, 0.3), M('stone2'), 0.04)
         for s in (-1, 1): block((s * 1.05, 0, 1.95), (0.7, 0.8, 0.22), M('stone2'), 0.05)
     if kind == 'knight':    # a plume on the helm, a gold-edged breastplate
-        for k in range(5): K.sphere('plume', 0.16 - k * 0.015, (0, 0.05 + k * 0.17, 2.55 - k * 0.04 * k), M('roof_red'), (0.6, 1.0, 1.2), 2)
+        o = K.sphere('plume', 0.42, (0, 0.18, 2.42), M('roof_red'), (0.32, 1.0, 0.55), 2); o.rotation_euler = (-0.35, 0, 0)   # one swept plume (a row of balls read as beads)
         for s in (-1, 1): block((s * 0.74, -0.9, 1.2), (0.08, 0.1, 0.95), M('gold'), 0.0)
     if kind == 'king':      # the Golem King: horns and a crown forged into his helm, a molten heart, a torn red cape
         K.cyl('circlet', 0.47, 0.12, (0, -0.12, 2.3), M('gold'), 20, 0.02)
