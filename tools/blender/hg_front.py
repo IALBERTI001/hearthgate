@@ -364,10 +364,10 @@ def top(kind):
         for s in (-1, 1):   # two arms carrying small orbs
             o = block((s * 0.55, 0, 2.2), (1.1, 0.1, 0.1), M('gold'), 0.0); o.rotation_euler = (0, s * -0.4, 0)
             K.sphere('arm_orb', 0.16, (s * 1.08, 0, 2.45), M('storm', 3.0), sub=2)
-        K.sphere('orb', 0.72, (0, 0, 4.6), M('storm', 3.5), sub=3)
-        K.sphere('orb_core', 0.36, (0, 0, 4.6), M('storm', 3.0), sub=2)
+        K.sphere('orb', 0.62, (0, 0, 4.45), M('storm', 3.5), sub=3)
+        K.sphere('orb_core', 0.32, (0, 0, 4.45), M('storm', 3.0), sub=2)
         for k in range(3):
-            bpy.ops.mesh.primitive_torus_add(major_radius=1.05, minor_radius=0.05, location=(0, 0, 4.6), rotation=(k * 1.05, k * 0.7, 0))
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.92, minor_radius=0.05, location=(0, 0, 4.45), rotation=(k * 1.05, k * 0.7, 0))
             K.finish(bpy.context.object, M('storm', 2.5), 0.0)
     return K.export('top_' + kind)
 

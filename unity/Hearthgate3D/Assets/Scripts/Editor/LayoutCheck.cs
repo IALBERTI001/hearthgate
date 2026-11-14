@@ -161,7 +161,7 @@ namespace Hearthgate.EditorTools
             Rect TopRight(float x0, float y0, float x1, float y1) => Rect.MinMaxRect(1 - x1 * s / w, 1 - y1 * s / h, 1 - x0 * s / w, 1 - y0 * s / h);
             return new List<(string, Rect)> {
                 ("labels", TopLeft(300, 140)),                       // wave, Resonance, rate
-                ("buttons", TopRight(24, 24, 324, 172)),             // Upgrade and Rebuild
+                ("buttons", TopRight(20, 20, 280, 152)),             // Upgrade and Rebuild (Hud.Btn: 260 x 62, 8 apart)
                 ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 27 * s / h, 0.5f + 180 * s / w, 53 * s / h)),
             };
         }
