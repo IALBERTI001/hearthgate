@@ -148,7 +148,7 @@ namespace Hearthgate.Game
             for (int b = 0; b < HG.BUILDINGS.Length; b++) if (!P.restored.Contains(HG.BUILDINGS[b].id)) ruined.Add(b);
             if (ruined.Count == 0 || ruinSmoke.Count > 6 * ruined.Count) return;
             int i = ruined[Random.Range(0, ruined.Count)];
-            var g = Instantiate(art.puff, world); g.transform.position = Field.World(i, Random.Range(-0.6f, 0.6f), Random.Range(0.4f, 1.4f), 1.4f);
+            var g = Instantiate(art.puff, world); var sz = Field.PlotSize(i); g.transform.position = Field.World(i, Random.Range(-0.3f, 0.3f) * sz.x, -sz.y * Random.Range(0.25f, 0.4f), 1.4f);   // from the back of the shell: clear of the keeper and the door
             if (puffUnit == Vector3.zero)
             {
                 var mf = g.GetComponentInChildren<MeshFilter>(); float w = mf && mf.sharedMesh ? Mathf.Max(0.001f, mf.sharedMesh.bounds.size.x) : 1.27f;
