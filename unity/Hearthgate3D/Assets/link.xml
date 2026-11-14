@@ -1,0 +1,5 @@
+<!-- Keep what managed code stripping cannot see: CreatePrimitive adds colliders by reflection, so the physics module was
+     stripped and every primitive (shots, stand-ins) failed in the WebGL build (Nov 13 2026). -->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all"/>
+</linker>

@@ -28,7 +28,7 @@ namespace Hearthgate.Game
             var g = new Gradient(); g.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) }, new[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(0, 1) });
             col.color = g;
             var r = go.GetComponent<ParticleSystemRenderer>();
-            r.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default"));
+            r.sharedMaterial = Art.Set != null && Art.Set.particle != null ? new Material(Art.Set.particle) : new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
         }
 
         public void Burst(Vector3 at, Color c, int n)

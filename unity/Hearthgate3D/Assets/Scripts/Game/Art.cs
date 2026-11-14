@@ -6,17 +6,6 @@ using UnityEngine;
 
 namespace Hearthgate.Game
 {
-    [CreateAssetMenu(menuName = "Hearthgate/Art Set")]
-    public class ArtSet : ScriptableObject
-    {
-        public GameObject ground, road, gate, wall, towerBase, topStone, topFire, topFrost, topStorm;
-        public GameObject slime, beetle, golem, ruin, villager, fountain;
-        public GameObject[] buildings = new GameObject[10];   // in the order of HG.BUILDINGS
-
-        public GameObject Enemy(string model) => model == "beetle" ? beetle : model == "golem" ? golem : slime;
-        public GameObject Top(string el) => el == "fire" ? topFire : el == "frost" ? topFrost : el == "storm" ? topStorm : topStone;
-    }
-
     public static class Art
     {
         public static ArtSet Set;
@@ -26,8 +15,11 @@ namespace Hearthgate.Game
         public static Material Mat(Color c, bool glow = false)
         {
             if (!glow && mats.TryGetValue(c, out var m)) return m;
-            var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            m = new Material(sh) { color = c };
+            // start from the material assets the editor setup made (they keep the URP shader and its emission variant in the
+            // build); Shader.Find alone returns a stripped or missing shader in a WebGL player
+            var tpl = Set != null ? (glow ? Set.glow : Set.lit) : null;
+            m = tpl != null ? new Material(tpl) : new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            m.color = c;
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.15f);
             if (glow) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", c * 2.2f); }
             else mats[c] = m;

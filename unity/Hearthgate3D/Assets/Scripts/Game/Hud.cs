@@ -58,6 +58,13 @@ namespace Hearthgate.Game
             r.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(0, -4);
             return t;
         }
+        // keep a label inside its box: wrap, and shrink to fit rather than spill (game-polish rule 5: nothing ever clips)
+        static void Fit(Text t, Vector2 box, int min)
+        {
+            var r = t.rectTransform; r.pivot = new Vector2(0.5f, 0.5f); r.sizeDelta = box;
+            t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Truncate;
+            t.resizeTextForBestFit = true; t.resizeTextMinSize = min; t.resizeTextMaxSize = t.fontSize;
+        }
         Button Btn(string n, Vector2 pos, UnityEngine.Events.UnityAction act, out Text lbl)
         {
             var r = Box(n, transform, new Vector2(1, 0), new Vector2(1, 0), pos, new Vector2(300, 68)); r.pivot = new Vector2(1, 0);
@@ -65,6 +72,7 @@ namespace Hearthgate.Game
             var b = r.gameObject.AddComponent<Button>(); b.onClick.AddListener(act);
             var cb = b.colors; cb.highlightedColor = new Color(1.1f, 1.1f, 1.1f); cb.pressedColor = new Color(0.85f, 0.85f, 0.85f); b.colors = cb;
             lbl = Label("L", r, new Vector2(0.5f, 0.5f), Vector2.zero, 22, TextAnchor.MiddleCenter);
+            Fit(lbl, r.sizeDelta - new Vector2(20, 8), 12);
             return b;
         }
 
@@ -75,9 +83,9 @@ namespace Hearthgate.Game
             res.text = HG.Fmt(P.res);
             double r = HG.CityRate(P, g.B); rate.text = r > 0 ? $"+{HG.Fmt(r)}/s from the city" : "";
             double gm = HG.GateMax(P, g.B); gateBar.fillAmount = Mathf.Clamp01((float)(g.gateHp / gm)); gateTxt.text = $"Gate {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
-            upLbl.text = $"Upgrade gate  {HG.Fmt(g.UpgradeCost)}   [U]"; up.interactable = g.CanUpgrade;
+            upLbl.text = $"Upgrade gate\n{HG.Fmt(g.UpgradeCost)}   [U]"; up.interactable = g.CanUpgrade;
             var nb = g.NextBuilding;
-            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}  {HG.Fmt(g.RestoreCost)}   [R]"; re.interactable = g.CanRestore;
+            reLbl.text = nb == null ? "City rebuilt" : $"Rebuild {HG.ById(nb).name}\n{HG.Fmt(g.RestoreCost)}   [R]"; re.interactable = g.CanRestore;
             if (bannerT > 0) { bannerT -= Time.deltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
         }
 
@@ -100,7 +108,8 @@ namespace Hearthgate.Game
                 var b = r.gameObject.AddComponent<Button>();
                 b.onClick.AddListener(() => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); });
                 I.Label("N", r, new Vector2(0.5f, 1), new Vector2(0, -14), 24, TextAnchor.UpperCenter).text = f.name;
-                var d = I.Label("D", r, new Vector2(0.5f, 0.5f), new Vector2(0, -16), 18, TextAnchor.MiddleCenter); d.text = f.line; d.color = Field.GOLD;
+                var n = r.GetChild(r.childCount - 1).GetComponent<Text>(); Fit(n, new Vector2(260, 34), 14); n.rectTransform.anchoredPosition = new Vector2(0, -30);
+                var d = I.Label("D", r, new Vector2(0.5f, 0.5f), new Vector2(0, -16), 18, TextAnchor.MiddleCenter); d.text = f.line; d.color = Field.GOLD; Fit(d, new Vector2(256, 80), 12); d.rectTransform.anchoredPosition = new Vector2(0, -14);
             }
         }
     }
