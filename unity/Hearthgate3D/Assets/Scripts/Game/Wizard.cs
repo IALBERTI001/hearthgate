@@ -219,7 +219,7 @@ namespace Hearthgate.Game
             // the tilt: up over the rooftops and the walls to watch the fight, or down to the street looking up at it
             float tUp = Mathf.Max(0, tilt), tDown = Mathf.Max(0, -tilt);
             followPos += Vector3.up * (tUp * 9f - tDown * Mathf.Max(0, followPos.y - pos.y - 1.3f));
-            followLook += new Vector3(heading.x, 0, heading.y) * (tUp * 10f) + Vector3.up * (tUp * 1.5f + tDown * 1.6f);
+            followLook += new Vector3(heading.x, 0, heading.y) * (tUp * 22f) + Vector3.up * (tUp * 6.5f + tDown * 1.6f);   // raised, it looks out level over the walls to the field, not down at the cobbles
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
             var r = Quaternion.Slerp(Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS), Quaternion.LookRotation(followLook - followPos), k);
             Fx.I.camHome = p; cam.transform.rotation = r;

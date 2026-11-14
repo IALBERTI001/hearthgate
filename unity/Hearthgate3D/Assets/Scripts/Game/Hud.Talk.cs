@@ -18,7 +18,7 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P; string kind = GameLoop.KeeperOf(who); if (kind == null) return;
-            var box = I.Modal(KeeperName(kind), new Vector2(720, 400)); TalkingTo = who;
+            var box = I.Modal(KeeperName(kind), new Vector2(720, 340)); TalkingTo = who;
             var med = I.Box("Portrait", box, new Vector2(0, 1), new Vector2(0, 1), new Vector2(34, -70), new Vector2(150, 150)); med.pivot = new Vector2(0, 1);
             var mi = med.gameObject.AddComponent<Image>(); mi.sprite = Panel(INK, BRASS, 18, 3); mi.type = Image.Type.Sliced; mi.raycastTarget = false;
             var pic = I.Box("Pic", med, Vector2.zero, Vector2.one, new Vector2(0, -4), new Vector2(-14, -14)); var pi = pic.gameObject.AddComponent<Image>(); pi.sprite = Icon("npc_" + kind); pi.preserveAspect = true; pi.raycastTarget = false; if (!pi.sprite) pi.enabled = false;
