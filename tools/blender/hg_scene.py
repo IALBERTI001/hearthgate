@@ -14,8 +14,8 @@ STATE = a[3] if len(a) > 3 else 'mid'
 
 # ---- Field.cs, mirrored (Unity x, z) -> Blender (x, y)
 TOWER_X = [-7.5, -13.0, -18.5, -24.0]; TOWER_TOP = 5.0
-PLAZA = (8.5, -6.0)
-PLOTS = [(15.5, -6.0), (-3.5, -7.5), (-14.5, -10.5), (-9.0, -10.5), (-20.0, -15.0), (1.0, -13.5), (-5.0, -16.0), (6.5, -16.5), (-10.5, -19.0), (-16.0, -20.5)]
+PLAZA = (7.0, -8.0)
+PLOTS = [(-4.5, -9.0), (13.5, -6.0), (-7.0, -14.5), (-11.5, -9.5), (-17.0, -12.0), (3.5, -14.5), (-21.0, -19.0), (-12.0, -19.0), (7.5, -20.5), (-1.5, -14.5)]
 IDS = ['forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower']
 ROAD_Z = 5.4
 CAM_LOOK = Vector((-7.5, -3.5, 0.0)); CAM_POS = CAM_LOOK + Vector((0, 46 * 0.7660, 46 * 0.6428)); CAM_FOV = 38.0

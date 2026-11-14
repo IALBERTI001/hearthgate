@@ -225,8 +225,8 @@ def gate():
     for x in [-KX + 0.25 + i * 0.58 for i in range(10)]:
         block((x, KY + 0.12, KTOP - 0.1), (0.3, 0.24, 0.2), M('stone_dk'), 0.03)
     block((0, 0, KTOP + 0.06), (2 * KX + 0.5, 2 * KY + 0.5, 0.12), M('wood_dk'), 0.02)   # eaves board
-    hip_roof(0, 0, KTOP + 0.12, KX + 0.45, KY + 0.45, 2.1, 1.3, M('roof_terra'))
-    for s in (-1, 1): K.cone('finial', 0.1, 0.55, (s * 1.3, 0, KTOP + 2.5), M('gold'), 8)
+    hip_roof(0, 0, KTOP + 0.12, KX + 0.45, KY + 0.45, 1.8, 1.3, M('roof_terra'))
+    for s in (-1, 1): K.cone('finial', 0.1, 0.55, (s * 1.3, 0, KTOP + 2.2), M('gold'), 8)
     # the flag on the ridge, big enough to read at game size
     K.cyl('pole', 0.06, 2.4, (0, 0, KTOP + 3.3), M('wood_dk'), 8, 0.0)
     K.sphere('pole_knob', 0.12, (0, 0, KTOP + 4.52), M('gold'), sub=2)
@@ -343,8 +343,8 @@ def top(kind):
         for i in range(TN):
             a = (i + 0.5) / TN * math.tau
             K.sphere('rime', 0.2, (math.cos(a) * 1.45, math.sin(a) * 1.45, 0.5), M('snow'), (1, 1, 0.55), 1)
-        spec = [(0.5, 3.4, 0, 0, 0), (0.32, 2.2, 0.75, 0.3, 0.3), (0.3, 2.0, -0.7, 0.35, -0.32), (0.28, 1.7, 0.2, -0.75, 0.25),
-                (0.26, 1.5, -0.55, -0.55, -0.28), (0.22, 1.2, 0.85, -0.35, 0.38), (0.2, 1.0, -0.95, 0.0, -0.4)]
+        spec = [(0.5, 2.6, 0, 0, 0), (0.32, 1.9, 0.75, 0.3, 0.3), (0.3, 1.75, -0.7, 0.35, -0.32), (0.28, 1.5, 0.2, -0.75, 0.25),
+                (0.26, 1.3, -0.55, -0.55, -0.28), (0.22, 1.1, 0.85, -0.35, 0.38), (0.2, 0.95, -0.95, 0.0, -0.4)]
         for (r, h, x, y, tilt) in spec:
             rx = tilt * (1 if y >= 0 else -1) * min(1.0, abs(y) * 2); ry = -tilt * (1 if x >= 0 else -1) * min(1.0, abs(x) * 2)
             for (o_r, o_h, off, m) in ((r, h, 0.0, M('frost', 1.4)), (r * 0.45, h * 0.9, 0.02, M('white_gloss', 1.0))):
@@ -476,8 +476,8 @@ def road():
 # ---------------------------------------------------------------------------------------------------------------------
 # the ground: a valley. Meadow in front of the wall; rocky hills where the wall ends on both sides; a wooded ridge
 # behind the city; the town's packed earth inside the walls; dark tree clumps framing the bottom corners
-PLAZA = (8.5, -6.0)
-PLOTS = [(15.5, -6.0), (-3.5, -7.5), (-14.5, -10.5), (-9.0, -10.5), (-20.0, -15.0), (1.0, -13.5), (-5.0, -16.0), (6.5, -16.5), (-10.5, -19.0), (-16.0, -20.5)]
+PLAZA = (7.0, -8.0)
+PLOTS = [(-4.5, -9.0), (13.5, -6.0), (-7.0, -14.5), (-11.5, -9.5), (-17.0, -12.0), (3.5, -14.5), (-21.0, -19.0), (-12.0, -19.0), (7.5, -20.5), (-1.5, -14.5)]
 
 def tree(x, y, s, z=0.0, kind=None, far=False):
     kind = kind or R.choice(('round', 'round', 'pine'))

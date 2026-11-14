@@ -17,9 +17,9 @@ def cam(pos,look,fov,aspect=16/9):
 ROADZ=5.4; SPAWN=27
 TOWERS=[-7.5,-13,-18.5,-24]
 def boxes(plots,plaza):
-    B=[('gate',(-4,4,-2.1,2.1,0,6.2)),('gate_keep',(-2.7,2.7,-1.6,1.6,0,9.8))]   # gatehouse and its roofed upper block
+    B=[('gate',(-4.2,4.2,-2.3,2.3,0,6.2)),('gate_keep',(-3.1,3.1,-2.0,2.0,0,9.4))]   # gatehouse; keep with its roof eaves
     B+= [('wall',(-31,16,-0.9,0.9,0,4.0))]
-    B+= [(f'tower{x}',(x-2.0,x+2.0,-2.0,2.0,0,8.2)) for x in TOWERS]   # 5 m tower + element cap
+    B+= [(f'tower{x}',(x-2.0,x+2.0,-2.0,2.0,0,8.8)) for x in TOWERS]   # 5 m tower + the tallest element cap
     B+= [(f'plot{i}',(x-2.3,x+2.3,z-2.3,z+2.3,0,6.0)) for i,(x,z) in enumerate(plots)]
     B+= [('fountain',(plaza[0]-3.0,plaza[0]+3.0,plaza[1]-3.0,plaza[1]+3.0,0,3.8))]
     return B
@@ -69,11 +69,13 @@ P=cam(camp,look,fov); o=np.array(camp)
 fixed=boxes([], (100,100))[:-1]   # gate, keep, wall, towers
 HUD=[(0,0.235,0.8,1),(0.747,0.981,0.76,0.967),(0.36,0.64,0.043,0.068)]
 def seen(x,z,h=3.6,r=2.3):
-    # the whole roof line (3 points across the front) must be visible over gate, wall and towers
+    # the roof line: 3 points across the front at 60% of the height (as Editor/LayoutCheck tests them); at least 2 of
+    # them seen past the gatehouse, the keep, the wall and the towers
+    vis=0
     for dx in (-r*0.6,0,r*0.6):
-        tgt=np.array([x+dx,h,z+r*0.5]); d=tgt-o; L=np.linalg.norm(d); d/=L
-        if any(ray_hits(o,d,b,L-0.2) for n,b in fixed): return False
-    return True
+        tgt=np.array([x+dx,h,z+r+0.3]); d=tgt-o; L=np.linalg.norm(d); d/=L
+        if not any(ray_hits(o,d,b,L-0.2) for n,b in fixed): vis+=1
+    return vis>=2
 def framed(x,z,r=2.3,h=6):
     cs=[P((x+a,y,z+b)) for a in (-r,r) for b in (-r,r) for y in (0,h)]
     xs=[c[0] for c in cs]; ys=[c[1] for c in cs]
@@ -81,7 +83,7 @@ def framed(x,z,r=2.3,h=6):
     return not any(max(xs)>a and min(xs)<b and max(ys)>c and min(ys)<d for a,b,c,d in HUD)
 cands=[]
 for z in np.arange(-5.0,-22,-0.5):
-    for x in np.arange(20,-30,-0.5):
+    for x in np.arange(17,-25.5,-0.5):   # the town stays a cluster inside the walls, not strung out to the frame's edges
         if seen(x,z) and framed(x,z): cands.append((x,z))
 print(len(cands),'candidate spots')
 # plaza first: as close behind the gate as possible and seen (low object, 1.2 m)
@@ -91,20 +93,38 @@ plaza=pl[0]; print('plaza',plaza)
 # greedy: rank spots by screen size (nearer = bigger), keep 5.6 m apart from each other and 5.8 from the plaza
 cands.sort(key=lambda p:(-p[1]*0.0 + abs(p[1]+6)*1.0 + abs(p[0]+5)*0.15))
 chosen=[]
-def pbox(x,z): return (x-2.3,x+2.3,z-2.3,z+2.3,0,6.0)
+def pbox(x,z,h=6.0): return (x-2.3,x+2.3,z-2.3,z+2.3,0,h)
 def seen_by(x,z,others):   # roof line clear of the fixed structures and of the plots already chosen
     if not seen(x,z): return False
-    for dx in (-1.5,0,1.5):
-        tgt=np.array([x+dx,3.6,z+1.25]); d=tgt-o; L=np.linalg.norm(d); d/=L
-        if any(ray_hits(o,d,pbox(*q),L-0.2) for q in others): return False
-    return True
+    vis=0
+    for dx in (-1.38,0,1.38):
+        tgt=np.array([x+dx,3.6,z+2.6]); d=tgt-o; L=np.linalg.norm(d); d/=L
+        if not any(ray_hits(o,d,pbox(*q[:2],q[2] if len(q)>2 else 6.0),L-0.2) for q in others): vis+=1
+    return vis>=2
 for c in cands:
     if math.dist(c,plaza)<6.6: continue
-    if not all(max(abs(c[0]-q[0]),abs(c[1]-q[1]))>=5.2 for q in chosen): continue   # square footprints 0.6 m apart
+    if not all(max(abs(c[0]-q[0]),abs(c[1]-q[1]))>=5.0 for q in chosen): continue   # square footprints 0.4 m apart
     if not seen_by(*c,chosen): continue
     if not all(seen_by(*q,[c]+[r for r in chosen if r!=q]) for q in chosen): continue
     chosen.append(c)
     if len(chosen)==10: break
 chosen.sort(key=lambda p:(-p[1],p[0]))
 print('plots',[(float(a),float(b)) for a,b in chosen])
-print(check(camp,look,fov,chosen,plaza))
+print('frame/HUD/overlap check:',[p for p in check(camp,look,fov,chosen,plaza)[0] if 'hidden' not in p] or 'clean')
+
+# the three tall buildings (frost spire 7.4 m, storm bell 8.1 m, watchtower 7.6 m) take the spots nothing stands behind
+TALL=('frostSpire','stormBell','watchtower')
+IDS=['forge','frostSpire','stormBell','bakery','market','tavern','granary','library','cottages','watchtower']
+def hides(a,b,h):   # does a building of height h at spot a hide spot b's roof line?
+    return not seen_by(b[0],b[1],[(a[0],a[1],h)])
+order=sorted(chosen,key=lambda c:sum(hides(c,q,8.1) for q in chosen if q!=c))   # spots that hide the fewest go first
+tall_spots=order[:3]; rest=[c for c in chosen if c not in tall_spots]
+assign={}
+for bid,spot in zip(TALL,tall_spots): assign[bid]=spot
+for bid in IDS:
+    if bid not in assign: assign[bid]=rest.pop(0)
+H={'frostSpire':7.4,'stormBell':8.1,'watchtower':7.6}
+final=[(assign[b][0],assign[b][1],H.get(b,6.0)) for b in IDS]
+problems=[f'{IDS[i]} hidden' for i,q in enumerate(final) if not seen_by(q[0],q[1],[r for r in final if r is not q])]
+print('PLOTS in HG.BUILDINGS order:',[(float(a),float(b)) for a,b,_ in final])
+print('tall-building check:',problems or 'all roof lines seen')

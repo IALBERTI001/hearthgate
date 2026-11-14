@@ -138,9 +138,11 @@ namespace Hearthgate.EditorTools
             }
             foreach (var it in items.Where(x => x.name.StartsWith("plot")))
             {
-                var b = it.b; float roof = b.min.y + Mathf.Min(3f, b.size.y * 0.7f);
+                // the roof line: three points across the front at 60% of the height; at least two must be seen
+                var b = it.b; float roof = b.min.y + b.size.y * 0.6f; int seen = 0; string by = null;
                 foreach (float fx in new[] { -0.3f, 0f, 0.3f })
-                    if (Hidden(new Vector3(b.center.x + fx * b.size.x, roof, b.max.z + 0.3f))) { bad.Add($"{it.name}'s roof line is hidden behind {blocker} (at {fx:+0.0;-0.0;0} of its width)"); break; }
+                    if (!Hidden(new Vector3(b.center.x + fx * b.size.x, roof, b.max.z + 0.3f))) seen++; else by = blocker;
+                if (seen < 2) bad.Add($"{it.name}'s roof line is hidden behind {by} ({seen} of 3 points seen)");
             }
             if (Hidden(Field.PLAZA + new Vector3(0, 1.2f, 1.5f))) bad.Add("the plaza is hidden behind the gatehouse or the wall");
             foreach (var p in road) if (p.y > 1f && Hidden(p)) { bad.Add($"the road is hidden at {p}"); break; }

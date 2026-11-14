@@ -33,13 +33,13 @@ namespace Hearthgate.Game
 
         public static readonly float[] TOWER_X = { -7.5f, -13f, -18.5f, -24f };
         public const float TOWER_Z = 0f, TOWER_TOP = 5.0f;   // the platform; the gatehouse (keep and roof to 9.7 m) outranks the towers
-        public static readonly Vector3 PLAZA = new Vector3(8.5f, 0, -6f);   // beside the gatehouse: its keep would hide a plaza behind it
+        public static readonly Vector3 PLAZA = new Vector3(7f, 0, -8f);   // beside the gatehouse: its keep would hide a plaza behind it
 
         // the ten building plots, in the order of HG.BUILDINGS
+        // the tall ones (frost spire, storm bell, watchtower) stand where nothing behind them is hidden (tools/layout/frame.py)
         static readonly Vector2[] PLOTS = {
-            new Vector2(15.5f, -6f), new Vector2(-3.5f, -7.5f), new Vector2(-14.5f, -10.5f), new Vector2(-9f, -10.5f),
-            new Vector2(-20f, -15f), new Vector2(1f, -13.5f), new Vector2(-5f, -16f), new Vector2(6.5f, -16.5f),
-            new Vector2(-10.5f, -19f), new Vector2(-16f, -20.5f) };
+            new Vector2(-4.5f, -9f), new Vector2(13.5f, -6f), new Vector2(-7f, -14.5f), new Vector2(-11.5f, -9.5f),
+            new Vector2(-17f, -12f), new Vector2(3.5f, -14.5f), new Vector2(-21f, -19f), new Vector2(-12f, -19f), new Vector2(7.5f, -20.5f), new Vector2(-1.5f, -14.5f) };
         public static Vector3 Plot(int i) => new Vector3(PLOTS[i].x, 0, PLOTS[i].y);
         public static readonly Quaternion PLOT_FACING = Quaternion.Euler(0, 180, 0);   // fronts toward the wall and the camera
 
