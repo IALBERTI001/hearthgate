@@ -379,7 +379,7 @@ def face(y, z, spread, r=0.2, brows=True, mouth=0.13, body='slime_dk'):
         K.sphere('catch', r * 0.22, (s * spread * 0.82, y - r * 0.9, z + r * 0.3), M('white_gloss', 0.5), sub=1)
         if brows:
             o = block((s * spread, y + r * 0.15, z + r * 1.12), (r * 1.7, r * 0.6, r * 0.42), M(body), 0.04)
-            o.rotation_euler = (0, s * 0.38, 0)
+            o.rotation_euler = (0, -s * 0.38, 0)   # inner ends down: determined, not worried
     if mouth:
         K.sphere('mouth', mouth, (0, y + 0.02, z - r * 1.75), M('pupil'), (1.5, 0.55, 0.95), 2)
         K.sphere('tongue', mouth * 0.6, (0, y - 0.04, z - r * 1.95), M('blush'), (1.3, 0.5, 0.55), 1)

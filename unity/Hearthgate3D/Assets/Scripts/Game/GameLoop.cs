@@ -54,9 +54,12 @@ namespace Hearthgate.Game
             RefreshTowers();
             for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
             var sun = new GameObject("Sun").AddComponent<Light>(); sun.type = LightType.Directional;
-            sun.transform.rotation = Quaternion.Euler(48, -35, 0); sun.color = new Color(1f, 0.95f, 0.85f); sun.intensity = 1.25f; sun.shadows = LightShadows.Soft;
+            // a warm sun from the camera's front right and above: the faces the camera sees are lit, shadows fall back and
+            // to the left; a cool sky fill keeps the shadows coloured rather than grey
+            sun.transform.rotation = Quaternion.LookRotation(new Vector3(0.45f, -0.8f, -0.4f));
+            sun.color = new Color(1f, 0.92f, 0.8f); sun.intensity = 1.55f; sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.72f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.62f, 0.72f, 0.9f); RenderSettings.ambientEquatorColor = new Color(0.62f, 0.6f, 0.5f); RenderSettings.ambientGroundColor = new Color(0.3f, 0.28f, 0.22f);
+            RenderSettings.ambientSkyColor = new Color(0.5f, 0.6f, 0.8f); RenderSettings.ambientEquatorColor = new Color(0.52f, 0.52f, 0.46f); RenderSettings.ambientGroundColor = new Color(0.28f, 0.25f, 0.2f);
         }
 
         // each tower takes one element of those the city has (fire, frost, storm in restore order), like the 2D game

@@ -33,7 +33,14 @@ namespace Hearthgate.EditorTools
                 rp = UniversalRenderPipelineAsset.Create(data);
                 AssetDatabase.CreateAsset(rp, "Assets/Settings/HearthgateURP.asset");
             }
-            rp.supportsHDR = false; rp.msaaSampleCount = 4; rp.shadowDistance = 90f; rp.renderScale = 1f;
+            // HDR so the glows bloom; soft shadows over the whole field (the camera sees about 80 m deep), two cascades
+            rp.supportsHDR = true; rp.msaaSampleCount = 4; rp.shadowDistance = 85f; rp.renderScale = 1f; rp.shadowCascadeCount = 2;
+            var so = new SerializedObject(rp);
+            void Set(string prop, System.Action<SerializedProperty> f) { var sp = so.FindProperty(prop); if (sp != null) f(sp); else Debug.LogWarning("[Hearthgate] URP asset has no " + prop); }
+            Set("m_MainLightShadowmapResolution", sp => sp.intValue = 2048);
+            Set("m_SoftShadowsSupported", sp => sp.boolValue = true);
+            Set("m_MainLightShadowsSupported", sp => sp.boolValue = true);
+            so.ApplyModifiedPropertiesWithoutUndo();
             GraphicsSettings.defaultRenderPipeline = rp;
             for (int i = 0; i < QualitySettings.names.Length; i++) { QualitySettings.SetQualityLevel(i, false); QualitySettings.renderPipeline = rp; }
             EditorUtility.SetDirty(rp);
@@ -100,10 +107,32 @@ namespace Hearthgate.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var cam = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener)); cam.tag = "MainCamera";
             cam.AddComponent<UniversalAdditionalCameraData>();
+            var camData = cam.GetComponent<UniversalAdditionalCameraData>(); camData.renderPostProcessing = true; camData.renderShadows = true;
+            var vol = new GameObject("Post").AddComponent<Volume>(); vol.isGlobal = true; vol.sharedProfile = PostProfile();
             var boot = new GameObject("Boot").AddComponent<Boot>(); boot.art = art;
             EditorSceneManager.SaveScene(scene, SCENE);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(SCENE, true) };
         }
+        // the look: neutral tonemapping, a little contrast and saturation, bloom on the glows, a soft vignette
+        const string POST = "Assets/Settings/HearthgatePost.asset";
+        public static VolumeProfile PostProfile()
+        {
+            Directory.CreateDirectory("Assets/Settings");
+            var p = AssetDatabase.LoadAssetAtPath<VolumeProfile>(POST);
+            if (p == null) { p = ScriptableObject.CreateInstance<VolumeProfile>(); AssetDatabase.CreateAsset(p, POST); }
+            T Get<T>() where T : VolumeComponent
+            {
+                if (p.TryGet<T>(out var c)) return c;
+                c = p.Add<T>(true); c.name = typeof(T).Name; AssetDatabase.AddObjectToAsset(c, p); return c;
+            }
+            Get<Tonemapping>().mode.Override(TonemappingMode.Neutral);
+            var ca = Get<ColorAdjustments>(); ca.postExposure.Override(0.1f); ca.contrast.Override(14f); ca.saturation.Override(16f);
+            var bl = Get<Bloom>(); bl.threshold.Override(1.0f); bl.intensity.Override(0.85f); bl.scatter.Override(0.65f);
+            var vg = Get<Vignette>(); vg.intensity.Override(0.2f); vg.smoothness.Override(0.45f);
+            EditorUtility.SetDirty(p); AssetDatabase.SaveAssets();
+            return p;
+        }
+
         [MenuItem("Hearthgate/Build the scene")]
         static void BuildSceneMenu() => BuildScene(WireArt());
 
