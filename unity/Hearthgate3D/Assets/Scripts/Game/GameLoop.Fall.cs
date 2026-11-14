@@ -99,10 +99,10 @@ namespace Hearthgate.Game
             {
                 var g = Instantiate(art.puff, world); g.transform.position = at;
                 if (puffUnit == Vector3.zero)
-                {   // a scale for one metre across, measured from the model itself (an imported root may carry any scale)
-                    var rr = g.GetComponentInChildren<Renderer>(); float w = rr ? Mathf.Max(0.001f, rr.bounds.size.x) : 1f;
-                    puffUnit = g.transform.localScale / w;
-                    if (Debug.isDebugBuild) Debug.Log($"[fall] puff {w:0.000} m wide at scale {g.transform.localScale}");
+                {   // a scale for one metre across, from the mesh's own size (an imported root may carry any scale)
+                    var mf = g.GetComponentInChildren<MeshFilter>(); float w = mf && mf.sharedMesh ? Mathf.Max(0.001f, mf.sharedMesh.bounds.size.x) : 1.27f;
+                    puffUnit = Vector3.one / w;
+                    if (Debug.isDebugBuild) Debug.Log($"[fall] puff mesh {w:0.000} wide, root scale {g.transform.localScale}");
                 }
                 g.transform.localScale = Vector3.zero;
                 foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
