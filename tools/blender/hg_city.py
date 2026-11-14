@@ -23,9 +23,10 @@ FLOOR = PL + 0.04
 z0 = FLOOR
 
 class Up:   # everything made inside `with Up():` goes to the 'upper' part the game hides when the wizard is inside
-    def __enter__(self): self.before = set(bpy.data.objects); return self
+    def __enter__(self): self.before = set(bpy.data.objects); self.nb = len(K.BLOCKS); return self
     def __exit__(self, *a):
         for o in set(bpy.data.objects) - self.before: o.name = 'UP_' + o.name
+        for b in K.BLOCKS[self.nb:]: b.up = True   # batched boxes (hg_kit.Blk)
 
 # ------------------------------------------------------------------------------------------------- walls and openings
 def wall_x(x0, x1, y, zb, h, m, holes=()):

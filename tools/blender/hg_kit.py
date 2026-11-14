@@ -6,7 +6,7 @@
 # Run headless:  blender -b --factory-startup -P hg_kit.py -- <output folder>
 # or from the Blender MCP: exec(open(path).read(), {'__name__': '__main__', 'OUT': r'...\Assets\Art\Models'})
 import bpy, bmesh, math, os, sys, random
-from mathutils import Vector
+from mathutils import Vector, Matrix, Euler
 
 OUT = globals().get('OUT') or (sys.argv[sys.argv.index('--') + 1] if '--' in sys.argv else os.path.join(os.path.dirname(__file__), 'out'))
 os.makedirs(OUT, exist_ok=True)
@@ -54,7 +54,45 @@ def mat(name, glow=0.0):
     _mats[key] = m
     return m
 
+# ---------------------------------------------------------------------------------------------------------------------
+# batched blocks: hg_front.block() records a chamfered box here instead of making a Blender object, and the boxes are
+# built into one mesh per material when the model is exported (flush_blocks). Making thousands of objects with bpy.ops
+# slowed as the scene grew: the ring wall alone took 14 minutes (Nov 13 2026). The boxes keep their one-segment chamfer.
+BLOCKS = []
+class Blk:
+    def __init__(self, loc, size, mat, bevel):
+        self.loc = Vector(loc); self.size = Vector(size); self.mat = mat; self.bevel = bevel; self.rotation_euler = (0.0, 0.0, 0.0); self.name = 'blk'; self.up = False
+    @property
+    def matrix_world(self): return Matrix.Translation(self.loc)
+def flush_blocks():
+    if not BLOCKS: return
+    groups = {}
+    for b in BLOCKS: groups.setdefault((b.mat.name, b.up), (b.mat, []))[1].append(b)
+    for (mname, up), (mat, lst) in groups.items():
+        bm = bmesh.new()
+        for b in lst:
+            hx, hy, hz = b.size.x / 2, b.size.y / 2, b.size.z / 2
+            c = min(b.bevel, hx * 0.45, hy * 0.45, hz * 0.45)
+            rot = Euler(b.rotation_euler).to_matrix()
+            pts = []
+            for sx in (-1, 1):
+                for sy in (-1, 1):
+                    for sz in (-1, 1):
+                        if c > 0.001:
+                            pts += [(sx * hx, sy * (hy - c), sz * (hz - c)), (sx * (hx - c), sy * hy, sz * (hz - c)), (sx * (hx - c), sy * (hy - c), sz * hz)]
+                        else:
+                            pts.append((sx * hx, sy * hy, sz * hz))
+            vs = [bm.verts.new(b.loc + rot @ Vector(p)) for p in pts]
+            bmesh.ops.convex_hull(bm, input=vs)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        nm = ('UP_' if up else '') + 'blk_' + mname   # hg_city's upper storeys stay a separate part
+        me = bpy.data.meshes.new(nm); bm.to_mesh(me); bm.free()
+        o = bpy.data.objects.new(nm, me); bpy.context.collection.objects.link(o)
+        finish(o, mat, 0.0, smooth=False)
+    BLOCKS.clear()
+
 def clear():
+    BLOCKS.clear()
     bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete()
     for block in (bpy.data.meshes, bpy.data.curves):
         for x in list(block):
@@ -87,6 +125,7 @@ def sphere(name, r, loc, m, scale=(1, 1, 1), sub=3):
 def export(name):
     """Join the scene into one model and write <name>.fbx. Parts named 'UP_*' (hg_city's upper storeys and roofs) are
     joined into a second object, 'upper', parented to the model, so the game can hide them while the wizard is inside."""
+    flush_blocks()
     objs = [o for o in bpy.context.scene.objects if o.type == 'MESH']
     for o in objs:
         for md in list(o.modifiers): bpy.context.view_layer.objects.active = o; bpy.ops.object.modifier_apply(modifier=md.name)

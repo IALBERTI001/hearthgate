@@ -28,7 +28,7 @@ except Exception as ex: bad.append(f'export: {ex}')
 K.export = lambda name: 0
 F.K.export = K.export; C.K.export = K.export
 def tower_front():
-    blks = [o for o in bpy.data.objects if o.name.startswith('blk')]
+    blks = list(K.BLOCKS)   # batched boxes (hg_kit.Blk), not yet built into meshes
     front = [o for o in blks if o.matrix_world.translation.y > 1.5 and abs(o.matrix_world.translation.x) < 0.6 and 1.0 < o.matrix_world.translation.z < 4.4]
     if len(front) < 6: bad.append(f'tower_base: only {len(front)} stones on the face toward the camera')
 jobs = [(name, fn, extra) for fn, name, extra in ((F.gate, 'gate', None), (F.wall, 'wall', None), (F.tower_base, 'tower_base', tower_front), (F.road, 'road', None),

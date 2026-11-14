@@ -22,11 +22,10 @@ STONES = ('stone', 'stone2', 'stone3')
 
 def M(name, glow=0.0): return K.mat(name, glow)
 
-def block(loc, size, m, bevel=0.035, rot=0.0):
-    o = K.cube('blk', size, loc, m, bevel)
-    for md in o.modifiers:
-        if md.type == 'BEVEL': md.segments = 1          # one segment: the chamfer reads at game size, half the triangles
+def block(loc, size, m, bevel=0.035, rot=0.0):   # a chamfered box, batched into one mesh per material (hg_kit.Blk)
+    o = K.Blk(loc, size, m, bevel)
     if rot: o.rotation_euler = (0, 0, rot)
+    K.BLOCKS.append(o)
     return o
 
 def mesh_from(name, verts, faces, m, bevel=0.0, smooth=False):
