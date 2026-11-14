@@ -170,7 +170,8 @@ def export(name):
         bpy.context.scene.cursor.location = (-pv[0], -pv[1], pv[2])   # the pivot, turned with the model (see join)
         bpy.ops.object.origin_set(type='ORIGIN_CURSOR'); bpy.context.scene.cursor.location = (0, 0, 0)
         pobj = made[par] if par else o; loc = j.location.copy()
-        j.parent = pobj; j.matrix_parent_inverse.identity(); j.location = loc - (pobj.location if par else Vector((0, 0, 0)))
+        bpy.context.view_layer.update(); at = pobj.matrix_world.translation.copy() if par else Vector((0, 0, 0))   # the parent's place in the world (a shin's own location is relative to its thigh)
+        j.parent = pobj; j.matrix_parent_inverse.identity(); j.location = loc - at
         made[pn] = j; parts.append(j)
     bpy.context.view_layer.update()
     vs = [p.matrix_world @ v.co for p in parts for v in p.data.vertices]
