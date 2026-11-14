@@ -15,7 +15,10 @@ namespace Hearthgate.Game
         public GameObject marker;                             // where to rebuild next
         public GameObject wizard;                             // the town walk's wizard
         public GameObject[] villagers = new GameObject[0];   // the townsfolk, three outfits (hg_front.villager)
-        public GameObject breach, rubbleHeap, puff;   // the smashed gate and fallen blocks of the loss (hg_front.breach)
+        public GameObject breach, rubbleHeap, puff;
+        public GameObject timeDial, markExcl, markQuest;   // the time wizard's clock, and the keepers' '!' and '?' (hg_front)
+        public GameObject[] npcs = new GameObject[0];       // the keepers (hg_front.npc), found by name npc_<kind>
+        public GameObject Npc(string kind) { foreach (var n in npcs) if (n && n.name == "npc_" + kind) return n; return null; }   // the smashed gate and fallen blocks of the loss (hg_front.breach)
         public GameObject projFire, projFrost, projStorm, projEarth, projStone;   // what each tower throws (hg_front.projectile)
         public GameObject Projectile(string el) => el == "fire" ? projFire : el == "frost" ? projFrost : el == "storm" ? projStorm : el == "earth" ? projEarth : projStone;
         public GameObject centreWatchtower, centreMarket, centreLibrary;   // the rooms' centrepieces (GameLoop.Halls)

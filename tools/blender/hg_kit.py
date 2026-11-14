@@ -359,6 +359,8 @@ if __name__ == '__main__':
     jobs += [('centre_' + b, (lambda b=b: C.centrepiece(b))) for b in ('watchtower', 'market', 'library')]
     jobs += [('proj_' + k, (lambda k=k: F.projectile(k))) for k in ('fire', 'frost', 'storm', 'earth', 'stone')]
     jobs += [(k, (lambda k=k: F.monster(k))) for k in F.MONSTERS]   # every enemy and boss (hg_front.monster)
+    jobs += [('time_dial', F.time_dial), ('hourglass', F.hourglass_model), ('mark_excl', lambda: F.marker_sign('excl')), ('mark_quest', lambda: F.marker_sign('quest'))]
+    jobs += [('npc_' + k, (lambda k=k: F.npc(k))) for k in ('astronomer', 'merchant', 'librarian', 'chronomancer')]
     jobs += [('breach', F.breach), ('rubble_heap', F.rubble_heap), ('puff', F.puff)]
     jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly)] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
     k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))

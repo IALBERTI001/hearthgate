@@ -52,15 +52,9 @@ namespace Hearthgate.Game
             if ((lookArmed && lookT > 0.3f) || key) { lookArmed = false; OpenHall(look); }
         }
         public void OpenHall(int i)
-        {
+        {   // a conversation with the room's keeper (GameLoop.Npcs); its choices open the old cards
             if (Hud.Paused) return;
-            Wizard.I?.Stop(); Sound.Click();
-            switch (HG.BUILDING_IDS[i])
-            {
-                case "watchtower": Hud.ShowPerks(); break;
-                case "market": Hud.ShowShop("tower"); break;
-                case "library": Hud.ShowQuests(); break;
-            }
+            Wizard.I?.Stop(); Sound.Click(); Hud.ShowTalk(i);
         }
         // the first time the player could use a hall, say once where it is
         void TellHalls()

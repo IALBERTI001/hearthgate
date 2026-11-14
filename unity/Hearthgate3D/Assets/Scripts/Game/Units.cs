@@ -11,7 +11,7 @@ namespace Hearthgate.Game
         // lane is which tower it walks to; z is progress out along that lane from the tower's foot (spawn down to stop), x is
         // lateral across it; Field.Lane maps them to the world
         public int lane; public double hp, max; public float speed, size, x, z, spawn, chill, burn, flash, hop, born, dying;
-        public bool boss, atGate, shield, bigHit, faded, enraged; public float blinkT = Random.Range(0f, 2.4f), totemT, summonT, stun, stunCd, reshT; Quaternion yaw = Quaternion.identity;
+        public bool boss, atGate, shield, bigHit, faded, enraged, frozen; public float blinkT = Random.Range(0f, 2.4f), totemT, summonT, stun, stunCd, reshT; Quaternion yaw = Quaternion.identity;
         public Transform shieldT;   // the rings of force (the model's 'upper' part), gone when Storm breaks the shield
         public float stop = Field.FRONT + Random.Range(0f, Field.STOP_SPREAD);   // where it halts, a crowd at the tower's foot
         Renderer[] rends; Color[] baseCols; static readonly Color GHOST = new Color(0.82f, 0.9f, 1f);
@@ -108,6 +108,7 @@ namespace Hearthgate.Game
                 if (burn > 0) c = Color.Lerp(c, Field.FIRE, 0.25f * (0.5f + 0.5f * Mathf.Sin(time * 20)));
                 if (faded) c = Color.Lerp(c, GHOST, 0.75f);                          // a Phantom washed out: only Storm finds it
                 else if (shield && shieldT == null) c = Color.Lerp(c, GHOST, 0.3f);   // a Totem's ward on a kind without rings
+                if (frozen) c = Color.Lerp(new Color(c.grayscale, c.grayscale, c.grayscale), new Color(0.62f, 0.78f, 1f), 0.45f);   // Time Stop: drained of colour, cold
                 if (enraged) c = Color.Lerp(c, new Color(1f, 0.16f, 0.08f), 0.22f + 0.14f * Mathf.Sin(time * 7f));   // a boss in a rage burns red
                 if (flash > 0) c = Color.Lerp(c, Color.white, flash);
                 rends[i].material.color = c;

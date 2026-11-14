@@ -125,7 +125,8 @@ namespace Hearthgate.Game
         void FixedUpdate()
         {
             if (P.fallen) return;   // the fight and the city's hum wait while the town lies in shambles
-            float t = Time.time; waveT += DT;
+            float t = Time.time;
+            if (timeStop > 0) timeStop = Mathf.Max(0, timeStop - DT); else waveT += DT;   // no one new arrives while time stands still
             while (queue.Count > 0 && queue[0].at <= waveT)
             {
                 var role = queue[0].role; queue.RemoveAt(0);
@@ -150,6 +151,7 @@ namespace Hearthgate.Game
             {
                 var e = enemies[i];
                 if (e.dying > 0) { e.dying += DT; if (e.dying > 0.5f) { Destroy(e.t.gameObject); enemies.RemoveAt(i); } continue; }
+                if (timeStop > 0) { if (e.hp <= 0) Kill(e); continue; }   // Time Stop: nothing moves, heals, summons or bites; the towers' hits still land
                 if (e.R.heal > 0 && e.burn <= 0)
                 {   // a Mender heals its friends nearby until it burns
                     foreach (var o in enemies) if (o != e && o.dying <= 0 && o.hp < o.max && (o.Pos - e.Pos).sqrMagnitude < 16f) { o.hp = System.Math.Min(o.max, o.hp + o.max * e.R.heal * DT); if (Random.value < DT * 2) Fx.I.Burst(o.Pos, new Color(0.5f, 0.95f, 0.5f), 1); }
@@ -470,7 +472,8 @@ namespace Hearthgate.Game
         void Update()
         {
             var wz = Wizard.I;
-            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls(); TickFall(Time.unscaledDeltaTime);
+            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls(); TickFall(Time.unscaledDeltaTime); TickNpcs(Time.deltaTime);
+            if (!Hud.Paused && Input.GetKeyDown(KeyCode.F) && TimeStopLevel > 0) UseTimeStop();
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
             if (CanAscend) Guide.Say("ascend");
             if (P.restored.Count >= 2 && !Guide.Busy && !(wz && wz.On)) for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && CanWork(i)) { Guide.Say("town"); break; }   // the town has work: say so once
@@ -496,7 +499,7 @@ namespace Hearthgate.Game
                 if (NextBuilding != null) { if (CanRestore) { Sound.Click(); Restore(); } else Sound.Dud(); }
                 else if (CanAscend) { Sound.Click(); Hud.ShowAscend(); } else Sound.Dud();
             }
-            foreach (var e in enemies) e.Show(Time.time);
+            foreach (var e in enemies) { e.frozen = timeStop > 0; e.Show(timeStop > 0 ? frozenAt : Time.time); }   // Time Stop: every pose held
         }
 
         // ---------- save ----------

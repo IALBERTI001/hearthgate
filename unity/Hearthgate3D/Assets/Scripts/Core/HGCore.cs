@@ -159,7 +159,7 @@ namespace Hearthgate.Core
                 ascensions = p.ascensions + (ascend ? 1 : 0), bestWave = p.bestWave, combos = new List<string>(p.combos), firstSession = false, lastSeen = p.lastSeen,
                 music = p.music, sfx = p.sfx, reduced = p.reduced, surgeUntil = p.surgeUntil,
                 perks = p.perks.Select(x => new KV { k = x.k, v = x.v }).ToList(), perkPts = p.perkPts + (ascend ? PerkPtsFor(p) : 0), told = new List<string>(p.told), seenEvents = new List<string>(p.seenEvents), seenRoles = new List<string>(p.seenRoles),
-                shards = p.shards + (ascend && p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(), towerEl = new List<string>(p.towerEl), towerLook = new List<string>(p.towerLook),
+                shards = p.shards + (ascend && p.shopOpen ? SHARDS["ascend"] : 0), shopOpen = p.shopOpen, owned = new List<string>(p.owned), equip = p.equip.Select(e => new KS { k = e.k, s = e.s }).ToList(), towerEl = new List<string>(p.towerEl), towerLook = new List<string>(p.towerLook), skills = p.skills.Select(x => new KV { k = x.k, v = x.v }).ToList(),
                 stats = p.stats.Select(x => new KV { k = x.k, v = x.v }).ToList(), feats = new List<string>(p.feats), stars = new List<string>(p.stars), flies = new List<string>(p.flies), relics = new List<string>(p.relics), steward = p.steward,
                 questDay = p.questDay, questBonus = p.questBonus, quests = p.quests.Select(q => new QuestState { id = q.id, n = q.n, need = q.need, claimed = q.claimed }).ToList()
             };
@@ -535,7 +535,8 @@ namespace Hearthgate.Core
         public int shards; public bool shopOpen;               // Starshards, and whether the Market has opened the Shop
         public List<string> owned = new List<string>();        // looks bought
         public List<KS> equip = new List<KS>();                // slot -> look
-        public List<string> towerEl = new List<string>(), towerLook = new List<string>();   // per tower: its chosen element and design ("" = the city's choice)
+        public List<string> towerEl = new List<string>(), towerLook = new List<string>();
+        public List<KV> skills = new List<KV>();               // the time wizard's skills (Aurelian trains them): timestop 1..3   // per tower: its chosen element and design ("" = the city's choice)
         public string questDay = ""; public bool questBonus; public List<QuestState> quests = new List<QuestState>();   // surgeUntil: the fountain's Surge runs until then, then recharges (GameLoop.Town)
         public List<KV> stats = new List<KV>(); public List<string> feats = new List<string>(), stars = new List<string>(), relics = new List<string>(), flies = new List<string>(); public bool steward = true;
         [NonSerialized] public string omen;   // lifetime counts and Feats earned (kept by Ascension)
@@ -564,6 +565,7 @@ namespace Hearthgate.Core
             perkPts = Math.Max(0, perkPts); told = (told ?? new List<string>()).Distinct().ToList();
             seenEvents = (seenEvents ?? new List<string>()).Where(id => HG.EVENTS.Any(e => e.id == id)).Distinct().ToList();
             seenRoles = (seenRoles ?? new List<string>()).Distinct().ToList();
+            skills = (skills ?? new List<KV>()).Where(x => x.k == "timestop" && x.v > 0).Select(x => new KV { k = x.k, v = Math.Min(3, x.v) }).Take(1).ToList();
             towerEl = (towerEl ?? new List<string>()).Take(4).Select(e => e == "fire" || e == "frost" || e == "storm" || e == "earth" ? e : "").ToList(); while (towerEl.Count < 4) towerEl.Add("");
             towerLook = (towerLook ?? new List<string>()).Take(4).Select(e => e ?? "").ToList(); while (towerLook.Count < 4) towerLook.Add("");
             shards = Math.Max(0, shards); owned = (owned ?? new List<string>()).Where(id => HG.SHOP.Any(l => l.id == id)).Distinct().ToList();

@@ -22,7 +22,10 @@ namespace Hearthgate.Game
         readonly System.Collections.Generic.List<(Transform t, float age, float life, float size, Vector3 drift)> puffs = new System.Collections.Generic.List<(Transform, float, float, float, Vector3)>();
         float smokeT; Vector3 puffUnit;
 
-        public int FallCost => 3 + P.wave / 10;
+        // a do-or-die price (owner, Nov 14 2026: "Rebuilding the city should be more expensive, possibly in the hundred or
+        // hundreds of star shards"): 100, and 4 more for every wave reached
+        public int FallCost => 100 + 4 * P.wave;
+        bool rewinding;
         public bool CanPayRestore => P.shards >= FallCost;
 
         void GateFell()
@@ -79,6 +82,17 @@ namespace Hearthgate.Game
         {
             if (adWaiting && (adT += dt) > 90f) AdDone("0");   // never wait on an ad for good
             if (!P.fallen) return;
+            if (rewinding)
+            {   // the rewind runs the smoke backward: every puff sinks and shrinks back into the ruins
+                for (int k = puffs.Count - 1; k >= 0; k--)
+                {
+                    var p = puffs[k]; p.age -= dt * 2.5f;
+                    if (!p.t || p.age <= 0) { if (p.t) Destroy(p.t.gameObject); puffs.RemoveAt(k); continue; }
+                    float u = p.age / p.life; p.t.position -= (Vector3.up * 2.4f + p.drift) * dt * 2.5f;
+                    p.t.localScale = puffUnit * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f); p.t.Rotate(0, -60f * dt, 0); puffs[k] = p;
+                }
+                return;
+            }
             if (!Hud.Paused) Hud.ShowFallen();   // the card stays until a choice is made (P, the menu, a reload)
             // smoke: dark puffs (hg_front.puff) rise from the ruins and the gate, swell, drift with the wind and sink away
             for (int k = puffs.Count - 1; k >= 0; k--)
@@ -115,21 +129,54 @@ namespace Hearthgate.Game
         public void RestoreFallen(bool paid)
         {
             if (!P.fallen) return;
-            if (paid) { if (!CanPayRestore) { Sound.Dud(); return; } P.shards -= FallCost; }
-            Rise($"The town stands again! Wave {P.wave}, once more");
+            if (rewinding) return;
+            if (paid) { if (!CanPayRestore) { Sound.Dud(); return; } P.shards -= FallCost; Save(); }
+            StartCoroutine(Rewind(false));
         }
         // the gamble lost: the run is gone, back to the start of this Ascension (HG.Collapse). Ascending locks progress in;
         // anything past the last Ascension is at stake every time the walls fall.
         public void StartOver()
         {
-            if (!P.fallen) return;
-            FlushWisps(); ShowShambles(false);
-            P = HG.Collapse(P); Refresh(); gateHp = HG.GateMax(P, B); cheer = cheerT = 0; betweenT = 3f;
-            for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
-            RefreshTowers(); Hud.CloseCard();
-            Sound.Play("ascension", 0.45f); Fx.I.Burst(Field.PLAZA + Vector3.up * 3, new Color(0.6f, 0.55f, 0.5f), 30);
-            Hud.Banner(P.ascensions > 0 ? $"The run is lost. Ascension {P.ascensions} begins again from wave {P.wave}" : $"The run is lost. The city begins again from wave {P.wave}");
-            Save();
+            if (!P.fallen || rewinding) return;
+            StartCoroutine(Rewind(true));
+        }
+        // the time wizard rewinds (owner, Nov 14 2026: "Rebuilding the town should match wizard lore with an animation to
+        // show the power of the wizard ... when town falls he rewinds to his last ascension"): his staff throws light into a
+        // great clock over the town whose hands race backward; the smoke sinks back into the ruins, each building rises
+        // again one after another (or, rewinding to the last Ascension, the rubble and the breach lift away from the walls
+        // as they stood then), and the world washes blue until the moment holds.
+        System.Collections.IEnumerator Rewind(bool toAscension)
+        {
+            rewinding = true; Hud.CloseCard(); if (Wizard.I && Wizard.I.On) Wizard.I.Toggle();
+            var dialAt = new Vector3(0, 13f, (Field.PLAZA.z + Field.GATE_Z) * 0.5f);
+            Sound.Play("surge", 0.6f); Sound.Play("ascension", 0.5f);
+            StartCoroutine(Dial(dialAt, 2.4f, 1.7f, false));
+            var order = new System.Collections.Generic.List<int>();
+            if (!toAscension) for (int i = HG.BUILDINGS.Length - 1; i >= 0; i--) if (P.restored.Contains(HG.BUILDINGS[i].id)) order.Add(i);
+            float t = 0, boltT = 0; int next = 0;
+            while (t < 2.6f)
+            {
+                float dt = Time.unscaledDeltaTime; t += dt;
+                if ((boltT -= dt) <= 0) { boltT = 0.11f; var staff = Wizard.I ? Wizard.I.StaffTip : new Vector3(0, 3, -6); Bolt.Arc(staff, dialAt + Random.insideUnitSphere * 1.2f); Fx.I.Burst(staff, new Color(0.6f, 0.85f, 1f), 2); }
+                while (next < order.Count && t > 0.55f + next * (1.3f / Mathf.Max(1, order.Count)))
+                {   // a building rises again, in reverse order of its fall
+                    int i = order[next++]; RefreshPlot(i);
+                    Fx.I.Burst(Field.Plot(i) + Vector3.up * 2f, new Color(0.62f, 0.86f, 1f), 22); Fx.I.Burst(Field.Plot(i) + Vector3.up * 3.5f, Field.GOLD, 8); Sound.Play("claim", 0.25f);
+                }
+                yield return null;
+            }
+            if (toAscension)
+            {
+                FlushWisps(); ShowShambles(false);
+                P = HG.Collapse(P); Refresh(); gateHp = HG.GateMax(P, B); cheer = cheerT = 0; betweenT = 3f;
+                for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i);
+                RefreshTowers();
+                Hud.Banner(P.ascensions > 0 ? $"Time rewinds to your last mark: Ascension {P.ascensions}, wave {P.wave}" : $"Time rewinds to the beginning: wave {P.wave}");
+                Save();
+            }
+            else Rise($"Time rewinds to before the walls fell. Wave {P.wave}, once more");
+            Fx.I.Burst(new Vector3(0, 3f, Field.GATE_Z), new Color(0.62f, 0.86f, 1f), 40); Fx.I.Shake(0.2f, true);
+            rewinding = false;
         }
         void Rise(string line)
         {

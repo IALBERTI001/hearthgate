@@ -1206,8 +1206,11 @@ def wizard():
                 for k in range(3):
                     a = k / 3 * math.tau
                     o = K.cone('claw', 0.04, 0.3, (h.x + 0.12 + math.cos(a) * 0.1, h.y - 0.12 + math.sin(a) * 0.1, 2.26), M('wood_dk'), 6); o.rotation_euler = (-math.sin(a) * 0.5, math.cos(a) * 0.5, 0)
-                K.sphere('orb', 0.15, (h.x + 0.12, h.y - 0.12, 2.38), M('fire_core', 2.5), sub=3)
-                K.sphere('orb_core', 0.08, (h.x + 0.12, h.y - 0.12, 2.38), M('gold', 3.0), sub=2)
+                # the time wizard's orb (owner, Nov 14 2026: "the wizard is a time wizard"): cold light held in a gold clock ring
+                K.sphere('orb', 0.15, (h.x + 0.12, h.y - 0.12, 2.38), M('frost', 2.5), sub=3)
+                K.sphere('orb_core', 0.07, (h.x + 0.12, h.y - 0.12, 2.38), M('snow', 3.0), sub=2)
+                bpy.ops.mesh.primitive_torus_add(major_radius=0.21, minor_radius=0.025, location=(h.x + 0.12, h.y - 0.12, 2.38), rotation=(math.pi / 2, 0, 0.3)); K.finish(bpy.context.object, M('gold'))
+                for k in range(4): K.sphere('tick', 0.035, (h.x + 0.12 + math.cos(k * 1.571) * 0.21, h.y - 0.12 - 0.02, 2.38 + math.sin(k * 1.571) * 0.21), M('gold', 1.0), sub=1)
     # head: a round face, rosy nose, little eyes under bushy brows, and a long tapering beard
     K.sphere('head', 0.33, (0, -0.02, 1.6), M('skin'), sub=3)
     K.sphere('nose', 0.08, (0, -0.33, 1.58), M('blush'), sub=2)
@@ -1222,7 +1225,8 @@ def wizard():
     K.cyl('brim', 0.62, 0.06, (0, 0, 1.84), M('robe_dk'), 24, 0.02)
     K.cyl('band', 0.37, 0.12, (0, 0, 1.92), M('gold'), 20, 0.02)
     K.cyl('crown', 0.36, 0.42, (0, 0, 2.15), M('robe'), 20, 0.0, r2=0.22)
-    o = K.cone('star', 0.1, 0.03, (0, -0.37, 1.93), M('gold', 1.2), 5); o.rotation_euler = (math.pi / 2, 0, 0)
+    for sz in (-1, 1):   # an hourglass on the band, where the star was
+        o = K.cone('glass', 0.07, 0.09, (0, -0.38, 1.93 + sz * 0.045), M('gold', 1.2), 8); o.rotation_euler = (0 if sz < 0 else math.pi, 0, 0)
     with Part('hat_tip', (0, 0, 2.34)):
         o = K.cone('tip', 0.22, 0.55, (0, 0.06, 2.56), M('robe'), 16); o.rotation_euler = (-0.45, 0, 0)
         K.sphere('pom', 0.07, (0, 0.18, 2.8), M('gold', 1.0), sub=2)
@@ -1353,6 +1357,118 @@ def puff():
     for (x, y, z, r) in ((0, 0, 0, 0.5), (0.3, 0.1, 0.22, 0.38), (-0.28, -0.08, 0.18, 0.34)):
         K.sphere('puff', r, (x, y, z), M('smoke'), sub=2)
     return K.export('puff')
+
+def hourglass(x=0.0, y=0.0, z=0.0, sc=1.0, sand='amber'):
+    """An hourglass: two gold caps, three turned posts, two glass bulbs with sand running from the top to the bottom."""
+    for zz in (0.0, 0.9):
+        K.cyl('cap', 0.3 * sc, 0.08 * sc, (x, y, z + zz * sc + 0.04 * sc), M('gold'), 16, 0.01)
+    for k in range(3):
+        a = k * math.tau / 3; K.cyl('post', 0.025 * sc, 0.86 * sc, (x + math.cos(a) * 0.24 * sc, y + math.sin(a) * 0.24 * sc, z + 0.47 * sc), M('wood_dk'), 6, 0.0)
+    for zz, flip in ((0.27, False), (0.67, True)):
+        o = K.cone('bulb', 0.2 * sc, 0.38 * sc, (x, y, z + zz * sc), M('water_gloss', 0.6), 16); o.rotation_euler = (math.pi if flip else 0, 0, 0)
+    K.cone('sand', 0.15 * sc, 0.16 * sc, (x, y, z + 0.17 * sc), M(sand, 1.2), 12)
+    K.cone('sand_top', 0.1 * sc, 0.1 * sc, (x, y, z + 0.6 * sc), M(sand, 1.2), 12).rotation_euler = (math.pi, 0, 0)
+    K.cyl('stream', 0.012 * sc, 0.4 * sc, (x, y, z + 0.4 * sc), M(sand, 1.5), 6, 0.0)
+
+def hourglass_model():
+    hourglass(); return K.export('hourglass')
+
+def time_dial():
+    """The time wizard's clock (the rewind and Time Stop): a great dial standing upright facing -y: a gold rim and an inner
+    rune ring of cold light, twelve gold hour marks, a glowing face, and two hands turning on the centre (parts)."""
+    def ring(r, w, m, glow=0.0):
+        bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=w, major_segments=64, minor_segments=10, location=(0, 0, 0), rotation=(math.pi / 2, 0, 0))
+        K.finish(bpy.context.object, M(m, glow) if glow else M(m))
+    ring(3.0, 0.16, 'gold'); ring(2.55, 0.06, 'frost', 2.5); ring(1.2, 0.04, 'frost', 2.0)
+    K.cyl('face', 2.9, 0.06, (0, 0.06, 0), M('roof_slate', 0.5), 64, 0.0).rotation_euler = (math.pi / 2, 0, 0)
+    for k in range(12):
+        a = k * math.tau / 12; big = k % 3 == 0
+        block((math.cos(a) * 2.75, -0.06, math.sin(a) * 2.75), (0.14 if not big else 0.2, 0.08, 0.42 if not big else 0.6), M('gold', 1.0 if big else 0.6), 0.0).rotation_euler = (0, -a + math.pi / 2, 0)
+        K.sphere('rune', 0.07, (math.cos(a + 0.26) * 2.3, -0.08, math.sin(a + 0.26) * 2.3), M('snow', 2.5), sub=1)
+    K.sphere('hub', 0.22, (0, -0.12, 0), M('gold', 1.2), (1, 0.5, 1), 2)
+    with Part('hand_m', (0, 0, 0)):
+        block((0, -0.16, 1.1), (0.12, 0.05, 2.2), M('gold', 1.0), 0.0); K.cone('tip', 0.12, 0.3, (0, -0.16, 2.3), M('gold', 1.0), 4)
+    with Part('hand_h', (0, 0, 0)):
+        block((0, -0.2, 0.7), (0.18, 0.05, 1.4), M('gold', 1.0), 0.0); K.cone('tip', 0.16, 0.3, (0, -0.2, 1.5), M('gold', 1.0), 4)
+    return K.export('time_dial')
+
+def marker_sign(kind):
+    """A quest sign over a townsperson's head (owner, Nov 14 2026: "a traditional question mark or exclamation over their
+    heads"): a chunky gold '!' (something new for you) or '?' (something to hand in), rimmed dark so it reads on any sky."""
+    gold, rim = M('gold', 1.4), M('wood_dk')
+    if kind == 'excl':
+        K.cyl('bar', 0.17, 0.85, (0, 0, 0.78), gold, 12, 0.03, r2=0.11); K.sphere('dot', 0.15, (0, 0, 0.15), gold, sub=2)
+        K.cyl('bar_rim', 0.2, 0.85, (0, 0.04, 0.78), rim, 12, 0.03, r2=0.14); K.sphere('dot_rim', 0.18, (0, 0.04, 0.15), rim, sub=2)
+    else:
+        pts = [(math.cos(a) * 0.32, 0, 0.95 + math.sin(a) * 0.3) for a in [math.pi * (1.05 - k * 0.2) for k in range(8)]]
+        pts += [(0.05, 0, 0.55), (0, 0, 0.42)]
+        for (x0, y0, z0), (x1, y1, z1) in zip(pts, pts[1:]):
+            mid = Vector(((x0 + x1) / 2, 0, (z0 + z1) / 2)); d = Vector((x1 - x0, 0, z1 - z0))
+            K.cyl('seg', 0.11, d.length + 0.08, tuple(mid), gold, 10, 0.0).rotation_euler = _aim(d)
+            K.cyl('seg_rim', 0.14, d.length + 0.08, tuple(mid + Vector((0, 0.04, 0))), rim, 10, 0.0).rotation_euler = _aim(d)
+        K.sphere('dot', 0.15, (0, 0, 0.15), gold, sub=2); K.sphere('dot_rim', 0.18, (0, 0.04, 0.15), rim, sub=2)
+    return K.export('mark_' + kind)
+
+def npc(kind):
+    """The town's keepers, each in the room of what they keep (owner, Nov 14 2026: "make the perks and store thing, as well
+    as optional training or menus as a conversation with an npc"). Robed to the ground (they stand and talk; arms are parts
+    so they can gesture), faces -y like the wizard:
+      astronomer: the Watchtower's star-reader: a navy robe sewn with stars, a tall moon hat, a white beard, a brass telescope;
+      merchant: the Market's Starshard seller: a green coat over cream, a red cap, a moustache, a rose crystal in hand;
+      librarian: the Library's keeper: a plum robe, grey hair in a bun, gold spectacles, an open book;
+      chronomancer: the old time-master by the fountain who trains the wizard: a teal hooded robe, a long beard, an hourglass."""
+    robe, trim, skin_hair = {'astronomer': ('roof_slate', 'gold', 'beard'), 'merchant': ('tunic_g', 'gold', 'hair'),
+                             'librarian': ('robe', 'gold', 'smoke'), 'chronomancer': ('frost_dk', 'gold', 'beard')}[kind]
+    K.cyl('robe', 0.46, 1.0, (0, 0, 0.5), M(robe), 20, 0.03, r2=0.34)
+    K.cyl('hem', 0.48, 0.07, (0, 0, 0.04), M(trim), 20, 0.0)
+    K.sphere('chest', 0.38, (0, 0, 1.12), M(robe), (1, 0.85, 0.85), 3)
+    K.cyl('belt', 0.37, 0.08, (0, 0, 0.98), M('wood_dk' if kind != 'merchant' else 'roof_red'), 16, 0.02)
+    if kind == 'merchant': block((0, -0.36, 0.72), (0.5, 0.05, 0.7), M('canvas'), 0.02).rotation_euler = (-0.12, 0, 0)
+    if kind == 'astronomer':
+        for k in range(9): K.sphere('star', 0.04, (math.cos(k * 2.4) * 0.42, -abs(math.sin(k * 2.4)) * 0.38 - 0.05, 0.3 + k * 0.09), M('gold', 1.2), sub=1)
+    if kind == 'chronomancer':   # an hourglass sewn on the chest
+        for sz in (-1, 1): K.cone('emblem', 0.08, 0.1, (0, -0.37, 1.12 + sz * 0.05), M('gold', 1.2), 8).rotation_euler = (0 if sz < 0 else math.pi, 0, 0)
+    from mathutils import Euler
+    for sx, side in ((-1, 'L'), (1, 'R')):
+        c = Vector((sx * 0.42, -0.06, 1.15)); rot = Euler((-0.55 if side == 'R' else -0.2, -sx * 0.32, 0))
+        def along(d): w = Vector((0, 0, d)); w.rotate(rot); return c + w
+        with Part('arm_' + side, tuple(c)):
+            o = K.cyl('sleeve', 0.15, 0.5, tuple(along(-0.22)), M(robe), 10, 0.02, r2=0.18); o.rotation_euler = rot
+            K.sphere('hand', 0.1, tuple(along(-0.5)), M('skin'), sub=2)
+            if side == 'R':
+                hnd = along(-0.5)
+                if kind == 'astronomer':
+                    o = K.cyl('scope', 0.06, 0.6, (hnd.x, hnd.y - 0.15, hnd.z + 0.05), M('gold'), 10, 0.01, r2=0.045); o.rotation_euler = (1.2, 0, 0)
+                elif kind == 'merchant':
+                    K.sphere('crystal', 0.11, (hnd.x, hnd.y - 0.08, hnd.z + 0.13), M('rose', 2.0), (0.8, 0.8, 1.4), 1)
+                elif kind == 'librarian':
+                    for sy in (-1, 1): block((hnd.x + sy * 0.12, hnd.y - 0.12, hnd.z + 0.05), (0.22, 0.3, 0.03), M('canvas'), 0.0).rotation_euler = (0.9, sy * 0.25, 0)
+                else:
+                    hourglass(hnd.x, hnd.y - 0.1, hnd.z - 0.05, 0.35, 'frost')
+    K.sphere('head', 0.3, (0, -0.02, 1.55), M('skin'), sub=3)
+    K.sphere('nose', 0.06, (0, -0.31, 1.53), M('blush'), sub=2)
+    for sx in (-1, 1):
+        K.sphere('eye', 0.05, (sx * 0.11, -0.27, 1.62), M('pupil'), (1, 0.6, 1.2), 2)
+        K.sphere('catch', 0.015, (sx * 0.1, -0.31, 1.64), M('white_gloss', 0.5), sub=1)
+    if kind in ('astronomer', 'chronomancer'):   # a long white beard
+        o = K.cone('beard', 0.24, 0.7 if kind == 'chronomancer' else 0.5, (0, -0.22, 1.2), M('beard'), 12); o.rotation_euler = (math.pi + 0.12, 0, 0)
+        K.sphere('moustache', 0.11, (0, -0.29, 1.5), M('beard'), (1.6, 0.6, 0.55), 2)
+    if kind == 'merchant':
+        K.sphere('moustache', 0.09, (0, -0.3, 1.49), M('hair'), (1.8, 0.6, 0.5), 2)
+        K.sphere('hair', 0.31, (0, 0.05, 1.6), M('hair'), (1, 1, 0.85), 3)
+        K.cyl('cap', 0.31, 0.2, (0, 0.02, 1.8), M('roof_red'), 16, 0.03, r2=0.26); K.sphere('tassel', 0.06, (0.2, 0.15, 1.92), M('gold'), sub=1)
+    elif kind == 'librarian':
+        K.sphere('hair', 0.32, (0, 0.04, 1.6), M('smoke'), (1, 1, 0.9), 3); K.sphere('bun', 0.16, (0, 0.18, 1.86), M('smoke'), sub=2)
+        for sx in (-1, 1):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.07, minor_radius=0.012, location=(sx * 0.11, -0.3, 1.62), rotation=(math.pi / 2, 0, 0)); K.finish(bpy.context.object, M('gold'))
+    elif kind == 'astronomer':   # a tall pointed hat with a gold crescent moon
+        K.cyl('brim', 0.42, 0.05, (0, 0, 1.8), M(robe), 20, 0.02)
+        K.cone('hat', 0.32, 0.8, (0, 0.04, 2.2), M(robe), 16).rotation_euler = (-0.15, 0, 0)
+        K.sphere('moon', 0.1, (0, -0.28, 2.0), M('gold', 1.4), (1, 0.4, 1), 2); K.sphere('bite', 0.08, (0.05, -0.31, 2.03), M(robe), (1, 0.45, 1), 2)
+    else:   # the Chronomancer's deep hood
+        K.sphere('hood', 0.37, (0, 0.06, 1.62), M(robe), (1, 1.05, 1.08), 3)
+        K.cone('hood_tip', 0.22, 0.4, (0, 0.2, 1.92), M(robe), 10).rotation_euler = (0.6, 0, 0)
+    return K.export('npc_' + kind)
 
 # the Shop's tower looks (js/core.js SHOP, cosmetic only): each element's cap restyled in Blender
 CAP_LOOKS = {

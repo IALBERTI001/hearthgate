@@ -27,12 +27,20 @@ namespace Hearthgate.Game
         AudioClip click, dud, knock, step;
         float songEnd = -1; bool unlocked, boss; string lastSong = ""; float gapUntil = -1; string mode = "idle";
         public static bool MusicOn = true, SfxOn = true;
+        // the two levels (owner, Nov 14 2026: "add audio level toggles in the settings menu and have them set to a comfortable
+        // 50%"): 0..1, the balanced mix at 0.5 (the old fixed volumes), so a player can go either way; 0 is off
+        public static float MusicLevel = 0.5f, SfxLevel = 0.5f;
+        static float MV => VOL * MusicLevel * 2f;
+        static float SG => SfxLevel * 2f;
+        public static void SetMusicLevel(float v) { MusicLevel = Mathf.Clamp01(Mathf.Round(v * 10f) / 10f); MusicOn = MusicLevel > 0; PlayerPrefs.SetFloat("hg_music_lv", MusicLevel); if (I) I.Apply(); }
+        public static void SetSfxLevel(float v) { SfxLevel = Mathf.Clamp01(Mathf.Round(v * 10f) / 10f); SfxOn = SfxLevel > 0; PlayerPrefs.SetFloat("hg_sfx_lv", SfxLevel); }
 
         public static void Init() { if (I) return; var go = new GameObject("Sound"); DontDestroyOnLoad(go); I = go.AddComponent<Sound>(); }
 
         void Awake()
         {
-            MusicOn = PlayerPrefs.GetInt("hg_music", 1) == 1; SfxOn = PlayerPrefs.GetInt("hg_sfx", 1) == 1;
+            MusicLevel = PlayerPrefs.GetFloat("hg_music_lv", PlayerPrefs.GetInt("hg_music", 1) == 1 ? 0.5f : 0f); SfxLevel = PlayerPrefs.GetFloat("hg_sfx_lv", PlayerPrefs.GetInt("hg_sfx", 1) == 1 ? 0.5f : 0f);
+            MusicOn = MusicLevel > 0; SfxOn = SfxLevel > 0;
             pool = new AudioSource[10];
             for (int i = 0; i < pool.Length; i++) { pool[i] = gameObject.AddComponent<AudioSource>(); pool[i].playOnAwake = false; }
             song = gameObject.AddComponent<AudioSource>(); amb = gameObject.AddComponent<AudioSource>();
@@ -74,13 +82,14 @@ namespace Hearthgate.Game
             if (++inWindow > 10) return;
             last[name] = now;
             var s = pool[next = (next + 1) % pool.Length];
-            s.pitch = jitter ? 0.94f + (float)rnd.NextDouble() * 0.12f : 1f; s.PlayOneShot(c, vol * SFX_VOL);
+            s.pitch = jitter ? 0.94f + (float)rnd.NextDouble() * 0.12f : 1f; s.PlayOneShot(c, Mathf.Min(1f, vol * SFX_VOL * SG));
         }
 
         // ---------- music ----------
         public static void Boss(bool on) { if (I) I.SetBoss(on); }
-        public static void SetMusic(bool on) { MusicOn = on; PlayerPrefs.SetInt("hg_music", on ? 1 : 0); if (I) I.Apply(); }
-        public static void SetSfx(bool on) { SfxOn = on; PlayerPrefs.SetInt("hg_sfx", on ? 1 : 0); }
+        static float mutedMusic = 0.5f, mutedSfx = 0.5f;   // M mutes and unmutes, back to the levels the player chose
+        public static void SetMusic(bool on) { if (!on && MusicLevel > 0) mutedMusic = MusicLevel; SetMusicLevel(on ? (MusicLevel > 0 ? MusicLevel : mutedMusic) : 0); }
+        public static void SetSfx(bool on) { if (!on && SfxLevel > 0) mutedSfx = SfxLevel; SetSfxLevel(on ? (SfxLevel > 0 ? SfxLevel : mutedSfx) : 0); }
 
         void Update()
         {
@@ -94,7 +103,7 @@ namespace Hearthgate.Game
             if (!MusicOn) { song.Pause(); amb.Pause(); return; }
             if (!unlocked) return;
             var el = mode == "gap" ? amb : song; if (el.clip && !el.isPlaying) { el.UnPause(); if (!el.isPlaying) el.Play(); }
-            el.volume = VOL;
+            el.volume = MV;
         }
         void NextSong()
         {
@@ -126,7 +135,7 @@ namespace Hearthgate.Game
             }
             if ((mode == "boss") != (n == "battle") && src == song) yield break;   // the mood changed while it loaded
             src.Stop(); src.clip = clip; src.loop = loop; src.volume = 0;
-            if (MusicOn) { src.Play(); Fade(src, VOL, fade); }
+            if (MusicOn) { src.Play(); Fade(src, MV, fade); }
             if (src == song && !loop) songEnd = clip.length;
         }
         readonly Dictionary<AudioSource, Coroutine> fades = new Dictionary<AudioSource, Coroutine>();
@@ -160,10 +169,10 @@ namespace Hearthgate.Game
                 }
             }
             if (!voiceSrc) { voiceSrc = gameObject.AddComponent<AudioSource>(); voiceSrc.playOnAwake = false; }
-            voiceSrc.Stop(); voiceSrc.clip = clip; voiceSrc.volume = 0.9f; voiceSrc.Play();
-            float was = song.volume; if (song.isPlaying) Fade(song, VOL * 0.4f, 0.25f);
+            voiceSrc.Stop(); voiceSrc.clip = clip; voiceSrc.volume = Mathf.Min(1f, 0.9f * SG); voiceSrc.Play();
+            float was = song.volume; if (song.isPlaying) Fade(song, MV * 0.4f, 0.25f);
             yield return new WaitForSecondsRealtime(clip.length);
-            if (song.isPlaying && MusicOn) Fade(song, VOL, 0.8f);
+            if (song.isPlaying && MusicOn) Fade(song, MV, 0.8f);
         }
         public static string State => I ? I.mode + (I.song.isPlaying ? ":" + I.song.clip?.name : "") : "none";
     }

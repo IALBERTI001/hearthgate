@@ -74,6 +74,7 @@ namespace Hearthgate.Game
         }
 
         public void Teleport(Vector3 p) { pos = new Vector3(p.x, 0, p.z); Stop(); }   // test hooks only (GameLoop.Dev)
+        public Vector3 StaffTip => model ? model.position + model.rotation * new Vector3(0.45f * SCALE, 2.4f * SCALE, -0.25f * SCALE) : pos + Vector3.up * 1.6f;
         public void Stop() { target = null; goal.SetActive(false); vel = Vector3.zero; }
 
         public void Toggle()
@@ -183,18 +184,19 @@ namespace Hearthgate.Game
                 }
             }
             if (!On) Near = -1;
-            // the centrepiece he looks at: in its room, within reach of it and turned to it (within 50 degrees)
+            // the keeper he talks to (GameLoop.Npcs): in their room (or by the fountain, the Chronomancer), within reach across
+            // the centrepiece and turned to them (within 50 degrees)
             Looking = -1;
             if (On)
-                for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
+                for (int k = 0; k <= HG.BUILDING_IDS.Length; k++)
                 {
-                    if (!GameLoop.I.CentreOn(i) || !InFootprint(i, pos, 0.2f)) continue;
-                    var c = Field.Centre(i); var to = new Vector3(c.x - pos.x, 0, c.z - pos.z);
-                    bool close = to.magnitude < Field.CENTREPIECE[i].z + RADIUS + 0.9f;
-                    if (close && want.sqrMagnitude > 0.01f && Vector3.Angle(want, to) < 70f)   // pressing toward it: he turns to face it squarely
+                    int i = k == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : k;
+                    if (i == GameLoop.TRAINER ? !GameLoop.I.TrainerHere : (!GameLoop.I.CentreOn(i) || !InFootprint(i, pos, 0.2f))) continue;
+                    var c = GameLoop.TalkAt(i); var to = new Vector3(c.x - pos.x, 0, c.z - pos.z); float reach = GameLoop.TalkReach(i);
+                    if (to.magnitude < reach && want.sqrMagnitude > 0.01f && Vector3.Angle(want, to) < 70f)   // pressing toward them: he turns to face them squarely
                         yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-to.x, -to.z) * Mathf.Rad2Deg, 540f * dt);
                     var face = new Vector3(-Mathf.Sin(yaw * Mathf.Deg2Rad), 0, -Mathf.Cos(yaw * Mathf.Deg2Rad));
-                    if (to.magnitude < Field.CENTREPIECE[i].z + RADIUS + 0.9f && Vector3.Angle(face, to) < 50f) Looking = i;
+                    if (to.magnitude < reach && Vector3.Angle(face, to) < 50f) Looking = i;
                 }
             if (On && Near >= 0 && Looking < 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else Sound.Dud(); }
 
@@ -239,6 +241,7 @@ namespace Hearthgate.Game
         void Collide()
         {
             Push(Field.PLAZA, FOUNTAIN_R);
+            if (GameLoop.I && GameLoop.I.TrainerHere) Push(GameLoop.TRAINER_AT, 0.45f + RADIUS);   // the Chronomancer stands his ground
             foreach (var pr in Field.PROPS) Push(new Vector3(pr.x, 0, pr.y), pr.z + RADIUS);
             if (pos.z > -3.2f && Mathf.Abs(pos.x) < Field.GATE_HALF + 0.8f) pos.z = -3.2f;
             float m = 2.4f, ex = pos.x / (Field.RX - m), ez = (pos.z + Field.RZ) / (Field.RZ - m), e = Mathf.Sqrt(ex * ex + ez * ez);

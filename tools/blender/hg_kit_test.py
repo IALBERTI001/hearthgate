@@ -40,6 +40,8 @@ jobs += [('building_' + b, C.BUILDERS[b], None) for b in C.BUILDERS] + [('ruin_'
 jobs += [('marker', F.marker, None)] + [('proj_' + k, (lambda k=k: F.projectile(k)), None) for k in ('fire', 'frost', 'storm', 'earth', 'stone')] + [('breach', F.breach, None), ('rubble_heap', F.rubble_heap, None), ('puff', F.puff, None)]
 jobs += [('villager_' + v, (lambda v=v: F.villager(v)), None) for v in 'abc']
 jobs += [(k, (lambda k=k: F.monster(k)), None) for k in F.MONSTERS]
+jobs += [('time_dial', F.time_dial, None), ('hourglass', F.hourglass_model, None), ('mark_excl', lambda: F.marker_sign('excl'), None), ('mark_quest', lambda: F.marker_sign('quest'), None)]
+jobs += [('npc_' + k, (lambda k=k: F.npc(k)), None) for k in ('astronomer', 'merchant', 'librarian', 'chronomancer')]
 jobs += [('top_' + c, (lambda c=c: F.cap_look(c)), None) for c in F.CAP_LOOKS]
 part, parts = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))   # the chain runs the test in parallel parts
 for i, (name, fn, extra) in enumerate(jobs):

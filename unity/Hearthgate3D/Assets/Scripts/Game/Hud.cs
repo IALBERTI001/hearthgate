@@ -183,9 +183,11 @@ namespace Hearthgate.Game
             guide = Action("Guide", new Vector2(0, 0), new Vector2(16, 70), new Vector2(430, 72), "walk", null, () => Guide.Skip(), null, false);
             guide.title.fontSize = 22; guide.p.rt.gameObject.SetActive(false);
 
-            // settings (game-polish rule 19: the controls inside the game, the music and sound switches): a small brass
-            // medallion with a cog rendered in Blender, inside the top-left label block, right of the wave
-            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-16, 16), new Vector2(56, 56), "gear", null, () => ShowSettings(true), null, false);   // bottom right (owner, Nov 14 2026)
+            // settings (game-polish rule 19: the controls inside the game, the music and sound levels): a full button of the
+            // kit like every other, its cog, its word and its key, in the bottom-right corner (owner, Nov 14 2026: "settings
+            // button does not have settings written on it. It should match the other buttons. Consistency")
+            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-16, 16), new Vector2(190, 56), "gear", "P", () => ShowSettings(true), null, false);
+            gear.title.text = "Settings";
 
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
             // buildings"): a small plum board with its name, level and output, pinned over the signpost in its yard while
@@ -315,7 +317,7 @@ namespace Hearthgate.Game
                     signHead[i].text = $"{b.name}  ·  ruined";
                     body = offer ? $"<color=#E6DCEA>{b.line}</color>" : $"<color=#D9C9A8>{(g.NextBuilding != null ? "rebuilt after the " + HG.ById(g.NextBuilding).name : "rebuilt later")}</color>";
                 }
-                if (docked && g.CentreOn(i) && wz.Looking != i) body += $"\n<color=#FFD56B>Walk up to the {GameLoop.CentreName(i)} to open {(HG.BUILDING_IDS[i] == "watchtower" ? "the perks and stars" : HG.BUILDING_IDS[i] == "market" ? "the Shop" : "the quests and Feats")}</color>";
+                if (docked && g.CentreOn(i) && wz.Looking != i) body += $"\n<color=#FFD56B>Talk to {KeeperName(GameLoop.KeeperOf(i)).Split(' ')[0] + (GameLoop.KeeperOf(i) == "librarian" ? " Quill" : "")} behind the {GameLoop.CentreName(i)}</color>";
                 else body += HallLine(g, P, i);
                 signTxt[i].text = body;
                 bool btn = near && (up || offer);
@@ -455,6 +457,10 @@ namespace Hearthgate.Game
             if (icon == null) med.gameObject.SetActive(false);
             float left = hasIcon ? m + 14 : 12, w = size.x - left - (key != null && !Application.isMobilePlatform ? 30 : 12);
             a.title = Label("Title", r, new Vector2(0, 0.5f), Vector2.zero, h >= 60 ? 22 : 20, TextAnchor.MiddleLeft);
+            // the display face is already heavy: faux bold and a 2 px outline ran its letters together (owner, Nov 14 2026:
+            // "Words in the buttons are too squished together"); on the plum panel a light outline and a soft drop are enough
+            a.title.fontStyle = FontStyle.Normal; var ol = a.title.GetComponent<Outline>(); if (ol) ol.effectDistance = new Vector2(1, -1);
+            foreach (var sh in a.title.GetComponents<Shadow>()) if (!(sh is Outline)) sh.effectDistance = new Vector2(0, -2);
             var tr = a.title.rectTransform; tr.pivot = new Vector2(0, 0.5f); tr.sizeDelta = new Vector2(w, h * 0.5f); tr.anchoredPosition = new Vector2(left, h * 0.18f);
             a.title.horizontalOverflow = HorizontalWrapMode.Overflow;
             if (!hasIcon) { a.title.alignment = TextAnchor.MiddleCenter; tr.sizeDelta = new Vector2(w, h * 0.5f); }
@@ -516,6 +522,8 @@ namespace Hearthgate.Game
             shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(new Color(1f, 0.9f, 0.55f), Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
             bool pk = P.ascensions > 0; if (perkRow.gameObject.activeSelf != pk) perkRow.gameObject.SetActive(pk);
             if (pk) perkTxt.text = HG.Fmt(P.perkPts);
+            TickTimeStop(g);
+            if (!Paused) TalkingTo = -1;
             if (Input.GetMouseButtonDown(0) && !Paused)
             {   // a tap on a counter: where it comes from and what it buys
                 if (RectTransformUtility.RectangleContainsScreenPoint(shardRow, PointerPos, null))
@@ -622,7 +630,7 @@ namespace Hearthgate.Game
             if (!I || !GameLoop.I || !GameLoop.I.CanAscend) return;
             var g = GameLoop.I; var P = g.P; int n = P.ascensions + 1;
             var box = I.Modal($"Ascend to Ascension {n}?", new Vector2(640, 430));
-            I.Line(box, -74, "The city returns to ruins and the waves start again from wave 1. Ascending locks your progress in.", 19);
+            I.Line(box, -74, "The city returns to ruins and the waves start again from wave 1. Each Ascension is a mark in time: if the walls fall, you can always rewind to it.", 19);
             I.Line(box, -128, $"<color=#FFD56B>For good:</color> towers and Resonance x{System.Math.Pow(HG.ASCEND_MULT, n):0.##} (now x{g.B.ascend:0.##})", 19);
             I.Line(box, -168, $"<color=#FFD56B>+{HG.PerkPtsFor(P)} perk points</color> to spend at the Watchtower", 19);
             I.Line(box, -208, "Kept: your best wave, combos, perks, stars, Feats, looks and settings.", 17, new Color(0.85f, 0.8f, 0.88f));
@@ -640,35 +648,38 @@ namespace Hearthgate.Game
             if (!I || !GameLoop.I || !GameLoop.I.Fallen) return;
             var g = GameLoop.I; var P = g.P; int cost = g.FallCost; bool can = g.CanPayRestore, ad = !can && GameLoop.AdReady;
             if (I.settingsBox) I.ShowSettings(false);
-            var box = I.Modal(confirm ? "Lose this run?" : "The walls have fallen!", new Vector2(700, 320));
+            string mark = P.ascensions > 0 ? $"Ascension {P.ascensions}" : "the beginning";
+            var box = I.Modal(confirm ? $"Rewind to {mark}?" : "The walls have fallen!", new Vector2(720, 330));
             Time.timeScale = 1;   // the shambles stay alive behind the card (the fight itself waits: GameLoop.FixedUpdate)
             I.settingsBox.GetComponent<Image>().color = new Color(0.08f, 0.02f, 0.04f, 0.28f);
             box.anchorMin = box.anchorMax = new Vector2(0.5f, 0); box.pivot = new Vector2(0.5f, 0); box.anchoredPosition = new Vector2(0, 24);
+            // the time wizard's two rewinds (owner, Nov 14 2026: "when town falls he rewinds to his last ascension to ensure he
+            // keeps the town prospering"): to the moment before the fall, for a do-or-die price in Starshards (or an ad), or
+            // back to his last mark in time, which costs nothing but the run
             if (confirm)
             {
                 string since = P.ascensions > 0 ? $"since Ascension {P.ascensions}" : "this game";
                 I.Line(box, -66, $"<color=#FF8C7A>Lost:</color> everything {since}: the towers' levels, every rebuilt building, {HG.Fmt(P.res)} Resonance, and wave {P.wave}.", 18);
-                I.Line(box, -128, "Kept: your Ascensions, perks, stars, Starshards, Feats and looks.", 17, new Color(0.85f, 0.8f, 0.88f));
+                I.Line(box, -128, "Kept: your Ascensions, perks, stars, Starshards, skills, Feats and looks.", 17, new Color(0.85f, 0.8f, 0.88f));
                 I.Choice(box, "F_Back", new Vector2(-130, 26), new Vector2(230, 56), "Back", () => ShowFallen(), null, true);   // the safe choice is the bright one
-                I.Choice(box, "F_Over", new Vector2(130, 26), new Vector2(230, 56), "Lose the run", () => { I.ShowSettings(false); g.StartOver(); });
+                I.Choice(box, "F_Over", new Vector2(130, 26), new Vector2(230, 56), "Rewind", () => { I.ShowSettings(false); g.StartOver(); });
                 return;
             }
-            I.Line(box, -70, $"Wave {P.wave} broke through and the town lies in ruins.", 20);
-            I.Line(box, -108, can ? $"Restore it for <color=#FFE68C>{cost} Starshards</color> (you have {P.shards}) and fight wave {P.wave} again."
-                                  : $"Restoring it costs <color=#FFE68C>{cost} Starshards</color>; you have {P.shards}. Bosses, Trials, quests and Feats pay them.", 18);
-            I.Line(box, -168, P.ascensions > 0 ? $"Or give it up: back to wave 1 as Ascension {P.ascensions} began, the town in ruins." : "Or give it up: back to wave 1 with the city in ruins.", 16, new Color(0.85f, 0.8f, 0.88f));
+            I.Line(box, -66, $"Wave {P.wave} broke through and the town lies in ruins.", 20);
+            I.Line(box, -104, can ? $"Rewind time to the moment before the fall for <color=#FFE68C>{cost} Starshards</color> (you have {P.shards}) and fight wave {P.wave} again."
+                                  : $"Rewinding to before the fall takes <color=#FFE68C>{cost} Starshards</color>; you have {P.shards}. Bosses, Trials, quests and Feats pay them.", 18);
+            I.Line(box, -170, $"Or rewind to your last mark in time ({mark}): the town as it was then, wave 1, this run lost.", 16, new Color(0.85f, 0.8f, 0.88f));
             float y = 26;
             if (ad)
             {
-                I.Choice(box, "F_Ad", new Vector2(-170, y), new Vector2(300, 56), "Watch an ad to restore", () => { I.ShowSettings(false); g.WatchAdToRestore(); }, null, true);
-                I.Choice(box, "F_Over", new Vector2(170, y), new Vector2(300, 56), "Give up the run", () => ShowFallen(true));
+                I.BtnAt("F_Ad", new Vector2(0.5f, 0), new Vector2(-175, y), new Vector2(310, 56), () => { I.ShowSettings(false); g.WatchAdToRestore(); }, null, out var al, box, "timestop", true); al.text = "Watch an ad to rewind";
             }
             else
             {
-                I.BtnAt("F_Pay", new Vector2(0.5f, 0), new Vector2(-170, y), new Vector2(300, 56), () => { I.ShowSettings(false); g.RestoreFallen(true); }, () => g.CanPayRestore, out var pl, box, "starshard", true);
-                pl.text = $"Restore for {cost}";
-                I.Choice(box, "F_Over", new Vector2(170, y), new Vector2(300, 56), "Give up the run", () => ShowFallen(true));
+                I.BtnAt("F_Pay", new Vector2(0.5f, 0), new Vector2(-175, y), new Vector2(310, 56), () => { I.ShowSettings(false); g.RestoreFallen(true); }, () => g.CanPayRestore, out var pl, box, "starshard", true);
+                pl.text = $"Rewind  ·  {cost}";
             }
+            I.BtnAt("F_Over", new Vector2(0.5f, 0), new Vector2(175, y), new Vector2(310, 56), () => ShowFallen(true), null, out var ol, box, "timestop"); ol.text = $"Rewind to {(P.ascensions > 0 ? "Ascension " + P.ascensions : "the start")}";
         }
 
         // the Eternal City (Ascension 10, js/game.js): the climb's ending, said once; the game goes on
@@ -792,19 +803,20 @@ namespace Hearthgate.Game
             Time.timeScale = 0;   // the fight waits while the menu is open
             var dim = Box("SettingsDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, 0.55f); settingsBox = dim;
-            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 550));   // tall enough for every control row above the stamp
+            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 650));   // tall enough for the two level rows and every control row above the stamp
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = "Settings";
-            BtnAt("S_Music", new Vector2(0.5f, 1), new Vector2(-140, -76), new Vector2(250, 56), () => { Sound.SetMusic(!Sound.MusicOn); RefreshSettings(); }, null, out musicLbl, box);
-            BtnAt("S_Sfx", new Vector2(0.5f, 1), new Vector2(140, -76), new Vector2(250, 56), () => { Sound.SetSfx(!Sound.SfxOn); RefreshSettings(); }, null, out sfxLbl, box);
-            var ct = Label("Controls", box, new Vector2(0.5f, 1), new Vector2(0, -148), 22, TextAnchor.UpperCenter); ct.text = "Controls";
+            levelRows.Clear();
+            LevelRow(box, -78, "Music", () => Sound.MusicLevel, Sound.SetMusicLevel);
+            LevelRow(box, -136, "Sound effects", () => Sound.SfxLevel, v => { Sound.SetSfxLevel(v); Sound.Click(); });
+            var ct = Label("Controls", box, new Vector2(0.5f, 1), new Vector2(0, -200), 22, TextAnchor.UpperCenter); ct.text = "Controls";
             string[,] rows = {
                 { "U", "Upgrade the towers" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
                 { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
-                { "X", "Start a Surge at the fountain" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
+                { "X", "Start a Surge at the fountain" }, { "F", "Stop time (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
             for (int k = 0; k < rows.GetLength(0); k++)
             {
-                float y = -186 - k * 26;
+                float y = -238 - k * 26;
                 var key = Label("K" + k, box, new Vector2(0.5f, 1), new Vector2(-30, y), 17, TextAnchor.UpperRight); key.font = body; key.color = RES; key.text = rows[k, 0];
                 key.rectTransform.pivot = new Vector2(1, 1); key.rectTransform.sizeDelta = new Vector2(200, 24);
                 var what = Label("W" + k, box, new Vector2(0.5f, 1), new Vector2(-10, y), 17, TextAnchor.UpperLeft); what.font = body; what.text = rows[k, 1];
@@ -816,10 +828,32 @@ namespace Hearthgate.Game
             cl.text = "Back to the game";
             RefreshSettings();
         }
+        // a level: its name, a minus, a bar in ten steps (a press on the bar sets it there), a plus and the percentage
+        readonly System.Collections.Generic.List<(Image fill, Text pct, System.Func<float> get)> levelRows = new System.Collections.Generic.List<(Image, Text, System.Func<float>)>();
+        void LevelRow(RectTransform box, float y, string name, System.Func<float> get, System.Action<float> set)
+        {
+            var nl = Label("LN" + name, box, new Vector2(0.5f, 1), new Vector2(-270, y - 14), 20, TextAnchor.MiddleLeft); nl.font = body; nl.text = name;
+            nl.rectTransform.pivot = new Vector2(0, 0.5f); nl.rectTransform.sizeDelta = new Vector2(150, 30);
+            BtnAt("LM" + name, new Vector2(0.5f, 1), new Vector2(-75, y), new Vector2(48, 48), () => { set(get() - 0.1f); RefreshSettings(); }, () => get() > 0, out var ml, box).rt.pivot = new Vector2(0.5f, 1); ml.text = "-";
+            var bar = Box("LB" + name, box, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(45, y - 12), new Vector2(170, 24)); bar.pivot = new Vector2(0.5f, 1);
+            var bi = bar.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 8, 2); bi.type = Image.Type.Sliced;
+            var fb = Box("Fill", bar, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-6, -6));
+            var fill = fb.gameObject.AddComponent<Image>(); fill.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
+            fill.type = Image.Type.Filled; fill.fillMethod = Image.FillMethod.Horizontal; fill.color = RES; fill.raycastTarget = false;
+            Press(bar, () =>
+            {
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(bar, PointerPos, null, out var lp);
+                set(Mathf.Clamp01((lp.x + bar.rect.width * bar.pivot.x) / bar.rect.width)); RefreshSettings();
+            }, null);
+            BtnAt("LP" + name, new Vector2(0.5f, 1), new Vector2(165, y), new Vector2(48, 48), () => { set(get() + 0.1f); RefreshSettings(); }, () => get() < 1, out var pl, box).rt.pivot = new Vector2(0.5f, 1); pl.text = "+";
+            var pc = Label("LP%" + name, box, new Vector2(0.5f, 1), new Vector2(200, y - 14), 18, TextAnchor.MiddleLeft); pc.font = body;
+            pc.rectTransform.pivot = new Vector2(0, 0.5f); pc.rectTransform.sizeDelta = new Vector2(70, 30);
+            levelRows.Add((fill, pc, get));
+        }
         void RefreshSettings()
         {
             if (!settingsBox) return;
-            musicLbl.text = "Music: " + (Sound.MusicOn ? "on" : "off"); sfxLbl.text = "Sound effects: " + (Sound.SfxOn ? "on" : "off");
+            foreach (var (fill, pct, get) in levelRows) if (fill) { float v = get(); fill.fillAmount = v; pct.text = v <= 0 ? "Off" : $"{Mathf.RoundToInt(v * 100)}%"; }
         }
 
         // a gate stage asks for one of two upgrades
