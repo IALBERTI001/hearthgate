@@ -543,7 +543,7 @@ namespace Hearthgate.Game
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
-                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : "  <color=#CFE9B0>Rebuild</color>"), g.CanWork(bi), now);
+                Show(dockBld, built ? HG.ById(id).name : "Rebuild", HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : $"  <color=#E8DCEF>{HG.ById(id).name}</color>"), g.CanWork(bi), now);
                 dockBld.cost.supportRichText = true;
                 if (!bldBadge) bldBadge = Badge(dockBld.p.rt);
                 int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
