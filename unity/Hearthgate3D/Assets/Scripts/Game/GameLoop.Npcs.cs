@@ -75,7 +75,7 @@ namespace Hearthgate.Game
                 var at = near || i == TRAINER ? TalkAt(i) + Vector3.up * (2.5f + (i == TRAINER ? 0 : Field.FLOOR)) : Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 1.6f);
                 float sc = near ? 1.0f : wz && wz.On ? 1.7f : 3.4f;
                 marks[k].position = at + Vector3.up * Mathf.Sin(npcT * 2.4f + k) * 0.15f * sc;
-                var cam = Camera.main; if (cam) { var d = marks[k].position - cam.transform.position; if (d.sqrMagnitude > 0.01f) marks[k].rotation = Quaternion.LookRotation(d) * (art.markExcl ? art.markExcl.transform.rotation : Quaternion.identity); }   // times the import's own root turn (without it the sign lay flat: a stick from above)   // full billboard: from the high cameras a yaw-only sign was edge-on, a stick
+                var cam = Camera.main; if (cam) { var d = marks[k].position - cam.transform.position; if (d.sqrMagnitude > 0.01f) marks[k].rotation = Quaternion.LookRotation(d); }   // full billboard: from the high cameras a yaw-only sign was edge-on, a stick
                 marks[k].localScale = Vector3.one * sc * (1f + 0.05f * Mathf.Sin(npcT * 5f));
             }
         }
