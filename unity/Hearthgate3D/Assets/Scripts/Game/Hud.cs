@@ -590,7 +590,7 @@ namespace Hearthgate.Game
                 else if (HG.RestoreOffer(P).Contains(id)) { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, now); }
                 else { work.icon.sprite = Icon("rebuild") ?? work.icon.sprite; Show(work, $"The {b.name} lies in ruins", null, false, now); }
             }
-            foreach (var a in acts) if (a.glow && a.p.rt) { var c = a.glow.color; c.a = a.primary ? 0.4f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f) : 0f; a.glow.color = c; }
+            foreach (var a in acts) if (a.glow && a.p.rt) { var c = a.glow.color; c.a = a.primary && Guide.Pressing == null ? 0.4f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f) : 0f; a.glow.color = c; }   // while the Magister points, only his button glows
             // the Magister: his line on the card, and the button he names lit up bright
             Guide.Tick(Time.unscaledDeltaTime, txt => { guide.title.text = txt; guide.p.rt.gameObject.SetActive(true); }, () => guide.p.rt.gameObject.SetActive(false));
             var pt = Guide.Pressing == "up" ? up : Guide.Pressing == "re" ? re : Guide.Pressing == "walk" ? walk : null;
