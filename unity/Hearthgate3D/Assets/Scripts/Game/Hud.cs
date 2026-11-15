@@ -572,7 +572,7 @@ namespace Hearthgate.Game
             }
             if (g.ev != null) rate.text += (rate.text.Length > 0 ? "  ·  " : "") + $"<color=#FFB8E6>{g.ev.name}</color>";   // the named wave, on the same line
             float now = Time.unscaledTime;
-            Show(up, "Upgrade towers", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
+            Show(up, "Upgrade defenses", HG.Fmt(g.UpgradeCost), g.CanUpgrade, now);
             var nb = g.NextBuilding;
             if (nb != null) { re.icon.sprite = Icon("rebuild") ?? re.icon.sprite; Show(re, $"Rebuild {HG.ById(nb).name}", HG.Fmt(g.RestoreCost), g.CanRestore, now); }
             else
@@ -854,7 +854,7 @@ namespace Hearthgate.Game
             LevelRow(box, -136, "Sound effects", () => Sound.SfxLevel, v => { Sound.SetSfxLevel(v); Sound.Click(); });
             var ct = Label("Controls", box, new Vector2(0.5f, 1), new Vector2(0, -200), 22, TextAnchor.UpperCenter); ct.text = "Controls";
             string[,] rows = {
-                { "U", "Upgrade the towers" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
+                { "U", "Upgrade the defenses (towers and walls)" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
                 { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
                 { "X", "Start a Surge at the fountain" }, { "F", "Stop time, on the town walk (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
             for (int k = 0; k < rows.GetLength(0); k++)

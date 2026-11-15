@@ -242,20 +242,29 @@ namespace Hearthgate.Core
         public static double KillRes(int wave, bool boss, Bonus b) => Math.Ceiling(4 * Math.Pow(1.12, wave - 1) * (boss ? 25 : 1) * (1 + b["res"]) * b.ascend);
 
         // ---------- the city makes Resonance ----------
-        public static readonly int[] MILESTONES = { 10, 25, 50, 100 };
+        // each milestone doubles a building's output; level 5 joins them so the first doubling is in reach early (owner,
+        // Nov 14 2026: "there is no reason to upgrade to level 10 any of the first few buildings")
+        public static readonly int[] MILESTONES = { 5, 10, 25, 50, 100 };
+        // the first buildings pay more than the 2.7x ladder gave them: on creation the Forge made 0.09/s against a fight that
+        // paid about 5/s ("the first couple of buildings give close to nothing on creation"). Each now pays for itself in
+        // 30 s (Forge), 60 s, 100 s and 180 s instead of 333 s; from the fifth building on the ladder is as it was.
+        static readonly double[] EARLY = { 11, 5.5, 3.3, 1.8 };
+        public static double BaseRate(int idx) => CITY_BASE * Math.Pow(2.7, idx) * (idx < EARLY.Length ? EARLY[idx] : 1);
+        public const double LEVEL_PAYBACK = 133;   // a level costs about this many seconds of the building's level-1 output
         public const double CITY_BASE = 0.09, LEVEL_COST = 0.4, OFFLINE_CAP_H = 8, OFFLINE_WAVE_S = 60;
         public static int LevelOf(Profile p, string id) => p.restored.Contains(id) ? Math.Max(1, p.LevelAt(id)) : 0;
         public static double BuildingRate(Profile p, string id, Bonus b, int lvl = 0)
         {
             int idx = p.restored.IndexOf(id); if (idx < 0) return 0;
             int L = lvl > 0 ? lvl : LevelOf(p, id), dbl = MILESTONES.Count(m => L >= m);
-            return CITY_BASE * Math.Pow(2.7, idx) * L * Math.Pow(2, dbl) * b.ascend * (1 + b["city"]) * (p.ascensions >= 2 ? 1.25 : 1);
+            return BaseRate(idx) * L * Math.Pow(2, dbl) * b.ascend * (1 + b["city"]) * (p.ascensions >= 2 ? 1.25 : 1);
         }
         public static double CityRate(Profile p, Bonus b) => p.restored.Sum(id => BuildingRate(p, id, b));
         public static double LevelCost(Profile p, string id, Bonus b)
         {
             int idx = p.restored.IndexOf(id); if (idx < 0) return double.PositiveInfinity;
-            return Math.Floor(RestoreCost(idx) * LEVEL_COST * Math.Pow(1.15, LevelOf(p, id) - 1) * (1 - b["upgradeDiscount"]));
+            // priced from what a level pays, so an early building's levels are no cheaper per unit of income than a late one's
+            return Math.Floor(BaseRate(idx) * LEVEL_PAYBACK * Math.Pow(1.15, LevelOf(p, id) - 1) * (1 - b["upgradeDiscount"]));
         }
 
         // ---------- enemy roles ----------
@@ -412,7 +421,7 @@ namespace Hearthgate.Core
         public static readonly QuestDef[] QUESTS =
         {
             new QuestDef { id = "kills", text = "Defeat {n} enemies", need = 150 }, new QuestDef { id = "waves", text = "Clear {n} waves", need = 8 },
-            new QuestDef { id = "upgrade", text = "Upgrade the towers {n} times", need = 8 }, new QuestDef { id = "combo", text = "Land {n} combos", need = 40 },
+            new QuestDef { id = "upgrade", text = "Upgrade the defenses {n} times", need = 8 }, new QuestDef { id = "combo", text = "Land {n} combos", need = 40 },
             new QuestDef { id = "shatter", text = "Trigger SHATTER {n} times", need = 15 }, new QuestDef { id = "level", text = "Level up buildings {n} times", need = 6 },
             new QuestDef { id = "boss", text = "Defeat a boss", need = 1 }, new QuestDef { id = "surge", text = "Start a Surge", need = 1 },
         };
@@ -450,7 +459,7 @@ namespace Hearthgate.Core
             foreach (var (n, nm, t) in new[] { (25, "Butterfly Net", 1), (200, "Meadow Keeper", 2) }) F("flies" + n, nm, t, $"Catch {n} butterflies", p => p.Stat("flies"), n);
             F("garden", "Butterfly Garden", 3, "Catch every kind of butterfly", p => p.flies.Count, BUTTERFLIES.Length);
             F("bestiary", "Monster Scholar", 2, "Meet every kind of enemy", p => p.seenRoles.Count(r => ROLES.ContainsKey(r)), ROLES.Count);
-            foreach (var (n, nm, t) in new[] { (25, "Iron Ramparts", 1), (50, "Steel Ramparts", 2), (100, "Starforged Ramparts", 3) }) F("gate" + n, nm, t, $"Upgrade the towers to level {n}", p => p.gateLevel, n);
+            foreach (var (n, nm, t) in new[] { (25, "Iron Ramparts", 1), (50, "Steel Ramparts", 2), (100, "Starforged Ramparts", 3) }) F("gate" + n, nm, t, $"Upgrade the defenses to level {n}", p => p.gateLevel, n);
             foreach (var (n, nm, t) in new[] { (10, "Humming Halls", 1), (25, "Resonant", 2), (50, "Heart of the City", 3) }) F("blvl" + n, nm, t, $"Get one building to level {n}", p => p.restored.Count == 0 ? 0 : p.restored.Max(id => p.LevelAt(id)), n);
             int buyable = SHOP.Count(l => l.price > 0);
             foreach (var (n, nm, t) in new[] { (3, "New Look", 1), (10, "Collector", 2), (buyable, "Grand Wardrobe", 3) }) F("looks" + n, nm, t, n == buyable ? "Buy every look in the Shop" : $"Buy {n} looks", p => p.owned.Count, n);
