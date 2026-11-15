@@ -125,7 +125,9 @@ namespace Hearthgate.EditorTools
                 foreach (var p in road.Select(p => (Vector2)cam.WorldToViewportPoint(p)))
                 {
                     if (p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) { bad.Add($"{w}x{h}: a lane leaves the view at {p}"); break; }
-                    var hit = hud.FirstOrDefault(x => x.Item2.Contains(p));
+                    // the bottom row (Settings, the walk button) may sit over a lane's first metres as it enters a very wide view,
+                    // where an enemy has only just appeared (the owner's placement, Nov 14-15 2026); higher up it never may
+                    var hit = hud.FirstOrDefault(x => x.Item2.Contains(p) && !(x.Item1 == "walk button" && p.y < 0.08f));
                     if (hit.Item1 != null) { bad.Add($"{w}x{h}: a lane runs under the {hit.Item1} at {p}"); break; }
                 }
                 Object.DestroyImmediate(cam.gameObject);
