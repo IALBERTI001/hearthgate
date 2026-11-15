@@ -15,7 +15,7 @@ namespace Hearthgate.Game
     {
         public class RadialItem
         {
-            public string label, icon, key; public bool cost; public System.Func<string> line;   // cost: the line is a price, drawn after the gem public System.Func<bool> can, lit; public System.Action act; public bool closes;
+            public string label, icon, key; public bool cost; public System.Func<string> line; public System.Func<bool> can, lit; public System.Action act; public bool closes;   // cost: the line is a price, drawn after the gem
         }
         RectTransform ring; Vector2 ringAt; string ringId; float ringT; Rect ringReach;
         bool ringHeld; float ringHeldT; int ringSel = -1;   // the press that opened it is still held: a drag picks, the release chooses
