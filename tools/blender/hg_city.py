@@ -461,7 +461,7 @@ def ruin_of(bid):
         for k in range(5): crate(R.uniform(-hx + 1, hx - 1), R.uniform(-hy + 0.8, -1.9), 0.9)   # clear of the counter's spot
     for k in range(4):   # fallen, charred beams
         o = block((R.choice((-1, 1)) * R.uniform(w / 4, w / 2 - 0.9), R.uniform(0.3, d / 3), FLOOR + 0.5), (0.22, 0.22, R.uniform(2.0, 3.0)), M('char'), 0.0)   # to the sides: the keeper stands in the middle
-        o.rotation_euler = (R.uniform(0.9, 1.3), 0, R.uniform(0, 3))
+        o.rotation_euler = (R.uniform(0.9, 1.3), 0, R.uniform(-0.4, 0.4))   # lying front to back along the side wall
     rubble(0.6, 1.0, 10, (w / 3, d / 4))
     for k in range(6): K.sphere('ember', 0.08, (R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.12), M('fire', 2.5), sub=1)
     # no baked smoke: balls in a stone colour read as rocks floating over the keeper (Nov 14 2026); the game raises live wisps (GameLoop.TickRuinSmoke)
