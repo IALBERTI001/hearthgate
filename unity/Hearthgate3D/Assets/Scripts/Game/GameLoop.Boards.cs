@@ -34,7 +34,7 @@ namespace Hearthgate.Game
                     var t = new GameObject("text", typeof(RectTransform)).AddComponent<Text>(); t.transform.SetParent(rt, false);
                     var tr = t.rectTransform; tr.anchorMin = Vector2.zero; tr.anchorMax = Vector2.one; tr.offsetMin = tr.offsetMax = Vector2.zero;
                     t.font = font ?? boardTxt[0].font; t.alignment = TextAnchor.MiddleCenter; t.supportRichText = true; t.fontSize = 34;
-                    t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow; t.lineSpacing = 0.9f;
+                    t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow; t.lineSpacing = 0.82f;
                     t.color = new Color(1f, 0.94f, 0.8f); t.raycastTarget = false;
                     var ol = t.gameObject.AddComponent<Outline>(); ol.effectColor = new Color(0.12f, 0.06f, 0.03f, 0.95f); ol.effectDistance = new Vector2(2f, -2f);
                     boardTxt[i] = t;
@@ -45,9 +45,9 @@ namespace Hearthgate.Game
                 var b = HG.ById(id); int L = HG.LevelOf(P, id); double r = HG.BuildingRate(P, id, B);
                 bool can = CanWork(i), near = wz && wz.On && wz.Near == i;
                 string rs = r < 10 ? r.ToString("0.#") : HG.Fmt(r);
-                string bottom = near ? $"<size=29><color=#FFE68C>E</color> Lv {L + 1} · {HG.Fmt(LevelCost(i))}</size>" : $"<size=38><color=#CFE9B0>+{rs}/s</color></size>";
+                string bottom = near ? $"<size=40><color=#FFE68C>E</color> Lv {L + 1} · {HG.Fmt(LevelCost(i))}</size>" : $"<size=46><color=#CFE9B0>+{rs}/s</color></size>";
                 string lv = can ? "#FFE68C" : "#E8C46A";
-                string s = $"<size=36>{b.name}</size>\n<size=66><color={lv}>Lv {L}</color></size>\n{bottom}";
+                string s = $"<size=48>{b.name}</size>\n<size=88><color={lv}>Lv {L}</color></size>\n{bottom}";
                 if (s != boardShown[i]) { bt.text = s; boardShown[i] = s; }
                 // a level within reach: the level breathes brighter (seen across the square)
                 float glow = can ? 0.5f + 0.5f * Mathf.Sin(Time.time * 4f + i) : 0f;

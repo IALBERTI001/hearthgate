@@ -104,7 +104,7 @@ namespace Hearthgate.Game
             ringSel = -1;
             if (off.magnitude > dead)
             {
-                float best = 70f;
+                float best = ringItems.Count == 1 ? 181f : 70f;   // a lone button takes a lean in any direction
                 for (int k = 0; k < ringItems.Count; k++) { float d = Vector2.Angle(off, ringItems[k].home); if (d < best) { best = d; ringSel = k; } }
             }
             if (Input.GetMouseButton(0)) return false;
@@ -169,6 +169,7 @@ namespace Hearthgate.Game
             });
             if (g.TimeStopLevel > 0)
                 items.Add(new RadialItem { label = "Stop time", icon = "timestop", key = "F", line = () => g.TimeStopReady ? "ready" : $"in {Mathf.CeilToInt(g.TimeStopLeft)} s", can = () => g.TimeStopReady, act = () => g.UseTimeStop() });
+            if (g.SurgeOpen && (g.SurgeReady || g.SurgeOn)) items.Add(new RadialItem { label = "Surge", icon = "fountain", key = "X", line = () => g.SurgeOn ? "flowing" : "x2 Resonance", can = () => g.SurgeReady, act = () => g.TapSurge(), lit = () => g.SurgeReady });   // the fountain from anywhere in town
             AddLedger(items, g);
             items.Add(new RadialItem { label = "Back to the walls", icon = "walk", key = "T", act = () => Wizard.I?.Toggle() });
             OpenRing("wiz", Vector3.zero, "The wizard", items);
