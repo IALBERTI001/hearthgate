@@ -161,6 +161,7 @@ namespace Hearthgate.Game
             ascIcon = ai.gameObject.AddComponent<Image>(); ascIcon.sprite = Icon("timestop"); ascIcon.preserveAspect = true; ascIcon.raycastTarget = false;
             ascTxt = Label("T", ascRow, new Vector2(0, 1), new Vector2(42, -1), 21, TextAnchor.UpperLeft); ascTxt.color = new Color(1f, 0.84f, 0.42f);
             ascTxt.rectTransform.pivot = new Vector2(0, 1); ascTxt.rectTransform.sizeDelta = new Vector2(144, 26);
+            ascTxt.horizontalOverflow = HorizontalWrapMode.Wrap; ascTxt.verticalOverflow = VerticalWrapMode.Truncate; ascTxt.resizeTextForBestFit = true; ascTxt.resizeTextMinSize = 13; ascTxt.resizeTextMaxSize = 21;   // fits the row, never runs past it
             ascSub = Label("S", ascRow, new Vector2(0, 1), new Vector2(42, -25), 14, TextAnchor.UpperLeft); ascSub.font = body; ascSub.color = new Color(0.86f, 0.8f, 0.9f);
             ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(144, 18);
             var ab = Box("Bar", ascRow, new Vector2(0, 0), new Vector2(0, 0), new Vector2(42, 1), new Vector2(140, 5)); ab.pivot = Vector2.zero;
@@ -571,7 +572,7 @@ namespace Hearthgate.Game
             bool pk = P.ascensions > 0; if (perkRow.gameObject.activeSelf != pk) perkRow.gameObject.SetActive(pk);
             {   // the Ascension row
                 int aw = HG.AscendWave(P), reach = Mathf.Max(P.runWave, P.wave);
-                ascTxt.text = P.ascensions > 0 ? $"Ascension {Roman(P.ascensions)}" : "No Ascension yet";
+                ascTxt.text = P.ascensions > 0 ? $"Ascension {Roman(P.ascensions)}" : "First Ascension";
                 ascSub.text = reach >= aw ? (HG.CityWhole(P) ? "Ready to ascend!" : "Rebuild the city to ascend") : $"Next at wave {aw}";
                 ascBar.fillAmount = Mathf.Clamp01(reach / (float)aw);
                 bool ready = g.CanAscend; ascSub.color = ready ? new Color(1f, 0.9f, 0.5f) : new Color(0.86f, 0.8f, 0.9f);
