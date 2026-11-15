@@ -11,7 +11,7 @@ namespace Hearthgate.Game
     public class Townsfolk : MonoBehaviour
     {
         const float SCALE = 0.62f;   // the kit builds them at the wizard's units: about 1.65 m tall
-        class Folk { public Transform t; public Gait gait; public int walk; public float s, speed, dir = 1, pause, step, yaw, phase; }
+        class Folk { public Transform t; public Gait gait; public int walk; public float s, speed, dir = 1, pause, step, yaw, phase; public Vector2 aside; }
         readonly List<Folk> folk = new List<Folk>();
         readonly List<float[]> lengths = new List<float[]>();
 
@@ -82,6 +82,14 @@ namespace Hearthgate.Game
                 float v = moving ? f.speed : 0f; f.gait.Tick(dt, v);
                 f.step += moving ? dt * f.speed * 8.5f : 0;
                 float hop = f.gait.HasLegs ? f.gait.Drop : moving ? Mathf.Abs(Mathf.Sin(f.step)) * 0.06f : 0;
+                // step aside when the wizard comes close, so he never walks through them (fresh-eyes review, Nov 14 2026)
+                var want2 = Vector2.zero;
+                if (wz && wz.On)
+                {
+                    var away = p - new Vector2(wz.Position.x, wz.Position.z); float dd = away.magnitude;
+                    if (dd < 1.2f) want2 = (dd > 0.01f ? away / dd : Vector2.right) * (1.2f - dd);
+                }
+                f.aside = Vector2.MoveTowards(f.aside, want2, 3f * dt); p += f.aside;
                 f.t.position = new Vector3(p.x, hop, p.y);
                 f.t.rotation = Quaternion.Euler(moving ? 4f : 0, f.yaw + (f.gait.HasLegs ? f.gait.Twist : 0f), f.gait.HasLegs || !moving ? 0 : Mathf.Sin(f.step) * 3.5f);
             }

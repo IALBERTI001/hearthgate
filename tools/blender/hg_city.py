@@ -463,6 +463,8 @@ def ruin_of(bid):
         o = block((R.choice((-1, 1)) * R.uniform(w / 4, w / 2 - 0.9), R.uniform(0.3, d / 3), FLOOR + 0.5), (0.22, 0.22, R.uniform(2.0, 3.0)), M('char'), 0.0)   # to the sides: the keeper stands in the middle
         o.rotation_euler = (R.uniform(0.9, 1.3), 0, R.uniform(-0.4, 0.4))   # lying front to back along the side wall
     rubble(0.6, 1.0, 10, (w / 3, d / 4))
+    for k in range(9):   # glowing cracks in the burnt floor: it reads as burnt, not as a missing texture (fresh-eyes review, Nov 14 2026)
+        block((R.uniform(-w / 2 + 0.8, w / 2 - 0.8), R.uniform(-d / 2 + 0.8, d / 2 - 0.8), PL + 0.045), (R.uniform(0.5, 1.1), 0.06, 0.02), M('fire', 1.8), 0.0, R.uniform(0, 3.14))
     for k in range(6): K.sphere('ember', 0.08, (R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.12), M('fire', 2.5), sub=1)
     # no baked smoke: balls in a stone colour read as rocks floating over the keeper (Nov 14 2026); the game raises live wisps (GameLoop.TickRuinSmoke)
     for (x, y) in ((-hx + 0.2, -hy - 0.5), (-hx + 2.2, -hy - 0.5)): block((x, y, 1.6), (0.1, 0.1, 3.2), M('wood'), 0.0)   # scaffolding

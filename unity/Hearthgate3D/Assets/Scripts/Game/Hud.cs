@@ -545,6 +545,7 @@ namespace Hearthgate.Game
             double r = HG.CityRate(P, g.B); rate.text = r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
+            if (g.Fallen) { gateBar.fillAmount = 0; gateTxt.text = "Walls broken"; }   // not a full bar behind the defeat card
             var bo = g.BossNow; if (bossBox.gameObject.activeSelf != (bo != null)) bossBox.gameObject.SetActive(bo != null);
             if (bo != null)
             {
@@ -588,6 +589,9 @@ namespace Hearthgate.Game
             Guide.Tick(Time.unscaledDeltaTime, txt => { guide.title.text = txt; guide.p.rt.gameObject.SetActive(true); }, () => guide.p.rt.gameObject.SetActive(false));
             var pt = Guide.Pressing == "up" ? up : Guide.Pressing == "re" ? re : Guide.Pressing == "walk" ? walk : null;
             if (pt != null && pt.glow) { var c = pt.glow.color; c.a = 0.7f + 0.3f * Mathf.Sin(Time.unscaledTime * 7f); pt.glow.color = c; }
+            // while the walls lie fallen the only choice is on the card: the buttons above it step aside (fresh-eyes review,
+            // Nov 14 2026: "Rebuild Forge" and "Upgrade towers" stayed live behind the defeat card)
+            bool fl = g.Fallen; foreach (var a in new[] { up, walk, re }) if (a.p.rt.gameObject.activeSelf == fl) a.p.rt.gameObject.SetActive(!fl);
             LayoutActions();
             Refit();
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
