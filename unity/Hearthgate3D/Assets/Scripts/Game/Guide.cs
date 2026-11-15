@@ -13,7 +13,7 @@ namespace Hearthgate.Game
         static readonly Dictionary<string, (string text, string press, string voice)[]> LINES = new Dictionary<string, (string, string, string)[]>
         {
             { "intro", new[] { ("Defend the city!", (string)null, "intro-1"), ("Press the gold Defenses button: stronger walls!", "up", null) } },
-            { "restore", new[] { ("Press Rebuild Forge: your towers catch fire!", "re", null) } },
+            { "restore", new[] { ("Press Rebuild Forge: your towers catch fire!", "re", (string)null) } },
             { "forge", new[] { ("Fire towers!", (string)null, "forge-1") } },
             { "frostSpire", new[] { ("Freeze, then burn: SHATTER!", (string)null, "frostSpire-2") } },
             { "stormBell", new[] { ("Lightning chains!", (string)null, "stormBell-1") } },
