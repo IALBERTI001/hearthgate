@@ -10,8 +10,11 @@ Desktop first (CrazyGames). Reference frame 1280 x 720; the player's HUD size (8
 | Wave, city income, the named wave | All the time | Top left, around Resonance | 0 |
 | Starshards, perk points | When spending | Top left row; a click explains each | 0 |
 | Ascension, progress to the next | All the time (the lasting progress) | Top left, gold row; hourglasses circle the fountain | 0 |
-| Upgrade defenses (U) | Every few seconds | Top right, the primary button | 1 |
-| Rebuild the next building / Ascend (R) | A few times a run | Top right | 1 |
+| Upgrade defenses (U) | Every few seconds | The gatehouse's ring (click the gatehouse); the U key anywhere | 1 (key) / 2 |
+| Defenses level | All the time | A plaque over the gate's arch | 0 |
+| Ascend | Once a run | The gatehouse's ring | 2 |
+| Rebuild the next building (R) / raise a building | A few times a run | The building's ring (click it); the R key | 1 (key) / 2 |
+| A tower's element and designs | Now and then | The tower's ring (click it) | 2 |
 | Walk the town / back to the walls (T) | Often | Top right | 1 |
 | Walls' health | All the time in a wave | Bottom centre bar | 0 |
 | Boss health | During a boss | Bottom centre, over the walls bar | 0 |
@@ -27,19 +30,21 @@ Desktop first (CrazyGames). Reference frame 1280 x 720; the player's HUD size (8
 | Element | Walls view | Town walk | Boss | Walls fallen | A card open |
 |---|---|---|---|---|---|
 | Top-left readouts | shown | shown | shown | shown | dimmed under the card |
-| Upgrade / Rebuild / Walk | shown | shown | shown | hidden | dimmed |
+| Walk the town button | shown | shown | shown | hidden | dimmed |
+| A ring (gatehouse, tower, building) | on a click | closes | on a click | closes | closes |
 | Walls bar | shown | shown | shown | "Walls broken" | dimmed |
 | Boss bar | - | - | shown (raised over the skill row on the walk) | hidden | dimmed |
 | Skill row (Time Stop) | hidden | shown | shown on the walk | hidden | hidden |
 | Building boards | - | the two nearest | as the walk | hidden | hidden |
-| Keeper ! and ? | over the roofs | over the heads | as before | hidden | - |
+| Keeper ? (an offer) and ! (a reward) | over the roofs | over the heads | as before | hidden | - |
 | Combat words | shown | only those on screen | shown | - | - |
 | Guide line, watch's call | bottom left | bottom left | bottom left | - | - |
 
 ## 3. Position rules
 
 - Resources and progress: top left, in the body face (bold); titles in the display face.
-- Actions: top right, kit buttons, keycap in the corner.
+- Actions on a thing: a ring of kit buttons around the thing (Kingdom Rush style), its title in a hub at the centre, kept whole on screen. The gold marker bobs over the gatehouse when the guide points there.
+- Other actions (Walk the town): top right, kit buttons, keycap in the corner.
 - Health: bottom centre (walls; a boss over it); the wizard's skills sit over the walls bar, on the walk.
 - Settings: bottom right, a kit button with its word.
 - Words from the guide and the watch: bottom left. Banners: under the top row, centred.
@@ -50,6 +55,7 @@ Desktop first (CrazyGames). Reference frame 1280 x 720; the player's HUD size (8
 | Element type | Motion | Goal |
 |---|---|---|
 | Every card (Settings, keepers, ledger, shop, perks) | Rises 26 px into place and fades in, 0.16 s | Consistency |
+| A ring | Its buttons slide out from the thing's centre and fade in, 0.14 s | Awareness |
 | Buttons | A small squeeze when pressed, a click; unavailable ones dim under a veil | Responsiveness |
 | The one button to press next | Its gold rim breathes; only it, while the guide points | Intention |
 | Resonance | Counts toward the new value | Responsiveness |
