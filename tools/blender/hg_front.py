@@ -770,7 +770,7 @@ def monster(name):
         bsphere('sack', 0.48, (0, 0.55, 1.35), M('canvas'), (1, 1, 1.05), 3); bcyl('tie', 0.14, 0.12, (0, 0.55, 1.86), M('wood_dk'), 10, 0.0)
         for (x, y, z) in ((0.24, 0.1, 1.55), (-0.18, 0.25, 1.75), (0.05, 0.05, 1.82)): bcyl('coin', 0.1, 0.03, (x, y, z), M('gold', 0.6), 12, 0.0)
     elif name == 'splitter': _remap({'slime_gloss': 'roof_purple', 'slime_dk': 'robe_dk'})
-    elif name == 'mender': _remap({'slime_gloss': 'bush', 'slime_dk': 'grass2'})
+    elif name == 'mender': _remap({'slime_gloss': 'teal', 'slime_dk': 'water_gloss'})   # jade, not grass green: it vanished on the fields (fresh-eyes review 2)
     elif name == 'leech': _remap({'slime_gloss': 'leech_gloss', 'slime_dk': 'char'})
     elif name == 'bomber':
         _remap({'slime_gloss': 'pupil', 'slime_dk': 'char'})
