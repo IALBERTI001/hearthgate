@@ -19,7 +19,7 @@ ICONS = {
     'gear': (None, 0, 0.9),   # the settings cog, modelled here: a brass wheel with eight teeth and a dark hub
     'ascend': (None, 0, 0.9),   # Ascend: a rising double chevron over a halo, modelled here
     'starshard': (None, 0, 0.9),   # Starshards: a gold star (owner, Nov 14 2026: "starshards should be the perks logo. Its a star after all")
-    'shard': (None, 0, 0.85),   # perk points: the rose crystal (owner: "perks can be the starshards logo")
+    'shard': (None, 0, 1.0),   # perk points: the rose crystal (owner: "perks can be the starshards logo")
     'shop': ('building_market', 205, 0.95),   # the Market keeps the Shop
     'quests': ('building_library', 205, 0.95),   # the Library keeps the quests
     'fountain': ('fountain', 200, 0.92),      # the Surge board
@@ -138,11 +138,11 @@ def render(name, model, yaw, fill):
     co = bpy.data.objects.new('cam', cam); sc.collection.objects.link(co); sc.camera = co
     d = Vector((0.0, -1.0, 0.45)).normalized()   # from the front, a little above (flatter: a clearer silhouette for a glyph)
     co.location = centre + d * size * 2; co.rotation_euler = (centre - co.location).to_track_quat('-Z', 'Y').to_euler()
-    sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 2.6; sun.color = (1.0, 0.93, 0.82)
+    sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 3.0; sun.color = (1.0, 0.93, 0.82)
     so = bpy.data.objects.new('sun', sun); sc.collection.objects.link(so)
     so.rotation_euler = Vector((-0.5, 0.45, -0.75)).normalized().to_track_quat('-Z', 'Y').to_euler()
     w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True
-    bg = w.node_tree.nodes['Background']; bg.inputs['Color'].default_value = (0.75, 0.72, 0.85, 1); bg.inputs['Strength'].default_value = 1.35
+    bg = w.node_tree.nodes['Background']; bg.inputs['Color'].default_value = (0.75, 0.72, 0.85, 1); bg.inputs['Strength'].default_value = 1.0
     eng = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items]
     sc.render.engine = 'BLENDER_EEVEE' if 'BLENDER_EEVEE' in eng else 'BLENDER_EEVEE_NEXT'
     sc.render.resolution_x = sc.render.resolution_y = 192; sc.render.film_transparent = True
