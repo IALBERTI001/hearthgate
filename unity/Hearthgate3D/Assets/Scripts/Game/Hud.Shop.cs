@@ -71,7 +71,8 @@ namespace Hearthgate.Game
                 I.Choice(sb, "T_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
                 return;
             }
-            var box = I.Modal(names[xs.IndexOf(n)], new Vector2(720, 470));
+            var looks = HG.SHOP.Where(l => l.cat == "tower" && l.el == cur).ToArray();
+            var box = I.Modal(names[xs.IndexOf(n)], new Vector2(720, looks.Length > 0 ? 470 : 340));   // no designs row: no empty band above the close button
             I.Line(box, -62, els.Length == 0 ? "Rebuild the Forge, the Frost Spire or the Storm Bell to give the towers an element." : "What it shoots. Any element the city has can go on any tower.", 18, new Color(0.88f, 0.84f, 0.9f));
             var opts = new List<string> { "" }; opts.AddRange(els);
             float w = opts.Count > 4 ? 128 : 150, gap = 8, x0 = -(opts.Count - 1) * (w + gap) / 2;
@@ -86,7 +87,6 @@ namespace Hearthgate.Game
                 I.BtnAt("ElAll", new Vector2(0.5f, 1), new Vector2(0, -170), new Vector2(330, 50), () => { g.SetTowerEl(n, pick, true); ShowTower(n); }, () => P.towerEl.Any(e => e != pick), out var al, box).rt.pivot = new Vector2(0.5f, 1);
                 al.text = $"Make all four {(pick == "" ? "Auto" : ElName(pick))}";
             }
-            var looks = HG.SHOP.Where(l => l.cat == "tower" && l.el == cur).ToArray();
             I.Line(box, -248, looks.Length == 0 ? $"{ElName(cur)} towers have no designs yet." : $"{ElName(cur)} designs", 20);
             string worn = cur == "none" ? "" : g.TowerLook(n, cur);
             for (int k = 0; k < looks.Length; k++)
