@@ -188,7 +188,8 @@ namespace Hearthgate.Game
             {
                 if (cam) { var d = t.position - cam.transform.position; t.rotation = Quaternion.LookRotation(d); }   // its face (-Z) to the camera
                 float k = u < 0.35f ? Mathf.SmoothStep(0, 1, u / 0.35f) : u > life - 0.5f ? Mathf.SmoothStep(0, 1, (life - u) / 0.5f) : 1f;
-                t.localScale = Vector3.one * scale * k;
+                float settle = forward ? Mathf.SmoothStep(0, 1, (u - 1.0f) / 0.6f) : 0f;   // Time Stop: after its first lurch the dial rises and shrinks, so the frozen field shows (fresh-eyes review 2)
+                t.localScale = Vector3.one * scale * k * Mathf.Lerp(1f, 0.55f, settle); t.position = at + Vector3.up * 4.5f * settle;
                 float spin = forward ? (u < 0.5f ? 360f : 12f) : -720f;   // Time Stop: the hands lurch, then crawl; a rewind: they race backward
                 if (hm) hm.Rotate(t.forward, spin * Time.unscaledDeltaTime, Space.World);
                 if (hh) hh.Rotate(t.forward, spin / 12f * Time.unscaledDeltaTime, Space.World);
