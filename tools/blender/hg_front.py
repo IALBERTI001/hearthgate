@@ -607,7 +607,7 @@ def beetle(kind='beetle'):
         for s in (-1, 1):
             for v in (-0.45, 0.0, 0.45):
                 p, n = _shell(s, 0.55, v)
-                K.cone('fin', 0.13, 0.75, tuple(p + n * 0.24), M('roof_red'), 4).rotation_euler = _aim(Vector((s * 0.35, 1.0, 0.45)))
+                K.cone('fin', 0.13, 0.75, tuple(p + n * 0.24), M('roof_red'), 4).rotation_euler = _aim(Vector((s * 0.35, -1.0, 0.45)))   # (a cone's tip runs along -aim here: tips sweep back)
     if kind == 'swarm':   # the Swarmlord: spined ridges down both wing cases, a burning glare
         for s in (-1, 1):
             for v in (-0.6, -0.25, 0.1, 0.45, 0.75):
