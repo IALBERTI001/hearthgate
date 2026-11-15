@@ -83,6 +83,11 @@ namespace Hearthgate.Game
                 if (t >= life) { Destroy(txt.gameObject); pops.RemoveAt(i); continue; }
                 pops[i] = (txt, at, t, life);
                 var sp = cam.WorldToScreenPoint(at + Vector3.up * t * 1.2f);
+                // behind the camera, or well off the screen, a word is not shown: projected from behind it came out mirrored
+                // over the square on the town walk ("SHIELD BROKEN" from a fight outside the walls, Nov 14 2026)
+                bool seen = sp.z > 0 && sp.x > -60 && sp.x < Screen.width + 60 && sp.y > -60 && sp.y < Screen.height + 60;
+                if (txt.enabled != seen) txt.enabled = seen;
+                if (!seen) continue;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(popLayer, sp, null, out var lp);
                 float half = txt.preferredWidth * 0.55f + 8f, edge = popLayer.rect.width * 0.5f;   // a word near the edge slides in, never cut off
                 lp.x = Mathf.Clamp(lp.x, -edge + half, Mathf.Max(-edge + half, edge - half));
