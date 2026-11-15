@@ -242,7 +242,7 @@ namespace Hearthgate.Game
             // settings (game-polish rule 19: the controls inside the game, the music and sound levels): a full button of the
             // kit like every other, its cog, its word and its key, in the bottom-right corner (owner, Nov 14 2026: "settings
             // button does not have settings written on it. It should match the other buttons. Consistency")
-            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-12, 12), new Vector2(150, 50), "gear", null, () => ShowSettings(true), null, false);   // no keycap: P is listed inside, and the corner stays clear of the lanes (LayoutCheck)
+            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-12, 10), new Vector2(150, 46), "gear", null, () => ShowSettings(true), null, false);   // no keycap: P is listed inside, and the corner stays clear of the lanes (LayoutCheck)
             gear.title.text = "Settings"; gear.title.fontSize = 19; gear.title.rectTransform.anchoredPosition = new Vector2(gear.title.rectTransform.anchoredPosition.x, 0);   // one line, centred (no cost row)
 
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
@@ -506,7 +506,7 @@ namespace Hearthgate.Game
                 if (r.anchorMin != anchor) { r.anchorMin = r.anchorMax = r.pivot = anchor; }
                 r.sizeDelta = size; r.anchoredPosition = at;
             }
-            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-(EDGE + 150 + GAP), 10), new Vector2(WALK_W, 46));   // low: clear of the lane that enters the view at 2.2:1 (LayoutCheck)
+            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-(12 + 150 + GAP), 10), new Vector2(WALK_W, 46));   // low: clear of the lane that enters the view at 2.2:1 (LayoutCheck)
             bool ts = tsAct != null && tsAct.p.rt.gameObject.activeSelf, upOn = up.p.rt.gameObject.activeSelf;
             if (upOn) Place(up.p.rt, new Vector2(0.5f, 0), new Vector2(ts ? -(SKILL_W2 / 2 + GAP / 2) : 0, SKILL_Y), new Vector2(SKILL_W2, 56));
             if (ts) tsAct.p.rt.anchoredPosition = new Vector2(upOn ? SKILL_W2 / 2 + GAP / 2 : 0, SKILL_Y);
