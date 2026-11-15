@@ -23,7 +23,7 @@ namespace Hearthgate.Game
         // the steward's booth across the fountain from the Chronomancer (owner, Nov 14 2026: "set a small management booth or
         // something to have the player walk up and get the whole picture of the town to upgrade buildings"): he stands behind
         // his counter; the counter stands toward the gate
-        public static readonly Vector3 STEWARD_AT = Field.PLAZA + new Vector3(-4.6f, 0, 0.2f), BOOTH_AT = STEWARD_AT + new Vector3(0, 0, 0.8f);
+        public static readonly Vector3 STEWARD_AT = Field.PLAZA + new Vector3(-6.8f, 0, 0.2f), BOOTH_AT = STEWARD_AT + new Vector3(0, 0, 0.8f);
         public static bool InSquare(int i) => i == TRAINER || i == STEWARD;
         public bool StewardHere => P.restored.Count >= 1 || P.ascensions > 0;
         GameObject stewardObj, boothObj;
