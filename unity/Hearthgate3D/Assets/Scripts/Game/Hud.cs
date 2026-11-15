@@ -334,6 +334,20 @@ namespace Hearthgate.Game
             var c = new Vector2(cv.rect.width * 0.5f + bt.anchoredPosition.x, cv.rect.height + bt.anchoredPosition.y + (0.5f - bt.pivot.y) * h);
             return new Rect(c.x - w * 0.5f, c.y - h * 0.5f, w, h);
         }
+        // is a point on the screen under the always-on HUD (the readouts' shade, the top-right actions)? A sign in the world
+        // that falls there steps back rather than show half under the numbers (QA Nov 15 2026: the library's "?" sat over the
+        // Resonance readout from the walls)
+        public static bool UnderHud(Vector2 sp, float pad = 30f)
+        {
+            if (!I) return false;
+            foreach (Transform t in I.transform)
+            {
+                if (!(t.name == "Shade" || (I.walk != null && t == I.walk.p.rt) || (I.work != null && t == I.work.p.rt)) || !t.gameObject.activeInHierarchy) continue;
+                var c = new Vector3[4]; ((RectTransform)t).GetWorldCorners(c);   // screen space overlay: world corners are pixels
+                if (sp.x > c[0].x - pad && sp.x < c[2].x + pad && sp.y > c[0].y - pad && sp.y < c[2].y + pad) return true;
+            }
+            return false;
+        }
         static Rect Bounds(RectTransform r) { var s = r.sizeDelta; var p = r.anchoredPosition - Vector2.Scale(r.pivot, s); return new Rect(p, s); }
 
         // where the pointer is: a touch's own position when there is one (the mouse position Unity simulates from a touch can

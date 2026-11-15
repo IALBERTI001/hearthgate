@@ -99,6 +99,7 @@ namespace Hearthgate.Game
                 marks[k].position = at + Vector3.up * Mathf.Sin(npcT * 2.4f + k) * 0.15f * sc;
                 var cam = Camera.main; if (cam) { var d = marks[k].position - cam.transform.position; if (d.sqrMagnitude > 0.01f) marks[k].rotation = Quaternion.LookRotation(d); }   // full billboard: from the high cameras a yaw-only sign was edge-on, a stick
                 marks[k].localScale = Vector3.one * sc * (1f + 0.05f * Mathf.Sin(npcT * 5f));
+                if (cam) { var sp = cam.WorldToScreenPoint(marks[k].position); bool hide = sp.z > 0 && Hud.UnderHud(sp); if (marks[k].gameObject.activeSelf == hide) marks[k].gameObject.SetActive(!hide); }
             }
         }
         GameObject SpawnKeeper(string kind, Vector3 at, Vector2 face)
