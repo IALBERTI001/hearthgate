@@ -126,9 +126,13 @@ namespace Hearthgate.Game
                 for (int i = 0; i < 4; i++) spawnZ[i] = Field.SpawnProgress(i, Camera.main);
                 spawnW = Screen.width; spawnH = Screen.height;
             }
-            return spawnZ[k] > 0 ? spawnZ[k] : Field.LaneLen(k) + 4f;
+            return (spawnZ[k] > 0 ? spawnZ[k] : Field.LaneLen(k) + 4f) * SPAWN_IN;
         }
-        public const float RIFT_OUT = 6f;   // the rifts stand this far out past the walls view's bottom edge, out of its sight
+        public const float RIFT_OUT = 0f;   // the rifts stand where the enemies step out
+        // inside the walls view, not past its edge: from out of sight they walked in at the bottom edge, huge and cropped,
+        // and the fields in front of the walls looked empty (fresh-eyes review 2, Nov 14 2026: "the core fantasy, enemies
+        // marching up the fields toward the walls, never shows"); a glowing rift on the lane says where they come from
+        public const float SPAWN_IN = 0.84f;
         void TickRifts(float dt)
         {
             if (art == null || art.rift == null) return;
