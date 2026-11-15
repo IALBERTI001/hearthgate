@@ -17,17 +17,18 @@ namespace Hearthgate.Game
         {
             public string label, icon, key; public System.Func<string> line; public System.Func<bool> can, lit; public System.Action act; public bool closes;
         }
-        RectTransform ring; Vector3 ringAt; string ringId; float ringT; Rect ringReach;
+        RectTransform ring; Vector2 ringAt; string ringId; float ringT; Rect ringReach;
+        bool ringHeld; float ringHeldT; int ringSel = -1;   // the press that opened it is still held: a drag picks, the release chooses
         readonly List<(RectTransform rt, Vector2 home, Text line, RadialItem it, Act a)> ringItems = new List<(RectTransform, Vector2, Text, RadialItem, Act)>();
         public static bool RingOpen => I && I.ring;
         public static string RingId => I ? I.ringId : null;
 
-        public static void OpenRing(string id, Vector3 world, string title, List<RadialItem> items)
+        public static void OpenRing(string id, Vector3 world, string title, List<RadialItem> items)   // world: unused now, kept for callers
         {
             if (!I) return;
             if (I.ring && I.ringId == id) { CloseRing(); return; }   // a second click on the same thing closes it
             CloseRing(); Sound.Click();
-            I.ringId = id; I.ringAt = world; I.ringT = 0;
+            I.ringId = id; I.ringAt = PointerPos; I.ringT = 0; I.ringHeld = Input.GetMouseButton(0); I.ringHeldT = 0; I.ringSel = -1;   // round the cursor, where the eye already is (owner, Nov 15 2026: "maybe we should do it on cursor with the options there")
             I.ring = I.Box("Ring", I.transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(10, 10)); I.ring.pivot = new Vector2(0.5f, 0.5f);
             var hub = I.Box("Hub", I.ring, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(170, 34));
             var hi = hub.gameObject.AddComponent<Image>(); hi.sprite = Panel(INK, BRASS, 14, 2); hi.type = Image.Type.Sliced; hi.raycastTarget = false;
@@ -69,10 +70,9 @@ namespace Hearthgate.Game
             if (!ring) return;
             var g = GameLoop.I; var cam = Camera.main;
             bool walk = Wizard.I && Wizard.I.On;
-            if (g == null || cam == null || walk || g.Fallen || Paused || Input.GetKeyDown(KeyCode.Escape)) { CloseRing(); return; }
-            var sp = cam.WorldToScreenPoint(ringAt);
-            if (sp.z <= 0) { CloseRing(); return; }
-            RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)transform, sp, null, out var lp);
+            if (g == null || cam == null || walk != (ringId == "wiz") || g.Fallen || Paused || Input.GetKeyDown(KeyCode.Escape)) { CloseRing(); return; }
+            if (ringHeld && HeldPick()) return;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)transform, ringAt, null, out var lp);   // it stays where it opened
             var cv = ((RectTransform)transform).rect;
             // kept whole on the screen: the ring's centre stays far enough from every edge, and clear of the top bar
             var rr = ringReach; lp.x = Mathf.Clamp(lp.x, cv.xMin + 8 - rr.xMin, cv.xMax - 8 - rr.xMax); lp.y = Mathf.Clamp(lp.y, cv.yMin + 8 - rr.yMin, cv.yMax - 92 - rr.yMax);   // 92: the top bar
@@ -88,9 +88,37 @@ namespace Hearthgate.Game
                 string line = it.line != null ? it.line() : null; ln.text = line ?? "";
                 bool can = it.can == null || it.can();
                 ln.color = can ? RES : new Color(0.85f, 0.78f, 0.86f);
-                if (a.glow) { var c = a.glow.color; c.a = it.lit != null && it.lit() ? 0.75f + 0.25f * Mathf.Sin(Time.unscaledTime * 6f) : 0f; a.glow.color = c; }
+                bool picked = ringSel >= 0 && ringSel < ringItems.Count && ringItems[ringSel].rt == rt;
+                if (a.glow) { var c = a.glow.color; c.a = picked ? 1f : it.lit != null && it.lit() ? 0.75f + 0.25f * Mathf.Sin(Time.unscaledTime * 6f) : 0f; a.glow.color = c; }
+                if (a.p != null && a.p.img) a.p.img.color = picked ? Color.Lerp(a.p.col, Color.white, 0.25f) : a.p.col;
             }
         }
+        // the marking-menu gesture (owner, Nov 15 2026: "hold left click to open the menu, highlight option, let go of mouse button
+        // to select"): while the press that opened the ring is held, the button the pointer leans toward is lit; letting go chooses
+        // it. Let go near the centre after a quick click and the ring stays open to be clicked; anywhere else it closes.
+        // Returns true when the ring was closed.
+        bool HeldPick()
+        {
+            ringHeldT += Time.unscaledDeltaTime;
+            var off = PointerPos - ringAt; float dead = 30f * Screen.height / 720f;
+            ringSel = -1;
+            if (off.magnitude > dead)
+            {
+                float best = 70f;
+                for (int k = 0; k < ringItems.Count; k++) { float d = Vector2.Angle(off, ringItems[k].home); if (d < best) { best = d; ringSel = k; } }
+            }
+            if (Input.GetMouseButton(0)) return false;
+            ringHeld = false;
+            if (ringSel >= 0)
+            {
+                var it = ringItems[ringSel].it; ringSel = -1;
+                if (it.can == null || it.can()) { Sound.Click(); it.act(); } else Sound.Dud();
+                CloseRing(); return true;
+            }
+            if (ringHeldT < 0.3f) return false;   // a click: the ring stays for clicking
+            CloseRing(); return true;
+        }
+
         // a click that lands on the ring's buttons or its hub is the ring's
         static bool OnRing(Vector2 m)
         {
@@ -111,6 +139,19 @@ namespace Hearthgate.Game
                     can = () => g.CanAscend, act = () => ShowAscend(), closes = true, lit = () => g.CanAscend },
             };
             OpenRing("gate", Field.GateTop, "The Gatehouse", items);
+        }
+        // on the town walk: hold anywhere and the wizard's own ring opens round the cursor (the gatehouse is far from the square)
+        public static void RingWizard()
+        {
+            var g = GameLoop.I; if (g == null) return;
+            var items = new List<RadialItem>
+            {
+                new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", line = () => $"Lv {g.P.gateLevel + 1} · {HG.Fmt(g.UpgradeCost)}", can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
+            };
+            if (g.TimeStopLevel > 0)
+                items.Add(new RadialItem { label = "Stop time", icon = "timestop", key = "F", line = () => g.TimeStopReady ? "ready" : $"in {Mathf.CeilToInt(g.TimeStopLeft)} s", can = () => g.TimeStopReady, act = () => g.UseTimeStop() });
+            items.Add(new RadialItem { label = "Back to the walls", icon = "walk", key = "T", act = () => Wizard.I?.Toggle() });
+            OpenRing("wiz", Vector3.zero, "The wizard", items);
         }
         public static void RingTower(int n)
         {

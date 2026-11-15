@@ -202,12 +202,22 @@ namespace Hearthgate.Game
         }
 
         // ---------- the tap: the Golden Wisp first, then the fountain (from the walls, or the board over it) ----------
+        bool walkHold; Vector2 walkHoldAt; float walkHoldT;
+        void TickWalkHold()
+        {
+            if (!walkHold) return;
+            if (!Input.GetMouseButton(0) || !(Wizard.I && Wizard.I.On) || Hud.RingOpen || (Hud.PointerPos - walkHoldAt).magnitude > 14f * Screen.height / 720f) { walkHold = false; return; }
+            if ((walkHoldT += Time.unscaledDeltaTime) < 0.28f) return;
+            walkHold = false; Wizard.I.Stop(); Hud.RingWizard();
+        }
         void TapWorld()
         {
+            TickWalkHold();
             if (!Input.GetMouseButtonDown(0) || Hud.OnHud(Hud.PointerPos) || Hud.Paused) return;
             var pt = Hud.PointerPos;
             if (TapGold(pt) || TapFly(pt)) return;
-            var cam = Camera.main; if (cam == null || (Wizard.I && Wizard.I.On)) return;
+            var cam = Camera.main; if (cam == null) return;
+            if (Wizard.I && Wizard.I.On) { walkHold = true; walkHoldAt = pt; walkHoldT = 0; return; }   // TickWalkHold: a long press opens the wizard's ring
             // the radial menus (Hud.Radial): a click on a tower, the gatehouse or a building rings it with its upgrades
             float px = Screen.height / 720f;
             foreach (var tw in towers)

@@ -500,6 +500,7 @@ namespace Hearthgate.Game
             // Upgrade defenses and Rebuild/Ascend moved into the radial menus on the things themselves (owner, Nov 15 2026);
             // Walk stays its own button, in the corner
             var list = new System.Collections.Generic.List<RectTransform> { walk.p.rt };
+            if (up.p.rt.gameObject.activeSelf) list.Add(up.p.rt);
             if (re.p.rt.gameObject.activeSelf) list.Add(re.p.rt);
             if (work.p.rt.gameObject.activeSelf) list.Add(work.p.rt);
             float width = ((RectTransform)transform).rect.width, row = list.Sum(r => r.sizeDelta.x) + GAP * (list.Count - 1);
@@ -682,7 +683,10 @@ namespace Hearthgate.Game
             // while the walls lie fallen the only choice is on the card: the buttons above it step aside (fresh-eyes review,
             // Nov 14 2026: "Rebuild Forge" and "Upgrade towers" stayed live behind the defeat card)
             bool fl = g.Fallen; if (walk.p.rt.gameObject.activeSelf == fl) walk.p.rt.gameObject.SetActive(!fl);
-            foreach (var a in new[] { up, re }) if (a.p.rt.gameObject.activeSelf) a.p.rt.gameObject.SetActive(false);   // in the rings now
+            // in the rings now, on the walls; on the town walk the gatehouse is far away, so Upgrade defenses rides with the walk
+            // button (owner, Nov 15 2026: "Im having a hardtime while walking upgrading the wall defenses")
+            bool upOn = wz && wz.On && !fl; if (up.p.rt.gameObject.activeSelf != upOn) up.p.rt.gameObject.SetActive(upOn);
+            if (re.p.rt.gameObject.activeSelf) re.p.rt.gameObject.SetActive(false);
             LayoutActions();
             Refit();
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
