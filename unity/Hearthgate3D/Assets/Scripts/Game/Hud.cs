@@ -272,7 +272,7 @@ namespace Hearthgate.Game
             banner.horizontalOverflow = HorizontalWrapMode.Wrap; banner.verticalOverflow = VerticalWrapMode.Overflow;
 
             // the gate's health, centred over the bottom of the view
-            var bar = Box("GateBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(360, 26));
+            var bar = Box("GateBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, WALLS_Y + 13), new Vector2(340, 26));   // over the dock: the dock sits on the bottom edge, between the lanes
             var frame = bar.gameObject.AddComponent<Image>(); frame.sprite = Panel(INK, BRASS, 10, 3); frame.type = Image.Type.Sliced;
             var fillBox = Box("FillBox", bar, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
             gateBar = fillBox.gameObject.AddComponent<Image>();
@@ -547,7 +547,7 @@ namespace Hearthgate.Game
         // the bottom of the screen (owner, Nov 15 2026): the upgrade dock centred over the walls bar, in the corridor of the gate
         // road between the two middle lanes; Walk and Settings stacked as two pills in the bottom-right corner; the coach and
         // a boss's bar above the dock
-        public const float DOCK_Y = 64f, DOCK_H = 70f, BOSS_Y = 150f, COACH_Y = 192f;
+        public const float DOCK_Y = 8f, DOCK_H = 70f, WALLS_Y = 118f, BOSS_Y = 152f, COACH_Y = 194f;
         Act dockUp, dockBld, dockLed, dockMult;
         void LayoutActions()
         {
