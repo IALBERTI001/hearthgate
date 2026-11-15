@@ -43,7 +43,7 @@ Desktop first (CrazyGames). Reference frame 1280 x 720; the player's HUD size (8
 ## 3. Position rules
 
 - Resources and progress: top left, in the body face (bold); titles in the display face.
-- Actions on a thing: a ring of kit buttons around the thing (Kingdom Rush style), its title in a hub at the centre, kept whole on screen. The gold marker bobs over the gatehouse when the guide points there.
+- Actions on a thing: a ring of kit buttons around the cursor where the thing was pressed, its title in a hub at the centre, kept whole on screen. Press and hold, lean toward an option (it lights), let go to choose; a quick click leaves the ring open to click. On the town walk a long press anywhere opens the wizard's ring (Upgrade defenses, Stop time, Back to the walls), and Upgrade defenses (U) sits beside the walk button. The gold marker bobs over the gatehouse when the guide points there.
 - Other actions (Walk the town): top right, kit buttons, keycap in the corner.
 - Health: bottom centre (walls; a boss over it); the wizard's skills sit over the walls bar, on the walk.
 - Settings: bottom right, a kit button with its word.
