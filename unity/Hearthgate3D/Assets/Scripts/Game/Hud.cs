@@ -26,7 +26,7 @@ namespace Hearthgate.Game
         class Pressable
         {
             public RectTransform rt; public Image img; public Color col; public System.Func<bool> on; public System.Action act;
-            public bool down; public float s = 1; public CanvasGroup group;
+            public bool down; public float s = 1; public CanvasGroup group; public Image veil;
         }
         readonly System.Collections.Generic.List<Pressable> press = new System.Collections.Generic.List<Pressable>();
         Pressable Press(RectTransform rt, System.Action act, System.Func<bool> on = null)
@@ -49,9 +49,19 @@ namespace Hearthgate.Game
                 // no growth on hover (a scaled button blurs its words: owner, Nov 14 2026); a short squeeze while pressed;
                 // a button that cannot act fades as a whole, words and all, so it never reads as pressable
                 float target = !on ? 1f : p.down && inside ? 0.96f : 1f;
-                if (p.group) p.group.alpha = on ? 1f : 0.5f;
+                // dimmed under a plum veil, never faded: at half alpha a word's outline and drop shadow showed through it as a
+                // smudge (owner, Nov 14 2026: "weird shadow under the numbers when button is not available")
+                if (!on && !p.veil && p.img)
+                {
+                    var v = new GameObject("Veil", typeof(RectTransform)).GetComponent<RectTransform>(); v.SetParent(p.rt, false);
+                    v.anchorMin = Vector2.zero; v.anchorMax = Vector2.one; v.offsetMin = v.offsetMax = Vector2.zero;
+                    p.veil = v.gameObject.AddComponent<Image>(); p.veil.sprite = p.img.sprite; p.veil.type = p.img.type; p.veil.raycastTarget = false;
+                    p.veil.color = new Color(0.12f, 0.07f, 0.15f, 0.55f);
+                }
+                if (p.veil) { if (p.veil.enabled == on) p.veil.enabled = !on; if (!on && p.veil.transform.GetSiblingIndex() != p.rt.childCount - 1) p.veil.transform.SetAsLastSibling(); }
+                else if (p.group) p.group.alpha = on ? 1f : 0.5f;   // a pressable without a panel image keeps the fade
                 p.s = Mathf.MoveTowards(p.s, target, Time.unscaledDeltaTime * 1.2f); p.rt.localScale = Vector3.one * p.s;
-                if (p.img) p.img.color = on ? (inside ? Color.Lerp(p.col, Color.white, 0.12f) : p.col) : new Color(p.col.r * 0.6f, p.col.g * 0.6f, p.col.b * 0.6f, p.col.a * 0.8f);
+                if (p.img) p.img.color = on ? (inside ? Color.Lerp(p.col, Color.white, 0.12f) : p.col) : p.col;   // the veil does the dimming
             }
         }
         float bannerT;
