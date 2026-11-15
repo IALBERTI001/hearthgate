@@ -23,7 +23,7 @@ namespace Hearthgate.Game
         public Enemy(string role, int wave, int lane, float x, float z, Transform parent)
         {
             this.role = role; R = HG.ROLES[role]; boss = R.boss; this.lane = lane; this.x = x; this.z = spawn = z;
-            hp = max = HG.EnemyHp(wave, role); speed = (float)R.speed * Field.PX; size = Field.Size(R.size) * Random.Range(0.88f, 1.12f);
+            hp = max = HG.EnemyHp(wave, role); speed = (float)R.speed * Field.PX * GameLoop.SPAWN_IN; size = Field.Size(R.size) * Random.Range(0.88f, 1.12f);
             // no two in lockstep (fresh-eyes review: "ten clones"); turned a little either way, so a cheek shows to the camera
             yaw = Quaternion.Euler(0, Random.Range(14f, 30f) * (Random.value < 0.5f ? -1 : 1), 0);
             var g = Art.Spawn(Art.Set ? Art.Set.Enemy(R.model) : null, R.model, Field.Lane(lane, z, x), parent);
