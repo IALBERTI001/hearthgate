@@ -282,7 +282,7 @@ namespace Hearthgate.Game
 
             // a boss's name and health while one lives, over the walls' own bar (the top is full of readouts and buttons on a
             // narrow window: the first try there ran under both)
-            bossBox = Box("BossBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 76), new Vector2(360, 32)); bossBox.pivot = new Vector2(0.5f, 0);
+            bossBox = Box("BossBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, BOSS_Y), new Vector2(240, 32)); bossBox.pivot = new Vector2(0.5f, 0);   // narrow: the middle lanes close in above the dock
             var bf = bossBox.gameObject.AddComponent<Image>(); bf.sprite = Panel(INK, new Color(0.78f, 0.22f, 0.16f), 10, 3); bf.type = Image.Type.Sliced; bf.raycastTarget = false;
             var bfb = Box("FillBox", bossBox, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
             bossFill = bfb.gameObject.AddComponent<Image>(); bossFill.type = Image.Type.Filled; bossFill.fillMethod = Image.FillMethod.Horizontal; bossFill.raycastTarget = false;
