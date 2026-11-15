@@ -108,14 +108,17 @@ namespace Hearthgate.Game
         {
             if (tsAct == null)
             {
-                tsAct = Action("TimeStop", new Vector2(0, 1), new Vector2(LABELS_W + 24, -16), new Vector2(60, 60), "timestop", "F", () => g.UseTimeStop(), () => g.TimeStopReady, false);
+                // the wizard's skills sit in a row over the walls' health, and only on the town walk: they are his, so they
+                // are there when he is (owner, Nov 14 2026: "they should be over the health bar at the bottom ... only
+                // available when walking the town")
+                tsAct = Action("TimeStop", new Vector2(0.5f, 0), new Vector2(0, 66), new Vector2(60, 60), "timestop", "F", () => g.UseTimeStop(), () => g.TimeStopReady, false);
                 var sw = Box("Sweep", tsAct.p.rt, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
                 tsSweep = sw.gameObject.AddComponent<Image>(); tsSweep.sprite = Panel(new Color(0.05f, 0.03f, 0.08f, 0.7f), new Color(0, 0, 0, 0), 26, 1);
                 tsSweep.type = Image.Type.Filled; tsSweep.fillMethod = Image.FillMethod.Radial360; tsSweep.fillOrigin = 2; tsSweep.fillClockwise = false; tsSweep.raycastTarget = false;
-                tsTxt = Label("TsTxt", transform, new Vector2(0, 1), new Vector2(LABELS_W + 54, -80), 15, TextAnchor.UpperCenter); tsTxt.font = body;
-                tsTxt.rectTransform.pivot = new Vector2(0.5f, 1); tsTxt.rectTransform.sizeDelta = new Vector2(120, 20);
+                tsTxt = Label("TsTxt", transform, new Vector2(0.5f, 0), new Vector2(40, 96), 15, TextAnchor.MiddleLeft); tsTxt.font = body;
+                tsTxt.rectTransform.pivot = new Vector2(0, 0.5f); tsTxt.rectTransform.sizeDelta = new Vector2(120, 20);   // beside the button
             }
-            bool on = g.TimeStopLevel > 0 && !(Wizard.I && Wizard.I.On) && !g.Fallen;
+            bool on = g.TimeStopLevel > 0 && Wizard.I && Wizard.I.On && !g.Fallen && !Paused;
             if (tsAct.p.rt.gameObject.activeSelf != on) { tsAct.p.rt.gameObject.SetActive(on); tsTxt.gameObject.SetActive(on); }
             if (!on) return;
             float left = g.TimeStopLeft, total = GameLoop.TS_CD[g.TimeStopLevel] + GameLoop.TS_DUR[g.TimeStopLevel];

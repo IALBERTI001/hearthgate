@@ -424,7 +424,7 @@ namespace Hearthgate.Game
         // the actions as one group in the top-right corner: a row along the top when the window is wide enough (the sky and
         // the far meadow), else a column down the right side (portrait: the sky above the town). Upgrade gate, the primary
         // action, sits in the corner; a finished or idle action leaves and the rest close up. LayoutCheck mirrors this.
-        public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 76f;
+        public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 0f;   // the skills moved down over the walls bar (owner, Nov 14 2026)
         void LayoutActions()
         {
             // Upgrade in the corner, Walk always right beside it (owner, Nov 14 2026: "make the walk town and back to the
@@ -553,6 +553,7 @@ namespace Hearthgate.Game
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
             if (g.Fallen) { gateBar.fillAmount = 0; gateTxt.text = "Walls broken"; }   // not a full bar behind the defeat card
             var bo = g.BossNow; if (bossBox.gameObject.activeSelf != (bo != null)) bossBox.gameObject.SetActive(bo != null);
+            bossBox.anchoredPosition = new Vector2(0, Wizard.I && Wizard.I.On && g.TimeStopLevel > 0 ? 138 : 76);   // above the skill row on the walk
             if (bo != null)
             {
                 bossFill.fillAmount = Mathf.Clamp01((float)(bo.hp / bo.max));
@@ -845,7 +846,7 @@ namespace Hearthgate.Game
             string[,] rows = {
                 { "U", "Upgrade the towers" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
                 { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
-                { "X", "Start a Surge at the fountain" }, { "F", "Stop time (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
+                { "X", "Start a Surge at the fountain" }, { "F", "Stop time, on the town walk (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
             for (int k = 0; k < rows.GetLength(0); k++)
             {
                 float y = -238 - k * 26;

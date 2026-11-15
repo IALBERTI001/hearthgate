@@ -195,7 +195,7 @@ namespace Hearthgate.EditorTools
             return new List<(string, Rect)> {
                 ("labels", TopLeft(420, 124)),                       // wave with Starshards and perk points beside it, Resonance, the rate and the named wave
                 actions,                                             // Hud.LayoutActions: Upgrade, Rebuild and Walk as a row or a column
-                ("time stop", Rect.MinMaxRect((Hearthgate.Game.Hud.LABELS_W + 24) * s / w, 1 - 100 * s / h, (Hearthgate.Game.Hud.LABELS_W + 84) * s / w, 1 - 16 * s / h)),   // Hud.TickTimeStop: the round skill button and its countdown
+                // the wizard's skill row (Hud.TickTimeStop) shows on the town walk only, so it is not in the walls view
                 // the Settings button (bottom right, the owner's placement, Nov 14 2026) is left out: its corner sits over the last
                 // metres of a lane as it enters the view, where an enemy has only just appeared
                 ("boss bar", Rect.MinMaxRect(0.5f - 180 * s / w, 76 * s / h, 0.5f + 180 * s / w, 108 * s / h)),   // Hud: a boss's name and health

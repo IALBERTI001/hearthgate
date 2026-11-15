@@ -164,7 +164,7 @@ namespace Hearthgate.Game
             if (lv > 0) { if (P.shards < TS_TRAIN[lv]) { Sound.Dud(); return; } P.shards -= TS_TRAIN[lv]; }
             P.skills.RemoveAll(s => s.k == "timestop"); P.skills.Add(new KV { k = "timestop", v = lv + 1 });
             Sound.Play("level_up", 0.5f); Fx.I.Burst(TRAINER_AT + Vector3.up * 2, new Color(0.6f, 0.85f, 1f), 30);
-            Hud.Banner(lv == 0 ? "New skill: Time Stop! Press F when the walls are in danger" : $"Time Stop {lv + 1}: {TS_DUR[lv + 1]:0.#} s, ready every {TS_CD[lv + 1]:0} s");
+            Hud.Banner(lv == 0 ? "New skill: Time Stop! On your walks, press F when the walls are in danger" : $"Time Stop {lv + 1}: {TS_DUR[lv + 1]:0.#} s, ready every {TS_CD[lv + 1]:0} s");
             Save();
         }
         public void UseTimeStop()
