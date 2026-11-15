@@ -603,6 +603,11 @@ def beetle(kind='beetle'):
                 for v in (-0.5, -0.15, 0.2, 0.55):
                     p, n = _shell(s, u, v + (0.17 if u == 0.55 else 0))
                     K.cyl('cell', 0.085, 0.05, tuple(p), M('pupil'), 6, 0.0).rotation_euler = _aim(n)
+    if kind == 'sprinter':   # swept-back fins down the wing cases, rust-red: it reads as fast from behind (fresh-eyes review, Nov 14 2026: the beetles differed only by colour)
+        for s in (-1, 1):
+            for v in (-0.45, 0.0, 0.45):
+                p, n = _shell(s, 0.55, v)
+                K.cone('fin', 0.1, 0.55, tuple(p + n * 0.08), M('roof_red'), 4).rotation_euler = _aim(Vector((s * 0.35, 1.0, 0.45)))
     if kind == 'swarm':   # the Swarmlord: spined ridges down both wing cases, a burning glare
         for s in (-1, 1):
             for v in (-0.6, -0.25, 0.1, 0.45, 0.75):
