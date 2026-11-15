@@ -192,12 +192,15 @@ namespace Hearthgate.EditorTools
             // the walk button (Hud.LayoutActions): above Settings in the bottom-right corner (the owner's placement, Nov 15 2026)
             var actions = ("walk button", Rect.MinMaxRect(1 - 70 * s / w, 64 * s / h, 1 - 12 * s / w, 122 * s / h));
             return new List<(string, Rect)> {
-                ("labels", TopLeft(420, 124)),                       // wave with Starshards and perk points beside it, Resonance, the rate and the named wave
+                ("readouts", TopLeft(400, 112)),                     // the wave, Resonance and its rate (Hud: the top bar's left)
+                ("ascension", Rect.MinMaxRect(0.5f - 140 * s / w, 1 - 78 * s / h, 0.5f + 140 * s / w, 1)),   // the top bar's centre
+                ("currencies", TopRight(10, 10, 250, 58)),           // Starshards and perk points, the top bar's right
                 actions,                                             // Hud.LayoutActions: the walk button
                 // the wizard's skill row (Hud.TickTimeStop) shows on the town walk only, so it is not in the walls view
                 // the Settings button (bottom right, the owner's placement, Nov 14 2026) is left out: its corner sits over the last
                 // metres of a lane as it enters the view, where an enemy has only just appeared
-                ("boss bar", Rect.MinMaxRect(0.5f - 180 * s / w, 76 * s / h, 0.5f + 180 * s / w, 108 * s / h)),   // Hud: a boss's name and health
+                ("upgrade dock", Rect.MinMaxRect(0.5f - 242 * s / w, Hearthgate.Game.Hud.DOCK_Y * s / h, 0.5f + 226 * s / w, (Hearthgate.Game.Hud.DOCK_Y + Hearthgate.Game.Hud.DOCK_H + 34) * s / h)),   // Hud.LayoutActions: the defenses, the best building, the ledger, the multiplier
+                ("boss bar", Rect.MinMaxRect(0.5f - 180 * s / w, Hearthgate.Game.Hud.BOSS_Y * s / h, 0.5f + 180 * s / w, (Hearthgate.Game.Hud.BOSS_Y + 32) * s / h)),   // Hud: a boss's name and health, above the dock
                 ("gate bar", Rect.MinMaxRect(0.5f - 180 * s / w, 27 * s / h, 0.5f + 180 * s / w, 53 * s / h)),
             };
         }

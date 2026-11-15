@@ -410,14 +410,14 @@ namespace Hearthgate.Game
         public string NextBuilding => HG.RestoreOffer(P).FirstOrDefault();
         public bool CanRestore => NextBuilding != null && P.res >= RestoreCost;
 
-        public void Upgrade()
+        public void Upgrade() => Upgrade(false);
+        public void Upgrade(bool quiet)
         {
             if (!CanUpgrade) return;
             Guide.Done("up");
             P.res -= UpgradeCost; double before = HG.GateMax(P, B); P.gateLevel++; B = HG.Bonuses(P); Quest("upgrade");
             gateHp += HG.GateMax(P, B) - before;
-            foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 6);
-            Sound.Play("tier_up", 0.5f);
+            if (!quiet) { foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 6); Sound.Play("tier_up", 0.5f); }
             int f = HG.PendingFork(P); if (f > 0) Hud.ShowFork(f);
         }
         public void Fork(int stage, string id) { Sound.Play("claim", 0.45f); P.SetFork(stage, id); B = HG.Bonuses(P); Save(); }
@@ -511,7 +511,7 @@ namespace Hearthgate.Game
                     marker.localScale = Vector3.one * (CanRestore ? 1f + Mathf.Sin(t * 5f) * 0.05f : 0.8f) * (Guide.Pressing == "re" ? 1.7f : 1f);   // big while the coach points at it: from the walls a 1x ring was a speck (review Nov 15 2026)
                 }
             }
-            if (!Hud.Paused && Input.GetKeyDown(KeyCode.U)) { if (CanUpgrade) { Sound.Click(); Upgrade(); } else Sound.Dud(); }
+            TickDockKeys();   // U (held repeats), B, L, M: GameLoop.Dock
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.R))
             {
                 if (NextBuilding != null) { if (CanRestore) { Sound.Click(); Restore(); } else Sound.Dud(); }

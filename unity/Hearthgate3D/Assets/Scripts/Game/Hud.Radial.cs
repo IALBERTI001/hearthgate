@@ -31,36 +31,30 @@ namespace Hearthgate.Game
             CloseRing(); Sound.Click();
             I.ringId = id; I.ringAt = PointerPos; I.ringT = 0; I.ringHeld = Input.GetMouseButton(0); I.ringHeldT = 0; I.ringSel = -1;   // round the cursor, where the eye already is (owner, Nov 15 2026: "maybe we should do it on cursor with the options there")
             I.ring = I.Box("Ring", I.transform, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(10, 10)); I.ring.pivot = new Vector2(0.5f, 0.5f);
-            var hub = I.Box("Hub", I.ring, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(170, 34));
-            var hi = hub.gameObject.AddComponent<Image>(); hi.sprite = Panel(INK, BRASS, 14, 2); hi.type = Image.Type.Sliced; hi.raycastTarget = false;
-            var ht = I.Label("T", hub, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 19, TextAnchor.MiddleCenter); ht.text = title;
-            Fit(ht, new Vector2(160, 30), 12);
-            int n = items.Count; float R = n <= 2 ? 132f : n <= 4 ? 140f : 152f;   // wide enough that the hub's title and each button's words never touch
+            // the hub is the thing's name, plain words with a soft shade, not a button (it is not pressable)
+            var hub = I.Box("Hub", I.ring, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(190, 30));
+            var hi = hub.gameObject.AddComponent<Image>(); hi.sprite = Fade2(); hi.color = new Color(0.08f, 0.04f, 0.1f, 0.75f); hi.raycastTarget = false;
+            var ht = I.Label("T", hub, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 20, TextAnchor.MiddleCenter); ht.text = title; ht.color = RES;
+            Fit(ht, new Vector2(186, 28), 13);
+            int n = items.Count;
+            // the same kit plates as every button (owner, Nov 15 2026: "WHY can we not be consistent"): picture, name and price inside
+            // the plate, keycap on its corner; set round an ellipse so the wide plates never touch
+            float RX = n <= 2 ? 150f : 175f, RY = n <= 2 ? 0f : n <= 4 ? 92f : 100f;
             for (int k = 0; k < n; k++)
             {
                 var it = items[k];
-                // from the top, clockwise; two items sit left and right, three make a fan over the top
-                float a = n == 1 ? 90f : n == 2 ? (k == 0 ? 180f : 0f) : 90f - k * 360f / n;
-                if (n == 3) a = 150f - k * 60f;
-                var home = new Vector2(Mathf.Cos(a * Mathf.Deg2Rad), Mathf.Sin(a * Mathf.Deg2Rad)) * R;
-                var item = it; var act = I.Action("R" + k, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(72, 72), it.icon, it.key,
+                float a = n == 1 ? 90f : n == 2 ? (k == 0 ? 180f : 0f) : n == 3 ? 150f - k * 60f : 90f - k * 360f / n;
+                var dir = new Vector2(Mathf.Cos(a * Mathf.Deg2Rad), Mathf.Sin(a * Mathf.Deg2Rad));
+                var home = n == 1 ? new Vector2(0, 66) : new Vector2(dir.x * RX, dir.y * (RY > 0 ? RY : 0));
+                var item = it; var act = I.Action("R" + k, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(176, 56), it.icon, it.key,
                     () => { if (item.can == null || item.can()) { item.act(); if (item.closes) CloseRing(); } }, it.can, false, I.ring);
-                act.p.rt.pivot = new Vector2(0.5f, 0.5f);
-                var lab = I.Label("L" + k, act.p.rt, new Vector2(0.5f, 0), new Vector2(0, -6), 16, TextAnchor.UpperCenter); lab.text = it.label;
-                lab.rectTransform.pivot = new Vector2(0.5f, 1); lab.rectTransform.sizeDelta = new Vector2(150, 20);
-                var ln = I.Label("C" + k, act.p.rt, new Vector2(0.5f, 0), new Vector2(0, -26), 14, TextAnchor.UpperCenter); ln.font = I.body; ln.fontStyle = FontStyle.Bold; ln.supportRichText = true;
-                ln.rectTransform.pivot = new Vector2(0.5f, 1); ln.rectTransform.sizeDelta = new Vector2(150, 20); ln.verticalOverflow = VerticalWrapMode.Overflow;
-                if (it.cost)
-                {   // the gem before a price, as on every other price in the game (review Nov 15 2026: "5" and "30" read as nothing)
-                    var gm = I.Box("Gem" + k, act.p.rt, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, -36), new Vector2(15, 15));
-                    var gi = gm.gameObject.AddComponent<Image>(); gi.sprite = I.gemSprite; gi.raycastTarget = false; I.ringGems[it] = gi;
-                }
-                I.ringItems.Add((act.p.rt, home, ln, it, act));
+                act.p.rt.pivot = new Vector2(0.5f, 0.5f); act.p.repeat = !it.closes;   // a price held down buys again and again
+                I.ringItems.Add((act.p.rt, home, act.cost, it, act));
             }
             {   // how far the ring reaches round its centre (buttons, words under them, the hub), so it is kept on screen by its
                 // real size: a two-button ring sits level with the thing it rings, even near the top of the screen
-                var rr = new Rect(-90, -20, 180, 40);
-                foreach (var (_, h, _, _, _) in I.ringItems) { rr.xMin = Mathf.Min(rr.xMin, h.x - 78); rr.xMax = Mathf.Max(rr.xMax, h.x + 78); rr.yMin = Mathf.Min(rr.yMin, h.y - 84); rr.yMax = Mathf.Max(rr.yMax, h.y + 40); }
+                var rr = new Rect(-95, -16, 190, 32);
+                foreach (var (_, h, _, _, _) in I.ringItems) { rr.xMin = Mathf.Min(rr.xMin, h.x - 92); rr.xMax = Mathf.Max(rr.xMax, h.x + 92); rr.yMin = Mathf.Min(rr.yMin, h.y - 32); rr.yMax = Mathf.Max(rr.yMax, h.y + 34); }
                 I.ringReach = rr;
             }
             I.TickRing();
@@ -91,14 +85,12 @@ namespace Hearthgate.Game
                 // the fade-in is the ring's own; the veil only dims (it skipped buttons that could not act, so a greyed Ascend
                 // stayed at alpha 0 and the gatehouse ring showed one button: QA Nov 15 2026)
                 var cg = rt.GetComponent<CanvasGroup>(); if (cg) cg.alpha = e;
-                string line = it.line != null ? it.line() : null; ln.text = line ?? "";
-                if (ringGems.TryGetValue(it, out var gem) && gem)
-                {
-                    bool price = !string.IsNullOrEmpty(line) && char.IsDigit(line[0]); if (gem.enabled != price) gem.enabled = price;
-                    if (price) { float w = ln.preferredWidth; gem.rectTransform.anchoredPosition = new Vector2(-w / 2f - 6f, -36f); ln.rectTransform.anchoredPosition = new Vector2(9f, ln.rectTransform.anchoredPosition.y); }
-                }
-                bool can = it.can == null || it.can();
-                ln.color = can ? RES : new Color(0.85f, 0.78f, 0.86f);
+                string line = it.line != null ? it.line() : null; bool can = it.can == null || it.can();
+                bool price = it.cost && !string.IsNullOrEmpty(line) && char.IsDigit(line[0]);
+                Show(a, it.label, string.IsNullOrEmpty(line) ? null : line, can || !price, Time.unscaledTime);
+                if (a.gem) a.gem.enabled = price;
+                if (!price && a.cost) { a.cost.color = new Color(0.9f, 0.84f, 0.92f); a.cost.rectTransform.anchoredPosition = new Vector2(2, 0); }
+                else if (a.cost) a.cost.rectTransform.anchoredPosition = new Vector2(20, 0);
                 bool picked = ringSel >= 0 && ringSel < ringItems.Count && ringItems[ringSel].rt == rt;
                 if (a.glow) { var c = a.glow.color; c.a = picked ? 1f : it.lit != null && it.lit() ? 0.75f + 0.25f * Mathf.Sin(Time.unscaledTime * 6f) : 0f; a.glow.color = c; }
                 if (a.p != null && a.p.img) a.p.img.color = picked ? Color.Lerp(a.p.col, Color.white, 0.25f) : a.p.col;

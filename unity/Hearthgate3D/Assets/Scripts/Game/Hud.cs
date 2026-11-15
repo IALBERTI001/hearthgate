@@ -27,11 +27,12 @@ namespace Hearthgate.Game
         {
             public RectTransform rt; public Image img; public Color col; public System.Func<bool> on; public System.Action act;
             public bool down; public float s = 1; public CanvasGroup group; public Image veil;
+            public RectTransform face; public bool repeat; public float heldT, nextRep; public int reps;   // the kit's face (it drops when pressed); hold-to-repeat
         }
         readonly System.Collections.Generic.List<Pressable> press = new System.Collections.Generic.List<Pressable>();
-        Pressable Press(RectTransform rt, System.Action act, System.Func<bool> on = null)
+        Pressable Press(RectTransform rt, System.Action act, System.Func<bool> on = null, Image faceImg = null)
         {
-            var img = rt.GetComponent<Image>();
+            var img = faceImg ?? rt.GetComponent<Image>();
             var p = new Pressable { rt = rt, img = img, col = img ? img.color : Color.white, on = on ?? (() => true), act = act };
             p.group = rt.gameObject.GetComponent<CanvasGroup>() ?? rt.gameObject.AddComponent<CanvasGroup>();   // fades the whole button when it cannot act
             press.Add(p); return p;
@@ -44,11 +45,17 @@ namespace Hearthgate.Game
             {
                 if (!p.rt.gameObject.activeInHierarchy || settingsBox && !p.rt.IsChildOf(settingsBox)) { p.down = false; continue; }   // an open menu takes every press
                 bool on = p.on(), inside = RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null);
-                if (dn && inside) { if (on) p.down = true; else Sound.Dud(); }   // a soft low thud on a button that cannot act yet
-                if (upNow) { if (p.down && inside && on) { Sound.Click(); p.act(); } p.down = false; }
+                if (dn && inside) { if (on) { p.down = true; p.heldT = 0; p.reps = 0; p.nextRep = 0.35f; } else Sound.Dud(); }   // a soft low thud on a button that cannot act yet
+                if (p.down && p.repeat && inside && on && Input.GetMouseButton(0))
+                {   // hold to repeat (game-polish 12): after 0.35 s, 6 a second rising to 20
+                    p.heldT += Time.unscaledDeltaTime;
+                    if (p.heldT >= p.nextRep) { p.act(); Sound.Click(); p.reps++; p.nextRep = p.heldT + Mathf.Lerp(0.16f, 0.05f, Mathf.Clamp01((p.heldT - 0.35f) / 2f)); }
+                }
+                if (upNow) { if (p.down && inside && on && p.reps == 0) { Sound.Click(); p.act(); } p.down = false; }
+                if (p.face) { float dropTo = p.down && inside ? -LIP : 0f; var fo = p.face.offsetMax; float ny = Mathf.MoveTowards(fo.y, dropTo, Time.unscaledDeltaTime * 90f); if (ny != fo.y) { p.face.offsetMax = new Vector2(fo.x, ny); p.face.offsetMin = new Vector2(p.face.offsetMin.x, LIP + ny); } }
                 // no growth on hover (a scaled button blurs its words: owner, Nov 14 2026); a short squeeze while pressed;
                 // a button that cannot act fades as a whole, words and all, so it never reads as pressable
-                float target = !on ? 1f : p.down && inside ? 0.96f : 1f;
+                float target = p.face ? 1f : !on ? 1f : p.down && inside ? 0.96f : 1f;   // kit buttons drop their face instead of squeezing
                 // dimmed under a plum veil, never faded: at half alpha a word's outline and drop shadow showed through it as a
                 // smudge (owner, Nov 14 2026: "weird shadow under the numbers when button is not available")
                 if (!on && !p.veil && p.img)
@@ -111,6 +118,18 @@ namespace Hearthgate.Game
             return Sprite.Create(t, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
         }
         // a horizontal fade, for the soft shade behind the top-left readouts (game-polish rule 3: no pills, a gentle shade)
+        static Sprite VFade()
+        {   // the top bar's scrim: solid at the top edge, gone by its foot
+            var t = new Texture2D(4, 64, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < 64; y++) { float a = Mathf.SmoothStep(0, 1, y / 63f); for (int x = 0; x < 4; x++) t.SetPixel(x, y, new Color(1, 1, 1, a)); }
+            t.Apply(); return Sprite.Create(t, new Rect(0, 0, 4, 64), new Vector2(0.5f, 0.5f));
+        }
+        static Sprite Fade2()
+        {   // a soft shade that fades out at both ends: under a name that sits on the world
+            var t = new Texture2D(64, 4, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int x = 0; x < 64; x++) { float u = x / 63f, al = Mathf.SmoothStep(0, 1, Mathf.Min(u, 1 - u) * 4f); for (int y = 0; y < 4; y++) t.SetPixel(x, y, new Color(1, 1, 1, al)); }
+            t.Apply(); return Sprite.Create(t, new Rect(0, 0, 64, 4), new Vector2(0.5f, 0.5f));
+        }
         static Sprite Fade()
         {
             var t = new Texture2D(64, 4, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
@@ -138,6 +157,58 @@ namespace Hearthgate.Game
             return Sprite.Create(t, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(b, b, b, b));
         }
 
+        // ---------- the button kit (owner, Nov 15 2026: "buttons looking like pasted pictures not really giving a button polish";
+        // "WHY can we not be consistent"): every pressable in the game is one plate built from the same layers, bottom to top:
+        // a soft shadow on the world, a darker lip, and the face (a 2 px ink outline, a vertical gradient, a gloss band on its
+        // top third and a 1 px light edge). The face drops into the lip when pressed. Colour carries the role: gold for the one
+        // primary action, plum for everything else; what cannot be bought is dimmed and its price turns red.
+        public const float LIP = 5f;
+        static readonly System.Collections.Generic.Dictionary<string, Sprite> kitCache = new System.Collections.Generic.Dictionary<string, Sprite>();
+        static Sprite KitPlate(Color top, Color bottom, bool gloss, int radius = 16)
+        {
+            string key = $"{top}{bottom}{gloss}{radius}"; if (kitCache.TryGetValue(key, out var hit)) return hit;
+            const int S = 96; var t = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            var px = new Color[S * S]; var ink = new Color(0.105f, 0.05f, 0.13f, 1f);
+            for (int y = 0; y < S; y++)
+                for (int x = 0; x < S; x++)
+                {
+                    float dx = Mathf.Max(radius - x - 0.5f, x + 0.5f - (S - radius), 0), dy = Mathf.Max(radius - y - 0.5f, y + 0.5f - (S - radius), 0);
+                    float d = Mathf.Sqrt(dx * dx + dy * dy) - radius;   // inside < 0
+                    float a = Mathf.Clamp01(0.5f - d), v = y / (S - 1f);  // v: 0 bottom, 1 top
+                    Color c;
+                    if (d > -2.2f) c = ink;                                                   // the outline
+                    else
+                    {
+                        c = Color.Lerp(bottom, top, Mathf.SmoothStep(0, 1, v));
+                        if (d > -3.4f && v > 0.5f) c = Color.Lerp(c, Color.white, 0.35f);       // the light top edge
+                        if (gloss && v > 0.66f && d < -3.4f) c = Color.Lerp(c, Color.white, 0.10f + 0.12f * (v - 0.66f) / 0.34f);   // the gloss band
+                    }
+                    c.a *= a; px[y * S + x] = c;
+                }
+            t.SetPixels(px); t.Apply();
+            int b = radius + 4;
+            var sp = Sprite.Create(t, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(b, b, b, b));
+            kitCache[key] = sp; return sp;
+        }
+        static Sprite KitShadow()
+        {
+            if (kitCache.TryGetValue("shadow", out var hit)) return hit;
+            const int S = 96, R = 24; var t = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            var px = new Color[S * S];
+            for (int y = 0; y < S; y++)
+                for (int x = 0; x < S; x++)
+                {
+                    float dx = Mathf.Max(R - x - 0.5f, x + 0.5f - (S - R), 0), dy = Mathf.Max(R - y - 0.5f, y + 0.5f - (S - R), 0);
+                    float d = Mathf.Sqrt(dx * dx + dy * dy) - (R - 10);
+                    px[y * S + x] = new Color(0.05f, 0.02f, 0.06f, 0.42f * Mathf.Clamp01(1f - d / 10f));
+                }
+            t.SetPixels(px); t.Apply();
+            var sp = Sprite.Create(t, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(R + 2, R + 2, R + 2, R + 2));
+            kitCache["shadow"] = sp; return sp;
+        }
+        static readonly Color FACE_TOP = new Color(0.47f, 0.31f, 0.53f), FACE_BOT = new Color(0.27f, 0.155f, 0.32f), LIP_C = new Color(0.15f, 0.075f, 0.18f),
+            GOLD_TOP = new Color(1f, 0.85f, 0.46f), GOLD_BOT = new Color(0.86f, 0.53f, 0.16f), GOLD_LIP = new Color(0.5f, 0.27f, 0.07f);
+
         public void Init()
         {
             I = this;
@@ -153,37 +224,40 @@ namespace Hearthgate.Game
 
             // the stats, top left (owner, Nov 14 2026: "this is too bunched up"): the wave, Resonance and its rate, and a row of
             // the other currencies with room between them; the settings cog moved to the bottom right
-            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(440, 128)); shade.pivot = new Vector2(0, 1);
-            var si = shade.gameObject.AddComponent<Image>(); si.sprite = Fade(); si.color = new Color(0.16f, 0.08f, 0.19f, 0.78f); si.raycastTarget = false;   // reads over bright roofs
+            // the top bar (owner, Nov 15 2026: "the entire hud crunched up into a corner"): one soft scrim across the whole top and
+            // the readouts spread along it: the wave and Resonance on the left, the Ascension in the centre, Starshards and perk
+            // points on the right. Plain readouts, no pills (game-polish 3); nothing pressable up here
+            var shade = Box("Shade", transform, new Vector2(0, 1), new Vector2(1, 1), Vector2.zero, new Vector2(0, 112)); shade.pivot = new Vector2(0.5f, 1);
+            var si = shade.gameObject.AddComponent<Image>(); si.sprite = VFade(); si.color = new Color(0.12f, 0.06f, 0.15f, 0.82f); si.raycastTarget = false;
             wave = Label("Wave", transform, new Vector2(0, 1), new Vector2(22, -10), 28, TextAnchor.UpperLeft);
-            var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -52), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
+            var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -46), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
             gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
-            res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -46), 40, TextAnchor.UpperLeft); res.color = RES;
-            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -98), 17, TextAnchor.UpperLeft); rate.font = body;
+            res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -40), 40, TextAnchor.UpperLeft); res.color = RES;
+            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -90), 16, TextAnchor.UpperLeft); rate.font = body;
             // every currency in sight (owner, Nov 14 2026: "all the different currencies should be displayed"): Starshards (the
             // gold star) and, after an Ascension, perk points (the rose crystal); a tap on one says where it comes from
-            shardRow = Box("Shards", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(196, -12), new Vector2(110, 32)); shardRow.pivot = new Vector2(0, 1);
+            shardRow = Box("Shards", transform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-246, -18), new Vector2(110, 36)); shardRow.pivot = new Vector2(0, 1);
             var shi = Box("Icon", shardRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(32, 32)); shi.pivot = new Vector2(0, 0.5f);
             var shImg = shi.gameObject.AddComponent<Image>(); shImg.sprite = Icon("starshard"); shImg.preserveAspect = true; shImg.raycastTarget = false;
-            shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); shardTxt.color = new Color(1f, 0.9f, 0.55f);   // the star's pale gold
+            shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(40, 0), 24, TextAnchor.MiddleLeft); shardTxt.color = new Color(1f, 0.9f, 0.55f);   // the star's pale gold
             shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(72, 30);
-            perkRow = Box("PerkPts", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(306, -12), new Vector2(110, 32)); perkRow.pivot = new Vector2(0, 1);
+            perkRow = Box("PerkPts", transform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-126, -18), new Vector2(110, 36)); perkRow.pivot = new Vector2(0, 1);
             var pki = Box("Icon", perkRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(32, 32)); pki.pivot = new Vector2(0, 0.5f);
             var pkImg = pki.gameObject.AddComponent<Image>(); pkImg.sprite = Icon("shard"); pkImg.preserveAspect = true; pkImg.raycastTarget = false;
-            perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); perkTxt.color = ROSE_TXT;   // the crystal's rose
+            perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(40, 0), 24, TextAnchor.MiddleLeft); perkTxt.color = ROSE_TXT;   // the crystal's rose
             perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(72, 30);
             // the Ascension, the run's lasting progress, in gold beside the wave (owner, Nov 14 2026: "we are not highlighting
             // the ascension levels in any way ... we should be making the ascension level a highlight"): the hourglass, the
             // Ascension in the display font, and a thin gold line filling toward the next one
-            ascRow = Box("Ascension", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(232, -46), new Vector2(186, 50)); ascRow.pivot = new Vector2(0, 1);
-            var ai = Box("Icon", ascRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 2), new Vector2(36, 36)); ai.pivot = new Vector2(0, 0.5f);
+            ascRow = Box("Ascension", transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-135, -14), new Vector2(270, 62)); ascRow.pivot = new Vector2(0, 1);
+            var ai = Box("Icon", ascRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 2), new Vector2(46, 46)); ai.pivot = new Vector2(0, 0.5f);
             ascIcon = ai.gameObject.AddComponent<Image>(); ascIcon.sprite = Icon("timestop"); ascIcon.preserveAspect = true; ascIcon.raycastTarget = false;
-            ascTxt = Label("T", ascRow, new Vector2(0, 1), new Vector2(42, -1), 21, TextAnchor.UpperLeft); ascTxt.color = new Color(1f, 0.84f, 0.42f);
-            ascTxt.rectTransform.pivot = new Vector2(0, 1); ascTxt.rectTransform.sizeDelta = new Vector2(144, 26);
-            ascTxt.horizontalOverflow = HorizontalWrapMode.Wrap; ascTxt.verticalOverflow = VerticalWrapMode.Truncate; ascTxt.resizeTextForBestFit = true; ascTxt.resizeTextMinSize = 13; ascTxt.resizeTextMaxSize = 21;   // fits the row, never runs past it
-            ascSub = Label("S", ascRow, new Vector2(0, 1), new Vector2(42, -25), 14, TextAnchor.UpperLeft); ascSub.font = body; ascSub.color = new Color(0.86f, 0.8f, 0.9f);
-            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(144, 18); ascSub.verticalOverflow = VerticalWrapMode.Overflow;   // a line taller than its box draws nothing
-            var ab = Box("Bar", ascRow, new Vector2(0, 0), new Vector2(0, 0), new Vector2(42, 1), new Vector2(140, 5)); ab.pivot = Vector2.zero;
+            ascTxt = Label("T", ascRow, new Vector2(0, 1), new Vector2(54, 0), 24, TextAnchor.UpperLeft); ascTxt.color = new Color(1f, 0.84f, 0.42f);
+            ascTxt.rectTransform.pivot = new Vector2(0, 1); ascTxt.rectTransform.sizeDelta = new Vector2(216, 30);
+            ascTxt.horizontalOverflow = HorizontalWrapMode.Wrap; ascTxt.verticalOverflow = VerticalWrapMode.Truncate; ascTxt.resizeTextForBestFit = true; ascTxt.resizeTextMinSize = 13; ascTxt.resizeTextMaxSize = 24;   // fits the row, never runs past it
+            ascSub = Label("S", ascRow, new Vector2(0, 1), new Vector2(54, -29), 15, TextAnchor.UpperLeft); ascSub.font = body; ascSub.color = new Color(0.86f, 0.8f, 0.9f);
+            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(216, 18); ascSub.verticalOverflow = VerticalWrapMode.Overflow;   // a line taller than its box draws nothing
+            var ab = Box("Bar", ascRow, new Vector2(0, 0), new Vector2(0, 0), new Vector2(54, 2), new Vector2(212, 7)); ab.pivot = Vector2.zero;
             var abg = ab.gameObject.AddComponent<Image>(); abg.color = new Color(0.08f, 0.04f, 0.1f, 0.7f); abg.raycastTarget = false;
             var af = Box("Fill", ab, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             ascBar = af.gameObject.AddComponent<Image>(); ascBar.color = new Color(1f, 0.8f, 0.36f); ascBar.raycastTarget = false;
@@ -231,18 +305,26 @@ namespace Hearthgate.Game
             // the town walk and, while walking, the work on the building in reach: in the same group as the other actions
             // (owner, Nov 14 2026: "the walk the town button should be with the other buttons. No reason to separate
             // actions"); LayoutActions places the group every frame
-            walk = Action("Walk", tr, new Vector2(-16, -140), new Vector2(230, 56), "walk", "T", () => Wizard.I?.Toggle(), null, false);
+            walk = Action("Walk", new Vector2(1, 0), new Vector2(-12, 10 + 46 + GAP), new Vector2(150, 46), "walk", "T", () => Wizard.I?.Toggle(), null, false);
+            // the upgrade dock (owner, Nov 15 2026: "the radial menu is not pulling its weight for the amount of upgrades we have to
+            // do in a moments notice"): the defenses (the one gold, primary button), the best building to raise next, the ledger,
+            // and the multiplier, all held to repeat
+            dockUp = Action("DockUp", new Vector2(0.5f, 0), new Vector2(30, DOCK_Y), new Vector2(196, DOCK_H), "tower", "U", () => GameLoop.I.UpgradeBulk(), () => GameLoop.I.CanUpgrade, true); dockUp.p.repeat = true;
+            dockBld = Action("DockBld", new Vector2(0.5f, 0), new Vector2(-156, DOCK_Y), new Vector2(166, DOCK_H), "upgrade", "B", () => GameLoop.I.BuyBest(), () => { int i = GameLoop.I.BestBuilding(); return i >= 0 && GameLoop.I.CanWork(i); }, false); dockBld.p.repeat = true;
+            dockLed = Action("DockLed", new Vector2(0.5f, 0), new Vector2(190, DOCK_Y), new Vector2(64, DOCK_H), "ledger", "L", () => ShowLedger("town"), () => GameLoop.I.StewardHere, false);
+            dockMult = Action("DockMult", new Vector2(0.5f, 0), new Vector2(30, DOCK_Y + DOCK_H + 2), new Vector2(76, 30), null, null, () => GameLoop.I.CycleMult(), null, false);
+            foreach (var d in new[] { dockUp, dockBld, dockLed, dockMult }) d.p.rt.pivot = new Vector2(0.5f, 0);
             work = Action("Work", tr, new Vector2(-16, -202), new Vector2(280, 56), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
             // Magister Bram's card, bottom left, his portrait in the medallion (the wizard); a tap skips the line
-            guide = Action("Guide", new Vector2(0.5f, 0), new Vector2(0, 118), new Vector2(430, 72), "walk", null, () => Guide.Skip(), null, false);   // bottom centre, over the walls bar: bottom left it hid the left rift and its first monsters (review Nov 15 2026)
+            guide = Action("Guide", new Vector2(0.5f, 0), new Vector2(0, COACH_Y), new Vector2(460, 62), "walk", null, () => Guide.Skip(), null, false);   // bottom centre, over the walls bar: bottom left it hid the left rift and its first monsters (review Nov 15 2026)
             guide.title.fontSize = 22; guide.p.rt.gameObject.SetActive(false);
 
             // settings (game-polish rule 19: the controls inside the game, the music and sound levels): a full button of the
             // kit like every other, its cog, its word and its key, in the bottom-right corner (owner, Nov 14 2026: "settings
             // button does not have settings written on it. It should match the other buttons. Consistency")
-            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-12, 10), new Vector2(150, 46), "gear", null, () => ShowSettings(true), null, false);   // no keycap: P is listed inside, and the corner stays clear of the lanes (LayoutCheck)
+            var gear = Action("Settings", new Vector2(1, 0), new Vector2(-12, 10), new Vector2(150, 46), "gear", "P", () => ShowSettings(true), null, false);   // no keycap: P is listed inside, and the corner stays clear of the lanes (LayoutCheck)
             gear.title.text = "Settings"; gear.title.fontSize = 19; gear.title.rectTransform.anchoredPosition = new Vector2(gear.title.rectTransform.anchoredPosition.x, 0);   // one line, centred (no cost row)
 
             // each building's sign (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
@@ -428,20 +510,53 @@ namespace Hearthgate.Game
         // action, sits in the corner; a finished or idle action leaves and the rest close up. LayoutCheck mirrors this.
         public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 0f;
         public const float WALK_W = 210f, SKILL_W2 = 210f;   // the walk button (bottom row), each button of the skill row   // the skills moved down over the walls bar (owner, Nov 14 2026)
-        Text walkBadge;
+        Text walkBadge, bldBadge;
+        Text Badge(RectTransform on)
+        {   // the count badge: a small red plate with an ink outline, on a button's top-left corner
+            var bb = Box("Badge", on, new Vector2(0, 1), new Vector2(0, 1), new Vector2(-8, 8), new Vector2(30, 22)); bb.pivot = new Vector2(0, 1);
+            var bi = bb.gameObject.AddComponent<Image>(); bi.sprite = KitPlate(new Color(0.95f, 0.36f, 0.3f), new Color(0.74f, 0.16f, 0.14f), true, 10); bi.type = Image.Type.Sliced; bi.raycastTarget = false;
+            var t = Label("N", bb, new Vector2(0.5f, 0.5f), Vector2.zero, 15, TextAnchor.MiddleCenter); t.font = body; t.fontStyle = FontStyle.Bold;
+            t.rectTransform.pivot = new Vector2(0.5f, 0.5f); t.rectTransform.sizeDelta = new Vector2(30, 22); return t;
+        }
+        void TickDock(GameLoop g, float now)
+        {
+            var P = g.P; bool show = !g.Fallen;
+            foreach (var d in new[] { dockUp, dockBld, dockLed, dockMult }) if (d.p.rt.gameObject.activeSelf != show) d.p.rt.gameObject.SetActive(show);
+            if (!show) return;
+            int n = g.GateBuyCount(out double total);
+            Show(dockUp, "Defenses", HG.Fmt(total), n > 0, now);
+            dockUp.title.text = n > 1 ? $"Defenses <size=15>+{n}</size>" : $"Defenses <size=15>Lv {P.gateLevel + 1}</size>"; dockUp.title.supportRichText = true;
+            int bi = g.BestBuilding();
+            if (bi >= 0)
+            {
+                var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
+                dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
+                Show(dockBld, built ? HG.ById(id).name : "Rebuild", HG.Fmt(g.BestCost(bi)), g.CanWork(bi), now);
+                if (!built) dockBld.title.text = $"Rebuild <size=15>{HG.ById(id).name}</size>";
+                if (!bldBadge) bldBadge = Badge(dockBld.p.rt);
+                int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
+                if (!built && g.CanRestore) ready = System.Math.Max(ready, 1);
+                bool b = ready > 0; if (bldBadge.transform.parent.gameObject.activeSelf != b) bldBadge.transform.parent.gameObject.SetActive(b); bldBadge.text = ready.ToString();
+            }
+            else Show(dockBld, "Buildings", null, false, now);
+            Show(dockLed, "", null, g.StewardHere, now);
+            Show(dockMult, g.MultLabel + "  <size=12>V</size>", null, true, now); dockMult.title.supportRichText = true;
+            // the guide's "up" now points at the dock's gold button
+            if (dockUp.glow) { var c = dockUp.glow.color; c.a = Guide.Pressing == "up" ? 0.75f + 0.25f * Mathf.Sin(now * 7f) : n > 0 ? 0.35f + 0.25f * Mathf.Sin(now * 3.2f) : 0f; dockUp.glow.color = c; }
+        }
+        // the bottom of the screen (owner, Nov 15 2026): the upgrade dock centred over the walls bar, in the corridor of the gate
+        // road between the two middle lanes; Walk and Settings stacked as two pills in the bottom-right corner; the coach and
+        // a boss's bar above the dock
+        public const float DOCK_Y = 64f, DOCK_H = 70f, BOSS_Y = 150f, COACH_Y = 192f;
+        Act dockUp, dockBld, dockLed, dockMult;
         void LayoutActions()
         {
-            // nothing pressable by the header (owner, Nov 15 2026: "i dont feel buttons should be near the header information with the
-            // progression we are making"): the top is for reading. The walk button sits on the bottom row beside Settings; on the
-            // walk, Upgrade defenses joins the wizard's skill row over the walls bar, beside the walls it raises
             void Place(RectTransform r, Vector2 anchor, Vector2 at, Vector2 size)
             {
                 if (r.anchorMin != anchor) { r.anchorMin = r.anchorMax = r.pivot = anchor; }
-                r.sizeDelta = size; r.anchoredPosition = at;
+                if (r.sizeDelta != size) r.sizeDelta = size; r.anchoredPosition = at;
             }
-            // owner, Nov 15 2026: "the town walk button is too big for what it does and it should be above the settings button";
-            // "there is no reason to have the stop time and upgrade defenses above the health bar if we have the radial menu"
-            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-12, 10 + 46 + GAP), new Vector2(58, 58));   // a medallion, right-aligned: the right lane enters just left of it (LayoutCheck)
+            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-12, 10 + 46 + GAP), new Vector2(150, 46));
             if (up.p.rt.gameObject.activeSelf) up.p.rt.gameObject.SetActive(false);
             var bp = banner.rectTransform.anchoredPosition; bp.y = -120f; banner.rectTransform.anchoredPosition = bp;
             // one voice: an open ring is what the player is looking at, so a banner that would cross it drops under it
@@ -464,13 +579,19 @@ namespace Hearthgate.Game
                 a.glow = g.gameObject.AddComponent<Image>(); a.glow.sprite = Panel(new Color(1f, 0.8f, 0.35f, 0.0f), new Color(1f, 0.8f, 0.35f, 0.55f), 18, 7);
                 a.glow.type = Image.Type.Sliced; a.glow.raycastTarget = false; a.glow.color = new Color(1, 1, 1, primary ? 1 : 0);   // dark until lit
             }
-            var img = r.gameObject.AddComponent<Image>(); img.sprite = Panel(PLUM, primary ? BRASS_HI : BRASS, 14, primary ? 4 : 3); img.type = Image.Type.Sliced;
-            float h = size.y, m = h - 12;
+            var shd = Box("Shadow", r, Vector2.zero, Vector2.one, new Vector2(0, -3), new Vector2(10, 8));
+            var shi = shd.gameObject.AddComponent<Image>(); shi.sprite = KitShadow(); shi.type = Image.Type.Sliced; shi.raycastTarget = false;
+            var lip = Box("Lip", r, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var li = lip.gameObject.AddComponent<Image>(); li.sprite = KitPlate(primary ? GOLD_LIP : LIP_C, primary ? GOLD_LIP : LIP_C, false); li.type = Image.Type.Sliced; li.raycastTarget = false;
+            var face = Box("Face", r, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero); face.offsetMin = new Vector2(0, LIP); face.offsetMax = Vector2.zero;
+            var img = face.gameObject.AddComponent<Image>(); img.sprite = KitPlate(primary ? GOLD_TOP : FACE_TOP, primary ? GOLD_BOT : FACE_BOT, true); img.type = Image.Type.Sliced;
+            var outer = r; r = face;   // the words, the picture and the keycap ride on the face
+            float h = size.y - LIP, m = h - 10;
             bool hasIcon = icon != null && size.x > m + 24;
             var med = Box("Medal", r, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(6 + m / 2, 0), new Vector2(m, m));
             if (icon != null && size.x <= m + 24) { med.anchorMin = med.anchorMax = med.pivot = new Vector2(0.5f, 0.5f); med.anchoredPosition = Vector2.zero; }   // an icon-only button: the medallion centred
-            var mi = med.gameObject.AddComponent<Image>(); mi.sprite = Panel(INK, BRASS, (int)(m / 2) - 1, 3); mi.type = Image.Type.Sliced; mi.raycastTarget = false;
-            var ic = Box("Icon", med, Vector2.zero, Vector2.one, new Vector2(0, 1), new Vector2(2, 2));
+            // no disc behind the picture: the glyph sits on the plate itself, as in every polished kit (a picture in a disc read as pasted on)
+            var ic = Box("Icon", med, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(6, 6));
             a.icon = ic.gameObject.AddComponent<Image>(); a.icon.sprite = Icon(icon); a.icon.preserveAspect = true; a.icon.raycastTarget = false;
             if (!a.icon.sprite) a.icon.enabled = false;
             if (icon == null) med.gameObject.SetActive(false);
@@ -501,7 +622,7 @@ namespace Hearthgate.Game
                 kt.rectTransform.pivot = new Vector2(0.5f, 0.5f); kt.rectTransform.sizeDelta = new Vector2(24, 21); kt.color = new Color(0.93f, 0.86f, 0.72f);
                 Destroy(kt.GetComponent<Shadow>());
             }
-            a.p = Press(r, act, on);
+            a.p = Press(outer, act, on, img); a.p.face = face;
             return a;
         }
         // one action's look for this frame: its words, its cost (or none), and whether it can be pressed
@@ -510,10 +631,10 @@ namespace Hearthgate.Game
             a.title.text = title;
             // the title never runs under the keycap or off the button (game-polish 5; QA Nov 14 2026: "Rebuild Frost Spi")
             float room = a.p.rt.sizeDelta.x - a.title.rectTransform.anchoredPosition.x - (a.cap ? 40 : 12);   // clear of the keycap in its corner
-            int fs = a.p.rt.sizeDelta.y >= 60 ? 22 : 20; a.title.fontSize = fs;
+            int fs = a.p.rt.sizeDelta.y >= 64 ? 22 : 20; a.title.fontSize = fs;
             while (fs > 13 && a.title.preferredWidth > room) a.title.fontSize = --fs;
             bool hasCost = !string.IsNullOrEmpty(cost); a.costRow.gameObject.SetActive(hasCost);
-            var tr = a.title.rectTransform; float h = a.p.rt.sizeDelta.y;
+            var tr = a.title.rectTransform; float h = a.p.rt.sizeDelta.y - (a.p.face ? LIP : 0);
             tr.anchoredPosition = new Vector2(tr.anchoredPosition.x, hasCost ? h * 0.18f : 0);
             if (hasCost) { a.cost.text = cost; a.cost.color = can ? RES : SHORT; }
             if (a.icon) a.icon.color = can || !hasCost ? Color.white : new Color(0.75f, 0.72f, 0.78f, 0.85f);
@@ -570,7 +691,7 @@ namespace Hearthgate.Game
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
             if (g.Fallen) { gateBar.fillAmount = 0; gateTxt.text = "Walls broken"; }   // not a full bar behind the defeat card
             var bo = g.BossNow; if (bossBox.gameObject.activeSelf != (bo != null)) bossBox.gameObject.SetActive(bo != null);
-            bossBox.anchoredPosition = new Vector2(0, Wizard.I && Wizard.I.On && g.TimeStopLevel > 0 ? SKILL_Y + 56 + 14 : 76);   // above the skill row on the walk
+            bossBox.anchoredPosition = new Vector2(0, BOSS_Y);   // above the dock
             if (bo != null)
             {
                 bossFill.fillAmount = Mathf.Clamp01((float)(bo.hp / bo.max));
@@ -593,20 +714,13 @@ namespace Hearthgate.Game
             // the town walk
             var wz = Wizard.I;
             int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
-            Show(walk, wz && wz.On ? "To the walls" : "Walk the town", wz && wz.On || ready == 0 ? null : $"<color=#CFE9B0>{ready} upgrade{(ready == 1 ? "" : "s")} ready</color>", true, now); walk.gem.enabled = false;   // a reason to go in (a count, not a price: no gem)
-            {   // the walk medallion: no words on it (owner: "too big for what it does"), the count of upgrades ready as a gold badge
-                walk.title.gameObject.SetActive(false); walk.costRow.gameObject.SetActive(false);
-                if (!walkBadge)
-                {
-                    var bb = Box("Badge", walk.p.rt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(-6, 6), new Vector2(26, 22)); bb.pivot = new Vector2(0, 1);
-                    var bi = bb.gameObject.AddComponent<Image>(); bi.sprite = Panel(new Color(0.85f, 0.62f, 0.18f), new Color(1f, 0.9f, 0.55f), 8, 2); bi.type = Image.Type.Sliced; bi.raycastTarget = false;
-                    walkBadge = Label("N", bb, new Vector2(0.5f, 0.5f), Vector2.zero, 15, TextAnchor.MiddleCenter); walkBadge.font = body; walkBadge.fontStyle = FontStyle.Bold;
-                    walkBadge.rectTransform.pivot = new Vector2(0.5f, 0.5f); walkBadge.rectTransform.sizeDelta = new Vector2(26, 22);
-                }
+            Show(walk, wz && wz.On ? "Walls" : "Walk", null, true, now);
+            {   // a red count badge on its corner (the same badge as the dock's): upgrades ready in town
+                if (!walkBadge) walkBadge = Badge(walk.p.rt);
                 bool show = !(wz && wz.On) && ready > 0; var badge = walkBadge.transform.parent.gameObject; if (badge.activeSelf != show) badge.SetActive(show);
                 walkBadge.text = ready.ToString();
-                if (walk.icon && walk.icon.transform.parent is RectTransform med) { med.anchorMin = med.anchorMax = med.pivot = new Vector2(0.5f, 0.5f); med.anchoredPosition = Vector2.zero; med.sizeDelta = new Vector2(46, 46); }
             }
+            TickDock(g, now);
             bool showWork = false; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);   // the building's own board has it now (owner, Nov 14 2026)
             if (showWork)
             {
