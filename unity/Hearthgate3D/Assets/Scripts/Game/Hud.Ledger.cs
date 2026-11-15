@@ -17,7 +17,7 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
-            var box = I.Modal("The Town Ledger", new Vector2(760, CARD_H)); TalkingTo = GameLoop.STEWARD;
+            var box = I.Modal("The Town Ledger", new Vector2(760, tab == "skills" ? 380 : CARD_H));   // the skills page is short: no empty half card TalkingTo = GameLoop.STEWARD;
             var tabs = new (string id, string label)[] { ("town", "The town"), ("skills", "Wizard's skills") };
             for (int k = 0; k < tabs.Length; k++)
             {
@@ -83,7 +83,7 @@ namespace Hearthgate.Game
             d.text = lv > 0
                 ? $"Freezes every enemy for <color=#9FD8FF>{GameLoop.TS_DUR[lv]:0.#} s</color>; ready again after {GameLoop.TS_CD[lv]:0} s. Press <color=#FFE68C>F</color> or the button over the walls' bar while you walk the town. " + (lv < GameLoop.TS_DUR.Length - 1 ? "Aurelian, by the fountain, trains the next rank." : "Fully trained.")
                 : (g.TrainerHere ? "Aurelian the Chronomancer, by the fountain, will teach it." : "An old Chronomancer comes to town after wave 5. He teaches it.");
-            I.Line(box, -290, "The wizard's skills are his own: they are ready when he walks the town. Aurelian teaches every one.", 16, new Color(0.8f, 0.76f, 0.84f));
+            I.Line(box, -244, "The wizard's skills are his own: they are ready when he walks the town. Aurelian teaches every one.", 16, new Color(0.8f, 0.76f, 0.84f));
         }
     }
 }
