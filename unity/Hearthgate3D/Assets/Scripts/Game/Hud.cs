@@ -64,6 +64,14 @@ namespace Hearthgate.Game
                 if (p.img) p.img.color = on ? (inside ? Color.Lerp(p.col, Color.white, 0.12f) : p.col) : p.col;   // the veil does the dimming
             }
         }
+        RectTransform ascRow; Image ascIcon, ascBar; Text ascTxt, ascSub;
+        public static string Roman(int n)
+        {
+            if (n <= 0 || n > 3999) return n.ToString();
+            var v = new[] { 1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1 }; var sy = new[] { "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I" };
+            var sb = new System.Text.StringBuilder(); for (int i = 0; i < v.Length; i++) while (n >= v[i]) { sb.Append(sy[i]); n -= v[i]; }
+            return sb.ToString();
+        }
         float bannerT;
         static readonly Color INK = new Color(0.16f, 0.08f, 0.19f, 0.95f), CREAM = new Color(1f, 0.957f, 0.863f),
             PLUM = new Color(0.29f, 0.165f, 0.31f, 0.96f), BRASS = new Color(0.79f, 0.635f, 0.29f), RES = new Color(1f, 0.84f, 0.42f);
@@ -145,6 +153,21 @@ namespace Hearthgate.Game
             var pkImg = pki.gameObject.AddComponent<Image>(); pkImg.sprite = Icon("shard"); pkImg.preserveAspect = true; pkImg.raycastTarget = false;
             perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(40, 0), 20, TextAnchor.MiddleLeft); perkTxt.color = ROSE_TXT;   // the crystal's rose
             perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(72, 30);
+            // the Ascension, the run's lasting progress, in gold beside the wave (owner, Nov 14 2026: "we are not highlighting
+            // the ascension levels in any way ... we should be making the ascension level a highlight"): the hourglass, the
+            // Ascension in the display font, and a thin gold line filling toward the next one
+            ascRow = Box("Ascension", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(232, -46), new Vector2(200, 50)); ascRow.pivot = new Vector2(0, 1);
+            var ai = Box("Icon", ascRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 2), new Vector2(36, 36)); ai.pivot = new Vector2(0, 0.5f);
+            ascIcon = ai.gameObject.AddComponent<Image>(); ascIcon.sprite = Icon("timestop"); ascIcon.preserveAspect = true; ascIcon.raycastTarget = false;
+            ascTxt = Label("T", ascRow, new Vector2(0, 1), new Vector2(42, -1), 21, TextAnchor.UpperLeft); ascTxt.color = new Color(1f, 0.84f, 0.42f);
+            ascTxt.rectTransform.pivot = new Vector2(0, 1); ascTxt.rectTransform.sizeDelta = new Vector2(156, 26);
+            ascSub = Label("S", ascRow, new Vector2(0, 1), new Vector2(42, -25), 14, TextAnchor.UpperLeft); ascSub.font = body; ascSub.color = new Color(0.86f, 0.8f, 0.9f);
+            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(156, 18);
+            var ab = Box("Bar", ascRow, new Vector2(0, 0), new Vector2(0, 0), new Vector2(42, 1), new Vector2(150, 5)); ab.pivot = Vector2.zero;
+            var abg = ab.gameObject.AddComponent<Image>(); abg.color = new Color(0.08f, 0.04f, 0.1f, 0.7f); abg.raycastTarget = false;
+            var af = Box("Fill", ab, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            ascBar = af.gameObject.AddComponent<Image>(); ascBar.color = new Color(1f, 0.8f, 0.36f); ascBar.raycastTarget = false;
+            ascBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero); ascBar.type = Image.Type.Filled; ascBar.fillMethod = Image.FillMethod.Horizontal;
             evTxt = Label("Event", transform, new Vector2(0, 1), new Vector2(24, -98), 18, TextAnchor.UpperLeft); evTxt.gameObject.SetActive(false);   // the named wave rides on the rate line
             // the banner sits under the top row of the HUD, never across it (QA, Nov 14 2026: in a portrait window the walk
             // banner ran under the cog and the Upgrade button), and wraps to the window's width
@@ -546,6 +569,15 @@ namespace Hearthgate.Game
             shardTxt.text = HG.Fmt(P.shards);   // the star says what it is; a tap explains (OnHud)
             shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(new Color(1f, 0.9f, 0.55f), Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
             bool pk = P.ascensions > 0; if (perkRow.gameObject.activeSelf != pk) perkRow.gameObject.SetActive(pk);
+            {   // the Ascension row
+                int aw = HG.AscendWave(P), reach = Mathf.Max(P.runWave, P.wave);
+                ascTxt.text = P.ascensions > 0 ? $"Ascension {Roman(P.ascensions)}" : "No Ascension yet";
+                ascSub.text = reach >= aw ? (HG.CityWhole(P) ? "Ready to ascend!" : "Rebuild the city to ascend") : $"Next at wave {aw}";
+                ascBar.fillAmount = Mathf.Clamp01(reach / (float)aw);
+                bool ready = g.CanAscend; ascSub.color = ready ? new Color(1f, 0.9f, 0.5f) : new Color(0.86f, 0.8f, 0.9f);
+                ascIcon.color = P.ascensions > 0 || ready ? Color.white : new Color(0.8f, 0.76f, 0.84f, 0.85f);
+                if (ready) ascIcon.rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 4f)); else ascIcon.rectTransform.localScale = Vector3.one;
+            }
             if (pk) perkTxt.text = HG.Fmt(P.perkPts);
             TickTimeStop(g);
             if (!Paused) TalkingTo = -1;
@@ -555,6 +587,8 @@ namespace Hearthgate.Game
                     Banner(P.shopOpen ? "Starshards: from bosses, Trials, Feats, quests and rare butterflies. Spend them at the Market's Starshard counter" : "Starshards: from bosses, Trials, Feats and rare butterflies. The Market's Shop takes them once it is rebuilt");
                 else if (g.ev != null && RectTransformUtility.RectangleContainsScreenPoint(rate.rectTransform, PointerPos, null))
                     Banner($"{g.ev.name}: {g.ev.line}");   // the named wave explains itself
+                else if (RectTransformUtility.RectangleContainsScreenPoint(ascRow, PointerPos, null))
+                    Banner(P.ascensions > 0 ? $"Ascension {P.ascensions}: your mark in time. Every Ascension makes the wizard and the city stronger, and a fall rewinds to it" : $"Reach wave {HG.AscendWave(P)} with the whole city rebuilt to Ascend: a mark in time the wizard can always return to");
                 else if (pk && RectTransformUtility.RectangleContainsScreenPoint(perkRow, PointerPos, null))
                     Banner("Perk points: each Ascension pays them. Spend them at the Watchtower's star table");
             }
