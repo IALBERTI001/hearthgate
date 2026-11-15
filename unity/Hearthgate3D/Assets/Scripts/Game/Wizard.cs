@@ -194,10 +194,10 @@ namespace Hearthgate.Game
             // the centrepiece and turned to them (within 50 degrees)
             Looking = -1;
             if (On)
-                for (int ki = 0; ki <= HG.BUILDING_IDS.Length; ki++)
+                for (int ki = 0; ki <= HG.BUILDING_IDS.Length + 1; ki++)
                 {
-                    int i = ki == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : ki;
-                    if (i == GameLoop.TRAINER ? !GameLoop.I.TrainerHere : (!GameLoop.I.CentreOn(i) || !InFootprint(i, pos, 0.2f))) continue;
+                    int i = ki == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : ki == HG.BUILDING_IDS.Length + 1 ? GameLoop.STEWARD : ki;
+                    if (i == GameLoop.TRAINER ? !GameLoop.I.TrainerHere : i == GameLoop.STEWARD ? !GameLoop.I.StewardHere : (!GameLoop.I.CentreOn(i) || !InFootprint(i, pos, 0.2f))) continue;
                     var c = GameLoop.TalkAt(i); var to = new Vector3(c.x - pos.x, 0, c.z - pos.z); float reach = GameLoop.TalkReach(i);
                     if (to.magnitude < reach && want.sqrMagnitude > 0.01f && Vector3.Angle(want, to) < 70f)   // pressing toward them: he turns to face them squarely
                         yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-to.x, -to.z) * Mathf.Rad2Deg, 540f * dt);
@@ -248,6 +248,7 @@ namespace Hearthgate.Game
         {
             Push(Field.PLAZA, FOUNTAIN_R);
             if (GameLoop.I && GameLoop.I.TrainerHere) Push(GameLoop.TRAINER_AT, 0.45f + RADIUS);   // the Chronomancer stands his ground
+            if (GameLoop.I && GameLoop.I.StewardHere) { Push(GameLoop.STEWARD_AT, 0.45f + RADIUS); Push(GameLoop.BOOTH_AT + new Vector3(-0.7f, 0, 0), 0.75f + RADIUS); Push(GameLoop.BOOTH_AT + new Vector3(0.7f, 0, 0), 0.75f + RADIUS); }   // the booth's counter
             foreach (var pr in Field.PROPS) Push(new Vector3(pr.x, 0, pr.y), pr.z + RADIUS);
             if (pos.z > -3.2f && Mathf.Abs(pos.x) < Field.GATE_HALF + 0.8f) pos.z = -3.2f;
             float m = 2.4f, ex = pos.x / (Field.RX - m), ez = (pos.z + Field.RZ) / (Field.RZ - m), e = Mathf.Sqrt(ex * ex + ez * ez);

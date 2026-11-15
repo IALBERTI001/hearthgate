@@ -1464,7 +1464,8 @@ def npc(kind):
       librarian: the Library's keeper: a plum robe, grey hair in a bun, gold spectacles, an open book;
       chronomancer: the old time-master by the fountain who trains the wizard: a teal hooded robe, a long beard, an hourglass."""
     robe, trim, skin_hair = {'astronomer': ('roof_slate', 'gold', 'beard'), 'merchant': ('tunic_g', 'gold', 'hair'),
-                             'librarian': ('robe', 'gold', 'smoke'), 'chronomancer': ('teal', 'gold', 'beard')}[kind]
+                             'librarian': ('robe', 'gold', 'smoke'), 'chronomancer': ('teal', 'gold', 'beard'),
+                             'steward': ('banner', 'gold', 'hair')}[kind]   # steward: the town's steward at his booth in the square, who keeps the ledger of every building
     K.cyl('robe', 0.46, 1.0, (0, 0, 0.5), M(robe), 20, 0.03, r2=0.34)
     K.cyl('hem', 0.48, 0.07, (0, 0, 0.04), M(trim), 20, 0.0)
     K.sphere('chest', 0.38, (0, 0, 1.12), M(robe), (1, 0.85, 0.85), 3)
@@ -1487,6 +1488,8 @@ def npc(kind):
                     o = K.cyl('scope', 0.06, 0.6, (hnd.x, hnd.y - 0.15, hnd.z + 0.05), M('gold'), 10, 0.01, r2=0.045); o.rotation_euler = (1.2, 0, 0)
                 elif kind == 'merchant':
                     K.sphere('crystal', 0.11, (hnd.x, hnd.y - 0.08, hnd.z + 0.13), M('rose', 2.0), (0.8, 0.8, 1.4), 1)
+                elif kind == 'steward':   # a quill, held ready
+                    K.cone('quill', 0.05, 0.5, (hnd.x, hnd.y - 0.06, hnd.z + 0.22), M('white_gloss'), 6).rotation_euler = (0.3, 0, 0)
                 elif kind == 'librarian':
                     for sy in (-1, 1): block((hnd.x + sy * 0.12, hnd.y - 0.12, hnd.z + 0.05), (0.22, 0.3, 0.03), M('canvas'), 0.0).rotation_euler = (0.9, sy * 0.25, 0)
                 else:
@@ -1503,6 +1506,11 @@ def npc(kind):
         K.sphere('moustache', 0.09, (0, -0.3, 1.49), M('hair'), (1.8, 0.6, 0.5), 2)
         K.sphere('hair', 0.31, (0, 0.05, 1.6), M('hair'), (1, 1, 0.85), 3)
         K.cyl('cap', 0.31, 0.2, (0, 0.02, 1.8), M('roof_red'), 16, 0.03, r2=0.26); K.sphere('tassel', 0.06, (0.2, 0.15, 1.92), M('gold'), sub=1)
+    elif kind == 'steward':   # brown hair under a flat velvet cap with a gold pin, a trim moustache, a ledger-chain of office
+        K.sphere('hair', 0.31, (0, 0.05, 1.6), M('hair'), (1, 1, 0.85), 3)
+        K.cyl('cap', 0.34, 0.1, (0, 0.03, 1.8), M('robe_dk'), 18, 0.03, r2=0.3); K.sphere('pin', 0.05, (0.18, -0.24, 1.82), M('gold', 1.2), sub=1)
+        K.sphere('moustache', 0.08, (0, -0.3, 1.49), M('hair'), (1.6, 0.5, 0.45), 2)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.3, minor_radius=0.025, location=(0, -0.08, 1.3), rotation=(1.2, 0, 0)); K.finish(bpy.context.object, M('gold'))
     elif kind == 'librarian':
         K.sphere('hair', 0.32, (0, 0.04, 1.6), M('smoke'), (1, 1, 0.9), 3); K.sphere('bun', 0.16, (0, 0.18, 1.86), M('smoke'), sub=2)
         for sx in (-1, 1):
@@ -1516,6 +1524,32 @@ def npc(kind):
         K.cone('hood_tip', 0.2, 0.4, (0, 0.34, 1.9), M(robe), 10).rotation_euler = (0.9, 0, 0)
         for sx in (-1, 1): block((sx * 0.12, -0.29, 1.71), (0.15, 0.07, 0.05), M('beard'), 0.02).rotation_euler = (0, -sx * 0.25, 0)   # white brows
     return K.export('npc_' + kind)
+
+def steward_booth():
+    """The steward's booth in the square (owner, Nov 14 2026: "set a small management booth or something to have the player
+    walk up and get the whole picture of the town to upgrade buildings"): a counter facing -y with a great open ledger, an
+    inkpot, stacked coins and a little model of the town's gate; a striped canopy on four posts; a hanging board with a gold
+    scroll. The steward stands behind it (at +y)."""
+    block((0, 0, 0.5), (2.2, 0.8, 1.0), M('wood'), 0.04)                       # the counter
+    block((0, -0.02, 1.03), (2.4, 0.95, 0.07), M('wood_dk'), 0.03)             # its top
+    for sx in (-1, 1): block((sx * 0.9, -0.41, 0.5), (0.12, 0.04, 0.9), M('wood_dk'), 0.02)   # front framing
+    block((0, -0.42, 0.55), (1.5, 0.03, 0.55), M('banner'), 0.01); K.sphere('crest', 0.13, (0, -0.45, 0.6), M('gold', 1.1), (1, 0.3, 1.1), 2)
+    for sx in (-1, 1):   # the open ledger: two pages and its spine
+        block((sx * 0.24, -0.08, 1.1), (0.46, 0.6, 0.04), M('canvas'), 0.01).rotation_euler = (0, sx * 0.12, 0)
+        for k in range(5): block((sx * 0.24, -0.25 + k * 0.09, 1.125), (0.34, 0.012, 0.005), M('char'), 0.0).rotation_euler = (0, sx * 0.12, 0)
+    block((0, -0.08, 1.08), (0.04, 0.62, 0.05), M('robe_dk'), 0.01)
+    K.cyl('inkpot', 0.07, 0.12, (0.7, 0.05, 1.12), M('char'), 10, 0.01); K.cone('quill', 0.04, 0.42, (0.72, 0.06, 1.35), M('white_gloss'), 6).rotation_euler = (0.2, 0.3, 0)
+    for k in range(4): K.cyl('coin', 0.09, 0.025, (-0.75, 0.1, 1.08 + k * 0.03), M('gold'), 14, 0.0)
+    for sx in (-1, 1):
+        for sy in (-1, 1): K.cyl('post', 0.06, 2.5, (sx * 1.15, sy * 0.5, 1.25), M('wood_dk'), 8, 0.01)
+    for k in range(6):   # the striped canopy, red and cream, sloping to the front
+        block((-1.05 + k * 0.42, 0, 2.55), (0.42, 1.3, 0.05), M('banner' if k % 2 == 0 else 'canvas'), 0.0).rotation_euler = (-0.18, 0, 0)
+    block((0, -0.68, 2.42), (2.55, 0.05, 0.16), M('gold'), 0.01).rotation_euler = (-0.18, 0, 0)   # the valance
+    for sx in (-1, 1): K.cyl('chain', 0.012, 0.3, (sx * 0.35, -0.7, 2.2), M('iron'), 4, 0.0)
+    block((0, -0.72, 1.95), (0.95, 0.06, 0.42), M('wood_dk'), 0.03)            # the hanging board
+    K.cyl('scroll', 0.07, 0.6, (0, -0.77, 1.95), M('gold', 1.2), 10, 0.01).rotation_euler = (0, math.pi / 2, 0)
+    block((0, -0.77, 1.88), (0.5, 0.02, 0.14), M('canvas'), 0.0)
+    return K.export('steward_booth')
 
 def rift():
     """A time rift (owner, Nov 14 2026: the monsters' "weird spawn" seen in 3D): where each lane begins, a tear in the air

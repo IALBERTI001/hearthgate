@@ -11,8 +11,8 @@ namespace Hearthgate.Game
     public partial class Hud
     {
         public static int TalkingTo = -1;   // the keeper whose card is open (they gesture while it is)
-        public static string KeeperName(string kind) => kind == "astronomer" ? "Orrin the Star-Reader" : kind == "merchant" ? "Mira of the Bazaar" : kind == "librarian" ? "Elder Quill" : "Aurelian the Chronomancer";
-        static string Calling(string kind) => kind == "astronomer" ? "Keeper of the Watchtower's stars" : kind == "merchant" ? "Starshard seller of the Market" : kind == "librarian" ? "Keeper of the Library" : "Master of hours, teacher of the time wizard";
+        public static string KeeperName(string kind) => kind == "astronomer" ? "Orrin the Star-Reader" : kind == "merchant" ? "Mira of the Bazaar" : kind == "librarian" ? "Elder Quill" : kind == "steward" ? "Tobin of the Ledger" : "Aurelian the Chronomancer";
+        static string Calling(string kind) => kind == "astronomer" ? "Keeper of the Watchtower's stars" : kind == "merchant" ? "Starshard seller of the Market" : kind == "librarian" ? "Keeper of the Library" : kind == "steward" ? "Keeper of the town's ledger" : "Master of hours, teacher of the time wizard";
 
         public static void ShowTalk(int who)
         {
@@ -45,6 +45,13 @@ namespace Hearthgate.Game
                                          : FeatNews ? "\"A new Feat is written in the great book in your name. Come and read it.\"" : "\"Today's quests are in the great book. The Feats and the Bestiary keep the rest.\"";
                     opts.Add((claim > 0 ? "Claim my quests" : "What needs doing?", "quests", () => ShowQuests()));
                     opts.Add(("The Feats and beasts", "quests", () => ShowQuests("feats")));
+                    break;
+                case "steward":
+                    bool news = g.LedgerNews;
+                    say.text = news ? "\"Good news in the ledger, wizard: a building can reach a <color=#FFD56B>doubling level</color> today. Shall we look?\""
+                                    : $"\"Every building in town, on one page: what each makes, and what it costs to raise. The city makes <color=#CFE9B0>+{HG.Fmt(HG.CityRate(P, g.B))}/s</color> today.\"";
+                    opts.Add(("Open the ledger", "ledger", () => ShowLedger("town")));
+                    opts.Add(("My skills", "timestop", () => ShowLedger("skills")));
                     break;
                 default:   // the Chronomancer
                     int lv = g.TimeStopLevel;

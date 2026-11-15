@@ -43,7 +43,7 @@ jobs += [(k, (lambda k=k: F.monster(k)), None) for k in F.MONSTERS]
 jobs += [('rift', F.rift, None)]
 jobs += [('time_dial', F.time_dial, None), ('hourglass', F.hourglass_model, None), ('mark_excl', lambda: F.marker_sign('excl'), None), ('mark_quest', lambda: F.marker_sign('quest'), None)]
 jobs += [('npc_' + k, (lambda k=k: F.npc(k)), None) for k in ('astronomer', 'merchant', 'librarian', 'chronomancer')]
-jobs += [('npc_soldier', (lambda: F.villager('s')), None)]
+jobs += [('npc_soldier', (lambda: F.villager('s')), None), ('npc_steward', (lambda: F.npc('steward')), None), ('steward_booth', F.steward_booth, None)]
 jobs += [('top_' + c, (lambda c=c: F.cap_look(c)), None) for c in F.CAP_LOOKS]
 part, parts = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))   # the chain runs the test in parallel parts
 for i, (name, fn, extra) in enumerate(jobs):

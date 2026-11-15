@@ -18,29 +18,37 @@ namespace Hearthgate.Game
 {
     public partial class GameLoop
     {
-        public const int TRAINER = 99;
+        public const int TRAINER = 99, STEWARD = 98;
         public static readonly Vector3 TRAINER_AT = Field.PLAZA + new Vector3(4.3f, 0, 0.6f);
+        // the steward's booth across the fountain from the Chronomancer (owner, Nov 14 2026: "set a small management booth or
+        // something to have the player walk up and get the whole picture of the town to upgrade buildings"): he stands behind
+        // his counter; the counter stands toward the gate
+        public static readonly Vector3 STEWARD_AT = Field.PLAZA + new Vector3(-4.6f, 0, 0.2f), BOOTH_AT = STEWARD_AT + new Vector3(0, 0, 0.8f);
+        public static bool InSquare(int i) => i == TRAINER || i == STEWARD;
+        public bool StewardHere => P.restored.Count >= 1 || P.ascensions > 0;
+        GameObject stewardObj, boothObj;
         readonly System.Collections.Generic.Dictionary<Transform, Quaternion> armRest = new System.Collections.Generic.Dictionary<Transform, Quaternion>();
         GameObject[] keepers; GameObject trainerObj; Transform[] marks; string[] markKind; float npcT;
 
-        public static string KeeperOf(int i) => i == TRAINER ? "chronomancer" : HG.BUILDING_IDS[i] == "watchtower" ? "astronomer" : HG.BUILDING_IDS[i] == "market" ? "merchant" : HG.BUILDING_IDS[i] == "library" ? "librarian" : null;
+        public static string KeeperOf(int i) => i == TRAINER ? "chronomancer" : i == STEWARD ? "steward" : HG.BUILDING_IDS[i] == "watchtower" ? "astronomer" : HG.BUILDING_IDS[i] == "market" ? "merchant" : HG.BUILDING_IDS[i] == "library" ? "librarian" : null;
         public bool TrainerHere => P.bestWave >= 5 || P.ascensions > 0;
         // where a keeper stands: behind the centrepiece, facing the door
         public static Vector3 TalkAt(int i)
         {
             if (i == TRAINER) return TRAINER_AT;
+            if (i == STEWARD) return STEWARD_AT;
             var c = Field.CENTREPIECE[i]; float hz = Field.PlotSize(i).y / 2f;
             float v = Mathf.Max(c.y - (c.z + 0.65f), -(hz - 0.55f));
             float u = c.x - (HG.BUILDING_IDS[i] == "watchtower" ? 0.55f : 0f);   // Orrin stands clear of the stair and the ruin's fallen stones
             return Field.World(i, u, v, Field.FLOOR);
         }
-        public static float TalkReach(int i) => i == TRAINER ? 2.2f : 2f * Field.CENTREPIECE[i].z + 1.75f;
+        public static float TalkReach(int i) => i == TRAINER ? 2.2f : i == STEWARD ? 2.9f : 2f * Field.CENTREPIECE[i].z + 1.75f;
 
         void TickNpcs(float dt)
         {
             if (art == null) return;
             TickRifts(dt);
-            if (keepers == null) { keepers = new GameObject[HG.BUILDING_IDS.Length]; marks = new Transform[HG.BUILDING_IDS.Length + 1]; markKind = new string[marks.Length]; }
+            if (keepers == null) { keepers = new GameObject[HG.BUILDING_IDS.Length]; marks = new Transform[HG.BUILDING_IDS.Length + 2]; markKind = new string[marks.Length]; }
             npcT += dt;
             for (int i = 0; i < keepers.Length; i++)
             {
@@ -57,10 +65,22 @@ namespace Hearthgate.Game
             }
             else if (!tr && trainerObj) { Destroy(trainerObj); trainerObj = null; }
             if (trainerObj) Idle(trainerObj.transform, TRAINER);
+            bool st = StewardHere && !P.fallen;
+            if (st && !stewardObj)
+            {
+                stewardObj = SpawnKeeper("steward", STEWARD_AT, new Vector2(0, 1));
+                if (art.stewardBooth && !boothObj)
+                {
+                    boothObj = Instantiate(art.stewardBooth, world); boothObj.name = "steward's booth";
+                    boothObj.transform.position = BOOTH_AT; boothObj.transform.rotation = Quaternion.LookRotation(new Vector3(0, 0, -1)) * art.stewardBooth.transform.rotation;
+                }
+            }
+            else if (!st && stewardObj) { Destroy(stewardObj); stewardObj = null; if (boothObj) { Destroy(boothObj); boothObj = null; } }
+            if (stewardObj) Idle(stewardObj.transform, STEWARD);
             // the signs: '!' something new, '?' something to hand in
             for (int k = 0; k < marks.Length; k++)
             {
-                int i = k == keepers.Length ? TRAINER : k; bool present = i == TRAINER ? trainerObj : keepers[k];
+                int i = k == keepers.Length ? TRAINER : k == keepers.Length + 1 ? STEWARD : k; bool present = i == TRAINER ? trainerObj : i == STEWARD ? stewardObj : keepers[k];
                 string want = present ? Mark(i) : null;
                 if (want != markKind[k] || (want != null && !marks[k]))
                 {
@@ -70,9 +90,9 @@ namespace Hearthgate.Game
                     if (prefab) { var g = Instantiate(prefab, world); foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; marks[k] = g.transform; }
                 }
                 if (!marks[k]) continue;
-                var wz = Wizard.I; bool near = wz && wz.On && (i == TRAINER || wz.Inside == i);
+                var wz = Wizard.I; bool near = wz && wz.On && (InSquare(i) || wz.Inside == i);
                 // over the head when the wizard is with them; over the roof (big enough to see from the walls) otherwise
-                var at = near || i == TRAINER ? TalkAt(i) + Vector3.up * (2.5f + (i == TRAINER ? 0 : Field.FLOOR)) : Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 1.6f);
+                var at = near || InSquare(i) ? TalkAt(i) + Vector3.up * (2.5f + (InSquare(i) ? (i == STEWARD ? 1.0f : 0) : Field.FLOOR)) : Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 1.6f);
                 float sc = near ? 1.25f : wz && wz.On ? 2.3f : 3.4f;   // read across the square, not a thin stick
                 marks[k].position = at + Vector3.up * Mathf.Sin(npcT * 2.4f + k) * 0.15f * sc;
                 var cam = Camera.main; if (cam) { var d = marks[k].position - cam.transform.position; if (d.sqrMagnitude > 0.01f) marks[k].rotation = Quaternion.LookRotation(d); }   // full billboard: from the high cameras a yaw-only sign was edge-on, a stick
@@ -102,6 +122,19 @@ namespace Hearthgate.Game
             }
         }
         // what a keeper has for the player: '!' new, '?' to hand in, null nothing
+        // the steward's news: a building that can be raised to a doubling level now
+        public bool LedgerNews
+        {
+            get
+            {
+                for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
+                {
+                    var id = HG.BUILDING_IDS[i]; if (!P.restored.Contains(id)) continue;
+                    int L = HG.LevelOf(P, id); if (System.Array.IndexOf(HG.MILESTONES, L + 1) >= 0 && P.res >= LevelCost(i)) return true;
+                }
+                return false;
+            }
+        }
         public string Mark(int i)
         {
             switch (KeeperOf(i))
@@ -110,6 +143,7 @@ namespace Hearthgate.Game
                 case "merchant": return P.shopOpen && HG.SHOP.Any(l => !Owns(l) && l.price > 0 && P.shards >= l.price) ? "!" : null;
                 case "librarian": return P.quests.Any(q => q.n >= q.need && !q.claimed) ? "?" : Hud.FeatNews ? "!" : null;
                 case "chronomancer": return CanTrain ? "!" : null;
+                case "steward": return LedgerNews ? "!" : null;
             }
             return null;
         }

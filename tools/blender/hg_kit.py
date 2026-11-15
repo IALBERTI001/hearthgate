@@ -362,7 +362,7 @@ if __name__ == '__main__':
     jobs += [('rift', F.rift)]
     jobs += [('time_dial', F.time_dial), ('hourglass', F.hourglass_model), ('mark_excl', lambda: F.marker_sign('excl')), ('mark_quest', lambda: F.marker_sign('quest'))]
     jobs += [('npc_' + k, (lambda k=k: F.npc(k))) for k in ('astronomer', 'merchant', 'librarian', 'chronomancer')]
-    jobs += [('npc_soldier', (lambda: F.villager('s')))]   # the watch's runner (GameLoop.Watch)
+    jobs += [('npc_soldier', (lambda: F.villager('s'))), ('npc_steward', (lambda: F.npc('steward'))), ('steward_booth', F.steward_booth)]   # the watch's runner (GameLoop.Watch)
     jobs += [('breach', F.breach), ('rubble_heap', F.rubble_heap), ('puff', F.puff)]
     jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly)] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
     k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))
