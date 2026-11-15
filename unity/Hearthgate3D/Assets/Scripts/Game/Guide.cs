@@ -12,8 +12,8 @@ namespace Hearthgate.Game
         // block id -> lines: text, the action to press ("up", "re", "walk" or null), the voice file
         static readonly Dictionary<string, (string text, string press, string voice)[]> LINES = new Dictionary<string, (string, string, string)[]>
         {
-            { "intro", new[] { ("Defend the city!", (string)null, "intro-1"), ("Click the gatehouse: upgrade the defenses!", "up", "intro-3") } },
-            { "restore", new[] { ("Click the Forge's ruin: rebuild it!", "re", "restore-3") } },
+            { "intro", new[] { ("Defend the city!", (string)null, "intro-1"), ("Press the gold Defenses button: stronger walls!", "up", null) } },
+            { "restore", new[] { ("Press Rebuild Forge: your towers catch fire!", "re", null) } },
             { "forge", new[] { ("Fire towers!", (string)null, "forge-1") } },
             { "frostSpire", new[] { ("Freeze, then burn: SHATTER!", (string)null, "frostSpire-2") } },
             { "stormBell", new[] { ("Lightning chains!", (string)null, "stormBell-1") } },
@@ -21,7 +21,7 @@ namespace Hearthgate.Game
             { "fell", new[] { ("Nothing is lost. Push again!", (string)null, "fell-1") } },
             { "whole", new[] { ("The city stands! Wave {aw} to Ascend", (string)null, "whole-1") } },
             { "ascend", new[] { ("Ascend: better than ever!", (string)null, "ascend-1"), ("Click the gatehouse: Ascend!", "re", "ascend-2") } },
-            { "gate", new[] { ("At the walls! Click the gatehouse: upgrade!", "up", "gate-1") } },
+            { "gate", new[] { ("They're at the walls! Press Defenses!", "up", "gate-1") } },
             { "town", new[] { ("Walk the town: upgrade the buildings!", "walk", (string)null) } },   // no recording yet: the line shows without his voice
             { "surge", new[] { ("Tap the fountain: double Resonance!", (string)null, "surge-1") } },
         };

@@ -740,14 +740,14 @@ namespace Hearthgate.Game
             Guide.Tick(Time.unscaledDeltaTime, txt => { guideText = txt; guide.title.text = txt; guide.p.rt.gameObject.SetActive(true); }, () => guide.p.rt.gameObject.SetActive(false));
             {   // the coach follows the hand (review Nov 15 2026): once the ring it asked for is open, it names the button in it
                 string want = guideText;
-                if (ring && Guide.Pressing == "up" && (ringId == "gate" || ringId == "wiz")) want = "Press Upgrade defenses!";
+                if (ring && Guide.Pressing == "up" && (ringId == "gate" || ringId == "wiz")) want = "Press Upgrade defenses!";   // (the dock's gold button works too)
                 else if (ring && Guide.Pressing == "re" && ringId != null && ringId.StartsWith("b")) want = "Press Rebuild!";
                 else if (ring && Guide.Pressing == "re" && ringId == "gate" && GameLoop.I.NextBuilding == null) want = "Press Ascend!";
                 if (want != null && guide.title.text != want) guide.title.text = want;
                 // one voice: a banner's news and an idle line of the coach never speak together
                 if (bannerT > 0 && Guide.Pressing == null && guide.p.rt.gameObject.activeSelf) guide.p.rt.gameObject.SetActive(false);
             }
-            var pt = Guide.Pressing == "up" ? up : Guide.Pressing == "re" ? re : Guide.Pressing == "walk" ? walk : null;
+            var pt = Guide.Pressing == "up" ? dockUp : Guide.Pressing == "re" ? (GameLoop.I.NextBuilding != null ? dockBld : null) : Guide.Pressing == "walk" ? walk : null;   // the coach points at the dock
             if (pt != null && pt.glow) { var c = pt.glow.color; c.a = 0.7f + 0.3f * Mathf.Sin(Time.unscaledTime * 7f); pt.glow.color = c; }
             // while the walls lie fallen the only choice is on the card: the buttons above it step aside (fresh-eyes review,
             // Nov 14 2026: "Rebuild Forge" and "Upgrade towers" stayed live behind the defeat card)

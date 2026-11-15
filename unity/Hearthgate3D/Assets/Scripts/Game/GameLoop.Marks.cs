@@ -20,7 +20,7 @@ namespace Hearthgate.Game
         Transform gateCue;
         void TickGateCue()
         {
-            bool want = !Hud.RingOpen && !(Wizard.I && Wizard.I.On) && !P.fallen && (Guide.Pressing == "up" || (Guide.Pressing == "re" && NextBuilding == null));
+            bool want = !Hud.RingOpen && !(Wizard.I && Wizard.I.On) && !P.fallen && (Guide.Pressing == "re" && NextBuilding == null);
             if (want && !gateCue && art && art.marker) gateCue = Art.Spawn(art.marker, "gate cue", Vector3.zero, world).transform;
             if (!gateCue) return;
             if (gateCue.gameObject.activeSelf != want) gateCue.gameObject.SetActive(want);
