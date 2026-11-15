@@ -925,11 +925,11 @@ namespace Hearthgate.Game
         void ShowControls()
         {
             ShowSettings(false);
-            var box = Modal("Controls", new Vector2(600, 430));
+            var box = Modal("Controls", new Vector2(600, 460));
             string[,] rows = {
                 { "U", "Upgrade the defenses (towers and walls)" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
                 { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
-                { "X", "Start a Surge at the fountain" }, { "F", "Stop time, on the town walk (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
+                { "X", "Start a Surge at the fountain" }, { "F", "Stop time, on the town walk (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "Settings" } };
             for (int k = 0; k < rows.GetLength(0); k++)
             {
                 float y = -70 - k * 26;
