@@ -118,7 +118,7 @@ namespace Hearthgate.Game
                 if (it.can == null || it.can()) { Sound.Click(); it.act(); } else Sound.Dud();
                 CloseRing(); return true;
             }
-            if (ringHeldT < 0.3f) return false;   // a click: the ring stays for clicking
+            if (off.magnitude <= dead) return false;   // let go where it was pressed (a click, or a hold that changed its mind): the ring stays for clicking
             CloseRing(); return true;
         }
 
