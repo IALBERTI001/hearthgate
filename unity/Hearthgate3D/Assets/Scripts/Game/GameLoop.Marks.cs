@@ -24,7 +24,7 @@ namespace Hearthgate.Game
             if (want && !gateCue && art && art.marker) gateCue = Art.Spawn(art.marker, "gate cue", Vector3.zero, world).transform;
             if (!gateCue) return;
             if (gateCue.gameObject.activeSelf != want) gateCue.gameObject.SetActive(want);
-            if (want) gateCue.position = Field.GateTop + Vector3.up * (3.2f + 0.35f * Mathf.Sin(Time.time * 4f));
+            if (want) gateCue.position = Field.GateTop + new Vector3(0, 1.5f + 0.3f * Mathf.Sin(Time.time * 4f), 2.2f);   // just over the gatehouse roof, on the walls camera's side: 3 m up it read as pointing into the square (QA Nov 15 2026)
         }
         // the defenses' level, carved over the gate (owner, Nov 15 2026: "defenses level should be displayed on the wall so that
         // visually players can track it. Should be incorporated to the wall so its not the big purple thing"): a dark stone
