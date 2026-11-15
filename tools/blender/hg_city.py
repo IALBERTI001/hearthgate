@@ -419,10 +419,45 @@ def signpost(w, d, ruined=False):
     block((x, y - 0.15, 2.42), (1.6, 0.06, 0.08), M('gold' if not ruined else 'iron'), 0.0)
     rubble(x, y, 2, (0.2, 0.2)); tufts(x + 0.3, y + 0.1, 2, (0.2, 0.2))
 
+def emblem(bid, x, y, z):
+    """The building's emblem carved on its signpost board (owner, Nov 14 2026: "the buildings have signs that are empty in
+    front of them"): the game's board with the name and numbers only shows near the wizard, so the sign itself says what
+    the building is from anywhere."""
+    f = y - 0.08   # on the board's face (the board's centre is y, its face 0.04 toward the street)
+    K.cyl('emb_back', 0.34, 0.05, (x, f + 0.02, z), M('wood_dk'), 20, 0.01).rotation_euler = (math.pi / 2, 0, 0)
+    K.cyl('emb_ring', 0.36, 0.03, (x, f + 0.01, z), M('gold'), 20, 0.0).rotation_euler = (math.pi / 2, 0, 0)
+    if bid == 'forge':
+        K.cone('emb', 0.17, 0.42, (x, f - 0.03, z - 0.04), M('fire', 1.6), 8); K.cone('emb2', 0.09, 0.24, (x, f - 0.06, z - 0.06), M('fire_core', 2.0), 8)
+    elif bid == 'frostSpire':
+        K.cone('emb', 0.1, 0.5, (x, f - 0.03, z - 0.02), M('frost', 1.4), 6)
+        for a in (-0.7, 0.7): K.cone('emb2', 0.06, 0.3, (x + a * 0.2, f - 0.03, z - 0.08), M('frost', 1.4), 6).rotation_euler = (0, a, 0)
+    elif bid == 'stormBell':
+        K.cone('emb', 0.2, 0.32, (x, f - 0.03, z - 0.02), M('gold'), 12); K.sphere('emb2', 0.06, (x, f - 0.05, z - 0.2), M('storm', 1.6), sub=2)
+    elif bid == 'bakery':
+        K.sphere('emb', 0.22, (x, f - 0.04, z), M('amber'), (1.2, 0.5, 0.75), 2)
+        for a in (-0.1, 0.0, 0.1): block((x + a, f - 0.12, z + 0.04), (0.03, 0.03, 0.2), M('wood_dk'), 0.0)
+    elif bid == 'market':
+        K.cyl('emb', 0.2, 0.06, (x, f - 0.04, z), M('gold'), 16, 0.01).rotation_euler = (math.pi / 2, 0, 0)
+        K.cyl('emb2', 0.12, 0.04, (x, f - 0.08, z), M('amber'), 16, 0.0).rotation_euler = (math.pi / 2, 0, 0)
+    elif bid == 'tavern':
+        K.cyl('emb', 0.13, 0.3, (x - 0.03, f - 0.06, z - 0.02), M('wood'), 12, 0.01); K.cyl('emb2', 0.14, 0.05, (x - 0.03, f - 0.06, z + 0.12), M('white_gloss'), 12, 0.0)
+        block((x + 0.15, f - 0.06, z - 0.02), (0.06, 0.06, 0.18), M('wood'), 0.01)
+    elif bid == 'granary':
+        for a in (-0.25, 0.0, 0.25): K.cyl('emb', 0.025, 0.46, (x + a * 0.25, f - 0.05, z), M('hay'), 6, 0.0).rotation_euler = (0, a, 0)
+        K.sphere('emb2', 0.07, (x, f - 0.06, z + 0.2), M('hay'), (1.4, 1, 1.2), 2)
+    elif bid == 'library':
+        block((x, f - 0.06, z), (0.4, 0.07, 0.3), M('roof_red'), 0.01); block((x, f - 0.1, z), (0.04, 0.02, 0.3), M('white_gloss'), 0.0)
+    elif bid == 'cottages':
+        block((x, f - 0.06, z - 0.06), (0.32, 0.06, 0.2), M('plaster'), 0.01); K.cone('emb', 0.24, 0.16, (x, f - 0.06, z + 0.12), M('roof_red'), 4).rotation_euler = (0, 0, math.pi / 4)
+    elif bid == 'watchtower':
+        for k in range(5):   # a five-point star
+            a = k * 2 * math.pi / 5; K.cone('emb', 0.07, 0.24, (x + 0.11 * math.sin(a), f - 0.05, z + 0.11 * math.cos(a)), M('gold', 1.6), 4).rotation_euler = (0, a, 0)
+        K.sphere('emb2', 0.08, (x, f - 0.06, z), M('gold', 1.8), sub=2)
+
 def building(bid):
     BUILDERS[bid]()
     w, d = LY.SIZES[bid]
-    signpost(w, d)
+    signpost(w, d); emblem(bid, w / 2 - 0.7, -d / 2 - 1.4 - 0.1, 2.0)
     tufts(-w / 2 - 0.2, -d / 2 - 0.3, 2, (0.3, 0.2)); tufts(w / 2 + 0.2, -d / 2 - 0.2, 2, (0.3, 0.2)); tufts(w / 2 + 0.2, d / 2 + 0.2, 2, (0.3, 0.2))
     return K.export('building_' + bid)
 
