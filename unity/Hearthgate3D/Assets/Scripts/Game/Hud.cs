@@ -506,7 +506,7 @@ namespace Hearthgate.Game
                 if (r.anchorMin != anchor) { r.anchorMin = r.anchorMax = r.pivot = anchor; }
                 r.sizeDelta = size; r.anchoredPosition = at;
             }
-            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-(EDGE + 150 + GAP), 12), new Vector2(WALK_W, 50));
+            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-(EDGE + 150 + GAP), 10), new Vector2(WALK_W, 46));   // low: clear of the lane that enters the view at 2.2:1 (LayoutCheck)
             bool ts = tsAct != null && tsAct.p.rt.gameObject.activeSelf, upOn = up.p.rt.gameObject.activeSelf;
             if (upOn) Place(up.p.rt, new Vector2(0.5f, 0), new Vector2(ts ? -(SKILL_W2 / 2 + GAP / 2) : 0, SKILL_Y), new Vector2(SKILL_W2, 56));
             if (ts) tsAct.p.rt.anchoredPosition = new Vector2(upOn ? SKILL_W2 / 2 + GAP / 2 : 0, SKILL_Y);
