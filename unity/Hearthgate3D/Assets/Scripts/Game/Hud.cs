@@ -309,11 +309,12 @@ namespace Hearthgate.Game
             // the upgrade dock (owner, Nov 15 2026: "the radial menu is not pulling its weight for the amount of upgrades we have to
             // do in a moments notice"): the defenses (the one gold, primary button), the best building to raise next, the ledger,
             // and the multiplier, all held to repeat
-            dockUp = Action("DockUp", new Vector2(0.5f, 0), new Vector2(30, DOCK_Y), new Vector2(196, DOCK_H), "tower", "U", () => GameLoop.I.UpgradeBulk(), () => GameLoop.I.CanUpgrade, true); dockUp.p.repeat = true;
-            dockBld = Action("DockBld", new Vector2(0.5f, 0), new Vector2(-156, DOCK_Y), new Vector2(166, DOCK_H), "upgrade", "B", () => GameLoop.I.BuyBest(), () => { int i = GameLoop.I.BestBuilding(); return i >= 0 && GameLoop.I.CanWork(i); }, false); dockBld.p.repeat = true;
+            dockUp = Action("DockUp", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y), new Vector2(190, DOCK_H), "tower", "U", () => GameLoop.I.UpgradeBulk(), () => GameLoop.I.CanUpgrade, true); dockUp.p.repeat = true;
+            dockBld = Action("DockBld", new Vector2(0.5f, 0), new Vector2(-95, DOCK_Y), new Vector2(150, DOCK_H), "upgrade", "B", () => GameLoop.I.BuyBest(), () => { int i = GameLoop.I.BestBuilding(); return i >= 0 && GameLoop.I.CanWork(i); }, false); dockBld.p.repeat = true;
             dockLed = Action("DockLed", new Vector2(0.5f, 0), new Vector2(190, DOCK_Y), new Vector2(64, DOCK_H), "ledger", "L", () => ShowLedger("town"), () => GameLoop.I.StewardHere, false);
-            dockMult = Action("DockMult", new Vector2(0.5f, 0), new Vector2(30, DOCK_Y + DOCK_H + 2), new Vector2(76, 30), null, null, () => GameLoop.I.CycleMult(), null, false);
+            dockMult = Action("DockMult", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y + DOCK_H + 2), new Vector2(76, 30), null, null, () => GameLoop.I.CycleMult(), null, false);
             foreach (var d in new[] { dockUp, dockBld, dockLed, dockMult }) d.p.rt.pivot = new Vector2(0.5f, 0);
+            dockLed.p.rt.gameObject.SetActive(false);   // the corridor between the middle lanes holds two buttons: the ledger is on L, in every ring and at Tobin's booth
             work = Action("Work", tr, new Vector2(-16, -202), new Vector2(280, 56), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
@@ -521,7 +522,7 @@ namespace Hearthgate.Game
         void TickDock(GameLoop g, float now)
         {
             var P = g.P; bool show = !g.Fallen;
-            foreach (var d in new[] { dockUp, dockBld, dockLed, dockMult }) if (d.p.rt.gameObject.activeSelf != show) d.p.rt.gameObject.SetActive(show);
+            foreach (var d in new[] { dockUp, dockBld, dockMult }) if (d.p.rt.gameObject.activeSelf != show) d.p.rt.gameObject.SetActive(show);
             if (!show) return;
             int n = g.GateBuyCount(out double total);
             Show(dockUp, "Defenses", HG.Fmt(total), n > 0, now);

@@ -199,8 +199,8 @@ namespace Hearthgate.EditorTools
                 // the wizard's skill row (Hud.TickTimeStop) shows on the town walk only, so it is not in the walls view
                 // the Settings button (bottom right, the owner's placement, Nov 14 2026) is left out: its corner sits over the last
                 // metres of a lane as it enters the view, where an enemy has only just appeared
-                ("upgrade dock", Rect.MinMaxRect(0.5f - 242 * s / w, Hearthgate.Game.Hud.DOCK_Y * s / h, 0.5f + 226 * s / w, (Hearthgate.Game.Hud.DOCK_Y + Hearthgate.Game.Hud.DOCK_H + 2) * s / h)),   // Hud.LayoutActions: the best building, the defenses, the ledger
-                ("multiplier", Rect.MinMaxRect(0.5f - 10 * s / w, (Hearthgate.Game.Hud.DOCK_Y + Hearthgate.Game.Hud.DOCK_H + 2) * s / h, 0.5f + 70 * s / w, (Hearthgate.Game.Hud.DOCK_Y + Hearthgate.Game.Hud.DOCK_H + 34) * s / h)),
+                ("upgrade dock", Rect.MinMaxRect(0.5f - 172 * s / w, Hearthgate.Game.Hud.DOCK_Y * s / h, 0.5f + 177 * s / w, (Hearthgate.Game.Hud.DOCK_Y + Hearthgate.Game.Hud.DOCK_H + 2) * s / h)),   // Hud.LayoutActions: the best building, the defenses, the ledger
+                ("multiplier", Rect.MinMaxRect(0.5f + 40 * s / w, (Hearthgate.Game.Hud.DOCK_Y + Hearthgate.Game.Hud.DOCK_H + 2) * s / h, 0.5f + 120 * s / w, (Hearthgate.Game.Hud.DOCK_Y + Hearthgate.Game.Hud.DOCK_H + 34) * s / h)),
                 ("boss bar", Rect.MinMaxRect(0.5f - 120 * s / w, Hearthgate.Game.Hud.BOSS_Y * s / h, 0.5f + 120 * s / w, (Hearthgate.Game.Hud.BOSS_Y + 32) * s / h)),   // Hud: a boss's name and health, above the dock
                 ("gate bar", Rect.MinMaxRect(0.5f - 170 * s / w, Hearthgate.Game.Hud.WALLS_Y * s / h, 0.5f + 170 * s / w, (Hearthgate.Game.Hud.WALLS_Y + 26) * s / h)),
             };
