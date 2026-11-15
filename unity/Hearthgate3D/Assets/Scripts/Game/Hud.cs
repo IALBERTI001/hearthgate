@@ -681,7 +681,7 @@ namespace Hearthgate.Game
             var g = GameLoop.I; var P = g.P; int cost = g.FallCost; bool can = g.CanPayRestore, ad = !can && GameLoop.AdReady;
             if (I.settingsBox) I.ShowSettings(false);
             string mark = P.ascensions > 0 ? $"Ascension {P.ascensions}" : "the beginning";
-            var box = I.Modal(confirm ? $"Rewind to {mark}?" : "The walls have fallen!", new Vector2(720, 330));
+            var box = I.Modal(confirm ? $"Rewind to {mark}?" : "The walls have fallen!", new Vector2(720, 290));
             Time.timeScale = 1;   // the shambles stay alive behind the card (the fight itself waits: GameLoop.FixedUpdate)
             I.settingsBox.GetComponent<Image>().color = new Color(0.08f, 0.02f, 0.04f, 0.28f);
             box.anchorMin = box.anchorMax = new Vector2(0.5f, 0); box.pivot = new Vector2(0.5f, 0); box.anchoredPosition = new Vector2(0, 24);
