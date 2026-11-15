@@ -698,9 +698,9 @@ namespace Hearthgate.Game
                 return;
             }
             I.Line(box, -66, $"Wave {P.wave} broke through and the town lies in ruins.", 20);
-            I.Line(box, -104, can ? $"Rewind time to the moment before the fall for <color=#FFE68C>{cost} Starshards</color> (you have {P.shards}) and fight wave {P.wave} again."
-                                  : $"Rewinding to before the fall takes <color=#FFE68C>{cost} Starshards</color>; you have {P.shards}. Bosses, Trials, quests and Feats pay them.", 18);
-            I.Line(box, -170, $"Or rewind to your last mark in time ({mark}): the town as it was then, wave 1, this run lost.", 16, new Color(0.85f, 0.8f, 0.88f));
+            // two short lines; the prices are on the buttons (fresh-eyes review 2: three paragraphs of rules)
+            I.Line(box, -106, can ? $"Rewind to the moment before the fall and fight wave {P.wave} again." : $"A rewind takes <color=#FFE68C>{cost} Starshards</color> (you have {P.shards}). Bosses, Trials and quests pay them.", 19);
+            I.Line(box, -146, $"Or go back to {mark}: wave 1, this run lost.", 17, new Color(0.85f, 0.8f, 0.88f));
             float y = 26;
             if (ad)
             {
