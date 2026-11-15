@@ -628,7 +628,7 @@ namespace Hearthgate.Game
                 string want = guideText;
                 if (ring && Guide.Pressing == "up" && (ringId == "gate" || ringId == "wiz")) want = "Press Upgrade defenses!";
                 else if (ring && Guide.Pressing == "re" && ringId != null && ringId.StartsWith("b")) want = "Press Rebuild!";
-                else if (ring && Guide.Pressing == "re" && ringId == "gate") want = "Press Ascend!";
+                else if (ring && Guide.Pressing == "re" && ringId == "gate" && GameLoop.I.NextBuilding == null) want = "Press Ascend!";
                 if (want != null && guide.title.text != want) guide.title.text = want;
                 // one voice: a banner's news and an idle line of the coach never speak together
                 if (bannerT > 0 && Guide.Pressing == null && guide.p.rt.gameObject.activeSelf) guide.p.rt.gameObject.SetActive(false);
