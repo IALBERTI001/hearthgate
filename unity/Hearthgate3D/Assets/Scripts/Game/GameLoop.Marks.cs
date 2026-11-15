@@ -12,7 +12,7 @@ namespace Hearthgate.Game
         readonly List<Transform> timeMarks = new List<Transform>();
         float markUnit;
         const int MARKS_MAX = 12;
-        const float MARK_R = 2.6f, MARK_H = 6.2f, MARK_SIZE = 0.75f;
+        const float MARK_R = 3.9f, MARK_H = 2.6f, MARK_SIZE = 0.9f;   // round the basin at head height, under the Surge board that hangs over the fountain
 
         void TickMarks()
         {
