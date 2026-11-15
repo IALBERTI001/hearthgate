@@ -240,12 +240,12 @@ namespace Hearthgate.Game
             var shi = Box("Icon", shardRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(32, 32)); shi.pivot = new Vector2(0, 0.5f);
             var shImg = shi.gameObject.AddComponent<Image>(); shImg.sprite = Icon("starshard"); shImg.preserveAspect = true; shImg.raycastTarget = false;
             shardTxt = Label("T", shardRow, new Vector2(0, 0.5f), new Vector2(40, 0), 24, TextAnchor.MiddleLeft); shardTxt.color = new Color(1f, 0.9f, 0.55f);   // the star's pale gold
-            shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(72, 30);
+            shardTxt.rectTransform.pivot = new Vector2(0, 0.5f); shardTxt.rectTransform.sizeDelta = new Vector2(72, 30); shardTxt.verticalOverflow = VerticalWrapMode.Overflow;   // taller than its box: Truncate drew nothing
             perkRow = Box("PerkPts", transform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-126, -18), new Vector2(110, 36)); perkRow.pivot = new Vector2(0, 1);
             var pki = Box("Icon", perkRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(32, 32)); pki.pivot = new Vector2(0, 0.5f);
             var pkImg = pki.gameObject.AddComponent<Image>(); pkImg.sprite = Icon("shard"); pkImg.preserveAspect = true; pkImg.raycastTarget = false;
             perkTxt = Label("T", perkRow, new Vector2(0, 0.5f), new Vector2(40, 0), 24, TextAnchor.MiddleLeft); perkTxt.color = ROSE_TXT;   // the crystal's rose
-            perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(72, 30);
+            perkTxt.rectTransform.pivot = new Vector2(0, 0.5f); perkTxt.rectTransform.sizeDelta = new Vector2(72, 30); perkTxt.verticalOverflow = VerticalWrapMode.Overflow;
             // the Ascension, the run's lasting progress, in gold beside the wave (owner, Nov 14 2026: "we are not highlighting
             // the ascension levels in any way ... we should be making the ascension level a highlight"): the hourglass, the
             // Ascension in the display font, and a thin gold line filling toward the next one
@@ -312,9 +312,10 @@ namespace Hearthgate.Game
             dockUp = Action("DockUp", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y), new Vector2(190, DOCK_H), "tower", "U", () => GameLoop.I.UpgradeBulk(), () => GameLoop.I.CanUpgrade, true); dockUp.p.repeat = true;
             dockBld = Action("DockBld", new Vector2(0.5f, 0), new Vector2(-95, DOCK_Y), new Vector2(150, DOCK_H), "upgrade", "B", () => GameLoop.I.BuyBest(), () => { int i = GameLoop.I.BestBuilding(); return i >= 0 && GameLoop.I.CanWork(i); }, false); dockBld.p.repeat = true;
             dockLed = Action("DockLed", new Vector2(0.5f, 0), new Vector2(190, DOCK_Y), new Vector2(64, DOCK_H), "ledger", "L", () => ShowLedger("town"), () => GameLoop.I.StewardHere, false);
-            dockMult = Action("DockMult", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y + DOCK_H + 2), new Vector2(76, 30), null, null, () => GameLoop.I.CycleMult(), null, false);
+            dockMult = Action("DockMult", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y + DOCK_H + 2), new Vector2(84, 32), null, "V", () => GameLoop.I.CycleMult(), null, false);
             foreach (var d in new[] { dockUp, dockBld, dockLed, dockMult }) d.p.rt.pivot = new Vector2(0.5f, 0);
-            dockLed.p.rt.gameObject.SetActive(false);   // the corridor between the middle lanes holds two buttons: the ledger is on L, in every ring and at Tobin's booth
+            dockLed.p.rt.gameObject.SetActive(false);
+            Slim(dockUp, 44); Slim(dockBld, 44);   // the corridor between the middle lanes holds two buttons: the ledger is on L, in every ring and at Tobin's booth
             work = Action("Work", tr, new Vector2(-16, -202), new Vector2(280, 56), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
@@ -511,6 +512,16 @@ namespace Hearthgate.Game
         // action, sits in the corner; a finished or idle action leaves and the rest close up. LayoutCheck mirrors this.
         public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 0f;
         public const float WALK_W = 210f, SKILL_W2 = 210f;   // the walk button (bottom row), each button of the skill row   // the skills moved down over the walls bar (owner, Nov 14 2026)
+        // a dock button's picture is smaller than the plate is tall, so its words have room (the bot's first look, Nov 15 2026:
+        // "Rebuild Forge" ran over its picture)
+        void Slim(Act a, float icon)
+        {
+            var med = a.icon ? a.icon.transform.parent as RectTransform : null; if (!med) return;
+            med.sizeDelta = new Vector2(icon, icon); med.anchoredPosition = new Vector2(8 + icon / 2, 0);
+            float left = icon + 16, w = a.p.rt.sizeDelta.x - left - (a.cap ? 28 : 10);
+            var tr = a.title.rectTransform; tr.anchoredPosition = new Vector2(left, tr.anchoredPosition.y); tr.sizeDelta = new Vector2(w, tr.sizeDelta.y);
+            a.costRow.anchoredPosition = new Vector2(left - 6, a.costRow.anchoredPosition.y); a.costRow.sizeDelta = new Vector2(w + 6, a.costRow.sizeDelta.y);
+        }
         Text walkBadge, bldBadge;
         Text Badge(RectTransform on)
         {   // the count badge: a small red plate with an ink outline, on a button's top-left corner
@@ -532,7 +543,7 @@ namespace Hearthgate.Game
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
-                Show(dockBld, built ? HG.ById(id).name : $"Rebuild {HG.ById(id).name}", HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : ""), g.CanWork(bi), now);
+                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : "  <color=#CFE9B0>Rebuild</color>"), g.CanWork(bi), now);
                 dockBld.cost.supportRichText = true;
                 if (!bldBadge) bldBadge = Badge(dockBld.p.rt);
                 int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
@@ -541,7 +552,7 @@ namespace Hearthgate.Game
             }
             else Show(dockBld, "Buildings", null, false, now);
             Show(dockLed, "", null, g.StewardHere, now);
-            Show(dockMult, g.MultLabel + "  <size=12>V</size>", null, true, now); dockMult.title.supportRichText = true;
+            Show(dockMult, g.MultLabel, null, true, now);
             // the guide's "up" now points at the dock's gold button
             if (dockUp.glow) { var c = dockUp.glow.color; c.a = Guide.Pressing == "up" ? 0.75f + 0.25f * Mathf.Sin(now * 7f) : n > 0 ? 0.35f + 0.25f * Mathf.Sin(now * 3.2f) : 0f; dockUp.glow.color = c; }
         }
