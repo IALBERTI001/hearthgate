@@ -447,7 +447,7 @@ def broken(x0, x1, y, axis, hmax, gap=None):
 def ruin_of(bid):
     w, d = LY.SIZES[bid]; hx, hy = w / 2, d / 2
     block((0, 0, PL / 2), (w + 0.4, d + 0.4, PL), M('stone_dk'), 0.03)
-    block((0, 0, PL + 0.02), (w - 2 * T, d - 2 * T, 0.04), M('char'), 0.0)
+    block((0, 0, PL + 0.02), (w - 2 * T, d - 2 * T, 0.04), M('dirt_dk'), 0.0)   # ash-brown, not black: a black floor read as missing geometry (fresh-eyes review 2)
     if bid != 'market':
         broken(-hx, hx, hy - T / 2, 'x', 2.6)
         for s in (-1, 1): broken(-hy + T, hy - T, s * (hx - T / 2), 'y', 2.2)
