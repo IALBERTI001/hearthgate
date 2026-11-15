@@ -44,7 +44,9 @@ Desktop first (CrazyGames). Reference frame 1280 x 720; the player's HUD size (8
 
 - Resources and progress: top left, in the body face (bold); titles in the display face.
 - Actions on a thing: a ring of kit buttons around the cursor where the thing was pressed, its title in a hub at the centre, kept whole on screen. Press and hold, lean toward an option (it lights), let go to choose; a quick click leaves the ring open to click. On the town walk a long press anywhere opens the wizard's ring (Upgrade defenses, Stop time, Back to the walls), and Upgrade defenses (U) sits beside the walk button. The gold marker bobs over the gatehouse when the guide points there.
-- Other actions (Walk the town): top right, kit buttons, keycap in the corner.
+- Nothing pressable by the header: the top is for reading. Walk the town sits on the bottom row beside Settings; on the walk, Upgrade defenses (U) joins Stop time (F) in the skill row over the walls bar. Every ring offers the Town ledger.
+- Town cards (ledger, keepers, shop) keep the fight running under a light dim; Settings, Ascend and the fall card stop it.
+- Keepers' buildings carry a hanging shop sign saying what is inside (Skins & More!, Upgrade Perks!, Quests & Feats!).
 - Health: bottom centre (walls; a boss over it); the wizard's skills sit over the walls bar, on the walk.
 - Settings: bottom right, a kit button with its word.
 - Words from the guide and the watch: bottom left. Banners: under the top row, centred.
