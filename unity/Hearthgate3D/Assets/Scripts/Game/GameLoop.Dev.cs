@@ -15,6 +15,9 @@ namespace Hearthgate.Game
             switch (a[0])
             {
                 case "res": P.res += double.Parse(a[1]); break;
+                // a fresh-player review without losing the test profile: keep a copy, play fresh, put it back (reload after each)
+                case "backup": Save(); PlayerPrefs.SetString(SAVE_KEY + "_bak", PlayerPrefs.GetString(SAVE_KEY, "")); PlayerPrefs.Save(); Debug.Log("[dev] save backed up"); break;
+                case "restore": if (PlayerPrefs.HasKey(SAVE_KEY + "_bak")) { PlayerPrefs.SetString(SAVE_KEY, PlayerPrefs.GetString(SAVE_KEY + "_bak")); PlayerPrefs.Save(); noSave = true; Debug.Log("[dev] save restored; reload the page"); } break;
                 case "fresh": PlayerPrefs.DeleteKey(SAVE_KEY); PlayerPrefs.Save(); noSave = true; Debug.Log("[dev] save wiped; reload the page"); break;   // a new player's first minutes, on the test profile only
                 case "shards": P.shards += int.Parse(a[1]); break;
                 case "wave": P.wave = P.runWave = int.Parse(a[1]); break;
