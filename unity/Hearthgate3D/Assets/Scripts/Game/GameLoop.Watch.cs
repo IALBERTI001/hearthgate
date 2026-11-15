@@ -51,8 +51,9 @@ namespace Hearthgate.Game
                 if ((watchT -= dt) <= 0) watchRun = Run.Back;
                 return;
             }
+            bool last = watchRun == Run.Out ? to == wz.Pos : to == WatchPost;   // a waypoint is passed, not stopped at
             float stopAt = watchRun == Run.Out ? 1.5f : 0.2f;
-            if (dist <= stopAt || Fallen)
+            if ((last && dist <= stopAt) || Fallen)
             {
                 if (watchRun == Run.Out && !Fallen)
                 {
