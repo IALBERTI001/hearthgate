@@ -248,7 +248,7 @@ namespace Hearthgate.Game
         {
             Push(Field.PLAZA, FOUNTAIN_R);
             if (GameLoop.I && GameLoop.I.TrainerHere) Push(GameLoop.TRAINER_AT, 0.45f + RADIUS);   // the Chronomancer stands his ground
-            if (GameLoop.I && GameLoop.I.StewardHere) { Push(GameLoop.STEWARD_AT, 0.45f + RADIUS); Push(GameLoop.BOOTH_AT + new Vector3(-0.7f, 0, 0), 0.75f + RADIUS); Push(GameLoop.BOOTH_AT + new Vector3(0.7f, 0, 0), 0.75f + RADIUS); }   // the booth's counter
+            if (GameLoop.I && GameLoop.I.StewardHere) { Push(GameLoop.STEWARD_AT, 0.45f + RADIUS); var side = new Vector3(GameLoop.HUB_FACE.y, 0, -GameLoop.HUB_FACE.x) * 0.7f; Push(GameLoop.BOOTH_AT + side, 0.75f + RADIUS); Push(GameLoop.BOOTH_AT - side, 0.75f + RADIUS); }   // the booth's counter
             foreach (var pr in Field.PROPS) Push(new Vector3(pr.x, 0, pr.y), pr.z + RADIUS);
             if (pos.z > -3.2f && Mathf.Abs(pos.x) < Field.GATE_HALF + 0.8f) pos.z = -3.2f;
             float m = 2.4f, ex = pos.x / (Field.RX - m), ez = (pos.z + Field.RZ) / (Field.RZ - m), e = Mathf.Sqrt(ex * ex + ez * ez);

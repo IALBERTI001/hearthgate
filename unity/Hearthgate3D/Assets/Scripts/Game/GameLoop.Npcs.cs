@@ -19,11 +19,13 @@ namespace Hearthgate.Game
     public partial class GameLoop
     {
         public const int TRAINER = 99, STEWARD = 98;
-        public static readonly Vector3 TRAINER_AT = Field.PLAZA + new Vector3(4.3f, 0, 0.6f);
-        // the steward's booth across the fountain from the Chronomancer (owner, Nov 14 2026: "set a small management booth or
-        // something to have the player walk up and get the whole picture of the town to upgrade buildings"): he stands behind
-        // his counter; the counter stands toward the gate
-        public static readonly Vector3 STEWARD_AT = Field.PLAZA + new Vector3(-6.8f, 0, 0.2f), BOOTH_AT = STEWARD_AT + new Vector3(0, 0, 0.8f);
+        // the upgrade hub by the Market (owner, Nov 14 2026: "maybe the placement could be near the market. Possibly have all the
+        // game related upgrade-ables together by the market. Creates a hub for areas"): Tobin's booth and Aurelian stand in the
+        // square in front of the Market, one each side of its door path, with the Market (its Shop, Mira) behind them
+        static readonly int MKT = System.Array.IndexOf(HG.BUILDING_IDS, "market");
+        public static readonly Vector2 HUB_FACE = Field.Front(MKT);
+        public static readonly Vector3 STEWARD_AT = Field.World(MKT, -3.6f, Field.PlotSize(MKT).y / 2f + 4.6f), BOOTH_AT = Field.World(MKT, -3.6f, Field.PlotSize(MKT).y / 2f + 5.4f);
+        public static readonly Vector3 TRAINER_AT = Field.World(MKT, 3.6f, Field.PlotSize(MKT).y / 2f + 5.2f);
         public static bool InSquare(int i) => i == TRAINER || i == STEWARD;
         public bool StewardHere => P.restored.Count >= 1 || P.ascensions > 0;
         GameObject stewardObj, boothObj;
@@ -60,19 +62,19 @@ namespace Hearthgate.Game
             bool tr = TrainerHere && !P.fallen;
             if (tr && !trainerObj)
             {
-                trainerObj = SpawnKeeper("chronomancer", TRAINER_AT, new Vector2(0, 1));
-                if (!told.Contains("trainer") && !P.told.Contains("trainer")) { told.Add("trainer"); P.told.Add("trainer"); Hud.Banner("An old Chronomancer has come to town. He waits by the fountain: walk the town (T) and talk to him"); }
+                trainerObj = SpawnKeeper("chronomancer", TRAINER_AT, HUB_FACE);
+                if (!told.Contains("trainer") && !P.told.Contains("trainer")) { told.Add("trainer"); P.told.Add("trainer"); Hud.Banner("An old Chronomancer has come to town. He waits in front of the Market: walk the town (T) and talk to him"); }
             }
             else if (!tr && trainerObj) { Destroy(trainerObj); trainerObj = null; }
             if (trainerObj) Idle(trainerObj.transform, TRAINER);
             bool st = StewardHere && !P.fallen;
             if (st && !stewardObj)
             {
-                stewardObj = SpawnKeeper("steward", STEWARD_AT, new Vector2(0, 1));
+                stewardObj = SpawnKeeper("steward", STEWARD_AT, HUB_FACE);
                 if (art.stewardBooth && !boothObj)
                 {
                     boothObj = Instantiate(art.stewardBooth, world); boothObj.name = "steward's booth";
-                    boothObj.transform.position = BOOTH_AT; boothObj.transform.rotation = Quaternion.LookRotation(new Vector3(0, 0, -1)) * art.stewardBooth.transform.rotation;
+                    boothObj.transform.position = BOOTH_AT; boothObj.transform.rotation = Quaternion.LookRotation(-new Vector3(HUB_FACE.x, 0, HUB_FACE.y)) * art.stewardBooth.transform.rotation;   // its counter toward the square
                 }
             }
             else if (!st && stewardObj) { Destroy(stewardObj); stewardObj = null; if (boothObj) { Destroy(boothObj); boothObj = null; } }
