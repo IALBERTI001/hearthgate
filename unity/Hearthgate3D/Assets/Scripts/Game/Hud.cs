@@ -236,7 +236,7 @@ namespace Hearthgate.Game
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
             // Magister Bram's card, bottom left, his portrait in the medallion (the wizard); a tap skips the line
-            guide = Action("Guide", new Vector2(0, 0), new Vector2(16, 70), new Vector2(430, 72), "walk", null, () => Guide.Skip(), null, false);
+            guide = Action("Guide", new Vector2(0.5f, 0), new Vector2(0, 118), new Vector2(430, 72), "walk", null, () => Guide.Skip(), null, false);   // bottom centre, over the walls bar: bottom left it hid the left rift and its first monsters (review Nov 15 2026)
             guide.title.fontSize = 22; guide.p.rt.gameObject.SetActive(false);
 
             // settings (game-polish rule 19: the controls inside the game, the music and sound levels): a full button of the
@@ -282,7 +282,7 @@ namespace Hearthgate.Game
             cheerTag.SetSiblingIndex(1); cheerTag.gameObject.SetActive(false);
         }
         Act surgeAct;
-        RectTransform surgeTag, cheerTag; Image cheerFill; Act guide;
+        RectTransform surgeTag, cheerTag; Image cheerFill; Act guide; string guideText;
         // a HUD element pinned over a point in the world; false when that point is off screen
         bool Pin(RectTransform r, Vector3 at, float near = 9999f)
         {
@@ -539,7 +539,9 @@ namespace Hearthgate.Game
             res.text = HG.Fmt(shownRes);
             shardTxt.text = HG.Fmt(P.shards);   // the star says what it is; a tap explains (OnHud)
             shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(new Color(1f, 0.9f, 0.55f), Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
-            bool pk = P.ascensions > 0; if (perkRow.gameObject.activeSelf != pk) perkRow.gameObject.SetActive(pk);
+            // the second and third currencies show once they mean something (review Nov 15 2026: "★ 0" and an unlabelled pink 2 crowd the one primary number)
+            bool pk = P.perkPts > 0; if (perkRow.gameObject.activeSelf != pk) perkRow.gameObject.SetActive(pk);
+            bool sk = P.shards > 0 || P.ascensions > 0 || P.shopOpen; if (shardRow.gameObject.activeSelf != sk) shardRow.gameObject.SetActive(sk);
             {   // the Ascension row
                 int aw = HG.AscendWave(P), reach = Mathf.Max(P.runWave, P.wave);
                 ascTxt.text = P.ascensions > 0 ? $"Ascension {Roman(P.ascensions)}" : "First Ascension";
@@ -563,7 +565,7 @@ namespace Hearthgate.Game
                 else if (pk && RectTransformUtility.RectangleContainsScreenPoint(perkRow, PointerPos, null))
                     Banner("Perk points: each Ascension pays them. Spend them at the Watchtower's star table");
             }
-            double r = HG.CityRate(P, g.B); rate.text = r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
+            double r = HG.CityRate(P, g.B); rate.text = g.Fallen ? "" : r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
             if (g.Fallen) { gateBar.fillAmount = 0; gateTxt.text = "Walls broken"; }   // not a full bar behind the defeat card
@@ -621,7 +623,16 @@ namespace Hearthgate.Game
             }
             foreach (var a in acts) if (a.glow && a.p.rt) { var c = a.glow.color; c.a = a.primary && Guide.Pressing == null ? 0.4f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f) : 0f; a.glow.color = c; }   // while the Magister points, only his button glows
             // the Magister: his line on the card, and the button he names lit up bright
-            Guide.Tick(Time.unscaledDeltaTime, txt => { guide.title.text = txt; guide.p.rt.gameObject.SetActive(true); }, () => guide.p.rt.gameObject.SetActive(false));
+            Guide.Tick(Time.unscaledDeltaTime, txt => { guideText = txt; guide.title.text = txt; guide.p.rt.gameObject.SetActive(true); }, () => guide.p.rt.gameObject.SetActive(false));
+            {   // the coach follows the hand (review Nov 15 2026): once the ring it asked for is open, it names the button in it
+                string want = guideText;
+                if (ring && Guide.Pressing == "up" && (ringId == "gate" || ringId == "wiz")) want = "Press Upgrade defenses!";
+                else if (ring && Guide.Pressing == "re" && ringId != null && ringId.StartsWith("b")) want = "Press Rebuild!";
+                else if (ring && Guide.Pressing == "re" && ringId == "gate") want = "Press Ascend!";
+                if (want != null && guide.title.text != want) guide.title.text = want;
+                // one voice: a banner's news and an idle line of the coach never speak together
+                if (bannerT > 0 && Guide.Pressing == null && guide.p.rt.gameObject.activeSelf) guide.p.rt.gameObject.SetActive(false);
+            }
             var pt = Guide.Pressing == "up" ? up : Guide.Pressing == "re" ? re : Guide.Pressing == "walk" ? walk : null;
             if (pt != null && pt.glow) { var c = pt.glow.color; c.a = 0.7f + 0.3f * Mathf.Sin(Time.unscaledTime * 7f); pt.glow.color = c; }
             // while the walls lie fallen the only choice is on the card: the buttons above it step aside (fresh-eyes review,
@@ -674,7 +685,7 @@ namespace Hearthgate.Game
             var dim = Box("ModalDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, pause ? 0.55f : 0.3f); settingsBox = dim;
             var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size);
-            var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
+            var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(new Color(INK.r, INK.g, INK.b, 1f), BRASS, 18, 4); bi.type = Image.Type.Sliced;   // solid: the world's signs showed through (review Nov 15 2026)
             box.gameObject.AddComponent<CardIn>();   // every card rises into place the same way (game-hud-ui-design rule 8)
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = title;
             // never a scale transform: text shrunk by one is drawn blurry (owner, Nov 14 2026: "unreadable because its blurry").

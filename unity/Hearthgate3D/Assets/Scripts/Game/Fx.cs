@@ -93,6 +93,7 @@ namespace Hearthgate.Game
                 lp.x = Mathf.Clamp(lp.x, -edge + half, Mathf.Max(-edge + half, edge - half));
                 float top = popLayer.rect.height * 0.5f - 120f - txt.fontSize * 0.6f;   // never up under the top bar's buttons, where "Treasure!" was cut off
                 if (lp.y > top) lp.y = top;
+                float bottom = -popLayer.rect.height * 0.5f + 24f + txt.fontSize * 0.6f; if (lp.y < bottom) lp.y = bottom;   // and never cut by the bottom edge (review Nov 15 2026: "+3.93K" half off)
                 txt.rectTransform.anchoredPosition = lp;
                 float s = t < 0.12f ? Mathf.Lerp(0.6f, 1.15f, t / 0.12f) : Mathf.Lerp(1.15f, 1f, Mathf.Min(1, (t - 0.12f) / 0.1f));
                 txt.rectTransform.localScale = Vector3.one * s;

@@ -145,6 +145,7 @@ namespace Hearthgate.EditorTools
         [MenuItem("Hearthgate/WebGL settings")]
         public static void SetupWebGL()
         {
+            PlayerSettings.SplashScreen.show = false;   // the game's own loading bar, no engine splash (review Nov 15 2026)
             PlayerSettings.companyName = "Hearthgate Studio"; PlayerSettings.productName = "Hearthgate";
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
             PlayerSettings.WebGL.decompressionFallback = true;      // works on hosts that do not send Content-Encoding

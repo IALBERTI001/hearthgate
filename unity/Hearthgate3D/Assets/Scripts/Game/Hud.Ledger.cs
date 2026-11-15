@@ -27,7 +27,23 @@ namespace Hearthgate.Game
             }
             I.perkRefresh = null;
             if (tab == "skills") SkillsTab(box, g); else TownTab(box, g);
-            I.Choice(box, "L_Close", new Vector2(0, 16), new Vector2(230, 52), "Back to the game", () => I.ShowSettings(false));
+            if (tab == "town")
+            {   // quality of life (review Nov 15 2026: late in a run every row is cheap): raise the cheapest building again and
+                // again while the Resonance lasts
+                I.Choice(box, "L_All", new Vector2(-125, 16), new Vector2(230, 52), "Upgrade all", () =>
+                {
+                    for (int n = 0; n < 500; n++)
+                    {
+                        int best = -1; double bc = double.MaxValue;
+                        for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
+                            if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i) && g.LevelCost(i) < bc) { bc = g.LevelCost(i); best = i; }
+                        if (best < 0) break; g.WorkOn(best);
+                    }
+                    ShowLedger("town");
+                }, () => { for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) return true; return false; });
+                I.Choice(box, "L_Close", new Vector2(125, 16), new Vector2(230, 52), "Back to the game", () => I.ShowSettings(false));
+            }
+            else I.Choice(box, "L_Close", new Vector2(0, 16), new Vector2(230, 52), "Back to the game", () => I.ShowSettings(false));
         }
 
         static void TownTab(RectTransform box, GameLoop g)
@@ -60,7 +76,7 @@ namespace Hearthgate.Game
                 string label; System.Func<bool> on;
                 if (built)
                 {
-                    label = $"Level {L + 1} · {HG.Fmt(g.LevelCost(bi))}"; on = () => g.CanWork(bi);
+                    label = $"To Lv {L + 1} · {HG.Fmt(g.LevelCost(bi))}"; on = () => g.CanWork(bi);
                 }
                 else { label = $"Rebuild · {HG.Fmt(g.RestoreCost)}"; on = () => g.CanWork(bi); }
                 I.BtnAt("U" + i, new Vector2(1, 1), new Vector2(-30, y + 2), new Vector2(230, 37), () => { g.WorkOn(bi); ShowLedger("town"); }, on, out var ul, box, null, false).rt.pivot = new Vector2(1, 1);

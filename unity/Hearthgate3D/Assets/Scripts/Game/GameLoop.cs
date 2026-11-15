@@ -508,7 +508,7 @@ namespace Hearthgate.Game
                     // in the yard before its door (the buildings are rooms now: a ring at their centre would sit inside)
                     marker.position = Field.Door(i, 1.8f, 0.15f + Mathf.Sin(t * 2.4f) * 0.15f);
                     marker.rotation = Quaternion.Euler(0, t * 25f, 0);
-                    marker.localScale = Vector3.one * (CanRestore ? 1f + Mathf.Sin(t * 5f) * 0.05f : 0.8f);
+                    marker.localScale = Vector3.one * (CanRestore ? 1f + Mathf.Sin(t * 5f) * 0.05f : 0.8f) * (Guide.Pressing == "re" ? 1.7f : 1f);   // big while the coach points at it: from the walls a 1x ring was a speck (review Nov 15 2026)
                 }
             }
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.U)) { if (CanUpgrade) { Sound.Click(); Upgrade(); } else Sound.Dud(); }

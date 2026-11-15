@@ -15,10 +15,11 @@ namespace Hearthgate.Game
     {
         public class RadialItem
         {
-            public string label, icon, key; public System.Func<string> line; public System.Func<bool> can, lit; public System.Action act; public bool closes;
+            public string label, icon, key; public bool cost; public System.Func<string> line;   // cost: the line is a price, drawn after the gem public System.Func<bool> can, lit; public System.Action act; public bool closes;
         }
         RectTransform ring; Vector2 ringAt; string ringId; float ringT; Rect ringReach;
         bool ringHeld; float ringHeldT; int ringSel = -1;   // the press that opened it is still held: a drag picks, the release chooses
+        readonly Dictionary<RadialItem, Image> ringGems = new Dictionary<RadialItem, Image>();
         readonly List<(RectTransform rt, Vector2 home, Text line, RadialItem it, Act a)> ringItems = new List<(RectTransform, Vector2, Text, RadialItem, Act)>();
         public static bool RingOpen => I && I.ring;
         public static string RingId => I ? I.ringId : null;
@@ -49,6 +50,11 @@ namespace Hearthgate.Game
                 lab.rectTransform.pivot = new Vector2(0.5f, 1); lab.rectTransform.sizeDelta = new Vector2(150, 20);
                 var ln = I.Label("C" + k, act.p.rt, new Vector2(0.5f, 0), new Vector2(0, -26), 14, TextAnchor.UpperCenter); ln.font = I.body; ln.fontStyle = FontStyle.Bold; ln.supportRichText = true;
                 ln.rectTransform.pivot = new Vector2(0.5f, 1); ln.rectTransform.sizeDelta = new Vector2(150, 20); ln.verticalOverflow = VerticalWrapMode.Overflow;
+                if (it.cost)
+                {   // the gem before a price, as on every other price in the game (review Nov 15 2026: "5" and "30" read as nothing)
+                    var gm = I.Box("Gem" + k, act.p.rt, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, -36), new Vector2(15, 15));
+                    var gi = gm.gameObject.AddComponent<Image>(); gi.sprite = I.gemSprite; gi.raycastTarget = false; I.ringGems[it] = gi;
+                }
                 I.ringItems.Add((act.p.rt, home, ln, it, act));
             }
             {   // how far the ring reaches round its centre (buttons, words under them, the hub), so it is kept on screen by its
@@ -63,7 +69,7 @@ namespace Hearthgate.Game
         public static void CloseRing()
         {
             if (!I || !I.ring) return;
-            Destroy(I.ring.gameObject); I.ring = null; I.ringId = null; I.ringItems.Clear();
+            Destroy(I.ring.gameObject); I.ring = null; I.ringId = null; I.ringItems.Clear(); I.ringGems.Clear();
         }
         void TickRing()
         {
@@ -86,6 +92,11 @@ namespace Hearthgate.Game
                 // stayed at alpha 0 and the gatehouse ring showed one button: QA Nov 15 2026)
                 var cg = rt.GetComponent<CanvasGroup>(); if (cg) cg.alpha = e;
                 string line = it.line != null ? it.line() : null; ln.text = line ?? "";
+                if (ringGems.TryGetValue(it, out var gem) && gem)
+                {
+                    bool price = !string.IsNullOrEmpty(line) && char.IsDigit(line[0]); if (gem.enabled != price) gem.enabled = price;
+                    if (price) { float w = ln.preferredWidth; gem.rectTransform.anchoredPosition = new Vector2(-w / 2f - 6f, -36f); ln.rectTransform.anchoredPosition = new Vector2(9f, ln.rectTransform.anchoredPosition.y); }
+                }
                 bool can = it.can == null || it.can();
                 ln.color = can ? RES : new Color(0.85f, 0.78f, 0.86f);
                 bool picked = ringSel >= 0 && ringSel < ringItems.Count && ringItems[ringSel].rt == rt;
@@ -133,7 +144,7 @@ namespace Hearthgate.Game
             var g = GameLoop.I; if (g == null) return;
             var items = new List<RadialItem>
             {
-                new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", line = () => HG.Fmt(g.UpgradeCost), can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
+                new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", cost = true, line = () => HG.Fmt(g.UpgradeCost), can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
 
             };
             // Ascend shows once the city is whole (review Nov 15 2026: a locked "rebuild the city" button in a new player's first ring)
@@ -161,11 +172,11 @@ namespace Hearthgate.Game
                 int i = near; var id = HG.BUILDING_IDS[i]; bool built = g.P.restored.Contains(id);
                 if (built || HG.RestoreOffer(g.P).Contains(id))
                     items.Add(new RadialItem { label = built ? $"Upgrade {HG.ById(id).name}" : $"Rebuild {HG.ById(id).name}", icon = built ? "upgrade" : "rebuild", key = "E",
-                        line = () => built ? $"Lv {HG.LevelOf(g.P, id) + 1} · {HG.Fmt(g.LevelCost(i))}" : HG.Fmt(g.RestoreCost), can = () => g.CanWork(i), act = () => g.WorkOn(i) });
+                        cost = true, line = () => built ? HG.Fmt(g.LevelCost(i)) : HG.Fmt(g.RestoreCost), can = () => g.CanWork(i), act = () => g.WorkOn(i) });
             }
             items.AddRange(new List<RadialItem>
             {
-                new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", line = () => $"Lv {g.P.gateLevel + 1} · {HG.Fmt(g.UpgradeCost)}", can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
+                new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", cost = true, line = () => HG.Fmt(g.UpgradeCost), can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
             });
             if (g.TimeStopLevel > 0)
                 items.Add(new RadialItem { label = "Stop time", icon = "timestop", key = "F", line = () => g.TimeStopReady ? "ready" : $"in {Mathf.CeilToInt(g.TimeStopLeft)} s", can = () => g.TimeStopReady, act = () => g.UseTimeStop() });
@@ -194,10 +205,10 @@ namespace Hearthgate.Game
             var items = new List<RadialItem>();
             if (P.restored.Contains(id))
                 items.Add(new RadialItem { label = "Upgrade", icon = "upgrade", key = null,
-                    line = () => { int L = HG.LevelOf(P, id); return $"level {L + 1} · {HG.Fmt(g.LevelCost(i))}"; }, can = () => g.CanWork(i), act = () => g.WorkOn(i) });
+                    cost = true, line = () => HG.Fmt(g.LevelCost(i)), can = () => g.CanWork(i), act = () => g.WorkOn(i) });
             else
                 items.Add(new RadialItem { label = "Rebuild", icon = "rebuild", key = HG.RestoreOffer(P).Contains(id) ? "R" : null,
-                    line = () => HG.RestoreOffer(P).Contains(id) ? HG.Fmt(g.RestoreCost) : g.NextBuilding != null ? "after the " + HG.ById(g.NextBuilding).name : "later",
+                    cost = true, line = () => HG.RestoreOffer(P).Contains(id) ? HG.Fmt(g.RestoreCost) : g.NextBuilding != null ? "after the " + HG.ById(g.NextBuilding).name : "later",
                     can = () => g.CanWork(i), act = () => g.WorkOn(i), closes = true, lit = () => Guide.Pressing == "re" && HG.RestoreOffer(P).Contains(id) });
             items.Add(new RadialItem { label = "Walk there", icon = "walk", act = () => Wizard.I?.WalkTo(i), closes = true });
             AddLedger(items, g);
