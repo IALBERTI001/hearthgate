@@ -7,7 +7,7 @@
 //    a conversation opens, and its choices lead to the old cards.
 //  - Aurelian the Chronomancer comes to town at wave 5 and waits by the fountain: he teaches Time Stop the first time
 //    and trains it after (the trainer is the home of every future skill).
-//  - A gold '!' floats over a keeper with something new for the player, a '?' over one with something to hand in: over
+//  - A gold '!' floats over a keeper with a reward waiting (to claim or spend), a '?' over one with something to take on: over
 //    the roof from outside (seen from the walls too), over the head inside.
 //  - Time Stop (F, or its button): every enemy freezes for a few seconds while the towers keep firing; then it recharges.
 using System.Linq;
@@ -79,7 +79,7 @@ namespace Hearthgate.Game
             }
             else if (!st && stewardObj) { Destroy(stewardObj); stewardObj = null; if (boothObj) { Destroy(boothObj); boothObj = null; } }
             if (stewardObj) Idle(stewardObj.transform, STEWARD);
-            // the signs: '!' something new, '?' something to hand in
+            // the signs: '!' a reward waiting, '?' something to take on
             for (int k = 0; k < marks.Length; k++)
             {
                 int i = k == keepers.Length ? TRAINER : k == keepers.Length + 1 ? STEWARD : k; bool present = i == TRAINER ? trainerObj : i == STEWARD ? stewardObj : keepers[k];
@@ -123,7 +123,7 @@ namespace Hearthgate.Game
                 c.localRotation = Quaternion.Euler(a, 0, 0) * rest;
             }
         }
-        // what a keeper has for the player: '!' new, '?' to hand in, null nothing
+        // what a keeper has for the player: '!' a reward waiting, '?' something to take on, null nothing
         // the steward's news: a building that can be raised to a doubling level now
         public bool LedgerNews
         {
@@ -141,11 +141,13 @@ namespace Hearthgate.Game
         {
             switch (KeeperOf(i))
             {
-                case "astronomer": return P.perkPts > 0 ? "!" : null;
-                case "merchant": return P.shopOpen && HG.SHOP.Any(l => !Owns(l) && l.price > 0 && P.shards >= l.price) ? "!" : null;
-                case "librarian": return P.quests.Any(q => q.n >= q.need && !q.claimed) ? "?" : Hud.FeatNews ? "!" : null;
-                case "chronomancer": return CanTrain ? "!" : null;
-                case "steward": return LedgerNews ? "!" : null;
+                // the signs as players know them (owner, Nov 15 2026: "traditionally question marks are quest givers, and
+                // exclamation marks are rewards of quests"): "!" a reward is waiting (to claim or to spend); "?" something to take on
+                case "astronomer": return P.perkPts > 0 ? "!" : null;   // the Ascension's reward, to spend
+                case "merchant": return P.shopOpen && HG.SHOP.Any(l => !Owns(l) && l.price > 0 && P.shards >= l.price) ? "?" : null;   // an offer
+                case "librarian": return P.quests.Any(q => q.n >= q.need && !q.claimed) || Hud.FeatNews ? "!" : P.quests.Any(q => !q.claimed && q.n == 0) ? "?" : null;   // rewards to claim; else quests not yet begun
+                case "chronomancer": return CanTrain ? "?" : null;   // a lesson to take on
+                case "steward": return LedgerNews ? "?" : null;   // a doubling within reach
             }
             return null;
         }

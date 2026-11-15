@@ -179,6 +179,7 @@ namespace Hearthgate.Game
 
         // ---------- the Watchtower's beacon ----------
         Tower beacon; Transform beaconFlame; int beaconShots;
+        public Vector3 TowerMuzzle(int n) { foreach (var tw in towers) if (tw.n == n && !tw.beacon) return tw.Muzzle; return Field.Tower(n) + Vector3.up * Field.TOWER_TOP; }
         void RefreshBeacon()
         {
             bool on = Has("watchtower");
@@ -207,14 +208,26 @@ namespace Hearthgate.Game
             var pt = Hud.PointerPos;
             if (TapGold(pt) || TapFly(pt)) return;
             var cam = Camera.main; if (cam == null || (Wizard.I && Wizard.I.On)) return;
+            // the radial menus (Hud.Radial): a click on a tower, the gatehouse or a building rings it with its upgrades
+            float px = Screen.height / 720f;
             foreach (var tw in towers)
-            {   // a tap on a tower opens its card: its element and its design
+            {
                 if (tw.beacon) continue;
                 var ts = cam.WorldToScreenPoint(tw.Muzzle);
-                if (ts.z > 0 && Vector2.Distance(pt, ts) < 52f * Screen.height / 720f) { Sound.Click(); Hud.ShowTower(tw.n); return; }
+                if (ts.z > 0 && Vector2.Distance(pt, ts) < 52f * px) { Hud.RingTower(tw.n); return; }
             }
+            var gs = cam.WorldToScreenPoint(Field.GateTop + Vector3.down * 2.5f);
+            if (gs.z > 0 && Mathf.Abs(pt.x - gs.x) < 70f * px && Mathf.Abs(pt.y - gs.y) < 60f * px) { Hud.RingGate(); return; }
             var s = cam.WorldToScreenPoint(Field.PLAZA + Vector3.up * 1.2f);
-            if (s.z > 0 && Vector2.Distance(pt, s) < 46f * Screen.height / 720f) TapSurge();
+            if (s.z > 0 && Vector2.Distance(pt, s) < 46f * px) { Hud.CloseRing(); TapSurge(); return; }
+            int best = -1; float bd = 64f * px;
+            for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
+            {
+                var bs = cam.WorldToScreenPoint(Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) * 0.45f)); if (bs.z <= 0) continue;
+                float d = Vector2.Distance(pt, bs); if (d < bd) { bd = d; best = i; }
+            }
+            if (best >= 0) { Hud.RingBuilding(best); return; }
+            Hud.CloseRing();   // a click on open ground closes the ring
         }
 
         // ---------- Ascension: the city returns to ruins, the waves restart, x1.5 for good, perk points ----------

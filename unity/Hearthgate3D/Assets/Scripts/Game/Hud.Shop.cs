@@ -54,6 +54,12 @@ namespace Hearthgate.Game
         // a tower's card (tap a tower): which element it shoots and which of the Market's designs it wears. Any element the
         // city has may go on any tower (four Storm towers if the player likes); designs are bought at the Market and chosen
         // here per tower.
+        static readonly string[] TOWER_NAMES = { "Far West Tower", "West Tower", "East Tower", "Far East Tower" };
+        public static string TowerName(int n)
+        {
+            var cam = Camera.main; var xs = Enumerable.Range(0, 4).OrderBy(i => cam ? cam.WorldToScreenPoint(Field.Tower(i)).x : -Field.Tower(i).x).ToList();
+            return TOWER_NAMES[xs.IndexOf(n)];
+        }
         static string ElName(string el) => el == "fire" ? "Fire" : el == "frost" ? "Frost" : el == "storm" ? "Storm" : el == "earth" ? "Earth" : "Stone";
         // the current choice is lit (the primary style), never faded: a faded button reads as one that cannot be had
         public static void ShowTower(int n)
@@ -61,7 +67,7 @@ namespace Hearthgate.Game
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
             var cam = Camera.main; var xs = Enumerable.Range(0, 4).OrderBy(i => cam ? cam.WorldToScreenPoint(Field.Tower(i)).x : -Field.Tower(i).x).ToList();   // named as the player sees them, left to right
-            string[] names = { "Far West Tower", "West Tower", "East Tower", "Far East Tower" };
+            string[] names = TOWER_NAMES;
             var els = g.TowerElements; string cur = g.TowerEl(n), pick = P.towerEl[n];
             if (pick != "" && !els.Contains(pick)) pick = "";   // a choice whose building fell again counts as Auto (it read "Make all four Storm" with Storm gone)
             if (els.Length == 0)

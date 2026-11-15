@@ -58,7 +58,7 @@ namespace Hearthgate.Game
                 if (watchRun == Run.Out && !Fallen)
                 {
                     watchRun = Run.Report; watchT = 2.6f;
-                    Guide.Shout("The watch: They're at the walls! Upgrade!", "up");
+                    Guide.Shout("The watch: They're at the walls! Upgrade them at the gatehouse!", "up");
                     Fx.I.Pop(runner.position + Vector3.up * 2.2f, "!", Field.GOLD, 40);
                 }
                 else { watchRun = Run.None; watchRest = WATCH_REST; runner.gameObject.SetActive(false); }

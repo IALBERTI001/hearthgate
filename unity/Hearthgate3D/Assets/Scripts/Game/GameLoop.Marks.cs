@@ -3,6 +3,7 @@
 // progress"). The ring grows with the run's lasting progress and is seen from the walls and from the square; a new
 // Ascension adds its hourglass with a flash.
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections.Generic;
 
 namespace Hearthgate.Game
@@ -14,8 +15,51 @@ namespace Hearthgate.Game
         const int MARKS_MAX = 12;
         const float MARK_R = 3.9f, MARK_H = 2.6f, MARK_SIZE = 0.9f;   // round the basin at head height, under the Surge board that hangs over the fountain
 
+        // the guide's pointer in the world, now the upgrades live on the things (Hud.Radial): a gold marker bobs over the
+        // gatehouse while the Magister or the watch points at "Upgrade defenses" or Ascend
+        Transform gateCue;
+        void TickGateCue()
+        {
+            bool want = !Hud.RingOpen && !(Wizard.I && Wizard.I.On) && !P.fallen && (Guide.Pressing == "up" || (Guide.Pressing == "re" && NextBuilding == null));
+            if (want && !gateCue && art && art.marker) gateCue = Art.Spawn(art.marker, "gate cue", Vector3.zero, world).transform;
+            if (!gateCue) return;
+            if (gateCue.gameObject.activeSelf != want) gateCue.gameObject.SetActive(want);
+            if (want) gateCue.position = Field.GateTop + Vector3.up * (3.2f + 0.35f * Mathf.Sin(Time.time * 4f));
+        }
+        // the defenses' level, carved over the gate (owner, Nov 15 2026: "defenses level should be displayed on the wall so that
+        // visually players can track it. Should be incorporated to the wall so its not the big purple thing"): a dark stone
+        // plaque with a brass rim on the gatehouse's face, the level in gold, a flash when it rises
+        Text plaqueNum; int plaqueShown = -1; float plaqueFlash;
+        void TickPlaque()
+        {
+            if (!plaqueNum)
+            {
+                var go = new GameObject("defenses plaque", typeof(RectTransform)); go.transform.SetParent(world, false);
+                var cv = go.AddComponent<Canvas>(); cv.renderMode = RenderMode.WorldSpace; cv.sortingOrder = 1;
+                var rt = (RectTransform)go.transform; rt.sizeDelta = new Vector2(220, 92);
+                rt.position = PLAQUE_AT; rt.rotation = Quaternion.Euler(PLAQUE_TILT, 180f, 0); rt.localScale = Vector3.one * 0.0105f;
+                var img = new GameObject("plate", typeof(RectTransform)).AddComponent<Image>(); img.transform.SetParent(rt, false);
+                var ir = img.rectTransform; ir.anchorMin = Vector2.zero; ir.anchorMax = Vector2.one; ir.offsetMin = ir.offsetMax = Vector2.zero;
+                img.sprite = Hud.PlaqueSprite(); img.type = Image.Type.Sliced; img.raycastTarget = false;
+                var font = Resources.Load<Font>("Fonts/LilitaOne-Regular");
+                var cap = new GameObject("cap", typeof(RectTransform)).AddComponent<Text>(); cap.transform.SetParent(rt, false);
+                cap.font = font; cap.fontSize = 22; cap.alignment = TextAnchor.UpperCenter; cap.color = new Color(0.86f, 0.78f, 0.6f); cap.text = "DEFENSES";
+                var cr = cap.rectTransform; cr.anchorMin = new Vector2(0, 1); cr.anchorMax = new Vector2(1, 1); cr.pivot = new Vector2(0.5f, 1); cr.anchoredPosition = new Vector2(0, -8); cr.sizeDelta = new Vector2(0, 28);
+                plaqueNum = new GameObject("level", typeof(RectTransform)).AddComponent<Text>(); plaqueNum.transform.SetParent(rt, false);
+                plaqueNum.font = font; plaqueNum.fontSize = 46; plaqueNum.alignment = TextAnchor.MiddleCenter; plaqueNum.color = Field.GOLD;
+                plaqueNum.horizontalOverflow = HorizontalWrapMode.Overflow; plaqueNum.verticalOverflow = VerticalWrapMode.Overflow;
+                var nr = plaqueNum.rectTransform; nr.anchorMin = new Vector2(0, 0); nr.anchorMax = new Vector2(1, 0); nr.pivot = new Vector2(0.5f, 0); nr.anchoredPosition = new Vector2(0, 6); nr.sizeDelta = new Vector2(0, 56);
+                var ol = plaqueNum.gameObject.AddComponent<Outline>(); ol.effectColor = new Color(0.15f, 0.08f, 0.04f, 0.9f); ol.effectDistance = new Vector2(2, -2);
+            }
+            if (plaqueShown != P.gateLevel) { if (plaqueShown >= 0) plaqueFlash = 0.6f; plaqueShown = P.gateLevel; plaqueNum.text = $"Lv {P.gateLevel}"; }
+            plaqueFlash = Mathf.Max(0, plaqueFlash - Time.deltaTime);
+            plaqueNum.color = Color.Lerp(Field.GOLD, Color.white, plaqueFlash / 0.6f);
+        }
+        public static readonly Vector3 PLAQUE_AT = new Vector3(0, 6.6f, Field.GATE_Z + 2.35f);   // on the gatehouse's face, over the arch
+        const float PLAQUE_TILT = 0f;
         void TickMarks()
         {
+            TickGateCue(); TickPlaque();
             if (!art || !art.hourglass) return;
             int want = Mathf.Min(P.ascensions, MARKS_MAX);
             while (timeMarks.Count < want)

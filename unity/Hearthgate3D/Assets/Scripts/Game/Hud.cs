@@ -119,6 +119,7 @@ namespace Hearthgate.Game
         }
 
         // a rounded panel with a rim and a soft top light, nine-sliced so it scales to any box
+        public static Sprite PlaqueSprite() => Panel(new Color(0.2f, 0.17f, 0.16f, 0.96f), new Color(0.72f, 0.56f, 0.3f), 10, 4);   // dark stone, a brass rim (GameLoop.TickPlaque)
         static Sprite Panel(Color fill, Color rim, int radius = 14, int border = 3)
         {
             const int S = 64; var t = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
@@ -433,7 +434,7 @@ namespace Hearthgate.Game
             if (!I) return false;
             foreach (var p in I.press) if (p.rt && p.rt.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null)) return true;
             foreach (var r in new[] { I.shardRow, I.perkRow }) if (r && r.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(r, m, null)) return true;   // the counters explain themselves
-            return I.forkBox != null || I.settingsBox != null;
+            return I.forkBox != null || I.settingsBox != null || OnRing(m);
         }
 
         RectTransform Box(string n, Transform p, Vector2 aMin, Vector2 aMax, Vector2 pos, Vector2 size)
@@ -482,9 +483,9 @@ namespace Hearthgate.Game
         public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 0f;   // the skills moved down over the walls bar (owner, Nov 14 2026)
         void LayoutActions()
         {
-            // Upgrade in the corner, Walk always right beside it (owner, Nov 14 2026: "make the walk town and back to the
-            // walls button stay there"), then Rebuild and the work card, which come and go
-            var list = new System.Collections.Generic.List<RectTransform> { up.p.rt, walk.p.rt };
+            // Upgrade defenses and Rebuild/Ascend moved into the radial menus on the things themselves (owner, Nov 15 2026);
+            // Walk stays its own button, in the corner
+            var list = new System.Collections.Generic.List<RectTransform> { walk.p.rt };
             if (re.p.rt.gameObject.activeSelf) list.Add(re.p.rt);
             if (work.p.rt.gameObject.activeSelf) list.Add(work.p.rt);
             float width = ((RectTransform)transform).rect.width, row = list.Sum(r => r.sizeDelta.x) + GAP * (list.Count - 1);
@@ -601,7 +602,7 @@ namespace Hearthgate.Game
                 if (ascReady) ascIcon.rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 4f)); else ascIcon.rectTransform.localScale = Vector3.one;
             }
             if (pk) perkTxt.text = HG.Fmt(P.perkPts);
-            TickTimeStop(g); ApplyHudAlpha();
+            TickTimeStop(g); ApplyHudAlpha(); TickRing();
             if (!Paused) TalkingTo = -1;
             if (Input.GetMouseButtonDown(0) && !Paused)
             {   // a tap on a counter: where it comes from and what it buys
@@ -664,7 +665,8 @@ namespace Hearthgate.Game
             if (pt != null && pt.glow) { var c = pt.glow.color; c.a = 0.7f + 0.3f * Mathf.Sin(Time.unscaledTime * 7f); pt.glow.color = c; }
             // while the walls lie fallen the only choice is on the card: the buttons above it step aside (fresh-eyes review,
             // Nov 14 2026: "Rebuild Forge" and "Upgrade towers" stayed live behind the defeat card)
-            bool fl = g.Fallen; foreach (var a in new[] { up, walk, re }) if (a.p.rt.gameObject.activeSelf == fl) a.p.rt.gameObject.SetActive(!fl);
+            bool fl = g.Fallen; if (walk.p.rt.gameObject.activeSelf == fl) walk.p.rt.gameObject.SetActive(!fl);
+            foreach (var a in new[] { up, re }) if (a.p.rt.gameObject.activeSelf) a.p.rt.gameObject.SetActive(false);   // in the rings now
             LayoutActions();
             Refit();
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);

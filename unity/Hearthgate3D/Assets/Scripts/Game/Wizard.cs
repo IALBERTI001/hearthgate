@@ -77,6 +77,8 @@ namespace Hearthgate.Game
             goal = Art.Spawn(art ? art.marker : null, "goal", pos, transform); goal.transform.localScale = Vector3.one * 0.25f; goal.SetActive(false);
         }
 
+        // from the radial menu: into the town and off to a building's door (the ring's "Walk there")
+        public void WalkTo(int i) { if (!On) Toggle(); var d = Field.Door(i, 1.6f); target = new Vector3(d.x, 0, d.z); goal.SetActive(true); goal.transform.position = target.Value + Vector3.up * 0.05f; }
         public void Teleport(Vector3 p) { pos = new Vector3(p.x, 0, p.z); Stop(); }   // test hooks only (GameLoop.Dev)
         public Vector3 Pos => pos;
         public bool Blending => blend > 0.001f;   // the camera still on its way between the walls and the town

@@ -27,6 +27,7 @@ namespace Hearthgate.Game
 
         public const float RX = 44f, RZ = 28f;                // the ring wall's half axes; its centre is (0, 0, -RZ)
         public const float GATE_Z = 0f, GATE_HALF = 4f;
+        public static Vector3 GateTop => new Vector3(0, 7.5f, GATE_Z);   // where the gatehouse's ring opens (Hud.Radial)
 
         // the four towers on the ring's front arc: 0 and 1 beside the gatehouse, 2 and 3 further out (screen left is +x)
         static readonly Vector2[] TOWERS = { new Vector2(9.000f, -0.592f), new Vector2(-9.000f, -0.592f), new Vector2(26.400f, -5.600f), new Vector2(-26.400f, -5.600f) };
