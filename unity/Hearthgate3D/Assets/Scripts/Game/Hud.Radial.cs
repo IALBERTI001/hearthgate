@@ -17,7 +17,7 @@ namespace Hearthgate.Game
         {
             public string label, icon, key; public System.Func<string> line; public System.Func<bool> can, lit; public System.Action act; public bool closes;
         }
-        RectTransform ring; Vector3 ringAt; string ringId; float ringT;
+        RectTransform ring; Vector3 ringAt; string ringId; float ringT; Rect ringReach;
         readonly List<(RectTransform rt, Vector2 home, Text line, RadialItem it, Act a)> ringItems = new List<(RectTransform, Vector2, Text, RadialItem, Act)>();
         public static bool RingOpen => I && I.ring;
         public static string RingId => I ? I.ringId : null;
@@ -50,6 +50,12 @@ namespace Hearthgate.Game
                 ln.rectTransform.pivot = new Vector2(0.5f, 1); ln.rectTransform.sizeDelta = new Vector2(150, 20); ln.verticalOverflow = VerticalWrapMode.Overflow;
                 I.ringItems.Add((act.p.rt, home, ln, it, act));
             }
+            {   // how far the ring reaches round its centre (buttons, words under them, the hub), so it is kept on screen by its
+                // real size: a two-button ring sits level with the thing it rings, even near the top of the screen
+                var rr = new Rect(-90, -20, 180, 40);
+                foreach (var (_, h, _, _, _) in I.ringItems) { rr.xMin = Mathf.Min(rr.xMin, h.x - 78); rr.xMax = Mathf.Max(rr.xMax, h.x + 78); rr.yMin = Mathf.Min(rr.yMin, h.y - 84); rr.yMax = Mathf.Max(rr.yMax, h.y + 40); }
+                I.ringReach = rr;
+            }
             I.TickRing();
         }
         public static void CloseRing()
@@ -68,7 +74,7 @@ namespace Hearthgate.Game
             RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)transform, sp, null, out var lp);
             var cv = ((RectTransform)transform).rect;
             // kept whole on the screen: the ring's centre stays far enough from every edge, and clear of the top bar
-            lp.x = Mathf.Clamp(lp.x, cv.xMin + 215, cv.xMax - 215); lp.y = Mathf.Clamp(lp.y, cv.yMin + 240, cv.yMax - 230);
+            var rr = ringReach; lp.x = Mathf.Clamp(lp.x, cv.xMin + 8 - rr.xMin, cv.xMax - 8 - rr.xMax); lp.y = Mathf.Clamp(lp.y, cv.yMin + 8 - rr.yMin, cv.yMax - 92 - rr.yMax);   // 92: the top bar
             ring.anchoredPosition = lp - cv.min;
             ringT += Time.unscaledDeltaTime; float u = Mathf.Clamp01(ringT / 0.14f), e = 1f - (1f - u) * (1f - u);
             foreach (var (rt, home, ln, it, a) in ringItems)
