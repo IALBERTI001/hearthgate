@@ -460,7 +460,7 @@ def ruin_of(bid):
         o = block((0.4, hy - 1.1, FLOOR + 0.55), (5.4, 2.0, 0.06), M('awning'), 0.0); o.rotation_euler = (-0.45, 0.08, 0.05)   # slumped against the back, clear of Mira behind her counter (it cut through her, Nov 14 2026)
         for k in range(5): crate(R.uniform(-hx + 1, hx - 1), R.uniform(-hy + 0.8, -1.9), 0.9)   # clear of the counter's spot
     for k in range(4):   # fallen, charred beams
-        o = block((R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.5), (0.22, 0.22, R.uniform(2.4, 3.6)), M('char'), 0.0)
+        o = block((R.choice((-1, 1)) * R.uniform(w / 4, w / 2 - 0.9), R.uniform(0.3, d / 3), FLOOR + 0.5), (0.22, 0.22, R.uniform(2.0, 3.0)), M('char'), 0.0)   # to the sides: the keeper stands in the middle
         o.rotation_euler = (R.uniform(0.9, 1.3), 0, R.uniform(0, 3))
     rubble(0.6, 1.0, 10, (w / 3, d / 4))
     for k in range(6): K.sphere('ember', 0.08, (R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.12), M('fire', 2.5), sub=1)
