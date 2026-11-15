@@ -163,7 +163,7 @@ namespace Hearthgate.Game
             ascTxt.rectTransform.pivot = new Vector2(0, 1); ascTxt.rectTransform.sizeDelta = new Vector2(144, 26);
             ascTxt.horizontalOverflow = HorizontalWrapMode.Wrap; ascTxt.verticalOverflow = VerticalWrapMode.Truncate; ascTxt.resizeTextForBestFit = true; ascTxt.resizeTextMinSize = 13; ascTxt.resizeTextMaxSize = 21;   // fits the row, never runs past it
             ascSub = Label("S", ascRow, new Vector2(0, 1), new Vector2(42, -25), 14, TextAnchor.UpperLeft); ascSub.font = body; ascSub.color = new Color(0.86f, 0.8f, 0.9f);
-            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(144, 18);
+            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(144, 18); ascSub.verticalOverflow = VerticalWrapMode.Overflow;   // a line taller than its box draws nothing
             var ab = Box("Bar", ascRow, new Vector2(0, 0), new Vector2(0, 0), new Vector2(42, 1), new Vector2(140, 5)); ab.pivot = Vector2.zero;
             var abg = ab.gameObject.AddComponent<Image>(); abg.color = new Color(0.08f, 0.04f, 0.1f, 0.7f); abg.raycastTarget = false;
             var af = Box("Fill", ab, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
