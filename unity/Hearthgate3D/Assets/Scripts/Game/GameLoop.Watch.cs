@@ -18,7 +18,7 @@ namespace Hearthgate.Game
             foreach (var e in enemies) if (e.dying <= 0 && e.z <= e.stop + NEAR_WALL) return true;
             return false;
         }
-        Vector3 WatchPost => new Vector3(1.6f, 0, Field.GATE_Z - 2.6f);   // just inside the gatehouse
+        Vector3 WatchPost => new Vector3(4.5f, 0, Field.GATE_Z - 8.5f);   // in the gatehouse yard, beside its shadow: the walls camera sees him set out
 
         void TickWatch(float dt)
         {
@@ -58,7 +58,7 @@ namespace Hearthgate.Game
                 if (watchRun == Run.Out && !Fallen)
                 {
                     watchRun = Run.Report; watchT = 2.6f;
-                    Guide.Shout("The watch: They're at the walls! Upgrade the towers and walls!", "up");
+                    Guide.Shout("The watch: They're at the walls! Upgrade!", "up");
                     Fx.I.Pop(runner.position + Vector3.up * 2.2f, "!", Field.GOLD, 40);
                 }
                 else { watchRun = Run.None; watchRest = WATCH_REST; runner.gameObject.SetActive(false); }
