@@ -10,7 +10,7 @@ namespace Hearthgate.Game
 {
     public class Townsfolk : MonoBehaviour
     {
-        const float SCALE = 0.62f;   // the kit builds them at the wizard's units: about 1.65 m tall
+        public const float SCALE = 0.62f;   // the kit builds them at the wizard's units: about 1.65 m tall
         class Folk { public Transform t; public Gait gait; public int walk; public float s, speed, dir = 1, pause, step, yaw, phase; public Vector2 aside; }
         readonly List<Folk> folk = new List<Folk>();
         readonly List<float[]> lengths = new List<float[]>();

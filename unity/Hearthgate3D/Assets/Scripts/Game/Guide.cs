@@ -36,6 +36,8 @@ namespace Hearthgate.Game
             P.told.Add("g_" + id);
             foreach (var l in LINES[id]) q.Enqueue((aw == null ? l.text : l.text.Replace("{aw}", aw), l.press, l.voice));
         }
+        // a line said every time it is called (the watch's runner), no voice, after whatever is being said now
+        public static void Shout(string text, string press) { if (q.Count < 2) q.Enqueue((text, press, null)); }
         // called by Hud every frame: shows the next line when the last one is done
         public static void Tick(float dt, System.Action<string> show, System.Action hide)
         {

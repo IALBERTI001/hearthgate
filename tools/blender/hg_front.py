@@ -1554,7 +1554,7 @@ def villager(v):
     about 1.6 m): a: the baker (cream tunic, white apron and cap), b: the farmer (green tunic, straw hat), c: a townswoman
     (red dress, apron, headscarf, a basket on her arm). Faces -y like the wizard."""
     from mathutils import Euler
-    top = {'a': 'canvas', 'b': 'tunic_g', 'c': 'dress'}[v]
+    top = {'a': 'canvas', 'b': 'tunic_g', 'c': 'dress', 's': 'banner'}[v]   # s: the watch's runner (soldier())
     if v == 'c':   # a long skirt to the ankles: her boots step out under it
         K.cyl('skirt', 0.46, 0.8, (0, 0, 0.6), M('dress'), 18, 0.03, r2=0.32)
         K.cyl('hem', 0.47, 0.06, (0, 0, 0.22), M('apron'), 18, 0.0)
@@ -1564,6 +1564,11 @@ def villager(v):
         K.cyl('tunic', 0.42, 0.5, (0, 0, 0.8), M(top), 18, 0.03, r2=0.33)
     K.cyl('belt', 0.36, 0.08, (0, 0, 0.98), M('wood_dk'), 16, 0.02)
     K.sphere('chest', 0.36, (0, 0, 1.12), M(top), (1, 0.85, 0.85), 3)
+    if v == 's':   # a steel breastplate over a red tabard, gold-trimmed, with the gate's emblem
+        K.sphere('cuirass', 0.37, (0, -0.04, 1.1), M('steel'), (1.02, 0.82, 0.8), 3)
+        K.cyl('tabard_hem', 0.43, 0.05, (0, 0, 0.56), M('gold'), 18, 0.0)
+        K.sphere('emblem', 0.08, (0, -0.33, 1.12), M('gold', 1.2), (1, 0.4, 1.2), 2)
+        for sx in (-1, 1): K.sphere('pauldron', 0.17, (sx * 0.4, -0.02, 1.3), M('steel'), (1.1, 1, 0.7), 2)
     if v in 'ac':   # an apron over the front
         block((0, -0.36, 0.72), (0.5, 0.05, 0.62 if v == 'a' else 0.75), M('apron'), 0.02).rotation_euler = (-0.12, 0, 0)
     for sx, side in ((-1, 'L'), (1, 'R')):   # sleeves hanging from the shoulders, hands at the cuffs, each arm turning at its shoulder
@@ -1572,6 +1577,10 @@ def villager(v):
         with Part('arm_' + side, tuple(c)):
             o = K.cyl('sleeve', 0.13, 0.48, tuple(along(-0.2)), M(top), 10, 0.02, r2=0.11); o.rotation_euler = rot
             K.sphere('hand', 0.1, tuple(along(-0.47)), M('skin'), sub=2)
+            if v == 's' and side == 'R':   # a spear, carried upright at the run
+                h = along(-0.47)
+                K.cyl('spear', 0.035, 2.1, (h.x, h.y - 0.04, h.z + 0.55), M('wood_dk'), 8, 0.0)
+                K.cone('spearhead', 0.08, 0.26, (h.x, h.y - 0.04, h.z + 1.72), M('steel'), 6)
             if v == 'c' and side == 'R':   # a basket on her right arm
                 h = along(-0.47)
                 K.cyl('basket', 0.17, 0.18, (h.x + 0.04, h.y - 0.05, h.z - 0.02), M('wood'), 12, 0.01)
@@ -1583,7 +1592,13 @@ def villager(v):
         K.sphere('eye', 0.05, (sx * 0.11, -0.27, 1.62), M('pupil'), (1, 0.6, 1.2), 2)
         K.sphere('catch', 0.015, (sx * 0.1, -0.31, 1.64), M('white_gloss', 0.5), sub=1)
     hair = 'hair2' if v == 'b' else 'hair'
-    K.sphere('hair', 0.31, (0, 0.05, 1.62), M(hair), (1, 1, 0.9), 3)
+    if v != 's': K.sphere('hair', 0.31, (0, 0.05, 1.62), M(hair), (1, 1, 0.9), 3)
+    if v == 's':   # a round steel helm with a nose guard and a red crest
+        K.sphere('helm', 0.33, (0, 0.03, 1.66), M('steel'), (1, 1, 0.92), 3)
+        K.cyl('helm_rim', 0.34, 0.06, (0, 0.02, 1.58), M('gold'), 18, 0.0)
+        block((0, -0.33, 1.56), (0.05, 0.04, 0.2), M('steel'), 0.01)
+        K.sphere('crest', 0.1, (0, 0.06, 1.98), M('roof_red'), (0.5, 1.9, 0.9), 2)
+        return K.export('npc_soldier')
     if v == 'a':   # the baker's cap
         K.cyl('cap', 0.3, 0.22, (0, 0.02, 1.85), M('apron'), 16, 0.03, r2=0.34)
     elif v == 'b':   # a wide straw hat
