@@ -246,7 +246,10 @@ def town_props():
         while k < n and tries < 6000:
             tries += 1; x, z = rng.uniform(-RX, RX), rng.uniform(-2 * RZ, -3)
             if ok(x, z) and clear(x, z, r): out.append((kind, x, z, r, rng.uniform(0, 360))); k += 1
-    return out
+    # the square's market stalls are placed (so every later prop keeps its spot) but not built: they were filler with no
+    # purpose (owner, Nov 14 2026: "remove extra booths that serve no purpose. Its just filler with no space"); the only
+    # booth in the square is Tobin's, at the upgrade hub in front of the Market (GameLoop.Npcs)
+    return [o for o in out if o[0] != 'stall']
 
 TOWN_PROPS = town_props()
 

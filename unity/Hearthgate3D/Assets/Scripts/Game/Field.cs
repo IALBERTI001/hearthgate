@@ -89,9 +89,9 @@ namespace Hearthgate.Game
         public static Vector3 SignPoint(int i) => World(i, SIZES[i].x / 2 - 0.7f, SIZES[i].y / 2 + 1.5f, 2.0f);
         public const float DOOR_W = 1.2f, WALL_T = 0.3f, FLOOR = 0.34f;   // every door 1.2 x 2.4 m; the room floor on its plinth
 
-        // the town's props the wizard walks round: x, z, radius (lamps, benches, stalls, barrels, trees, beds, bushes)
+        // the town's props the wizard walks round: x, z, radius (lamps, benches, barrels, trees, beds, bushes; no stalls since Nov 14 2026)
         public static readonly Vector3[] PROPS = {
-            new Vector3(-18.530f, -29.650f, 1.300f), new Vector3(12.095f, -35.280f, 1.300f), new Vector3(18.805f, -28.332f, 1.300f), new Vector3(3.677f, -24.323f, 0.700f),
+            new Vector3(3.677f, -24.323f, 0.700f),
             new Vector3(-1.346f, -22.977f, 0.700f), new Vector3(-5.023f, -26.654f, 0.700f), new Vector3(-3.677f, -31.677f, 0.700f), new Vector3(1.346f, -33.023f, 0.700f),
             new Vector3(5.023f, -29.346f, 0.700f), new Vector3(29.609f, -25.926f, 0.200f), new Vector3(27.914f, -22.660f, 0.200f), new Vector3(22.220f, -18.030f, 0.200f),
             new Vector3(17.150f, -15.795f, 0.200f), new Vector3(11.201f, -14.185f, 0.200f), new Vector3(4.677f, -13.283f, 0.200f), new Vector3(-10.226f, -13.999f, 0.200f),
