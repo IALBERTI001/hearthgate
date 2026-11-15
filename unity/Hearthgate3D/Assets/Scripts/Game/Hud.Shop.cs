@@ -19,7 +19,7 @@ namespace Hearthgate.Game
             var g = GameLoop.I; var all = HG.SHOP.Where(l => l.cat == cat).ToArray();
             int pages = (all.Length + PAGE - 1) / PAGE; page = Mathf.Clamp(page, 0, Mathf.Max(0, pages - 1));
             var items = all.Skip(page * PAGE).Take(PAGE).ToArray();
-            var box = I.Modal("Shop", new Vector2(720, CARD_H));
+            var box = I.Modal("Shop", new Vector2(720, CARD_H), false);
             var bal = I.Line(box, -62, "", 19, ROSE_TXT);
             for (int k = 0; k < TABS.Length; k++)
             {
@@ -72,13 +72,13 @@ namespace Hearthgate.Game
             if (pick != "" && !els.Contains(pick)) pick = "";   // a choice whose building fell again counts as Auto (it read "Make all four Storm" with Storm gone)
             if (els.Length == 0)
             {   // nothing to choose yet: a short card that says how to get the choice, not a big empty one with a lone button
-                var sb = I.Modal(names[xs.IndexOf(n)], new Vector2(640, 250));
+                var sb = I.Modal(names[xs.IndexOf(n)], new Vector2(640, 250), false);
                 I.Line(sb, -66, "It throws stone for now. Rebuild the Forge, the Frost Spire or the Storm Bell to give the towers an element and new designs.", 18, new Color(0.88f, 0.84f, 0.9f));
                 I.Choice(sb, "T_Close", new Vector2(0, 18), new Vector2(230, 56), "Back to the game", () => I.ShowSettings(false));
                 return;
             }
             var looks = HG.SHOP.Where(l => l.cat == "tower" && l.el == cur).ToArray();
-            var box = I.Modal(names[xs.IndexOf(n)], new Vector2(720, looks.Length > 0 ? 470 : 310));   // no designs row: no empty band above the close button
+            var box = I.Modal(names[xs.IndexOf(n)], new Vector2(720, looks.Length > 0 ? 470 : 310), false);   // no designs row: no empty band above the close button
             I.Line(box, -62, els.Length == 0 ? "Rebuild the Forge, the Frost Spire or the Storm Bell to give the towers an element." : "What it shoots. Any element the city has can go on any tower.", 18, new Color(0.88f, 0.84f, 0.9f));
             var opts = new List<string> { "" }; opts.AddRange(els);
             float w = opts.Count > 4 ? 128 : 150, gap = 8, x0 = -(opts.Count - 1) * (w + gap) / 2;
@@ -115,7 +115,7 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P; HG.QuestsFor(P, GameLoop.Today());
-            var box = I.Modal("The Library", new Vector2(720, CARD_H));
+            var box = I.Modal("The Library", new Vector2(720, CARD_H), false);
             var tabs = new (string id, string label)[] { ("quests", "Quests"), ("feats", $"Feats {P.feats.Count}/{HG.FEATS.Count}"), ("beasts", $"Beasts {HG.BESTIARY.Count(r => P.seenRoles.Contains(r))}/{HG.BESTIARY.Length}"), ("garden", $"Garden {P.flies.Count}/{HG.BUTTERFLIES.Length}") };
             for (int k = 0; k < tabs.Length; k++)
             {

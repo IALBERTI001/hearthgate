@@ -489,7 +489,7 @@ namespace Hearthgate.Game
 
         void Update()
         {
-            var wz = Wizard.I; TrackPresence(); TickWatch(Time.deltaTime); TickMarks();
+            var wz = Wizard.I; TrackPresence(); TickWatch(Time.deltaTime); TickMarks(); TickShopSigns();
             TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls(); TickFall(Time.unscaledDeltaTime); TickNpcs(Time.deltaTime);
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.F) && TimeStopLevel > 0 && wz && wz.On) UseTimeStop();   // his skill: on the walk only
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");

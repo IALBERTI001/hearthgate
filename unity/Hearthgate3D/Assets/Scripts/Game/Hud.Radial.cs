@@ -138,9 +138,16 @@ namespace Hearthgate.Game
                     line = () => g.CanAscend ? "x1.5 for good" : g.NextBuilding != null ? "rebuild the city" : $"wave {System.Math.Max(g.P.runWave, g.P.wave)} / {HG.AscendWave(g.P)}",
                     can = () => g.CanAscend, act = () => ShowAscend(), closes = true, lit = () => g.CanAscend },
             };
+            AddLedger(items, g);
             OpenRing("gate", Field.GateTop, "The Gatehouse", items);
         }
         // on the town walk: hold anywhere and the wizard's own ring opens round the cursor (the gatehouse is far from the square)
+        // the Town Ledger from any ring (owner, Nov 15 2026: "the radial menu should have the option to open the ledger too"),
+        // once Tobin keeps it (the first building rebuilt)
+        static void AddLedger(List<RadialItem> items, GameLoop g)
+        {
+            if (g.StewardHere) items.Add(new RadialItem { label = "Town ledger", icon = "ledger", line = () => g.LedgerNews ? "a doubling is near" : "every building", act = () => ShowLedger("town"), closes = true, lit = () => g.LedgerNews });
+        }
         public static void RingWizard()
         {
             var g = GameLoop.I; if (g == null) return;
@@ -150,6 +157,7 @@ namespace Hearthgate.Game
             };
             if (g.TimeStopLevel > 0)
                 items.Add(new RadialItem { label = "Stop time", icon = "timestop", key = "F", line = () => g.TimeStopReady ? "ready" : $"in {Mathf.CeilToInt(g.TimeStopLeft)} s", can = () => g.TimeStopReady, act = () => g.UseTimeStop() });
+            AddLedger(items, g);
             items.Add(new RadialItem { label = "Back to the walls", icon = "walk", key = "T", act = () => Wizard.I?.Toggle() });
             OpenRing("wiz", Vector3.zero, "The wizard", items);
         }
@@ -179,6 +187,7 @@ namespace Hearthgate.Game
                     line = () => HG.RestoreOffer(P).Contains(id) ? HG.Fmt(g.RestoreCost) : g.NextBuilding != null ? "after the " + HG.ById(g.NextBuilding).name : "later",
                     can = () => g.CanWork(i), act = () => g.WorkOn(i), closes = true, lit = () => Guide.Pressing == "re" && HG.RestoreOffer(P).Contains(id) });
             items.Add(new RadialItem { label = "Walk there", icon = "walk", act = () => Wizard.I?.WalkTo(i), closes = true });
+            AddLedger(items, g);
             OpenRing("b" + i, Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) * 0.6f), b.name + (P.restored.Contains(id) ? $" · level {HG.LevelOf(P, id)}" : ""), items);
         }
     }

@@ -494,25 +494,23 @@ namespace Hearthgate.Game
         // the actions as one group in the top-right corner: a row along the top when the window is wide enough (the sky and
         // the far meadow), else a column down the right side (portrait: the sky above the town). Upgrade gate, the primary
         // action, sits in the corner; a finished or idle action leaves and the rest close up. LayoutCheck mirrors this.
-        public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 0f;   // the skills moved down over the walls bar (owner, Nov 14 2026)
+        public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 0f;
+        public const float WALK_W = 210f, SKILL_W2 = 210f;   // the walk button (bottom row), each button of the skill row   // the skills moved down over the walls bar (owner, Nov 14 2026)
         void LayoutActions()
         {
-            // Upgrade defenses and Rebuild/Ascend moved into the radial menus on the things themselves (owner, Nov 15 2026);
-            // Walk stays its own button, in the corner
-            var list = new System.Collections.Generic.List<RectTransform> { walk.p.rt };
-            if (up.p.rt.gameObject.activeSelf) list.Add(up.p.rt);
-            if (re.p.rt.gameObject.activeSelf) list.Add(re.p.rt);
-            if (work.p.rt.gameObject.activeSelf) list.Add(work.p.rt);
-            float width = ((RectTransform)transform).rect.width, row = list.Sum(r => r.sizeDelta.x) + GAP * (list.Count - 1);
-            bool asRow = width - LABELS_W - SKILL_W - EDGE >= row;   // room left for the readouts and the round skill button
-            float x = -EDGE, y = -EDGE;
-            foreach (var r in list)
+            // nothing pressable by the header (owner, Nov 15 2026: "i dont feel buttons should be near the header information with the
+            // progression we are making"): the top is for reading. The walk button sits on the bottom row beside Settings; on the
+            // walk, Upgrade defenses joins the wizard's skill row over the walls bar, beside the walls it raises
+            void Place(RectTransform r, Vector2 anchor, Vector2 at, Vector2 size)
             {
-                r.anchoredPosition = new Vector2(x, y);
-                if (asRow) x -= r.sizeDelta.x + GAP; else y -= r.sizeDelta.y + GAP;
+                if (r.anchorMin != anchor) { r.anchorMin = r.anchorMax = r.pivot = anchor; }
+                r.sizeDelta = size; r.anchoredPosition = at;
             }
-            // the banner sits below the group (under the top row, or under the column, never beside it)
-            var bp = banner.rectTransform.anchoredPosition; bp.y = asRow ? -136f : Mathf.Min(-136f, y - 12f); banner.rectTransform.anchoredPosition = bp;
+            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-(EDGE + 150 + GAP), 12), new Vector2(WALK_W, 50));
+            bool ts = tsAct != null && tsAct.p.rt.gameObject.activeSelf, upOn = up.p.rt.gameObject.activeSelf;
+            if (upOn) Place(up.p.rt, new Vector2(0.5f, 0), new Vector2(ts ? -(SKILL_W2 / 2 + GAP / 2) : 0, SKILL_Y), new Vector2(SKILL_W2, 56));
+            if (ts) tsAct.p.rt.anchoredPosition = new Vector2(upOn ? SKILL_W2 / 2 + GAP / 2 : 0, SKILL_Y);
+            var bp = banner.rectTransform.anchoredPosition; bp.y = -120f; banner.rectTransform.anchoredPosition = bp;
             // one voice: an open ring is what the player is looking at, so a banner that would cross it drops under it
             if (ring && bannerT > 0 && RingBox().Overlaps(BannerRect())) { bp.y = -(((RectTransform)transform).rect.height - RingBox().yMin) - 10f; banner.rectTransform.anchoredPosition = bp; }
         }
@@ -717,14 +715,18 @@ namespace Hearthgate.Game
 
         // ---------- settings and controls ----------
         RectTransform settingsBox; Text musicLbl, sfxLbl;
-        public static bool Paused => I && I.settingsBox != null;
+        public static bool Paused => I && I.settingsBox != null;   // a card is open (it takes the input; the fight may still run)
+        public static bool Stopped => Paused && I.cardPauses;   // the card stops the fight
+        bool cardPauses = true;
         // a modal card: dims the game, pauses the fight, takes every press until closed (settings, Ascend, perks)
-        RectTransform Modal(string title, Vector2 size)
+        // pause: false for the town's own cards (the ledger, the keepers, the shop): the walls keep fighting behind them (owner,
+        // Nov 15 2026: "does being in the ledger pause the game? I don't think it should"); Settings, Ascend and the fall still stop it
+        RectTransform Modal(string title, Vector2 size, bool pause = true)
         {
             if (settingsBox) ShowSettings(false);
-            Time.timeScale = 0;
+            Time.timeScale = pause ? 0 : 1; cardPauses = pause;
             var dim = Box("ModalDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, 0.55f); settingsBox = dim;
+            var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, pause ? 0.55f : 0.3f); settingsBox = dim;
             var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size);
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
             box.gameObject.AddComponent<CardIn>();   // every card rises into place the same way (game-hud-ui-design rule 8)
@@ -822,7 +824,7 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
-            var box = I.Modal("The Watchtower", new Vector2(700, CARD_H));
+            var box = I.Modal("The Watchtower", new Vector2(700, CARD_H), false);
             var tabs = new System.Collections.Generic.List<(string id, string label)> { ("perks", "Perks"), ("stars", $"Stars {P.stars.Count}/{HG.STARS.Length}") };
             if (HG.Unlocked(P, "relics")) tabs.Add(("relics", $"Relics {P.relics.Count}/2"));
             for (int k = 0; k < tabs.Count; k++)

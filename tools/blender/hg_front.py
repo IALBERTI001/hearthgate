@@ -1551,6 +1551,34 @@ def steward_booth():
     block((0, -0.77, 1.88), (0.5, 0.02, 0.14), M('canvas'), 0.0)
     return K.export('steward_booth')
 
+def shop_sign():
+    """A shop's hanging signboard (owner, Nov 15 2026: "the buildings that you interact with NPCs for things should have a sign
+    on the Building that says things like Upgrade Perks! Skins and More! for market! ... Give some life and directions"):
+    two curled iron brackets out of the wall (the origin, at the wall's face) hold a dark walnut board on short chains, its
+    face toward -y, rimmed in brass with carved scroll ends. The game writes the words on its face and swings the board
+    (the part 'board', pivoted where the chains hang) in the breeze."""
+    W, H, OUT = 2.1, 0.7, 0.42
+    for sx in (-1, 1):
+        x = sx * (W / 2 - 0.22)
+        block((x, -OUT / 2, 0.0), (0.06, OUT + 0.04, 0.06), M('iron'), 0.01)                         # the arm out of the wall
+        _seg(Vector((x, -0.02, -0.34)), Vector((x, -OUT * 0.8, -0.02)), 0.04, M('iron'))             # its brace
+        K.cyl('plate', 0.09, 0.03, (x, -0.01, -0.16), M('iron'), 8, 0.0).rotation_euler = (math.pi / 2, 0, 0)   # the wall plate
+        K.sphere('curl', 0.05, (x, -OUT - 0.02, 0.02), M('iron'), sub=1)
+    with Part('board', (0, -OUT, 0.0)):
+        for sx in (-1, 1):
+            x = sx * (W / 2 - 0.22)
+            for k in range(3): K.cyl('link', 0.025, 0.07, (x, -OUT, -0.04 - k * 0.07), M('iron'), 6, 0.0).rotation_euler = (0, 0, k * 1.57)
+        zc = -0.24 - H / 2
+        block((0, -OUT, zc), (W, 0.07, H), M('wood_dk'), 0.03)                                       # the board
+        for k in range(4): block((0, -OUT + 0.036, zc - H / 2 + 0.12 + k * 0.155), (W - 0.12, 0.004, 0.012), M('wood'), 0.0)   # plank lines on the back
+        for (dz, h) in ((H / 2 - 0.03, 0.05), (-H / 2 + 0.03, 0.05)): block((0, -OUT - 0.04, zc + dz), (W - 0.02, 0.025, h), M('gold'), 0.01)   # brass rim, top and bottom
+        for sx in (-1, 1):
+            block((sx * (W / 2 - 0.03), -OUT - 0.04, zc), (0.05, 0.025, H), M('gold'), 0.01)
+            K.cyl('scroll', 0.12, 0.12, (sx * (W / 2 + 0.06), -OUT, zc), M('wood'), 12, 0.01).rotation_euler = (math.pi / 2, 0, 0)   # carved scroll ends
+            K.cyl('scroll_c', 0.06, 0.13, (sx * (W / 2 + 0.06), -OUT, zc), M('gold'), 10, 0.0).rotation_euler = (math.pi / 2, 0, 0)
+            for sz in (-1, 1): K.sphere('stud', 0.025, (sx * (W / 2 - 0.1), -OUT - 0.055, zc + sz * (H / 2 - 0.1)), M('gold', 1.1), sub=1)
+    return K.export('shop_sign')
+
 def rift():
     """A time rift (owner, Nov 14 2026: the monsters' "weird spawn" seen in 3D): where each lane begins, a tear in the air
     standing upright facing -y: a dark violet void ringed with crackling storm light and torn edges, shards of broken

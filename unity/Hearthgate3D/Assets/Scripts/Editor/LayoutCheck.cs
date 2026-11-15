@@ -187,14 +187,12 @@ namespace Hearthgate.EditorTools
             // pixel boxes measured from the screen corner they are anchored to
             Rect TopLeft(float x1, float y1) => Rect.MinMaxRect(0, 1 - y1 * s / h, x1 * s / w, 1);
             Rect TopRight(float x0, float y0, float x1, float y1) => Rect.MinMaxRect(1 - x1 * s / w, 1 - y1 * s / h, 1 - x0 * s / w, 1 - y0 * s / h);
-            // the action group (Hud.LayoutActions): a row along the top when it fits beside the labels, else a column
-            float canvasW = w / s, rowW = 3 * 230 + 2 * Hearthgate.Game.Hud.GAP;
-            var actions = canvasW - Hearthgate.Game.Hud.LABELS_W - Hearthgate.Game.Hud.SKILL_W - Hearthgate.Game.Hud.EDGE >= rowW
-                ? ("actions", TopRight(Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE + rowW, Hearthgate.Game.Hud.EDGE + 56))
-                : ("actions", TopRight(Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE, Hearthgate.Game.Hud.EDGE + 230, Hearthgate.Game.Hud.EDGE + 3 * 56 + 2 * Hearthgate.Game.Hud.GAP));
+            // the walk button (Hud.LayoutActions): the bottom row, left of Settings; nothing pressable sits by the header any more
+            float wx0 = Hearthgate.Game.Hud.EDGE + 150 + Hearthgate.Game.Hud.GAP, wx1 = wx0 + Hearthgate.Game.Hud.WALK_W;
+            var actions = ("walk button", Rect.MinMaxRect(1 - wx1 * s / w, 12 * s / h, 1 - wx0 * s / w, 62 * s / h));
             return new List<(string, Rect)> {
                 ("labels", TopLeft(420, 124)),                       // wave with Starshards and perk points beside it, Resonance, the rate and the named wave
-                actions,                                             // Hud.LayoutActions: Upgrade, Rebuild and Walk as a row or a column
+                actions,                                             // Hud.LayoutActions: the walk button
                 // the wizard's skill row (Hud.TickTimeStop) shows on the town walk only, so it is not in the walls view
                 // the Settings button (bottom right, the owner's placement, Nov 14 2026) is left out: its corner sits over the last
                 // metres of a lane as it enters the view, where an enemy has only just appeared

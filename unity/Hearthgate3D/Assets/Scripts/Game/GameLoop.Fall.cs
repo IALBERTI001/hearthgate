@@ -94,7 +94,7 @@ namespace Hearthgate.Game
                 }
                 return;
             }
-            if (!Hud.Paused) Hud.ShowFallen();   // the card stays until a choice is made (P, the menu, a reload)
+            if (!Hud.Stopped) Hud.ShowFallen();   // a town card (the ledger, a keeper) gives way to it   // the card stays until a choice is made (P, the menu, a reload)
             // smoke: dark puffs (hg_front.puff) rise from the ruins and the gate, swell, drift with the wind and sink away
             for (int k = puffs.Count - 1; k >= 0; k--)
             {
