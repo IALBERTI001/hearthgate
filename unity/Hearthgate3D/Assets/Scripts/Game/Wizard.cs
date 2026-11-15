@@ -28,7 +28,7 @@ namespace Hearthgate.Game
         // lower and further than the first 8 m crane shot (owner, Nov 14 2026: "view of the player walking the town should be
         // improved because it is an important impression"): a third-person shot over his shoulder, the street ahead and the
         // rooftops against the sky, not the cobbles under his hat
-        public static readonly Vector3 FOLLOW = new Vector3(0, 6.2f, 7.0f), LOOK = new Vector3(0, 1.4f, -3.2f);
+        public static readonly Vector3 FOLLOW = new Vector3(0, 6.2f, 7.0f), LOOK = new Vector3(0, 1.3f, -1.2f);   // the wizard sits a little below the middle of the screen, above the dock and the walls bar (the bot's first look, Nov 15 2026: he stood under them)
         // the walk camera for a spot: behind him on the town side, pulled in and up when that would put it outside the ring
         // wall (from outside, the wall came between it and him near the back of the town)
         public static readonly Vector3 INDOORS = new Vector3(0, 11f, 3.2f);   // steeper over a room, to look past its front wall
