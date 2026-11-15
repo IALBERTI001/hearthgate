@@ -44,7 +44,10 @@ Desktop first (CrazyGames). Reference frame 1280 x 720; the player's HUD size (8
 
 - Resources and progress: top left, in the body face (bold); titles in the display face.
 - Actions on a thing: a ring of kit buttons around the cursor where the thing was pressed, its title in a hub at the centre, kept whole on screen. Press and hold, lean toward an option (it lights), let go to choose; a quick click leaves the ring open to click. On the town walk a long press anywhere opens the wizard's ring (Upgrade defenses, Stop time, Back to the walls), and Upgrade defenses (U) sits beside the walk button. The gold marker bobs over the gatehouse when the guide points there.
-- Nothing pressable by the header: the top is for reading. Walk the town sits on the bottom row beside Settings; on the walk, Upgrade defenses (U) joins Stop time (F) in the skill row over the walls bar. Every ring offers the Town ledger.
+- Nothing pressable by the header: the top is for reading. The walk is a medallion (gold count badge) above Settings, bottom right. No skill row: on the walk a long press opens the wizard's ring (the building at his door first, Upgrade defenses, Stop time, Surge, the ledger, back to the walls); F, U, X, E and T stay. Every ring offers the Town ledger; every ring price has the gem.
+- Buildings carry their own level and output on their signpost boards; no HUD cards follow the camera.
+- The coach card sits bottom centre over the walls bar, one voice with banners, and names the ring button once the ring is open.
+- Starshards and perk points appear only once they mean something; the income line hides while the walls lie fallen.
 - Town cards (ledger, keepers, shop) keep the fight running under a light dim; Settings, Ascend and the fall card stop it.
 - Keepers' buildings carry a hanging shop sign saying what is inside (Skins & More!, Upgrade Perks!, Quests & Feats!).
 - Health: bottom centre (walls; a boss over it); the wizard's skills sit over the walls bar, on the walk.
