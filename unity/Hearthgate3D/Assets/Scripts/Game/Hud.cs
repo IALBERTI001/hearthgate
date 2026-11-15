@@ -525,15 +525,15 @@ namespace Hearthgate.Game
             foreach (var d in new[] { dockUp, dockBld, dockMult }) if (d.p.rt.gameObject.activeSelf != show) d.p.rt.gameObject.SetActive(show);
             if (!show) return;
             int n = g.GateBuyCount(out double total);
-            Show(dockUp, "Defenses", HG.Fmt(total), n > 0, now);
-            dockUp.title.text = n > 1 ? $"Defenses <size=15>+{n}</size>" : $"Defenses <size=15>Lv {P.gateLevel + 1}</size>"; dockUp.title.supportRichText = true;
+            Show(dockUp, "Defenses", HG.Fmt(total) + (n > 1 ? $"  <color=#FFF1C8>+{n} lv</color>" : $"  <color=#FFF1C8>Lv {P.gateLevel + 1}</color>"), n > 0, now);
+            dockUp.cost.supportRichText = true;
             int bi = g.BestBuilding();
             if (bi >= 0)
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
-                Show(dockBld, built ? HG.ById(id).name : "Rebuild", HG.Fmt(g.BestCost(bi)), g.CanWork(bi), now);
-                if (!built) dockBld.title.text = $"Rebuild <size=15>{HG.ById(id).name}</size>";
+                Show(dockBld, built ? HG.ById(id).name : $"Rebuild {HG.ById(id).name}", HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : ""), g.CanWork(bi), now);
+                dockBld.cost.supportRichText = true;
                 if (!bldBadge) bldBadge = Badge(dockBld.p.rt);
                 int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
                 if (!built && g.CanRestore) ready = System.Math.Max(ready, 1);
@@ -662,8 +662,9 @@ namespace Hearthgate.Game
             shardTxt.text = HG.Fmt(P.shards);   // the star says what it is; a tap explains (OnHud)
             shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(new Color(1f, 0.9f, 0.55f), Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
             // the second and third currencies show once they mean something (review Nov 15 2026: "★ 0" and an unlabelled pink 2 crowd the one primary number)
-            bool pk = P.perkPts > 0; if (perkRow.gameObject.activeSelf != pk) perkRow.gameObject.SetActive(pk);
-            bool sk = P.shards > 0 || P.ascensions > 0 || P.shopOpen; if (shardRow.gameObject.activeSelf != sk) shardRow.gameObject.SetActive(sk);
+            // every currency in sight on the right of the top bar (owner, Nov 15 2026: "Where is the starshards, the perks")
+            bool pk = true; if (!perkRow.gameObject.activeSelf) perkRow.gameObject.SetActive(true);
+            if (!shardRow.gameObject.activeSelf) shardRow.gameObject.SetActive(true);
             {   // the Ascension row
                 int aw = HG.AscendWave(P), reach = Mathf.Max(P.runWave, P.wave);
                 ascTxt.text = P.ascensions > 0 ? $"Ascension {Roman(P.ascensions)}" : "First Ascension";
