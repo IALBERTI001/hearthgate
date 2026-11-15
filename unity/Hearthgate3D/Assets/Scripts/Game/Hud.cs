@@ -372,7 +372,7 @@ namespace Hearthgate.Game
                 if (show)
                 {
                     dist = Vector3.Distance(cam.transform.position, at); sp = cam.WorldToScreenPoint(at);
-                    show = !Paused && (docked || (wz.Inside < 0 && (i == n1 || i == n2))) && sp.z > 0 && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height * 0.8f;
+                    show = !Paused && !ring && (docked || (wz.Inside < 0 && (i == n1 || i == n2))) && sp.z > 0 && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height * 0.8f;
                 }
                 if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
                 if (!show) continue;
