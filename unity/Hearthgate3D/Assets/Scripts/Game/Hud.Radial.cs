@@ -134,10 +134,12 @@ namespace Hearthgate.Game
             var items = new List<RadialItem>
             {
                 new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", line = () => HG.Fmt(g.UpgradeCost), can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
-                new RadialItem { label = "Ascend", icon = "ascend", key = g.NextBuilding == null ? "R" : null,
-                    line = () => g.CanAscend ? "x1.5 for good" : g.NextBuilding != null ? "rebuild the city" : $"wave {System.Math.Max(g.P.runWave, g.P.wave)} / {HG.AscendWave(g.P)}",
-                    can = () => g.CanAscend, act = () => ShowAscend(), closes = true, lit = () => g.CanAscend },
+
             };
+            // Ascend shows once the city is whole (review Nov 15 2026: a locked "rebuild the city" button in a new player's first ring)
+            if (g.NextBuilding == null) items.Add(new RadialItem { label = "Ascend", icon = "ascend", key = g.NextBuilding == null ? "R" : null,
+                    line = () => g.CanAscend ? "x1.5 for good" : g.NextBuilding != null ? "rebuild the city" : $"wave {System.Math.Max(g.P.runWave, g.P.wave)} / {HG.AscendWave(g.P)}",
+                    can = () => g.CanAscend, act = () => ShowAscend(), closes = true, lit = () => g.CanAscend });
             AddLedger(items, g);
             OpenRing("gate", Field.GateTop, "The Gatehouse", items);
         }

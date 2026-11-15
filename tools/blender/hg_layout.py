@@ -232,7 +232,9 @@ def town_props():
     while k < 360:
         t = math.radians(k); x, z = (SQUARE_A + 0.5) * math.cos(t), CENTRE[1] + (SQUARE_B + 0.5) * math.sin(t)
         near_path = any(abs(local(i, x, z)[0]) < PATH_HALF + 0.8 and local(i, x, z)[1] > 0 for i in range(len(IDS))) or (abs(x) < GATE_HALF_ST + 0.8 and z > CENTRE[1])
-        if not near_path and not on_plot(x, z, 0.6): out.append(('lamp', x, z, 0.2, 0.0)); k += 13
+        # never in front of a building's signpost board (owner, Nov 15 2026: the board carries the building's level now)
+        by_sign = any(math.hypot(x - sign_point(i)[0], z - sign_point(i)[1]) < 2.4 for i in range(len(IDS)))
+        if not near_path and not by_sign and not on_plot(x, z, 0.6): out.append(('lamp', x, z, 0.2, 0.0)); k += 13
         else: k += 2
     # barrels by each door, on the side away from the sign
     for i, b in enumerate(IDS):

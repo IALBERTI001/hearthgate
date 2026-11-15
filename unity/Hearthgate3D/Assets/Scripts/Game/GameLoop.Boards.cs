@@ -27,7 +27,7 @@ namespace Hearthgate.Game
                     var f = Field.Front(i); var front = new Vector3(f.x, 0, f.y);
                     var go = new GameObject("board words " + id, typeof(RectTransform)); go.transform.SetParent(world, false);
                     var cv = go.AddComponent<Canvas>(); cv.renderMode = RenderMode.WorldSpace; cv.sortingOrder = 1;
-                    var rt = (RectTransform)go.transform; rt.sizeDelta = new Vector2(250, 180);   // 1.2 x 0.86 m at the scale below
+                    var rt = (RectTransform)go.transform; rt.sizeDelta = new Vector2(250, 190);   // 1.2 x 0.86 m at the scale below
                     // the board's right half: its centre 0.4 m right of the post, on its face (1.54 m out from the front wall)
                     rt.position = Field.World(i, Field.PlotSize(i).x / 2 - 0.7f + 0.42f, Field.PlotSize(i).y / 2 + 1.565f, 2.0f);
                     rt.rotation = Quaternion.LookRotation(-front); rt.localScale = Vector3.one * 0.0048f;
@@ -45,9 +45,9 @@ namespace Hearthgate.Game
                 var b = HG.ById(id); int L = HG.LevelOf(P, id); double r = HG.BuildingRate(P, id, B);
                 bool can = CanWork(i), near = wz && wz.On && wz.Near == i;
                 string rs = r < 10 ? r.ToString("0.#") : HG.Fmt(r);
-                string bottom = near ? $"<size=24><color=#FFE68C>E</color> · Lv {L + 1} · {HG.Fmt(LevelCost(i))}</size>" : $"<size=30><color=#CFE9B0>+{rs}/s</color></size>";
+                string bottom = near ? $"<size=29><color=#FFE68C>E</color> Lv {L + 1} · {HG.Fmt(LevelCost(i))}</size>" : $"<size=38><color=#CFE9B0>+{rs}/s</color></size>";
                 string lv = can ? "#FFE68C" : "#E8C46A";
-                string s = $"<size=28>{b.name}</size>\n<size=56><color={lv}>Lv {L}</color></size>\n{bottom}";
+                string s = $"<size=36>{b.name}</size>\n<size=66><color={lv}>Lv {L}</color></size>\n{bottom}";
                 if (s != boardShown[i]) { bt.text = s; boardShown[i] = s; }
                 // a level within reach: the level breathes brighter (seen across the square)
                 float glow = can ? 0.5f + 0.5f * Mathf.Sin(Time.time * 4f + i) : 0f;

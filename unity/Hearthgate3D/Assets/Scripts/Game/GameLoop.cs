@@ -501,7 +501,7 @@ namespace Hearthgate.Game
             // the next plot to rebuild, marked in the world: a gold ring and arrow that bob, brighter when affordable
             if (marker)
             {
-                var nb = NextBuilding; marker.gameObject.SetActive(nb != null);
+                var nb = NextBuilding; marker.gameObject.SetActive(nb != null && Guide.Pressing != "up");   // one pointer at a time: while the guide points at the gatehouse the Forge's ring waits
                 if (nb != null)
                 {
                     int i = System.Array.IndexOf(HG.BUILDING_IDS, nb); float t = Time.time;
