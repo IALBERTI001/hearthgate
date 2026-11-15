@@ -72,6 +72,24 @@ namespace Hearthgate.Game
             var sb = new System.Text.StringBuilder(); for (int i = 0; i < v.Length; i++) while (n >= v[i]) { sb.Append(sy[i]); n -= v[i]; }
             return sb.ToString();
         }
+        // ---------- the player's HUD (game-hud-ui-design rule 7) ----------
+        CanvasScaler scaler;
+        public static float HudScale = Mathf.Clamp(PlayerPrefs.GetFloat("hg_hud_scale", 1f), 0.8f, 1.25f), HudAlpha = Mathf.Clamp(PlayerPrefs.GetFloat("hg_hud_alpha", 1f), 0.4f, 1f);
+        void SetHudScale(float v) { HudScale = Mathf.Clamp(v, 0.8f, 1.25f); PlayerPrefs.SetFloat("hg_hud_scale", HudScale); PlayerPrefs.Save(); if (scaler) scaler.referenceResolution = new Vector2(1280, 720) / HudScale; }
+        void SetHudAlpha(float v) { HudAlpha = Mathf.Clamp(v, 0.4f, 1f); PlayerPrefs.SetFloat("hg_hud_alpha", HudAlpha); PlayerPrefs.Save(); hudAlphaShown = -1; }
+        float hudAlphaShown = -1;
+        // the always-on readouts and buttons fade with the opacity setting; cards, banners and the guide stay solid
+        void ApplyHudAlpha()
+        {
+            if (Mathf.Approximately(hudAlphaShown, HudAlpha)) return; hudAlphaShown = HudAlpha;
+            var parts = new System.Collections.Generic.List<Transform> { wave ? wave.transform : null, res ? res.transform : null, rate ? rate.transform : null, shardRow, perkRow, ascRow, gateBar ? gateBar.transform.parent : null, tsAct != null ? tsAct.p.rt : null };
+            foreach (var t in transform) { var tr = (Transform)t; if (tr.name == "Shade" || tr.name == "Gem" || tr.name == "Settings") parts.Add(tr); }
+            foreach (var a in new[] { up, walk, re }) if (a != null) parts.Add(a.p.rt);
+            foreach (var t in parts)
+            {
+                if (!t) continue; var cg = t.GetComponent<CanvasGroup>() ?? t.gameObject.AddComponent<CanvasGroup>(); cg.alpha = HudAlpha;
+            }
+        }
         float bannerT;
         static readonly Color INK = new Color(0.16f, 0.08f, 0.19f, 0.95f), CREAM = new Color(1f, 0.957f, 0.863f),
             PLUM = new Color(0.29f, 0.165f, 0.31f, 0.96f), BRASS = new Color(0.79f, 0.635f, 0.29f), RES = new Color(1f, 0.84f, 0.42f);
@@ -125,8 +143,8 @@ namespace Hearthgate.Game
             var fallback = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             font = Resources.Load<Font>("Fonts/LilitaOne-Regular") ?? fallback; body = Resources.Load<Font>("Fonts/Nunito-Variable") ?? fallback;
             var canvas = gameObject.AddComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            var sc = gameObject.AddComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            sc.referenceResolution = new Vector2(1280, 720); sc.matchWidthOrHeight = 0.5f;
+            var sc = gameObject.AddComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler = sc;
+            sc.referenceResolution = new Vector2(1280, 720) / HudScale; sc.matchWidthOrHeight = 0.5f;   // the player's HUD size (Settings)
             gameObject.AddComponent<GraphicRaycaster>();
 
             var pops = Box("Pops", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
@@ -169,6 +187,9 @@ namespace Hearthgate.Game
             var af = Box("Fill", ab, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             ascBar = af.gameObject.AddComponent<Image>(); ascBar.color = new Color(1f, 0.8f, 0.36f); ascBar.raycastTarget = false;
             ascBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero); ascBar.type = Image.Type.Filled; ascBar.fillMethod = Image.FillMethod.Horizontal;
+            // numbers read in the body face, bold; the display face is for titles (game-hud-ui-design rule 4: "no number on the
+            // HUD uses the display font")
+            foreach (var nt in new[] { wave, res, shardTxt, perkTxt }) { nt.font = body; nt.fontStyle = FontStyle.Bold; }
             evTxt = Label("Event", transform, new Vector2(0, 1), new Vector2(24, -98), 18, TextAnchor.UpperLeft); evTxt.gameObject.SetActive(false);   // the named wave rides on the rate line
             // the banner sits under the top row of the HUD, never across it (QA, Nov 14 2026: in a portrait window the walk
             // banner ran under the cog and the Upgrade button), and wraps to the window's width
@@ -182,7 +203,7 @@ namespace Hearthgate.Game
             gateBar = fillBox.gameObject.AddComponent<Image>();
             gateBar.color = new Color(0.52f, 0.85f, 0.36f); gateBar.type = Image.Type.Filled; gateBar.fillMethod = Image.FillMethod.Horizontal;
             gateBar.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.zero);
-            gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter);
+            gateTxt = Label("GateTxt", bar, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 18, TextAnchor.MiddleCenter); gateTxt.font = body; gateTxt.fontStyle = FontStyle.Bold;   // a number: the body face
 
             // a boss's name and health while one lives, over the walls' own bar (the top is full of readouts and buttons on a
             // narrow window: the first try there ran under both)
@@ -580,7 +601,7 @@ namespace Hearthgate.Game
                 if (ascReady) ascIcon.rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 4f)); else ascIcon.rectTransform.localScale = Vector3.one;
             }
             if (pk) perkTxt.text = HG.Fmt(P.perkPts);
-            TickTimeStop(g);
+            TickTimeStop(g); ApplyHudAlpha();
             if (!Paused) TalkingTo = -1;
             if (Input.GetMouseButtonDown(0) && !Paused)
             {   // a tap on a counter: where it comes from and what it buys
@@ -684,6 +705,7 @@ namespace Hearthgate.Game
             var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, 0.55f); settingsBox = dim;
             var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size);
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
+            box.gameObject.AddComponent<CardIn>();   // every card rises into place the same way (game-hud-ui-design rule 8)
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = title;
             // never a scale transform: text shrunk by one is drawn blurry (owner, Nov 14 2026: "unreadable because its blurry").
             // Cards are kept to CARD_H or less (long lists turn pages), which fits the 720 px reference height.
@@ -881,38 +903,50 @@ namespace Hearthgate.Game
             Time.timeScale = 0;   // the fight waits while the menu is open
             var dim = Box("SettingsDim", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var di = dim.gameObject.AddComponent<Image>(); di.color = new Color(0.08f, 0.04f, 0.1f, 0.55f); settingsBox = dim;
-            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 650));   // tall enough for the two level rows and every control row above the stamp
+            var box = Box("Panel", dim, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 470));   // four level rows, the Controls button, the stamp
+            box.gameObject.AddComponent<CardIn>();
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced;
             Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 32, TextAnchor.UpperCenter).text = "Settings";
             levelRows.Clear();
             LevelRow(box, -78, "Music", () => Sound.MusicLevel, Sound.SetMusicLevel);
             LevelRow(box, -136, "Sound effects", () => Sound.SfxLevel, v => { Sound.SetSfxLevel(v); Sound.Click(); });
-            var ct = Label("Controls", box, new Vector2(0.5f, 1), new Vector2(0, -200), 22, TextAnchor.UpperCenter); ct.text = "Controls";
-            string[,] rows = {
-                { "U", "Upgrade the defenses (towers and walls)" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
-                { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
-                { "X", "Start a Surge at the fountain" }, { "F", "Stop time, on the town walk (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
-            for (int k = 0; k < rows.GetLength(0); k++)
-            {
-                float y = -238 - k * 26;
-                var key = Label("K" + k, box, new Vector2(0.5f, 1), new Vector2(-30, y), 17, TextAnchor.UpperRight); key.font = body; key.color = RES; key.text = rows[k, 0];
-                key.rectTransform.pivot = new Vector2(1, 1); key.rectTransform.sizeDelta = new Vector2(200, 24);
-                var what = Label("W" + k, box, new Vector2(0.5f, 1), new Vector2(-10, y), 17, TextAnchor.UpperLeft); what.font = body; what.text = rows[k, 1];
-                what.rectTransform.pivot = new Vector2(0, 1); what.rectTransform.sizeDelta = new Vector2(300, 24);
-            }
+            // the player shapes the HUD (game-hud-ui-design rule 7): its size, and how see-through the readouts and buttons are
+            LevelRow(box, -194, "HUD size", () => (HudScale - 0.8f) / 0.45f, v => SetHudScale(0.8f + Mathf.Round(Mathf.Clamp01(v) * 9f) / 9f * 0.45f), () => $"{Mathf.RoundToInt(HudScale * 100)}%");
+            LevelRow(box, -252, "HUD opacity", () => (HudAlpha - 0.4f) / 0.6f, v => SetHudAlpha(0.4f + Mathf.Clamp01(v) * 0.6f), () => $"{Mathf.RoundToInt(HudAlpha * 100)}%");
+            BtnAt("S_Ctl", new Vector2(0.5f, 1), new Vector2(-118, -320), new Vector2(220, 52), () => ShowControls(), null, out var ctl, box).rt.pivot = new Vector2(0.5f, 1); ctl.text = "Controls";
+            BtnAt("S_Def", new Vector2(0.5f, 1), new Vector2(118, -320), new Vector2(220, 52), () => { SetHudScale(1f); SetHudAlpha(1f); RefreshSettings(); }, () => HudScale != 1f || HudAlpha != 1f, out var dl, box).rt.pivot = new Vector2(0.5f, 1); dl.text = "Default HUD";
             var stamp = Label("Stamp", box, new Vector2(0.5f, 0), new Vector2(0, 74), 13, TextAnchor.LowerCenter); stamp.font = body; stamp.color = new Color(0.8f, 0.74f, 0.82f);
             stamp.text = "Hearthgate 3D · build " + Application.version;
             var close = BtnAt("S_Close", new Vector2(0.5f, 0), new Vector2(0, 16), new Vector2(230, 56), () => ShowSettings(false), null, out var cl, box);
             cl.text = "Back to the game";
             RefreshSettings();
         }
+        // the controls on their own card, one press from Settings (game-polish rule 19)
+        void ShowControls()
+        {
+            ShowSettings(false);
+            var box = Modal("Controls", new Vector2(600, 430));
+            string[,] rows = {
+                { "U", "Upgrade the defenses (towers and walls)" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
+                { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
+                { "X", "Start a Surge at the fountain" }, { "F", "Stop time, on the town walk (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "This menu" } };
+            for (int k = 0; k < rows.GetLength(0); k++)
+            {
+                float y = -70 - k * 26;
+                var key = Label("K" + k, box, new Vector2(0.5f, 1), new Vector2(-30, y), 17, TextAnchor.UpperRight); key.font = body; key.color = RES; key.text = rows[k, 0];
+                key.rectTransform.pivot = new Vector2(1, 1); key.rectTransform.sizeDelta = new Vector2(200, 24);
+                var what = Label("W" + k, box, new Vector2(0.5f, 1), new Vector2(-10, y), 17, TextAnchor.UpperLeft); what.font = body; what.text = rows[k, 1];
+                what.rectTransform.pivot = new Vector2(0, 1); what.rectTransform.sizeDelta = new Vector2(300, 24);
+            }
+            BtnAt("C_Back", new Vector2(0.5f, 0), new Vector2(0, 16), new Vector2(230, 56), () => { ShowSettings(false); ShowSettings(true); }, null, out var cb, box).rt.pivot = new Vector2(0.5f, 0); cb.text = "Back";
+        }
         // a level: its name, a minus, a bar in ten steps (a press on the bar sets it there), a plus and the percentage
-        readonly System.Collections.Generic.List<(Image fill, Text pct, System.Func<float> get)> levelRows = new System.Collections.Generic.List<(Image, Text, System.Func<float>)>();
-        void LevelRow(RectTransform box, float y, string name, System.Func<float> get, System.Action<float> set)
+        readonly System.Collections.Generic.List<(Image fill, Text pct, System.Func<float> get, System.Func<string> fmt)> levelRows = new System.Collections.Generic.List<(Image, Text, System.Func<float>, System.Func<string>)>();
+        void LevelRow(RectTransform box, float y, string name, System.Func<float> get, System.Action<float> set, System.Func<string> fmt = null)
         {
             var nl = Label("LN" + name, box, new Vector2(0.5f, 1), new Vector2(-270, y - 24), 20, TextAnchor.MiddleLeft); nl.font = body; nl.text = name;
             nl.rectTransform.pivot = new Vector2(0, 0.5f); nl.rectTransform.sizeDelta = new Vector2(150, 30);
-            BtnAt("LM" + name, new Vector2(0.5f, 1), new Vector2(-75, y), new Vector2(48, 48), () => { set(get() - 0.1f); RefreshSettings(); }, () => get() > 0, out var ml, box).rt.pivot = new Vector2(0.5f, 1); ml.text = "-";
+            BtnAt("LM" + name, new Vector2(0.5f, 1), new Vector2(-75, y), new Vector2(48, 48), () => { set(get() - 0.1f); RefreshSettings(); }, () => get() > 0.001f, out var ml, box).rt.pivot = new Vector2(0.5f, 1); ml.text = "-";
             var bar = Box("LB" + name, box, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(45, y - 12), new Vector2(170, 24)); bar.pivot = new Vector2(0.5f, 1);
             var bi = bar.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 8, 2); bi.type = Image.Type.Sliced;
             var fb = Box("Fill", bar, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-6, -6));
@@ -923,15 +957,15 @@ namespace Hearthgate.Game
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(bar, PointerPos, null, out var lp);
                 set(Mathf.Clamp01((lp.x + bar.rect.width * bar.pivot.x) / bar.rect.width)); RefreshSettings();
             }, null);
-            BtnAt("LP" + name, new Vector2(0.5f, 1), new Vector2(165, y), new Vector2(48, 48), () => { set(get() + 0.1f); RefreshSettings(); }, () => get() < 1, out var pl, box).rt.pivot = new Vector2(0.5f, 1); pl.text = "+";
+            BtnAt("LP" + name, new Vector2(0.5f, 1), new Vector2(165, y), new Vector2(48, 48), () => { set(get() + 0.1f); RefreshSettings(); }, () => get() < 0.999f, out var pl, box).rt.pivot = new Vector2(0.5f, 1); pl.text = "+";
             var pc = Label("LP%" + name, box, new Vector2(0.5f, 1), new Vector2(200, y - 24), 18, TextAnchor.MiddleLeft); pc.font = body;
             pc.rectTransform.pivot = new Vector2(0, 0.5f); pc.rectTransform.sizeDelta = new Vector2(70, 30);
-            levelRows.Add((fill, pc, get));
+            levelRows.Add((fill, pc, get, fmt));
         }
         void RefreshSettings()
         {
             if (!settingsBox) return;
-            foreach (var (fill, pct, get) in levelRows) if (fill) { float v = get(); fill.fillAmount = v; pct.text = v <= 0 ? "Off" : $"{Mathf.RoundToInt(v * 100)}%"; }
+            foreach (var (fill, pct, get, fmt) in levelRows) if (fill) { float v = get(); fill.fillAmount = v; pct.text = fmt != null ? fmt() : v <= 0 ? "Off" : $"{Mathf.RoundToInt(v * 100)}%"; }
         }
 
         // a gate stage asks for one of two upgrades
@@ -948,6 +982,21 @@ namespace Hearthgate.Game
                 var a = I.Action(f.id, new Vector2(0.5f, 0), new Vector2(k == 0 ? -152 : 152, 36), new Vector2(290, 64), "tower", null, () => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); }, null, false, box);
                 I.Show(a, f.name, f.line, true, 0); a.gem.enabled = false; a.cost.color = Field.GOLD; Fit(a.cost, new Vector2(a.cost.rectTransform.sizeDelta.x, 26), 11);
             }
+        }
+    }
+
+    // a card rises into place: it starts 26 px low and clear, and settles in 0.16 s of real time (the game is paused under
+    // it). One motion for every card, so the player learns it once (game-hud-ui-design rule 8: consistency); no scale, so its
+    // words never blur (owner, Nov 14 2026)
+    public class CardIn : MonoBehaviour
+    {
+        RectTransform rt; CanvasGroup cg; Vector2 home; float t;
+        void Awake() { rt = (RectTransform)transform; home = rt.anchoredPosition; cg = gameObject.GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>(); Step(); }
+        void Update() { t += Time.unscaledDeltaTime; Step(); if (t >= 0.16f) Destroy(this); }
+        void Step()
+        {
+            float u = Mathf.Clamp01(t / 0.16f), e = 1f - (1f - u) * (1f - u);
+            rt.anchoredPosition = home + new Vector2(0, -26f * (1f - e)); cg.alpha = Mathf.Lerp(0f, 1f, e);
         }
     }
 
