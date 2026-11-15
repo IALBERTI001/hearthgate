@@ -37,7 +37,7 @@ namespace Hearthgate.Game
                 var go = new GameObject("defenses plaque", typeof(RectTransform)); go.transform.SetParent(world, false);
                 var cv = go.AddComponent<Canvas>(); cv.renderMode = RenderMode.WorldSpace; cv.sortingOrder = 1;
                 var rt = (RectTransform)go.transform; rt.sizeDelta = new Vector2(220, 92);
-                rt.position = PLAQUE_AT; rt.rotation = Quaternion.Euler(PLAQUE_TILT, 180f, 0); rt.localScale = Vector3.one * 0.0105f;
+                rt.position = PLAQUE_AT; rt.rotation = Quaternion.Euler(PLAQUE_TILT, 180f, 0); rt.localScale = Vector3.one * 0.0125f;
                 var img = new GameObject("plate", typeof(RectTransform)).AddComponent<Image>(); img.transform.SetParent(rt, false);
                 var ir = img.rectTransform; ir.anchorMin = Vector2.zero; ir.anchorMax = Vector2.one; ir.offsetMin = ir.offsetMax = Vector2.zero;
                 img.sprite = Hud.PlaqueSprite(); img.type = Image.Type.Sliced; img.raycastTarget = false;
@@ -55,7 +55,7 @@ namespace Hearthgate.Game
             plaqueFlash = Mathf.Max(0, plaqueFlash - Time.deltaTime);
             plaqueNum.color = Color.Lerp(Field.GOLD, Color.white, plaqueFlash / 0.6f);
         }
-        public static readonly Vector3 PLAQUE_AT = new Vector3(0, 6.6f, Field.GATE_Z + 2.35f);   // on the gatehouse's face, over the arch
+        public static readonly Vector3 PLAQUE_AT = new Vector3(0, 4.15f, Field.GATE_Z + 2.6f);   // hung over the arch, below the gatehouse emblem (at the emblem it was small and covered it)
         const float PLAQUE_TILT = 0f;
         void TickMarks()
         {

@@ -50,6 +50,7 @@ namespace Hearthgate.Game
                 ln.rectTransform.pivot = new Vector2(0.5f, 1); ln.rectTransform.sizeDelta = new Vector2(150, 20); ln.verticalOverflow = VerticalWrapMode.Overflow;
                 I.ringItems.Add((act.p.rt, home, ln, it, act));
             }
+            Debug.Log($"[Hearthgate] ring {id}: {string.Join(", ", I.ringItems.ConvertAll(r => r.it.label + " at " + r.home))}");
             I.TickRing();
         }
         public static void CloseRing()
