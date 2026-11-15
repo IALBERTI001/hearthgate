@@ -659,6 +659,7 @@ namespace Hearthgate.Game
         public static void ShowAscend()
         {
             if (!I || !GameLoop.I || !GameLoop.I.CanAscend) return;
+            Guide.Done("re");
             var g = GameLoop.I; var P = g.P; int n = P.ascensions + 1;
             var box = I.Modal($"Ascend to Ascension {n}?", new Vector2(640, 430));
             I.Line(box, -74, "The city returns to ruins and the waves start again from wave 1. Each Ascension is a mark in time: if the walls fall, you can always rewind to it.", 19);

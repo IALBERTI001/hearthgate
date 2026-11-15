@@ -409,6 +409,7 @@ namespace Hearthgate.Game
         public void Upgrade()
         {
             if (!CanUpgrade) return;
+            Guide.Done("up");
             P.res -= UpgradeCost; double before = HG.GateMax(P, B); P.gateLevel++; B = HG.Bonuses(P); Quest("upgrade");
             gateHp += HG.GateMax(P, B) - before;
             foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 6);
@@ -419,6 +420,7 @@ namespace Hearthgate.Game
         public void Restore(string id = null)
         {
             id ??= NextBuilding; if (id == null || !CanRestore) return;
+            Guide.Done("re");
             P.res -= RestoreCost; P.restored.Add(id); B = HG.Bonuses(P);
             int i = System.Array.IndexOf(HG.BUILDING_IDS, id); RefreshPlot(i); RefreshTowers();
             Fx.I.Burst(Field.Plot(i) + Vector3.up * 2, Field.GOLD, 30); Fx.I.Shake(0.15f, true); Sound.Play("feat", 0.55f);

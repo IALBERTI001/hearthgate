@@ -85,7 +85,7 @@ namespace Hearthgate.Game
 
         public void Toggle()
         {
-            On = !On; target = null; goal.SetActive(false);
+            On = !On; target = null; goal.SetActive(false); Guide.Done("walk");
             Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14); Sound.Play("surge", 0.35f);
             if (On) Hud.Banner(toldCam ? "Walk into a building to work on it" : "Walk into a building to work on it. Right-drag turns the camera, the wheel raises it");
             if (On) toldCam = true;

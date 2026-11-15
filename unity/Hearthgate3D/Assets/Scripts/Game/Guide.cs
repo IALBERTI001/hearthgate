@@ -43,7 +43,9 @@ namespace Hearthgate.Game
             if (q.Count == 0) return;
             var l = q.Dequeue(); Pressing = l.press; show(l.text); Sound.Voice(l.voice);
             t = Mathf.Max(2.8f, 0.9f + l.text.Length * 0.07f);
+            if (l.press != null) t = Mathf.Max(t, 15f);   // a line that points at a button stays until it is pressed (first-five-minutes: the one thing to press stays pointed at)
         }
+        public static void Done(string press) { if (Pressing == press) t = Mathf.Min(t, 0.6f); }
         public static void Skip() { t = Mathf.Min(t, 0.01f); }
     }
 }
