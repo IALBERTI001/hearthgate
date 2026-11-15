@@ -145,7 +145,7 @@ namespace Hearthgate.Game
                     foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 }
                 rifts[k].position = Field.Lane(k, SpawnZ(k) + RIFT_OUT, 0); rifts[k].rotation = Field.Facing(k);   // its face (-Z) toward the walls
-                rifts[k].localScale = Vector3.one * (1f + 0.04f * Mathf.Sin(Time.time * 3f + k));
+                rifts[k].localScale = Vector3.one * 0.62f * (1f + 0.04f * Mathf.Sin(Time.time * 3f + k));   // smaller now they stand in the walls view: four full-size rifts filled the bottom of the frame
                 if (riftSwirl[k]) riftSwirl[k].Rotate(rifts[k].forward, 40f * dt, Space.World);
             }
         }
