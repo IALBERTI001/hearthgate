@@ -575,9 +575,9 @@ namespace Hearthgate.Game
                 ascTxt.text = P.ascensions > 0 ? $"Ascension {Roman(P.ascensions)}" : "First Ascension";
                 ascSub.text = reach >= aw ? (HG.CityWhole(P) ? "Ready to ascend!" : "Rebuild the city to ascend") : $"Next at wave {aw}";
                 ascBar.fillAmount = Mathf.Clamp01(reach / (float)aw);
-                bool ready = g.CanAscend; ascSub.color = ready ? new Color(1f, 0.9f, 0.5f) : new Color(0.86f, 0.8f, 0.9f);
-                ascIcon.color = P.ascensions > 0 || ready ? Color.white : new Color(0.8f, 0.76f, 0.84f, 0.85f);
-                if (ready) ascIcon.rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 4f)); else ascIcon.rectTransform.localScale = Vector3.one;
+                bool ascReady = g.CanAscend; ascSub.color = ascReady ? new Color(1f, 0.9f, 0.5f) : new Color(0.86f, 0.8f, 0.9f);
+                ascIcon.color = P.ascensions > 0 || ascReady ? Color.white : new Color(0.8f, 0.76f, 0.84f, 0.85f);
+                if (ascReady) ascIcon.rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 4f)); else ascIcon.rectTransform.localScale = Vector3.one;
             }
             if (pk) perkTxt.text = HG.Fmt(P.perkPts);
             TickTimeStop(g);
