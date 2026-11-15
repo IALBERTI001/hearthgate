@@ -33,7 +33,7 @@ namespace Hearthgate.Game
             var hi = hub.gameObject.AddComponent<Image>(); hi.sprite = Panel(INK, BRASS, 14, 2); hi.type = Image.Type.Sliced; hi.raycastTarget = false;
             var ht = I.Label("T", hub, new Vector2(0.5f, 0.5f), new Vector2(0, 1), 19, TextAnchor.MiddleCenter); ht.text = title;
             Fit(ht, new Vector2(160, 30), 12);
-            int n = items.Count; float R = n <= 2 ? 104f : n <= 4 ? 118f : 132f;
+            int n = items.Count; float R = n <= 2 ? 132f : n <= 4 ? 140f : 152f;   // wide enough that the hub's title and each button's words never touch
             for (int k = 0; k < n; k++)
             {
                 var it = items[k];
@@ -41,7 +41,7 @@ namespace Hearthgate.Game
                 float a = n == 1 ? 90f : n == 2 ? (k == 0 ? 180f : 0f) : 90f - k * 360f / n;
                 if (n == 3) a = 150f - k * 60f;
                 var home = new Vector2(Mathf.Cos(a * Mathf.Deg2Rad), Mathf.Sin(a * Mathf.Deg2Rad)) * R;
-                var item = it; var act = I.Action("R" + k, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(66, 66), it.icon, it.key,
+                var item = it; var act = I.Action("R" + k, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(72, 72), it.icon, it.key,
                     () => { if (item.can == null || item.can()) { item.act(); if (item.closes) CloseRing(); } }, it.can, false, I.ring);
                 act.p.rt.pivot = new Vector2(0.5f, 0.5f);
                 var lab = I.Label("L" + k, act.p.rt, new Vector2(0.5f, 0), new Vector2(0, -6), 16, TextAnchor.UpperCenter); lab.text = it.label;
@@ -50,7 +50,6 @@ namespace Hearthgate.Game
                 ln.rectTransform.pivot = new Vector2(0.5f, 1); ln.rectTransform.sizeDelta = new Vector2(150, 20); ln.verticalOverflow = VerticalWrapMode.Overflow;
                 I.ringItems.Add((act.p.rt, home, ln, it, act));
             }
-            Debug.Log($"[Hearthgate] ring {id}: {string.Join(", ", I.ringItems.ConvertAll(r => r.it.label + " at " + r.home))}");
             I.TickRing();
         }
         public static void CloseRing()
@@ -69,14 +68,16 @@ namespace Hearthgate.Game
             RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)transform, sp, null, out var lp);
             var cv = ((RectTransform)transform).rect;
             // kept whole on the screen: the ring's centre stays far enough from every edge, and clear of the top bar
-            lp.x = Mathf.Clamp(lp.x, cv.xMin + 175, cv.xMax - 175); lp.y = Mathf.Clamp(lp.y, cv.yMin + 175, cv.yMax - 200);
+            lp.x = Mathf.Clamp(lp.x, cv.xMin + 215, cv.xMax - 215); lp.y = Mathf.Clamp(lp.y, cv.yMin + 240, cv.yMax - 230);
             ring.anchoredPosition = lp - cv.min;
             ringT += Time.unscaledDeltaTime; float u = Mathf.Clamp01(ringT / 0.14f), e = 1f - (1f - u) * (1f - u);
             foreach (var (rt, home, ln, it, a) in ringItems)
             {
                 if (!rt) continue;
                 rt.anchoredPosition = home * e;
-                var cg = rt.GetComponent<CanvasGroup>(); if (cg && rt.Find("Veil") == null) cg.alpha = e;
+                // the fade-in is the ring's own; the veil only dims (it skipped buttons that could not act, so a greyed Ascend
+                // stayed at alpha 0 and the gatehouse ring showed one button: QA Nov 15 2026)
+                var cg = rt.GetComponent<CanvasGroup>(); if (cg) cg.alpha = e;
                 string line = it.line != null ? it.line() : null; ln.text = line ?? "";
                 bool can = it.can == null || it.can();
                 ln.color = can ? RES : new Color(0.85f, 0.78f, 0.86f);
