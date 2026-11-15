@@ -1304,6 +1304,10 @@ def butterfly():   # the meadow's butterflies (owner, Nov 6 2026: "add some inte
             bsphere('fore_rim', 0.36, (sx * 0.34, -0.11, 0.025), M('char'), (1.0, 0.7, 0.04), 2, rot=(0, 0, sx * 0.5))
             bsphere('hind', 0.24, (sx * 0.22, 0.2, 0.03), M('flower_w'), (1.0, 0.92, 0.05), 2, rot=(0, 0, -sx * 0.35))
             bsphere('hind_rim', 0.26, (sx * 0.23, 0.21, 0.025), M('char'), (1.0, 0.92, 0.04), 2, rot=(0, 0, -sx * 0.35))
+            # the underside: the same pale wing under the dark rim, so from below only the rim's edge shows (owner, Nov 14
+            # 2026: "underside of butterflies are black": the whole rim disc was the wing's underside)
+            bsphere('fore_under', 0.34, (sx * 0.33, -0.1, 0.017), M('flower_w'), (1.0, 0.68, 0.05), 2, rot=(0, 0, sx * 0.5))
+            bsphere('hind_under', 0.24, (sx * 0.22, 0.2, 0.017), M('flower_w'), (1.0, 0.92, 0.05), 2, rot=(0, 0, -sx * 0.35))
             bcone('tail', 0.05, 0.22, (sx * 0.26, 0.48, 0.03), M('char'), 6, rot=(-math.pi / 2, 0, -sx * 0.25))
             for (u, v, r) in ((0.42, -0.2, 0.07), (0.25, 0.25, 0.06)):   # pale eye-spots ringed in dark
                 bsphere('spot_ring', r * 1.35, (sx * u, v, 0.05), M('char'), (1, 1, 0.3), 1)
