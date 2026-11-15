@@ -45,6 +45,17 @@ together in Unity. The goal is 3D!" All four decisions below were approved the s
    - Test hooks: development builds (HG_DEV=1) compile GameLoop.Dev.cs, reached from the page as hgUnity.SendMessage("Game", "Dev", "shop" | "res N" | "wave N" | "asc N" | "spawn kind n frac" | "fly" | "fall" | "rise" | "siege" | "puffs"); a release build never contains them.
    - Walls and towers: the health bar reads Walls; the main button is Upgrade towers, with Walk the town always beside it.
 
+10. **The time wizard, Nov 14 2026** (owner: "the wizard is a time wizard that each time he ascends he gets more powerful ... when town falls he rewinds to his last ascension"; "an ability to freeze time"; "a skill trainer"; "perks and store ... as a conversation with an npc"; "the world is 3d ... the weird spawn of monsters, the end of a road that leads to nowhere"):
+   - **Rewinds.** When the walls fall: rewind to the moment before the fall for 100 + 4 per wave Starshards (a rewarded ad when short, Full Launch only), or back to the last Ascension (the run is lost, asked twice). Both play the rewind: a great clock dial over the town, bolts from his staff, the buildings rising back in reverse order, the smoke sinking back into the ruins.
+   - **Time Stop** (key F, a round skill button beside the readouts): freezes every enemy for 4 / 5.5 / 7 s, cooldown 120 / 100 / 80 s; enemies tint blue-grey and the dial shows. Taught by Aurelian the Chronomancer, the trainer by the square, from wave 5 or the first Ascension (60 and 140 Starshards for ranks 2 and 3). The trainer is where future skills go.
+   - **Keepers.** Perks, the Shop and the Library are conversations: Orrin the Star-Reader (Watchtower), Mira of the Bazaar (Market), Elder Quill (Library) and Aurelian. Each stands behind the room's centrepiece; a gold **!** (something to spend or new) or **?** (a quest to claim) floats over the one with news, bigger from the walls.
+   - **Bosses** are their own Blender models, enrage at half health and are Unstoppable (stuns slow them instead); a boss bar sits bottom centre.
+   - **Towers:** a tap on a tower picks its element (Auto or any element the city has, or all four at once) and its design from the Market.
+   - **World edges:** a forest belt and hills close the world on every side; the road runs on into the forest past milestones and a waypost; enemies step out of violet time rifts outside the walls' view, measured only from the walls camera.
+   - **Town walk camera:** the player can turn it (right or middle drag), tilt it and raise it (wheel), C resets; it stays well inside the ring and comes down as it pulls in; the first shot looks up the street at the fountain.
+   - **Settings:** music and sound-effect levels, 50% by default.
+   - **Ruins** smoke with live wisps and glowing floor cracks; their props keep clear of the keepers.
+
 ## Quality testing
 - **LayoutCheck** (Unity, runs before every WebGL build and fails it): no overlapping structures, nothing on a lane, plots and fountain inside the ring, each lane ending in front of its own tower, every plot's roof line, the plaza and the lanes seen from the camera, nothing under the HUD or out of the view at 16:9, 2.2:1 and 1.2:1.
 - **tools/layout/town.py:** the search that places the camera, towers, plaza and plots (rows, 6 m streets, signs inside the ring); **gen_field.py** writes the numbers into Field.cs.
