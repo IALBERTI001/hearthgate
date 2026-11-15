@@ -62,6 +62,10 @@ class Part:   # everything made inside `with Part('leg_L', (x, y, z)):` becomes 
         for o in set(bpy.data.objects) - self.before: o.name = f'P_{self.name}__{o.name}'
         K.PARTS[self.name] = (self.pivot, self.parent)
 
+def _seg(p, q, t, m):   # a bar from p to q, t thick (a batched block turned along p->q)
+    v = q - p; o = block(tuple((p + q) / 2), (v.length + t * 0.6, t, t), m, 0.03)
+    o.rotation_euler = tuple(Vector((1, 0, 0)).rotation_difference(v.normalized()).to_euler('XYZ')); return o
+
 def block(loc, size, m, bevel=0.035, rot=0.0):   # a chamfered box, batched into one mesh per material (hg_kit.Blk)
     o = K.Blk(loc, size, m, bevel)
     if rot: o.rotation_euler = (0, 0, rot)
@@ -587,9 +591,11 @@ def beetle(kind='beetle'):
             # railing from behind, Nov 14 2026)
             a = (k - 1) * 0.6; dx, dy = s * math.cos(a), math.sin(a); px = s * 0.6
             with Part('leg_%s%d' % ('L' if s < 0 else 'R', k), (px, y, 0.48)):
-                o = block((px + dx * 0.25, y + dy * 0.25, 0.42), (0.55, 0.18, 0.18), M('iron'), 0.04); o.rotation_euler = (0, s * -0.5, s * a)
-                block((px + dx * 0.52, y + dy * 0.52, 0.18), (0.18, 0.2, 0.42), M('iron'), 0.04).rotation_euler = (0, 0, s * a)
-                K.sphere('claw', 0.1, (px + dx * 0.56, y + dy * 0.56, 0.02), M('iron'), (1, 1.4, 0.6), 1)
+                # one jointed limb: thigh up and out to a knee, shin down to the foot (two loose bars read as scrap)
+                hip = Vector((px, y, 0.45)); knee = hip + Vector((dx * 0.36, dy * 0.36, 0.2)); foot = hip + Vector((dx * 0.66, dy * 0.66, -0.43))
+                _seg(hip, knee, 0.17, M('iron')); _seg(knee, foot, 0.14, M('iron'))
+                K.sphere('knee', 0.11, tuple(knee), M('iron'), sub=1)
+                K.sphere('claw', 0.1, tuple(foot), M('iron'), (1, 1.4, 0.6), 1)
                 if kind == 'swarm': K.cone('spur', 0.06, 0.3, (px + dx * 0.4, y + dy * 0.4, 0.55), M('lord_gloss'), 6).rotation_euler = _aim((dx, dy, 1))
     if kind == 'hive':   # its wing cases are honeycomb: dark six-sided cells across the amber
         for s in (-1, 1):
