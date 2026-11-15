@@ -428,6 +428,7 @@ namespace Hearthgate.Game
         // action, sits in the corner; a finished or idle action leaves and the rest close up. LayoutCheck mirrors this.
         public const float GAP = 8f, EDGE = 16f, LABELS_W = 420f, SKILL_W = 0f;
         public const float WALK_W = 210f, SKILL_W2 = 210f;   // the walk button (bottom row), each button of the skill row   // the skills moved down over the walls bar (owner, Nov 14 2026)
+        Text walkBadge;
         void LayoutActions()
         {
             // nothing pressable by the header (owner, Nov 15 2026: "i dont feel buttons should be near the header information with the
@@ -440,7 +441,7 @@ namespace Hearthgate.Game
             }
             // owner, Nov 15 2026: "the town walk button is too big for what it does and it should be above the settings button";
             // "there is no reason to have the stop time and upgrade defenses above the health bar if we have the radial menu"
-            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-12, 10 + 46 + GAP), new Vector2(150, 46));
+            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-12, 10 + 46 + GAP), new Vector2(58, 58));   // a medallion, right-aligned: the right lane enters just left of it (LayoutCheck)
             if (up.p.rt.gameObject.activeSelf) up.p.rt.gameObject.SetActive(false);
             var bp = banner.rectTransform.anchoredPosition; bp.y = -120f; banner.rectTransform.anchoredPosition = bp;
             // one voice: an open ring is what the player is looking at, so a banner that would cross it drops under it
@@ -591,6 +592,19 @@ namespace Hearthgate.Game
             var wz = Wizard.I;
             int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
             Show(walk, wz && wz.On ? "To the walls" : "Walk the town", wz && wz.On || ready == 0 ? null : $"<color=#CFE9B0>{ready} upgrade{(ready == 1 ? "" : "s")} ready</color>", true, now); walk.gem.enabled = false;   // a reason to go in (a count, not a price: no gem)
+            {   // the walk medallion: no words on it (owner: "too big for what it does"), the count of upgrades ready as a gold badge
+                walk.title.gameObject.SetActive(false); walk.costRow.gameObject.SetActive(false);
+                if (!walkBadge)
+                {
+                    var bb = Box("Badge", walk.p.rt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(-6, 6), new Vector2(26, 22)); bb.pivot = new Vector2(0, 1);
+                    var bi = bb.gameObject.AddComponent<Image>(); bi.sprite = Panel(new Color(0.85f, 0.62f, 0.18f), new Color(1f, 0.9f, 0.55f), 8, 2); bi.type = Image.Type.Sliced; bi.raycastTarget = false;
+                    walkBadge = Label("N", bb, new Vector2(0.5f, 0.5f), Vector2.zero, 15, TextAnchor.MiddleCenter); walkBadge.font = body; walkBadge.fontStyle = FontStyle.Bold;
+                    walkBadge.rectTransform.pivot = new Vector2(0.5f, 0.5f); walkBadge.rectTransform.sizeDelta = new Vector2(26, 22);
+                }
+                bool show = !(wz && wz.On) && ready > 0; var badge = walkBadge.transform.parent.gameObject; if (badge.activeSelf != show) badge.SetActive(show);
+                walkBadge.text = ready.ToString();
+                if (walk.icon && walk.icon.transform.parent is RectTransform med) { med.anchorMin = med.anchorMax = med.pivot = new Vector2(0.5f, 0.5f); med.anchoredPosition = Vector2.zero; med.sizeDelta = new Vector2(46, 46); }
+            }
             bool showWork = false; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);   // the building's own board has it now (owner, Nov 14 2026)
             if (showWork)
             {
