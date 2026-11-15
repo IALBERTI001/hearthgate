@@ -63,6 +63,7 @@ namespace Hearthgate.Game
             var cam = Camera.main; var xs = Enumerable.Range(0, 4).OrderBy(i => cam ? cam.WorldToScreenPoint(Field.Tower(i)).x : -Field.Tower(i).x).ToList();   // named as the player sees them, left to right
             string[] names = { "Far West Tower", "West Tower", "East Tower", "Far East Tower" };
             var els = g.TowerElements; string cur = g.TowerEl(n), pick = P.towerEl[n];
+            if (pick != "" && !els.Contains(pick)) pick = "";   // a choice whose building fell again counts as Auto (it read "Make all four Storm" with Storm gone)
             if (els.Length == 0)
             {   // nothing to choose yet: a short card that says how to get the choice, not a big empty one with a lone button
                 var sb = I.Modal(names[xs.IndexOf(n)], new Vector2(640, 250));

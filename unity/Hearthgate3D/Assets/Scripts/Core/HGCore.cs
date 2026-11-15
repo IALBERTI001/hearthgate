@@ -404,7 +404,7 @@ namespace Hearthgate.Core
         public static string Equipped(Profile p, string slot)
         {
             var e = p.equip.Find(x => x.k == slot); if (e != null) return e.s;
-            return SHOP.First(x => Slot(x) == slot && x.price == 0).id;
+            return SHOP.FirstOrDefault(x => Slot(x) == slot && x.price == 0)?.id ?? "";   // an element with no free design (Earth) has none: First threw and cut the tower card short (QA, Nov 14 2026)
         }
 
         // ---------- daily quests (js/core.js QUESTS): three a day from the Library once the Shop is open, Starshards each ----------
