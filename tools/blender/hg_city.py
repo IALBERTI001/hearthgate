@@ -457,7 +457,7 @@ def ruin_of(bid):
     else:   # the market: charred posts and a torn awning
         for (x, y) in ((-hx + 0.3, -hy + 0.3), (hx - 0.3, -hy + 0.3), (-hx + 0.3, hy - 0.3), (hx / 3, hy - 0.3)):
             o = block((x, y, FLOOR + 1.4), (0.3, 0.3, 2.8), M('char'), 0.0); o.rotation_euler = (R.uniform(-0.2, 0.2), R.uniform(-0.2, 0.2), 0)
-        o = block((0, 0.6, FLOOR + 1.0), (6.0, 3.6, 0.06), M('awning'), 0.0); o.rotation_euler = (0.3, 0.15, 0)
+        o = block((0.4, hy - 1.1, FLOOR + 0.55), (5.4, 2.0, 0.06), M('awning'), 0.0); o.rotation_euler = (-0.45, 0.08, 0.05)   # slumped against the back, clear of Mira behind her counter (it cut through her, Nov 14 2026)
         for k in range(5): crate(R.uniform(-hx + 1, hx - 1), R.uniform(-hy + 0.8, -1.9), 0.9)   # clear of the counter's spot
     for k in range(4):   # fallen, charred beams
         o = block((R.uniform(-w / 3, w / 3), R.uniform(0.3, d / 3), FLOOR + 0.5), (0.22, 0.22, R.uniform(2.4, 3.6)), M('char'), 0.0)
