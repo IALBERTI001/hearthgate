@@ -498,6 +498,8 @@ namespace Hearthgate.Game
             }
             // the banner sits below the group (under the top row, or under the column, never beside it)
             var bp = banner.rectTransform.anchoredPosition; bp.y = asRow ? -136f : Mathf.Min(-136f, y - 12f); banner.rectTransform.anchoredPosition = bp;
+            // one voice: an open ring is what the player is looking at, so a banner that would cross it drops under it
+            if (ring && bannerT > 0 && RingBox().Overlaps(BannerRect())) { bp.y = -(((RectTransform)transform).rect.height - RingBox().yMin) - 10f; banner.rectTransform.anchoredPosition = bp; }
         }
 
         // ---------- the action kit ----------

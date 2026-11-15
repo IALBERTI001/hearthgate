@@ -58,6 +58,7 @@ namespace Hearthgate.Game
             }
             I.TickRing();
         }
+        Rect RingBox() => ring ? new Rect(ring.anchoredPosition + ringReach.min, ringReach.size) : Rect.zero;   // bottom-left frame, as BannerRect
         public static void CloseRing()
         {
             if (!I || !I.ring) return;
