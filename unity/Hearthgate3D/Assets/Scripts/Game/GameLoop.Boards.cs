@@ -45,7 +45,7 @@ namespace Hearthgate.Game
                 var b = HG.ById(id); int L = HG.LevelOf(P, id); double r = HG.BuildingRate(P, id, B);
                 bool can = CanWork(i), near = wz && wz.On && wz.Near == i;
                 string rs = r < 10 ? r.ToString("0.#") : HG.Fmt(r);
-                string bottom = near ? $"<size=40><color=#FFE68C>E</color> Lv {L + 1} · {HG.Fmt(LevelCost(i))}</size>" : $"<size=46><color=#CFE9B0>+{rs}/s</color></size>";
+                string bottom = near ? $"<size=50><color=#FFE68C>E</color> Lv {L + 1} · {HG.Fmt(LevelCost(i))}</size>" : $"<size=52><color=#CFE9B0>+{rs}/s</color></size>";
                 string lv = can ? "#FFE68C" : "#E8C46A";
                 string s = $"<size=48>{b.name}</size>\n<size=88><color={lv}>Lv {L}</color></size>\n{bottom}";
                 if (s != boardShown[i]) { bt.text = s; boardShown[i] = s; }

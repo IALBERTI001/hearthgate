@@ -37,7 +37,7 @@ namespace Hearthgate.Game
                         int best = -1; double bc = double.MaxValue;
                         for (int i = 0; i < HG.BUILDING_IDS.Length; i++)
                             if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i) && g.LevelCost(i) < bc) { bc = g.LevelCost(i); best = i; }
-                        if (best < 0) break; g.WorkOn(best);
+                        if (best < 0) break; g.WorkOn(best, true);
                     }
                     ShowLedger("town");
                 }, () => { for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) return true; return false; });
