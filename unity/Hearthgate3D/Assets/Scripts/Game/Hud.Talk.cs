@@ -115,7 +115,7 @@ namespace Hearthgate.Game
                 tsTxt = Label("TsTxt", transform, new Vector2(0, 1), new Vector2(LABELS_W + 54, -80), 15, TextAnchor.UpperCenter); tsTxt.font = body;
                 tsTxt.rectTransform.pivot = new Vector2(0.5f, 1); tsTxt.rectTransform.sizeDelta = new Vector2(120, 20);
             }
-            bool on = g.TimeStopLevel > 0 && !(Wizard.I && Wizard.I.On);
+            bool on = g.TimeStopLevel > 0 && !(Wizard.I && Wizard.I.On) && !g.Fallen;
             if (tsAct.p.rt.gameObject.activeSelf != on) { tsAct.p.rt.gameObject.SetActive(on); tsTxt.gameObject.SetActive(on); }
             if (!on) return;
             float left = g.TimeStopLeft, total = GameLoop.TS_CD[g.TimeStopLevel] + GameLoop.TS_DUR[g.TimeStopLevel];

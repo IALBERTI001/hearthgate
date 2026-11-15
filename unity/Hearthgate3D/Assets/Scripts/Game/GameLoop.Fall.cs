@@ -104,6 +104,7 @@ namespace Hearthgate.Game
                 p.t.position += (Vector3.up * 2.4f + p.drift) * dt;
                 p.t.localScale = puffUnit * p.size * Mathf.Sin(Mathf.Min(1f, u * 1.4f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0f, 1f, (u - 0.7f) / 0.3f));   // Unity's SmoothStep(a, b, t) blends a to b; it is not GLSL's smoothstep(edge0, edge1, x);
                 p.t.Rotate(0, 20f * dt, 0); puffs[k] = p;
+                Tint(p.t, Color.Lerp(new Color(0.2f, 0.17f, 0.16f), new Color(0.62f, 0.6f, 0.6f), Mathf.SmoothStep(0f, 1f, u)));   // sooty at the fire, pale as it thins out (one flat grey read as a clump of cotton balls)
             }
             if ((smokeT -= dt) > 0) return;
             smokeT = 0.12f;
@@ -122,7 +123,7 @@ namespace Hearthgate.Game
                 }
                 g.transform.localScale = Vector3.zero;
                 foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                puffs.Add((g.transform, 0f, Random.Range(4f, 5.5f), Random.Range(4.5f, 7f), new Vector3(0.9f, 0, Random.Range(-0.3f, 0.3f))));   // seen from 55 m: a puff must be metres across to read
+                puffs.Add((g.transform, 0f, Random.Range(4f, 5.5f), Random.Range(3.2f, 5.5f), new Vector3(0.9f, 0, Random.Range(-0.6f, 0.6f))));   // seen from 55 m: a puff must be metres across to read
             }
             if (Random.value < 0.3f) Fx.I.Burst(at, Field.FIRE, 2);   // embers
         }
@@ -141,6 +142,7 @@ namespace Hearthgate.Game
                 p.t.position += (Vector3.up * 0.9f + p.drift) * dt;
                 p.t.localScale = puffUnit * p.size * Mathf.Sin(Mathf.Min(1f, u * 2f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0f, 1f, (u - 0.55f) / 0.45f));
                 p.t.Rotate(0, 25f * dt, 0); ruinSmoke[k] = p;
+                Tint(p.t, Color.Lerp(new Color(0.32f, 0.3f, 0.3f), new Color(0.7f, 0.69f, 0.7f), u));
             }
             if (!art || !art.puff || rewinding || (ruinSmokeT -= dt) > 0) return;
             ruinSmokeT = 0.35f;
@@ -157,6 +159,13 @@ namespace Hearthgate.Game
             g.transform.localScale = Vector3.zero;
             foreach (var r in g.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             ruinSmoke.Add((g.transform, 0f, Random.Range(3.2f, 4.2f), Random.Range(0.7f, 1.3f), new Vector3(0.25f, 0, Random.Range(-0.1f, 0.1f))));
+        }
+
+        static MaterialPropertyBlock smokeMpb;
+        static void Tint(Transform t, Color c)
+        {
+            smokeMpb ??= new MaterialPropertyBlock(); smokeMpb.SetColor("_BaseColor", c); smokeMpb.SetColor("_Color", c);
+            foreach (var r in t.GetComponentsInChildren<Renderer>()) r.SetPropertyBlock(smokeMpb);
         }
 
         public void RestoreFallen(bool paid)
