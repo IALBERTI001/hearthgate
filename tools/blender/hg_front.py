@@ -1116,7 +1116,8 @@ def ground():
     def flowers(cx, cy):
         c = R.choice(('flower_y', 'flower_w', 'flower_p'))
         for k in range(R.randint(5, 10)): bsphere('flower', 0.07, (cx + R.uniform(-0.8, 0.8), cy + R.uniform(-0.6, 0.6), 0.12), M(c), sub=1)
-    scatter(30, 1.0, box, flowers)
+    scatter(55, 1.0, box, flowers)
+    scatter(60, 0.6, box, lambda x, y: tufts(x, y, 3, (0.7, 0.5)))   # the fields read empty from the walls (fresh-eyes review, Nov 14 2026)
     scatter(8, 1.0, box, lambda x, y: (outcrop(x, y, 2, 0.6, 0.35), tufts(x, y, 3, (0.9, 0.7))))
     def bushes(cx, cy):
         for k in range(R.randint(3, 6)): bsphere('bush', R.uniform(0.45, 0.95), (cx + R.uniform(-1.0, 1.0), cy + R.uniform(-0.6, 0.6), 0.35), M(R.choice(('bush', 'grass2', 'tree'))), (1, 1, 0.8), 2)
