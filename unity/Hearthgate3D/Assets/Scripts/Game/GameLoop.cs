@@ -510,7 +510,8 @@ namespace Hearthgate.Game
             try { var s = PlayerPrefs.GetString(SAVE_KEY, ""); if (s.Length > 0) p = JsonUtility.FromJson<Profile>(s); } catch { p = null; }
             p ??= new Profile(); p.Sanitize(); return p;
         }
-        public void Save() { P.lastSeen = Now(); P.firstSession = false; PlayerPrefs.SetString(SAVE_KEY, JsonUtility.ToJson(P)); PlayerPrefs.Save(); }
+        bool noSave;   // dev "fresh": nothing writes the save again before the reload
+        public void Save() { if (noSave) return; P.lastSeen = Now(); P.firstSession = false; PlayerPrefs.SetString(SAVE_KEY, JsonUtility.ToJson(P)); PlayerPrefs.Save(); }
         void OnApplicationPause(bool paused) { if (paused) { FlushWisps(); Save(); } }
         void OnApplicationQuit() { FlushWisps(); Save(); }
     }

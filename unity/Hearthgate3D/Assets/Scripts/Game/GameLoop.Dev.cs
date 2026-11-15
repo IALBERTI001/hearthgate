@@ -15,6 +15,7 @@ namespace Hearthgate.Game
             switch (a[0])
             {
                 case "res": P.res += double.Parse(a[1]); break;
+                case "fresh": PlayerPrefs.DeleteKey(SAVE_KEY); PlayerPrefs.Save(); noSave = true; Debug.Log("[dev] save wiped; reload the page"); break;   // a new player's first minutes, on the test profile only
                 case "shards": P.shards += int.Parse(a[1]); break;
                 case "wave": P.wave = P.runWave = int.Parse(a[1]); break;
                 case "asc": P.ascensions = int.Parse(a[1]); Refresh(); for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i); RefreshTowers(); break;
