@@ -156,14 +156,14 @@ namespace Hearthgate.Game
             // the Ascension, the run's lasting progress, in gold beside the wave (owner, Nov 14 2026: "we are not highlighting
             // the ascension levels in any way ... we should be making the ascension level a highlight"): the hourglass, the
             // Ascension in the display font, and a thin gold line filling toward the next one
-            ascRow = Box("Ascension", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(232, -46), new Vector2(200, 50)); ascRow.pivot = new Vector2(0, 1);
+            ascRow = Box("Ascension", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(232, -46), new Vector2(186, 50)); ascRow.pivot = new Vector2(0, 1);
             var ai = Box("Icon", ascRow, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 2), new Vector2(36, 36)); ai.pivot = new Vector2(0, 0.5f);
             ascIcon = ai.gameObject.AddComponent<Image>(); ascIcon.sprite = Icon("timestop"); ascIcon.preserveAspect = true; ascIcon.raycastTarget = false;
             ascTxt = Label("T", ascRow, new Vector2(0, 1), new Vector2(42, -1), 21, TextAnchor.UpperLeft); ascTxt.color = new Color(1f, 0.84f, 0.42f);
-            ascTxt.rectTransform.pivot = new Vector2(0, 1); ascTxt.rectTransform.sizeDelta = new Vector2(156, 26);
+            ascTxt.rectTransform.pivot = new Vector2(0, 1); ascTxt.rectTransform.sizeDelta = new Vector2(144, 26);
             ascSub = Label("S", ascRow, new Vector2(0, 1), new Vector2(42, -25), 14, TextAnchor.UpperLeft); ascSub.font = body; ascSub.color = new Color(0.86f, 0.8f, 0.9f);
-            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(156, 18);
-            var ab = Box("Bar", ascRow, new Vector2(0, 0), new Vector2(0, 0), new Vector2(42, 1), new Vector2(150, 5)); ab.pivot = Vector2.zero;
+            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(144, 18);
+            var ab = Box("Bar", ascRow, new Vector2(0, 0), new Vector2(0, 0), new Vector2(42, 1), new Vector2(140, 5)); ab.pivot = Vector2.zero;
             var abg = ab.gameObject.AddComponent<Image>(); abg.color = new Color(0.08f, 0.04f, 0.1f, 0.7f); abg.raycastTarget = false;
             var af = Box("Fill", ab, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             ascBar = af.gameObject.AddComponent<Image>(); ascBar.color = new Color(1f, 0.8f, 0.36f); ascBar.raycastTarget = false;
