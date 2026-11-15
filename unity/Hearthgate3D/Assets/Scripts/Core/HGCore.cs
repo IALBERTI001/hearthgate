@@ -44,7 +44,7 @@ namespace Hearthgate.Core
             B("bakery", "Bakery", null, "wisps", "Golden Wisps come twice as often. +15% Resonance.", ("res", 0.15)),
             B("market", "Market", null, "shop", "Home of the Shop. Upgrades cost 10% less.", ("upgradeDiscount", 0.10)),
             B("tavern", "Tavern", null, "cheer", "Combos fill the Cheer meter: when full, towers fire twice as fast.", ("fireRate", 0.10)),
-            B("granary", "Granary", null, "store", "Stores 50% more while you are away, and 4 more hours.", ("offline", 0.5)),
+            B("granary", "Granary", null, "store", "The wave you leave behind pays 50% more.", ("offline", 0.5)),
             B("library", "Library", null, "quests", "Home of Quests and Feats. Combos hit 25% harder.", ("combo", 0.25)),
             B("cottages", "Cottages", null, "repair", "Villagers repair the walls after every wave.", ("gateHp", 0.25)),
             B("watchtower", "Watchtower", null, "tower5", "Its beacon joins the fight as a fifth tower. Home of the Perks.", ("damage", 0.15)),
@@ -127,7 +127,7 @@ namespace Hearthgate.Core
         public static Bonus Bonuses(Profile p)
         {
             var b = new Bonus();
-            foreach (var id in p.restored) { if (id == "granary") b["offlineH"] += 4; var d = ById(id); if (d != null) b.Add(d.bonus); }
+            foreach (var id in p.restored) { var d = ById(id); if (d != null) b.Add(d.bonus); }
             foreach (var s in FORK_STAGES) { var fid = p.ForkAt(s); var f = fid == null ? null : FORKS[s].FirstOrDefault(x => x.id == fid); if (f != null) b.Add(f.bonus); }
             foreach (var k in PERKS) { int n = p.PerkAt(k.id); if (n > 0) foreach (var kv in k.per) b[kv.Key] += kv.Value * n; }
             if (p.ascensions >= 1) foreach (var id in p.restored) if (RANK2.TryGetValue(id, out var r2)) b.Add(r2.bonus);
@@ -220,7 +220,7 @@ namespace Hearthgate.Core
             K("sharp", "Keen Sights", "Towers hit 15% harder", 5, 0, ("damage", 0.15)),
             K("hum", "Deep Hum", "The city makes 25% more", 4, 0, ("city", 0.25)),
             K("rich", "Rich Veins", "+15% Resonance from enemies", 4, 0, ("res", 0.15)),
-            K("night", "Night Watch", "Offline earnings last 2 hours longer", 4, 0, ("offlineH", 2)),
+            K("night", "Night Watch", "The wave you leave behind pays double", 4, 0, ("offline", 1.0)),   // away, only that wave plays on now (Nov 14 2026)
             K("surge", "Quick Surge", "The Surge recharges 3 minutes sooner", 3, 0, ("surgeCd", 3)),
             K("lucky", "Lucky Stars", "+1 Starshard from every boss", 3, 0, ("bossPlus", 1)),
             K("start", "Head Start", "Each new city starts 5 waves and 5 tower levels ahead", 3, 0, ("start", 5)),
@@ -243,7 +243,7 @@ namespace Hearthgate.Core
 
         // ---------- the city makes Resonance ----------
         public static readonly int[] MILESTONES = { 10, 25, 50, 100 };
-        public const double CITY_BASE = 0.09, LEVEL_COST = 0.4, OFFLINE_CAP_H = 8;
+        public const double CITY_BASE = 0.09, LEVEL_COST = 0.4, OFFLINE_CAP_H = 8, OFFLINE_WAVE_S = 60;
         public static int LevelOf(Profile p, string id) => p.restored.Contains(id) ? Math.Max(1, p.LevelAt(id)) : 0;
         public static double BuildingRate(Profile p, string id, Bonus b, int lvl = 0)
         {
@@ -505,8 +505,11 @@ namespace Hearthgate.Core
         public static (double secs, double res) OfflineEarnings(Profile p, Bonus b, long nowMs)
         {
             if (p.lastSeen <= 0 || nowMs <= p.lastSeen) return (0, 0);
-            double secs = Math.Min((OFFLINE_CAP_H + b["offlineH"]) * 3600, (nowMs - p.lastSeen) / 1000.0);
-            if (secs < 60) return (secs, 0);
+            // away, only the wave that was being fought plays on: its pay, about a wave's length of the fight and the city,
+            // and nothing after it; the game moves on only while the player is here (owner, Nov 14 2026: "when the game is
+            // closed only the current wave will continue on ... You have to be present to advance")
+            double secs = Math.Min(OFFLINE_WAVE_S, (nowMs - p.lastSeen) / 1000.0);
+            if (secs < 20) return (secs, 0);
             return (secs, Math.Floor(secs * (FightRate(p, b) + CityRate(p, b)) * (1 + b["offline"])));
         }
     }

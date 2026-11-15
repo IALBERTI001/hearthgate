@@ -33,7 +33,7 @@ namespace Hearthgate.Game
             world = new GameObject("World").transform; unitsRoot = new GameObject("Units").transform;
             BuildWorld();
             var off = HG.OfflineEarnings(P, B, Now());
-            if (off.res > 0) { P.res += off.res; Hud.Toast($"While you were away: +{HG.Fmt(off.res)}"); }
+            if (off.res > 0) { P.res += off.res; Hud.Toast($"The wave you left was won: +{HG.Fmt(off.res)}"); }
             ApplyLooks(); if (P.shopOpen) HG.QuestsFor(P, Today());
             if (P.fallen) { gateHp = 0; ShowShambles(true); } else StartWave();   // a reload during the loss comes back to the same choice
             if (P.ascensions == 0 && P.restored.Count == 0 && P.wave <= 2) Guide.Say("intro");
@@ -141,7 +141,11 @@ namespace Hearthgate.Game
             // the city hums
             P.res += HG.CityRate(P, B) * DT * SurgeX;
             if (waveLive && queue.Count == 0 && enemies.Count == 0) { waveLive = false; betweenT = 1.2f; WaveWon(); }
-            if (!waveLive && (betweenT -= DT) <= 0) StartWave();
+            if (!waveLive && (betweenT -= DT) <= 0)
+            {   // the next wave waits for the player: a wave in progress plays out, but none starts while they are away
+                if (Away) { betweenT = 0; if (!holding) { holding = true; Hud.Banner("The wizard waits for you. The next wave comes when you are back"); } }
+                else { if (holding) { holding = false; Hud.Banner($"Welcome back! Wave {P.wave} begins"); } StartWave(); }
+            }
             if ((saveT += DT) > 5) { saveT = 0; Save(); }
             comboT = Mathf.Max(0, comboT - DT);
         }
@@ -472,9 +476,20 @@ namespace Hearthgate.Game
             Save();
         }
 
+        // ---------- presence (owner, Nov 14 2026: "You have to be present to advance") ----------
+        public const float AWAY_S = 120f;   // no key, click, touch, wheel or mouse move for this long counts as away
+        float lastInput; Vector3 lastMouse; bool holding;
+        bool Away => !Application.isFocused || Time.unscaledTime - lastInput > AWAY_S;
+        void TrackPresence()
+        {
+            var m = Input.mousePosition;
+            if (Input.anyKey || Input.touchCount > 0 || Input.mouseScrollDelta != Vector2.zero || (m - lastMouse).sqrMagnitude > 4f) lastInput = Time.unscaledTime;
+            lastMouse = m;
+        }
+
         void Update()
         {
-            var wz = Wizard.I;
+            var wz = Wizard.I; TrackPresence();
             TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls(); TickFall(Time.unscaledDeltaTime); TickNpcs(Time.deltaTime);
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.F) && TimeStopLevel > 0 && wz && wz.On) UseTimeStop();   // his skill: on the walk only
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
