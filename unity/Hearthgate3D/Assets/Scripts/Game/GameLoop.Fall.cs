@@ -142,7 +142,7 @@ namespace Hearthgate.Game
                 p.t.position += (Vector3.up * 0.9f + p.drift) * dt;
                 p.t.localScale = puffUnit * p.size * Mathf.Sin(Mathf.Min(1f, u * 2f) * Mathf.PI * 0.5f) * (1f - Mathf.SmoothStep(0f, 1f, (u - 0.55f) / 0.45f));
                 p.t.Rotate(0, 25f * dt, 0); ruinSmoke[k] = p;
-                Tint(p.t, Color.Lerp(new Color(0.7f, 0.68f, 0.68f), new Color(1.6f, 1.6f, 1.65f), u));
+                Tint(p.t, Color.Lerp(new Color(0.5f, 0.48f, 0.48f), new Color(1.05f, 1.05f, 1.08f), u));
             }
             if (!art || !art.puff || rewinding || (ruinSmokeT -= dt) > 0) return;
             ruinSmokeT = 0.35f;
