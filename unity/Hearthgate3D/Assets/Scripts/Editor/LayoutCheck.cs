@@ -189,9 +189,8 @@ namespace Hearthgate.EditorTools
             // pixel boxes measured from the screen corner they are anchored to
             Rect TopLeft(float x1, float y1) => Rect.MinMaxRect(0, 1 - y1 * s / h, x1 * s / w, 1);
             Rect TopRight(float x0, float y0, float x1, float y1) => Rect.MinMaxRect(1 - x1 * s / w, 1 - y1 * s / h, 1 - x0 * s / w, 1 - y0 * s / h);
-            // the walk button (Hud.LayoutActions): the bottom row, left of Settings; nothing pressable sits by the header any more
-            float wx0 = 12 + 150 + Hearthgate.Game.Hud.GAP, wx1 = wx0 + Hearthgate.Game.Hud.WALK_W;
-            var actions = ("walk button", Rect.MinMaxRect(1 - wx1 * s / w, 10 * s / h, 1 - wx0 * s / w, 56 * s / h));
+            // the walk button (Hud.LayoutActions): above Settings in the bottom-right corner (the owner's placement, Nov 15 2026)
+            var actions = ("walk button", Rect.MinMaxRect(1 - 162 * s / w, 64 * s / h, 1 - 12 * s / w, 110 * s / h));
             return new List<(string, Rect)> {
                 ("labels", TopLeft(420, 124)),                       // wave with Starshards and perk points beside it, Resonance, the rate and the named wave
                 actions,                                             // Hud.LayoutActions: the walk button

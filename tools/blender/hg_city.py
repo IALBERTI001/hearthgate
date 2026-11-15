@@ -410,13 +410,20 @@ BUILDERS = {'forge': b_forge, 'frostSpire': b_frostSpire, 'stormBell': b_stormBe
             'tavern': b_tavern, 'granary': b_granary, 'library': b_library, 'cottages': b_cottages, 'watchtower': b_watchtower}
 
 def signpost(w, d, ruined=False):
-    """The building's sign by its yard (owner, Nov 13 2026: "a data sign or something that shows the level and stats of the
-    buildings"): a post and a board facing the street; the game writes the name, level and output over the board."""
+    """The building's board by its yard (owner, Nov 13 2026: "a data sign ... that shows the level and stats"; Nov 15 2026: "the
+    giant purple card on the buildings are not helping our game, the information ... can be displayed on a building
+    differently to make it feel more like its part of the game"): a stout post and a wide board facing the street, the
+    building's emblem carved on its left; the game paints the level and what it makes on the right half."""
     x, y = w / 2 - 0.7, -d / 2 - 1.4
-    block((x, y, 1.1), (0.14, 0.14, 2.2), M('char' if ruined else 'wood_dk'), 0.0)
-    o = block((x, y - 0.1, 2.0), (1.5, 0.08, 0.8), M('wood' if not ruined else 'char'), 0.02)
-    if ruined: o.rotation_euler = (0, 0.18, 0)
-    block((x, y - 0.15, 2.42), (1.6, 0.06, 0.08), M('gold' if not ruined else 'iron'), 0.0)
+    block((x, y, 1.3), (0.16, 0.16, 2.6), M('char' if ruined else 'wood_dk'), 0.0)
+    o = block((x, y - 0.1, 2.0), (2.0, 0.08, 1.0), M('wood' if not ruined else 'char'), 0.02)
+    if ruined: o.rotation_euler = (0, 0.12, 0)
+    if not ruined:
+        for (dz, h) in ((0.47, 0.05), (-0.47, 0.05)): block((x, y - 0.15, 2.0 + dz), (2.06, 0.03, h), M('gold'), 0.0)   # brass rim
+        for sx in (-1, 1): block((x + sx * 1.0, y - 0.15, 2.0), (0.05, 0.03, 1.0), M('gold'), 0.0)
+        block((x - 0.2, y - 0.15, 2.0), (0.03, 0.02, 0.8), M('wood_dk'), 0.0)   # the carved line between emblem and words
+    else:
+        block((x, y - 0.15, 2.52), (2.0, 0.06, 0.08), M('iron'), 0.0)
     rubble(x, y, 2, (0.2, 0.2)); tufts(x + 0.3, y + 0.1, 2, (0.2, 0.2))
 
 def emblem(bid, x, y, z):
@@ -457,7 +464,7 @@ def emblem(bid, x, y, z):
 def building(bid):
     BUILDERS[bid]()
     w, d = LY.SIZES[bid]
-    signpost(w, d); emblem(bid, w / 2 - 0.7, -d / 2 - 1.4 - 0.1, 2.0)
+    signpost(w, d); emblem(bid, w / 2 - 0.7 - 0.6, -d / 2 - 1.4 - 0.1, 2.0)   # on the board's left: the words go on its right
     tufts(-w / 2 - 0.2, -d / 2 - 0.3, 2, (0.3, 0.2)); tufts(w / 2 + 0.2, -d / 2 - 0.2, 2, (0.3, 0.2)); tufts(w / 2 + 0.2, d / 2 + 0.2, 2, (0.3, 0.2))
     return K.export('building_' + bid)
 

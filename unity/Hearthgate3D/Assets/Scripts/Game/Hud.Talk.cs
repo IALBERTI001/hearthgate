@@ -125,7 +125,7 @@ namespace Hearthgate.Game
                 tsSweep = sw.gameObject.AddComponent<Image>(); tsSweep.sprite = Panel(new Color(0.05f, 0.03f, 0.08f, 0.6f), new Color(0, 0, 0, 0), 10, 1);
                 tsSweep.type = Image.Type.Filled; tsSweep.fillMethod = Image.FillMethod.Horizontal; tsSweep.fillOrigin = 1; tsSweep.raycastTarget = false;
             }
-            bool on = g.TimeStopLevel > 0 && Wizard.I && Wizard.I.On && !g.Fallen && !Paused;
+            bool on = false;   // Stop time lives in the wizard's ring and on F (owner, Nov 15 2026); the button is kept for the ring's look
             if (tsAct.p.rt.gameObject.activeSelf != on) tsAct.p.rt.gameObject.SetActive(on);
             if (!on) return;
             float left = g.TimeStopLeft, total = GameLoop.TS_CD[g.TimeStopLevel] + GameLoop.TS_DUR[g.TimeStopLevel];

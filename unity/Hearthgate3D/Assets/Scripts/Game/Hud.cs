@@ -355,80 +355,12 @@ namespace Hearthgate.Game
         public static Vector2 PointerPos => Input.touchCount > 0 ? Input.GetTouch(0).position : (Vector2)Input.mousePosition;
         void Signs(GameLoop g, Profile P)
         {
-            var wz = Wizard.I; var cam = Camera.main; var canvas = (RectTransform)transform;
-            // only the boards of the buildings he is near (the two nearest, within 10 m): every board in view at once stacked
-            // into a wall across the top of the screen (owner, Nov 14 2026: the town walk "is an important impression")
-            int n1 = -1, n2 = -1; float d1 = 10f, d2 = 10f;
-            if (wz && wz.On)
-                for (int i = 0; i < signs.Length; i++)
-                {
-                    var sa = Field.SignPoint(i); float d = Vector2.Distance(new Vector2(sa.x, sa.z), new Vector2(wz.Pos.x, wz.Pos.z));
-                    if (d < d1) { n2 = n1; d2 = d1; n1 = i; d1 = d; } else if (d < d2) { n2 = i; d2 = d; }
-                }
-            for (int i = 0; i < signs.Length; i++)
-            {
-                var at = Field.SignPoint(i); bool show = wz && wz.On && cam; bool docked = show && wz.Inside == i;
-                Vector3 sp = default; float dist = 0;
-                if (show)
-                {
-                    dist = Vector3.Distance(cam.transform.position, at); sp = cam.WorldToScreenPoint(at);
-                    show = !Paused && !ring && (docked || (wz.Inside < 0 && (i == n1 || i == n2))) && sp.z > 0 && sp.x > 0 && sp.x < Screen.width && sp.y > 0 && sp.y < Screen.height * 0.8f;
-                }
-                if (signs[i].gameObject.activeSelf != show) signs[i].gameObject.SetActive(show);
-                if (!show) continue;
-                // inside, the steep room camera put the yard's board over the room and the wizard: it docks above the walls bar
-                if (docked) signs[i].anchoredPosition = new Vector2(canvas.rect.width - 206f, 96f);   // bottom right: clear of the walls bar and the doorway (fresh-eyes review)
-                else { RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp); signs[i].anchoredPosition = lp + canvas.rect.size * 0.5f; }
-                signs[i].localScale = Vector3.one;   // never scaled: scaled text is blurry (owner, Nov 14 2026); its font is sized to read
-                // the building's board (owner, Nov 14 2026: "Everything to do with this building should be at player level to
-                // interact with. Not hidden from the player"): its one name, its level and what it makes, what it does (and its
-                // Ascended ability), what waits inside; at the wizard's reach it opens to its upgrade: the next level, what that
-                // adds and what it costs, on the board itself (E or a tap). From across the square a board glows when its
-                // upgrade is affordable.
-                var id = HG.BUILDING_IDS[i]; var b = HG.ById(id); bool up = P.restored.Contains(id), near = wz.Near == i;
-                bool can = g.CanWork(i), offer = !up && HG.RestoreOffer(P).Contains(id);
-                string body = "";
-                if (up)
-                {
-                    double r = HG.BuildingRate(P, id, g.B); string rs = r < 10 ? r.ToString("0.##") : HG.Fmt(r);
-                    signHead[i].text = $"{b.name}  ·  level {HG.LevelOf(P, id)}";
-                    body = $"<color=#FFD56B>+{rs} Resonance/s</color>";
-                    if (near) body += $"\n<color=#E6DCEA>{b.line}</color>";
-                    if (near && P.ascensions >= 1 && HG.RANK2.TryGetValue(id, out var r2)) body += $"\n<color=#FFD56B>{r2.name}:</color> <color=#E6DCEA>{r2.line}</color>";
-                    if (!near && can) body += "\n<color=#CFE9B0>upgrade ready</color>";
-                }
-                else
-                {
-                    signHead[i].text = $"{b.name}  ·  ruined";
-                    body = offer ? $"<color=#E6DCEA>{b.line}</color>" : $"<color=#D9C9A8>{(g.NextBuilding != null ? "rebuilt after the " + HG.ById(g.NextBuilding).name : "rebuilt later")}</color>";
-                }
-                if (docked && g.CentreOn(i) && wz.Looking != i) body += $"\n<color=#FFD56B>Talk to {KeeperName(GameLoop.KeeperOf(i)).Split(' ')[0] + (GameLoop.KeeperOf(i) == "librarian" ? " Quill" : "")} behind the {GameLoop.CentreName(i)}</color>";
-                else body += HallLine(g, P, i);
-                signTxt[i].text = body;
-                bool btn = near && (up || offer);
-                if (signBtn[i].p.rt.gameObject.activeSelf != btn) signBtn[i].p.rt.gameObject.SetActive(btn);
-                if (btn)
-                {
-                    if (up)
-                    {
-                        int L = HG.LevelOf(P, id); double gain = HG.BuildingRate(P, id, g.B, L + 1) - HG.BuildingRate(P, id, g.B);
-                        signBtn[i].icon.sprite = Icon("upgrade") ?? signBtn[i].icon.sprite;
-                        Show(signBtn[i], $"Upgrade to level {L + 1}", $"{HG.Fmt(g.LevelCost(i))}     <color=#CFE9B0>+{(gain < 10 ? gain.ToString("0.##") : HG.Fmt(gain))}/s</color>", can, Time.unscaledTime);
-                    }
-                    else { signBtn[i].icon.sprite = Icon("rebuild") ?? signBtn[i].icon.sprite; Show(signBtn[i], $"Rebuild the {b.name}", HG.Fmt(g.RestoreCost), can, Time.unscaledTime); }
-                }
-                float textH = signTxt[i].preferredHeight;
-                signs[i].sizeDelta = new Vector2(380, 46 + textH + (btn ? 78 : 10));
-                {   // never off the screen's edge (fresh-eyes review: a board cut at the left edge)
-                    var ap = signs[i].anchoredPosition; var cs = canvas.rect.size; float hw = 198f;
-                    ap.x = Mathf.Clamp(ap.x, hw, Mathf.Max(hw, cs.x - hw)); ap.y = Mathf.Clamp(ap.y, 70f, Mathf.Max(70f, cs.y - signs[i].sizeDelta.y - 180f));
-                    signs[i].anchoredPosition = ap;
-                }
-                var gc = signGlow[i].color; gc.a = up && can ? 0.45f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f) : 0f; signGlow[i].color = gc;
-            }
+            // the purple boards are retired (owner, Nov 15 2026: "the giant purple card on the buildings are not helping our game"):
+            // the building's own signpost carries its level and output (GameLoop.Boards), its ring and E its upgrade
+            foreach (var sg in signs) if (sg && sg.gameObject.activeSelf) sg.gameObject.SetActive(false);
+            return;
         }
 
-        // what waits at a hall's centrepiece, on its sign
         static string HallLine(GameLoop g, Profile P, int i)
         {
             if (!g.CentreOn(i)) return "";
@@ -506,10 +438,10 @@ namespace Hearthgate.Game
                 if (r.anchorMin != anchor) { r.anchorMin = r.anchorMax = r.pivot = anchor; }
                 r.sizeDelta = size; r.anchoredPosition = at;
             }
-            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-(12 + 150 + GAP), 10), new Vector2(WALK_W, 46));   // low: clear of the lane that enters the view at 2.2:1 (LayoutCheck)
-            bool ts = tsAct != null && tsAct.p.rt.gameObject.activeSelf, upOn = up.p.rt.gameObject.activeSelf;
-            if (upOn) Place(up.p.rt, new Vector2(0.5f, 0), new Vector2(ts ? -(SKILL_W2 / 2 + GAP / 2) : 0, SKILL_Y), new Vector2(SKILL_W2, 56));
-            if (ts) tsAct.p.rt.anchoredPosition = new Vector2(upOn ? SKILL_W2 / 2 + GAP / 2 : 0, SKILL_Y);
+            // owner, Nov 15 2026: "the town walk button is too big for what it does and it should be above the settings button";
+            // "there is no reason to have the stop time and upgrade defenses above the health bar if we have the radial menu"
+            Place(walk.p.rt, new Vector2(1, 0), new Vector2(-12, 10 + 46 + GAP), new Vector2(150, 46));
+            if (up.p.rt.gameObject.activeSelf) up.p.rt.gameObject.SetActive(false);
             var bp = banner.rectTransform.anchoredPosition; bp.y = -120f; banner.rectTransform.anchoredPosition = bp;
             // one voice: an open ring is what the player is looking at, so a banner that would cross it drops under it
             if (ring && bannerT > 0 && RingBox().Overlaps(BannerRect())) { bp.y = -(((RectTransform)transform).rect.height - RingBox().yMin) - 10f; banner.rectTransform.anchoredPosition = bp; }
@@ -658,7 +590,7 @@ namespace Hearthgate.Game
             // the town walk
             var wz = Wizard.I;
             int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
-            Show(walk, wz && wz.On ? "Back to the walls" : "Walk the town", wz && wz.On || ready == 0 ? null : $"<color=#CFE9B0>{ready} upgrade{(ready == 1 ? "" : "s")} ready</color>", true, now); walk.gem.enabled = false;   // a reason to go in (a count, not a price: no gem)
+            Show(walk, wz && wz.On ? "To the walls" : "Walk the town", wz && wz.On || ready == 0 ? null : $"<color=#CFE9B0>{ready} upgrade{(ready == 1 ? "" : "s")} ready</color>", true, now); walk.gem.enabled = false;   // a reason to go in (a count, not a price: no gem)
             bool showWork = false; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);   // the building's own board has it now (owner, Nov 14 2026)
             if (showWork)
             {
@@ -683,7 +615,7 @@ namespace Hearthgate.Game
             bool fl = g.Fallen; if (walk.p.rt.gameObject.activeSelf == fl) walk.p.rt.gameObject.SetActive(!fl);
             // in the rings now, on the walls; on the town walk the gatehouse is far away, so Upgrade defenses rides with the walk
             // button (owner, Nov 15 2026: "Im having a hardtime while walking upgrading the wall defenses")
-            bool upOn = wz && wz.On && !fl; if (up.p.rt.gameObject.activeSelf != upOn) up.p.rt.gameObject.SetActive(upOn);
+            if (up.p.rt.gameObject.activeSelf) up.p.rt.gameObject.SetActive(false);
             if (re.p.rt.gameObject.activeSelf) re.p.rt.gameObject.SetActive(false);
             LayoutActions();
             Refit();

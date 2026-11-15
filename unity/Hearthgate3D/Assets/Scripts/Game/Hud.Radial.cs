@@ -151,10 +151,20 @@ namespace Hearthgate.Game
         public static void RingWizard()
         {
             var g = GameLoop.I; if (g == null) return;
-            var items = new List<RadialItem>
+            var items = new List<RadialItem>();
+            // at a building's door, its own upgrade comes first (the purple board that held it is retired)
+            int near = Wizard.I ? Wizard.I.Near : -1;
+            if (near >= 0)
+            {
+                int i = near; var id = HG.BUILDING_IDS[i]; bool built = g.P.restored.Contains(id);
+                if (built || HG.RestoreOffer(g.P).Contains(id))
+                    items.Add(new RadialItem { label = built ? $"Upgrade {HG.ById(id).name}" : $"Rebuild {HG.ById(id).name}", icon = built ? "upgrade" : "rebuild", key = "E",
+                        line = () => built ? $"Lv {HG.LevelOf(g.P, id) + 1} · {HG.Fmt(g.LevelCost(i))}" : HG.Fmt(g.RestoreCost), can = () => g.CanWork(i), act = () => g.WorkOn(i) });
+            }
+            items.AddRange(new List<RadialItem>
             {
                 new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", line = () => $"Lv {g.P.gateLevel + 1} · {HG.Fmt(g.UpgradeCost)}", can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
-            };
+            });
             if (g.TimeStopLevel > 0)
                 items.Add(new RadialItem { label = "Stop time", icon = "timestop", key = "F", line = () => g.TimeStopReady ? "ready" : $"in {Mathf.CeilToInt(g.TimeStopLeft)} s", can = () => g.TimeStopReady, act = () => g.UseTimeStop() });
             AddLedger(items, g);
