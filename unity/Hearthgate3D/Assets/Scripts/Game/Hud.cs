@@ -553,7 +553,7 @@ namespace Hearthgate.Game
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
             if (g.Fallen) { gateBar.fillAmount = 0; gateTxt.text = "Walls broken"; }   // not a full bar behind the defeat card
             var bo = g.BossNow; if (bossBox.gameObject.activeSelf != (bo != null)) bossBox.gameObject.SetActive(bo != null);
-            bossBox.anchoredPosition = new Vector2(0, Wizard.I && Wizard.I.On && g.TimeStopLevel > 0 ? 138 : 76);   // above the skill row on the walk
+            bossBox.anchoredPosition = new Vector2(0, Wizard.I && Wizard.I.On && g.TimeStopLevel > 0 ? SKILL_Y + 56 + 14 : 76);   // above the skill row on the walk
             if (bo != null)
             {
                 bossFill.fillAmount = Mathf.Clamp01((float)(bo.hp / bo.max));

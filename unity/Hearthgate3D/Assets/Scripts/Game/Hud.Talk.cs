@@ -100,31 +100,32 @@ namespace Hearthgate.Game
             I.tint.color = c; I.tint.enabled = c.a > 0.001f;
         }
 
-        // the Time Stop button: a round skill button with the hourglass and its key, in the free space right of the readouts
-        // (the lanes run under every spot along the bottom); while it recharges a dark sweep closes over it and the seconds
-        // count down under it
-        Act tsAct; Image tsSweep; Text tsTxt;
+        // the Time Stop button: a kit button like every other (owner, Nov 14 2026: "sloppy text on the skills"): the hourglass,
+        // "Stop time" in the button font, the F keycap, and on its second line "Ready" or the seconds left; while it recharges
+        // a dark shade slides off it. It sits over the walls bar with a clear gap ("add more of a buffer")
+        Act tsAct; Image tsSweep;
+        public const float SKILL_Y = 72f;   // the walls bar's top is at 53
         void TickTimeStop(GameLoop g)
         {
             if (tsAct == null)
             {
                 // the wizard's skills sit in a row over the walls' health, and only on the town walk: they are his, so they
-                // are there when he is (owner, Nov 14 2026: "they should be over the health bar at the bottom ... only
-                // available when walking the town")
-                tsAct = Action("TimeStop", new Vector2(0.5f, 0), new Vector2(0, 66), new Vector2(60, 60), "timestop", "F", () => g.UseTimeStop(), () => g.TimeStopReady, false);
+                // are there when he is (owner, Nov 14 2026)
+                tsAct = Action("TimeStop", new Vector2(0.5f, 0), new Vector2(0, SKILL_Y), new Vector2(210, 56), "timestop", "F", () => g.UseTimeStop(), () => g.TimeStopReady, false);
+                tsAct.gem.gameObject.SetActive(false);
+                tsAct.cost.rectTransform.anchoredPosition = new Vector2(2, 0);
                 var sw = Box("Sweep", tsAct.p.rt, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-8, -8));
-                tsSweep = sw.gameObject.AddComponent<Image>(); tsSweep.sprite = Panel(new Color(0.05f, 0.03f, 0.08f, 0.7f), new Color(0, 0, 0, 0), 26, 1);
-                tsSweep.type = Image.Type.Filled; tsSweep.fillMethod = Image.FillMethod.Radial360; tsSweep.fillOrigin = 2; tsSweep.fillClockwise = false; tsSweep.raycastTarget = false;
-                tsTxt = Label("TsTxt", transform, new Vector2(0.5f, 0), new Vector2(40, 96), 15, TextAnchor.MiddleLeft); tsTxt.font = body;
-                tsTxt.rectTransform.pivot = new Vector2(0, 0.5f); tsTxt.rectTransform.sizeDelta = new Vector2(120, 20);   // beside the button
+                tsSweep = sw.gameObject.AddComponent<Image>(); tsSweep.sprite = Panel(new Color(0.05f, 0.03f, 0.08f, 0.6f), new Color(0, 0, 0, 0), 10, 1);
+                tsSweep.type = Image.Type.Filled; tsSweep.fillMethod = Image.FillMethod.Horizontal; tsSweep.fillOrigin = 1; tsSweep.raycastTarget = false;
             }
             bool on = g.TimeStopLevel > 0 && Wizard.I && Wizard.I.On && !g.Fallen && !Paused;
-            if (tsAct.p.rt.gameObject.activeSelf != on) { tsAct.p.rt.gameObject.SetActive(on); tsTxt.gameObject.SetActive(on); }
+            if (tsAct.p.rt.gameObject.activeSelf != on) tsAct.p.rt.gameObject.SetActive(on);
             if (!on) return;
             float left = g.TimeStopLeft, total = GameLoop.TS_CD[g.TimeStopLevel] + GameLoop.TS_DUR[g.TimeStopLevel];
             tsSweep.fillAmount = g.timeStop > 0 ? 0f : Mathf.Clamp01(left / total);
-            tsTxt.text = g.timeStop > 0 ? $"{g.timeStop:0.0} s" : left > 0 ? $"{left:0} s" : "Stop time";
-            tsTxt.color = g.TimeStopReady ? new Color(0.72f, 0.9f, 1f) : new Color(0.8f, 0.76f, 0.84f);
+            string line = g.timeStop > 0 ? $"Frozen {g.timeStop:0.0} s" : left > 0 ? $"Ready in {left:0} s" : "Ready";
+            Show(tsAct, "Stop time", line, g.TimeStopReady, Time.unscaledTime);
+            tsAct.cost.color = g.TimeStopReady ? new Color(0.72f, 0.9f, 1f) : new Color(0.8f, 0.76f, 0.84f);
             if (tsAct.glow) { var c = tsAct.glow.color; c.a = g.TimeStopReady ? 0.45f + 0.35f * Mathf.Sin(Time.unscaledTime * 3f) : 0f; tsAct.glow.color = c; }
         }
     }
