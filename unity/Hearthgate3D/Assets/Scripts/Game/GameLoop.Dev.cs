@@ -34,6 +34,10 @@ namespace Hearthgate.Game
                     { var en = new Enemy(kind, P.wave, k, 0, SpawnZ(k) * 0.01f, unitsRoot); en.hp = en.max = 1e30; enemies.Add(en); }
                     break;
                 case "rise": if (P.fallen) StartOver(); break;
+                case "lite":   // the cloud bot's software GPU runs at ~1 fps: cut the costly passes so time feels real to it
+                    { var rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+                      if (rp) { rp.msaaSampleCount = 1; rp.renderScale = a.Length > 1 ? float.Parse(a[1], System.Globalization.CultureInfo.InvariantCulture) : 0.6f; rp.shadowDistance = 0; rp.supportsHDR = false; } }
+                    break;
                 case "probe2": Debug.Log("PROBE2 " + Hud.Probe2()); break;
                 case "probe": Hud.Banner("Probe banner"); Debug.Log("PROBE " + Hud.Probe()); break;
                 case "pause": Time.timeScale = a[1] == "1" ? 0 : 1; break;
