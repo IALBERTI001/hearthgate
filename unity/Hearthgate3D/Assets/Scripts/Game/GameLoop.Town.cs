@@ -113,7 +113,7 @@ namespace Hearthgate.Game
                     // and it sheds sparks (owner, Nov 16 2026: "Shooting stars should glow more to make players want to catch them")
                     var cam = Camera.main; float tt = Time.time;
                     if (g.body && cam) g.body.rotation = cam.transform.rotation * Quaternion.Euler(0, 0, tt * 70f);
-                    if (g.body) g.body.localScale = Vector3.one * (1f + 0.12f * Mathf.Sin(tt * 7f));
+                    if (g.body) g.body.localScale = Vector3.one * 2.2f * (1f + 0.12f * Mathf.Sin(tt * 7f));
                     if (g.flare) { float tw = 0.75f + 0.35f * Mathf.Sin(tt * 13f) + 0.15f * Mathf.Sin(tt * 31f); g.flare.localScale = Vector3.one * tw; }
                     if (Random.value < dt * 22) Fx.I.Burst(g.tr.position, Random.value < 0.5f ? Field.GOLD : new Color(1f, 0.97f, 0.8f), 1);
                 }
@@ -127,7 +127,7 @@ namespace Hearthgate.Game
             if (art != null && art.starWisp)
             {   // the Blender star (hg_front.star_wisp), lit from within: its colours pushed past the bloom threshold, unlit so
                 // the sun never dulls it
-                var m = Instantiate(art.starWisp); body = m.transform; body.SetParent(tr, false); body.localScale = Vector3.one * 1.35f;
+                var m = Instantiate(art.starWisp); body = m.transform; body.SetParent(tr, false); body.localScale = Vector3.one * 2.2f;   // about 2.4 m across: at 1.35 it read as a spark from the walls
                 foreach (var r in m.GetComponentsInChildren<Renderer>())
                 {
                     var ms = r.sharedMaterials;
@@ -138,7 +138,7 @@ namespace Hearthgate.Game
                 foreach (var c in m.GetComponentsInChildren<Transform>(true)) if (c.name == "flare") flare = c;
             }
             foreach (var r in go.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            var trail = go.AddComponent<TrailRenderer>(); trail.time = 1.1f; trail.startWidth = 1.0f * Fx.TrailScale; trail.endWidth = 0; trail.material = Art.Flat(new Color(1f, 0.8f, 0.3f) * 1.8f);
+            var trail = go.AddComponent<TrailRenderer>(); trail.time = 1.1f; trail.startWidth = 1.3f * Fx.TrailScale; trail.endWidth = 0; trail.material = Art.Flat(new Color(1f, 0.8f, 0.3f) * 1.8f);
             trail.colorGradient = new Gradient { colorKeys = new[] { new GradientColorKey(new Color(1f, 0.95f, 0.75f), 0f), new GradientColorKey(new Color(1f, 0.6f, 0.15f), 1f) }, alphaKeys = new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) } };
             gold = new Gold { tr = tr, body = body, flare = flare, vx = (fromLeft ? -1 : 1) * Random.Range(6.5f, 8.5f), y0 = Random.Range(5.5f, 8f), z = Random.Range(5f, 13f) };
             tr.position = new Vector3(fromLeft ? 38 : -38, gold.y0, gold.z);
