@@ -780,7 +780,7 @@ namespace Hearthgate.Game
             if (Input.GetKeyDown(KeyCode.Escape) && settingsBox != null && GameLoop.I && !GameLoop.I.Fallen) ShowSettings(false);   // Escape closes a card (bot round 5)
             {   // the coach follows the hand (review Nov 15 2026): once the ring it asked for is open, it names the button in it
                 string want = guideText;
-                if (ring && Guide.Pressing == "up" && (ringId == "gate" || ringId == "wiz")) want = "Press Upgrade defenses!";   // (the dock's gold button works too)
+                if (ring && Guide.Pressing == "up" && (ringId == "gate" || ringId == "wiz")) want = "Press Defenses!";   // (the dock's gold button works too)
                 else if (ring && Guide.Pressing == "re" && ringId != null && ringId.StartsWith("b")) want = "Press Rebuild!";
                 else if (ring && Guide.Pressing == "re" && ringId == "gate" && GameLoop.I.NextBuilding == null) want = "Press Ascend!";
                 if (want != null && guide.title.text != want) guide.title.text = want;
