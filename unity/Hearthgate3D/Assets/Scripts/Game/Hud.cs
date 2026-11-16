@@ -551,7 +551,7 @@ namespace Hearthgate.Game
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
-                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : "  <color=#CFE9B0>new</color>"), g.CanWork(bi), now);   // the name fits; the picture and "new" say it is a rebuild
+                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : " <color=#CFE9B0>rebuild</color>"), g.CanWork(bi), now);   // the name fits as the title; the price line says it is a rebuild
                 dockBld.cost.supportRichText = true;
                 if (dockBld.cap) { var kt = dockBld.cap.GetComponentInChildren<Text>(); string k = near >= 0 ? "E" : built ? "B" : "R"; if (kt && kt.text != k) kt.text = k; }
             }
