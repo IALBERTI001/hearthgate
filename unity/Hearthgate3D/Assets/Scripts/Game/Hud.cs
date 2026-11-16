@@ -60,12 +60,16 @@ namespace Hearthgate.Game
                 // smudge (owner, Nov 14 2026: "weird shadow under the numbers when button is not available")
                 if (!on && !p.veil && p.img)
                 {
-                    var v = new GameObject("Veil", typeof(RectTransform)).GetComponent<RectTransform>(); v.SetParent(p.rt, false);
+                    // the veil darkens the plate only, behind the words and the picture: the words stay sharp and readable, the
+                    // price turns rose (Show) and the picture greys (bot round 9: a whole-button veil looked muddy)
+                    var host = p.face ? p.face : p.rt;
+                    var v = new GameObject("Veil", typeof(RectTransform)).GetComponent<RectTransform>(); v.SetParent(host, false); v.SetAsFirstSibling();
                     v.anchorMin = Vector2.zero; v.anchorMax = Vector2.one; v.offsetMin = v.offsetMax = Vector2.zero;
-                    p.veil = v.gameObject.AddComponent<Image>(); p.veil.sprite = p.img.sprite; p.veil.type = p.img.type; p.veil.raycastTarget = false;
-                    p.veil.color = new Color(0.1f, 0.06f, 0.13f, 0.66f);   // can't buy: clearly darker than a button that can (the bot could not tell them apart)
+                    var src = p.face ? p.face.GetComponent<Image>() : p.img;
+                    p.veil = v.gameObject.AddComponent<Image>(); p.veil.sprite = src ? src.sprite : p.img.sprite; p.veil.type = Image.Type.Sliced; p.veil.raycastTarget = false;
+                    p.veil.color = new Color(0.12f, 0.08f, 0.15f, 0.72f);   // can't buy: clearly darker than a button that can (the bot could not tell them apart)
                 }
-                if (p.veil) { if (p.veil.enabled == on) p.veil.enabled = !on; if (!on && p.veil.transform.GetSiblingIndex() != p.rt.childCount - 1) p.veil.transform.SetAsLastSibling(); }
+                if (p.veil) { if (p.veil.enabled == on) p.veil.enabled = !on; }
                 else if (p.group) p.group.alpha = on ? 1f : 0.5f;   // a pressable without a panel image keeps the fade
                 p.s = Mathf.MoveTowards(p.s, target, Time.unscaledDeltaTime * 1.2f); p.rt.localScale = Vector3.one * p.s;
                 if (p.face) { if (p.shake > 0) { p.shake -= Time.unscaledDeltaTime; float sx = Mathf.Sin(p.shake * 70f) * 6f * (p.shake / 0.3f); p.face.anchoredPosition = new Vector2(sx, p.face.anchoredPosition.y); } else if (p.face.anchoredPosition.x != 0) p.face.anchoredPosition = new Vector2(0, p.face.anchoredPosition.y); }
