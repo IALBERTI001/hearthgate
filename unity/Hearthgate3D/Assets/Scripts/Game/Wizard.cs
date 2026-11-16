@@ -89,7 +89,7 @@ namespace Hearthgate.Game
         {
             On = !On; target = null; goal.SetActive(false); Guide.Done("walk");
             Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14); Sound.Play("surge", 0.35f);
-            if (On) Guide.Shout(toldCam ? "Click the ground (or WASD) to walk. At a door, E raises the building." : "Click the ground (or WASD) to walk. At a door, E raises the building. Right-drag turns the camera.", null);   // the bot never learned how to move or E
+            if (On) Guide.Shout("Click the ground or use WASD to walk. At a door, press E to raise the building.", null);   // the bot never learned how to move or E
             if (On) toldCam = true;
         }
 

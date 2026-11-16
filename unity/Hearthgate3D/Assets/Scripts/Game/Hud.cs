@@ -326,8 +326,9 @@ namespace Hearthgate.Game
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
             // Magister Bram's card, bottom left, his portrait in the medallion (the wizard); a tap skips the line
-            guide = Action("Guide", new Vector2(0.5f, 0), new Vector2(0, COACH_Y), new Vector2(460, 62), "walk", null, () => Guide.Skip(), null, false);   // bottom centre, over the walls bar: bottom left it hid the left rift and its first monsters (review Nov 15 2026)
-            guide.title.fontSize = 22; guide.p.rt.gameObject.SetActive(false);
+            guide = Action("Guide", new Vector2(0.5f, 0), new Vector2(0, COACH_Y), new Vector2(460, 66), "walk", null, () => Guide.Skip(), null, false);   // bottom centre, over the walls bar: bottom left it hid the left rift and its first monsters (review Nov 15 2026)
+            guide.title.fontSize = 20; guide.p.rt.gameObject.SetActive(false);
+            Fit(guide.title, new Vector2(460 - 74, 52), 14);   // two lines at most, inside the card (a long line ran off its edge)
 
             // settings (game-polish rule 19: the controls inside the game, the music and sound levels): a full button of the
             // kit like every other, its cog, its word and its key, in the bottom-right corner (owner, Nov 14 2026: "settings
