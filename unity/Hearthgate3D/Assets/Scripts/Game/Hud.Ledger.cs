@@ -71,7 +71,7 @@ namespace Hearthgate.Game
                     int m = HG.MILESTONES.FirstOrDefault(x => x > L);
                     d.text = $"<color=#CFE9B0>+{rs}/s</color>" + (m > 0 ? $"   ·   level {m} doubles it" : "");
                 }
-                else d.text = next ? "In ruins: rebuild it next" : "In ruins";
+                else d.text = next ? "In ruins: ready to rebuild" : "In ruins: rebuild the others first";
                 if (!built && !next) continue;
                 string label; System.Func<bool> on;
                 if (built)

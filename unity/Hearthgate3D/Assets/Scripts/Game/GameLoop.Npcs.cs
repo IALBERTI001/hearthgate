@@ -171,7 +171,7 @@ namespace Hearthgate.Game
         // inside the walls view, not past its edge: from out of sight they walked in at the bottom edge, huge and cropped,
         // and the fields in front of the walls looked empty (fresh-eyes review 2, Nov 14 2026: "the core fantasy, enemies
         // marching up the fields toward the walls, never shows"); a glowing rift on the lane says where they come from
-        public const float SPAWN_IN = 0.84f;
+        public const float SPAWN_IN = 0.76f;   // up out from under the dock (bots, Nov 15 2026: "purple splats under the HUD look like placeholders")
         void TickRifts(float dt)
         {
             if (art == null || art.rift == null) return;

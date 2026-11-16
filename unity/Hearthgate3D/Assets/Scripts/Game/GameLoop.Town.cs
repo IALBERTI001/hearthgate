@@ -221,6 +221,12 @@ namespace Hearthgate.Game
                  walkHoldAt = pt; walkHoldT = 0; return; }   // TickWalkHold: a long press opens the wizard's ring
             // the radial menus (Hud.Radial): a click on a tower, the gatehouse or a building rings it with its upgrades
             float px = Screen.height / 720f;
+            // a rift says what it is (the bots took them for placeholder splats)
+            for (int k = 0; k < 4; k++)
+            {
+                if (!rifts[k]) continue; var rs = cam.WorldToScreenPoint(rifts[k].position + Vector3.up * 0.6f);
+                if (rs.z > 0 && Vector2.Distance(pt, rs) < 44f * px) { Hud.CloseRing(); Hud.Banner("A rift in time: the monsters step out of it and march on the walls"); return; }
+            }
             // the Chronomancer and the Steward answer a click from the walls too (bot round 5: "clicking the ? does nothing")
             {
                 int kw = 0; bool kf = false; float kd = 48f * px;
