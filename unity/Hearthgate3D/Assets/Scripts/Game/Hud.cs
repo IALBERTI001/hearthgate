@@ -714,7 +714,7 @@ namespace Hearthgate.Game
             if (Input.GetMouseButtonDown(0) && !Paused)
             {   // a tap on a counter: where it comes from and what it buys
                 if (RectTransformUtility.RectangleContainsScreenPoint(shardRow, PointerPos, null))
-                    Banner("Starshards: rare treasure from bosses, Trials and Feats. The Chronomancer trains the wizard with them; they also rebuild fallen walls and buy looks from Mira at the Market"));
+                    Banner("Starshards: rare treasure from bosses, Trials and Feats. The Chronomancer trains the wizard with them; they also rebuild fallen walls and buy looks from Mira at the Market");
                 else if (g.ev != null && RectTransformUtility.RectangleContainsScreenPoint(rate.rectTransform, PointerPos, null))
                     Banner($"{g.ev.name}: {g.ev.line}");   // the named wave explains itself
                 else if (RectTransformUtility.RectangleContainsScreenPoint(ascRow, PointerPos, null))
