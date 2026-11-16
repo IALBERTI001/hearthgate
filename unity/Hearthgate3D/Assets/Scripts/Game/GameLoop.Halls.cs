@@ -26,7 +26,7 @@ namespace Hearthgate.Game
             }
             return false;
         }
-        public static string CentreName(int i) => HG.BUILDING_IDS[i] == "watchtower" ? "star table" : HG.BUILDING_IDS[i] == "market" ? "Starshard counter" : "great book";
+        public static string CentreName(int i) => HG.BUILDING_IDS[i] == "watchtower" ? "perk table" : HG.BUILDING_IDS[i] == "market" ? "Starshard counter" : "great book";
 
         void TickHalls(float dt)
         {
@@ -65,7 +65,7 @@ namespace Hearthgate.Game
             // the gamble, said once: past the Ascension point, a fall loses the whole run (GameLoop.Fall)
             if (CanAscend && !told.Contains("lockin") && !Hud.Paused) { told.Add("lockin"); Hud.Banner("You can Ascend! It locks this run in. If the walls fall first, the run is lost"); }
             if (P.ascensions > 0 && P.perkPts > 0 && !told.Contains("hallPerks") && !(Wizard.I && Wizard.I.On))
-            { told.Add("hallPerks"); Hud.Banner("Walk the town into the Watchtower: its star table keeps your perks"); }
+            { told.Add("hallPerks"); Hud.Banner("Walk the town into the Watchtower: its perk table keeps your perks"); }
         }
     }
 }

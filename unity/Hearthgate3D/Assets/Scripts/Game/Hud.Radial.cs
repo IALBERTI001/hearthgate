@@ -136,7 +136,7 @@ namespace Hearthgate.Game
             var g = GameLoop.I; if (g == null) return;
             var items = new List<RadialItem>
             {
-                new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", cost = true, line = () => HG.Fmt(g.UpgradeCost), can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
+                new RadialItem { label = "Defenses", icon = "tower", key = "U", cost = true, line = () => HG.Fmt(g.UpgradeCost), can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
 
             };
             // Ascend shows once the city is whole (review Nov 15 2026: a locked "rebuild the city" button in a new player's first ring)
@@ -168,7 +168,7 @@ namespace Hearthgate.Game
             }
             items.AddRange(new List<RadialItem>
             {
-                new RadialItem { label = "Upgrade defenses", icon = "tower", key = "U", cost = true, line = () => HG.Fmt(g.UpgradeCost), can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
+                new RadialItem { label = "Defenses", icon = "tower", key = "U", cost = true, line = () => HG.Fmt(g.UpgradeCost), can = () => g.CanUpgrade, act = () => g.Upgrade(), lit = () => Guide.Pressing == "up" },
             });
             if (g.TimeStopLevel > 0)
                 items.Add(new RadialItem { label = "Stop time", icon = "timestop", key = "F", line = () => g.TimeStopReady ? "ready" : $"in {Mathf.CeilToInt(g.TimeStopLeft)} s", can = () => g.TimeStopReady, act = () => g.UseTimeStop() });

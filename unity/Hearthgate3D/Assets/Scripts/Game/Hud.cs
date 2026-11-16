@@ -465,7 +465,7 @@ namespace Hearthgate.Game
             if (!g.CentreOn(i)) return "";
             switch (HG.BUILDING_IDS[i])
             {
-                case "watchtower": return P.perkPts > 0 ? $"\n<color=#FFD56B>{P.perkPts} perk point{(P.perkPts == 1 ? "" : "s")} at the star table</color>" : "\n<color=#D9C9A8>perks and stars inside</color>";
+                case "watchtower": return P.perkPts > 0 ? $"\n<color=#FFD56B>{P.perkPts} perk point{(P.perkPts == 1 ? "" : "s")} at the perk table</color>" : "\n<color=#D9C9A8>perks and stars inside</color>";
                 case "market": return $"\n<color=#FFB3E6>Shop · {P.shards} Starshards</color>";
                 case "library":
                     int claim = g.QuestsToClaim; return claim > 0 ? $"\n<color=#FFD56B>{claim} quest{(claim == 1 ? "" : "s")} to claim</color>" : FeatNews ? "\n<color=#FFD56B>a new Feat in the book</color>" : "\n<color=#D9C9A8>quests and Feats inside</color>";
@@ -560,7 +560,7 @@ namespace Hearthgate.Game
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
-                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>to Lv {HG.LevelOf(P, id) + 1}</color>" : ""), g.CanWork(bi), now);   // the name fits as the title; the price line says it is a rebuild
+                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + "", g.CanWork(bi), now);   // the name fits as the title; the price line says it is a rebuild
                 dockBld.cost.supportRichText = true;
                 if (dockBld.cap) { var kt = dockBld.cap.GetComponentInChildren<Text>(); string k = near >= 0 ? "E" : built ? "B" : "R"; if (kt && kt.text != k) kt.text = k; }
             }
@@ -724,7 +724,7 @@ namespace Hearthgate.Game
                 else if (RectTransformUtility.RectangleContainsScreenPoint(ascRow, PointerPos, null))
                     Banner(P.ascensions > 0 ? $"Ascension {P.ascensions}: your mark in time. Every Ascension makes the wizard and the city stronger, and a fall rewinds to it" : $"Reach wave {HG.AscendWave(P)} with the whole city rebuilt to Ascend: a mark in time the wizard can always return to");
                 else if (pk && RectTransformUtility.RectangleContainsScreenPoint(perkRow, PointerPos, null))
-                    Banner("Perk points: each Ascension pays them. Spend them at the Watchtower's star table");
+                    Banner("Perk points: each Ascension pays them. Spend them at the Watchtower's perk table");
             }
             double r = HG.CityRate(P, g.B) * g.SurgeX; rate.text = g.Fallen ? "" : r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" + (g.SurgeX > 1 ? "  <color=#FFB3D9>x2</color>" : "") : "";   // the Surge shows in the rate (bot round 9: "looked like it did nothing")   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
