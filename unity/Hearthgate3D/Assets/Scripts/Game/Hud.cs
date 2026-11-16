@@ -326,9 +326,9 @@ namespace Hearthgate.Game
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
             workCard = work.p.rt; workCard.gameObject.SetActive(false);
             // Magister Bram's card, bottom left, his portrait in the medallion (the wizard); a tap skips the line
-            guide = Action("Guide", new Vector2(0.5f, 0), new Vector2(0, COACH_Y), new Vector2(460, 66), "walk", null, () => Guide.Skip(), null, false);   // bottom centre, over the walls bar: bottom left it hid the left rift and its first monsters (review Nov 15 2026)
+            guide = Action("Guide", new Vector2(0.5f, 0), new Vector2(0, COACH_Y), new Vector2(560, 66), "walk", null, () => Guide.Skip(), null, false);   // bottom centre, over the walls bar: bottom left it hid the left rift and its first monsters (review Nov 15 2026)
             guide.title.fontSize = 20; guide.p.rt.gameObject.SetActive(false);
-            Fit(guide.title, new Vector2(460 - 74, 52), 14);   // two lines at most, inside the card (a long line ran off its edge)
+            Fit(guide.title, new Vector2(560 - 74, 52), 14);   // two lines at most, inside the card (a long line ran off its edge)
 
             // settings (game-polish rule 19: the controls inside the game, the music and sound levels): a full button of the
             // kit like every other, its cog, its word and its key, in the bottom-right corner (owner, Nov 14 2026: "settings
@@ -529,6 +529,7 @@ namespace Hearthgate.Game
             float left = icon + 16, w = a.p.rt.sizeDelta.x - left - (a.cap ? 28 : 10);
             var tr = a.title.rectTransform; tr.anchoredPosition = new Vector2(left, tr.anchoredPosition.y); tr.sizeDelta = new Vector2(w, tr.sizeDelta.y);
             a.costRow.anchoredPosition = new Vector2(left - 6, a.costRow.anchoredPosition.y); a.costRow.sizeDelta = new Vector2(w + 6, a.costRow.sizeDelta.y);
+            a.cost.fontSize = 15; a.gem.rectTransform.sizeDelta = new Vector2(15, 15);
         }
         Text walkBadge, bldBadge;
         Text Badge(RectTransform on)
