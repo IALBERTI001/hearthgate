@@ -61,11 +61,11 @@ namespace Hearthgate.Game
                         opts.Add(("Claim my bounty", "starshard", () => { g.ClaimBounty(); ShowTalk(who); }));
                     }
                     else if (P.bountyOn)
-                        say.text = $"\"<color=#BFE0FF>{P.bountyN} of {need}</color> slain by your hand so far. Climb the stair beside any tower and strike them from the wall. Spent your mana? The fountain fills it.\"";
+                        say.text = $"\"<color=#BFE0FF>{P.bountyN} of {need}</color> slain by your hand so far. Climb a wall stair and strike them from the wall. Spent your mana? The fountain fills it.\"";
                     else
                     {
                         say.text = P.bountyLv == 0
-                            ? $"\"The towers hold, but the watch needs your staff on the walls. Climb the stair beside any tower and strike the monsters yourself. Slay <color=#BFE0FF>{need}</color> by your own hand and the watch pays <color=#FFE68C>{pay} Starshards</color>.\""
+                            ? $"\"The towers hold, but the watch needs your staff on the walls. Climb a wall stair, one each side of the gate between the towers, and strike the monsters yourself. Slay <color=#BFE0FF>{need}</color> by your own hand and the watch pays <color=#FFE68C>{pay} Starshards</color>.\""
                             : $"\"More of them every night. Slay <color=#BFE0FF>{need}</color> from the walls and the watch pays <color=#FFE68C>{pay} Starshards</color>.\"";
                         opts.Add(("I'll take it", "walk", () => { g.TakeBounty(); ShowTalk(who); }));
                     }

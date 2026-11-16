@@ -125,7 +125,7 @@ namespace Hearthgate.Game
         public void TakeBounty()
         {
             P.bountyOn = true; P.bountyN = 0; Sound.Play("claim", 0.4f); Save();
-            if (!P.told.Contains("bounty1")) { P.told.Add("bounty1"); Hud.Banner("Climb the stair beside any tower (E at its foot), then click the monsters"); }
+            if (!P.told.Contains("bounty1")) { P.told.Add("bounty1"); Hud.Banner("Climb a wall stair (one each side of the gate, between the towers): E at its foot, then click the monsters"); }
         }
         public void ClaimBounty()
         {
