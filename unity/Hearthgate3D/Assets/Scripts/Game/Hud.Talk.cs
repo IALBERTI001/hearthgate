@@ -77,7 +77,7 @@ namespace Hearthgate.Game
             var g = GameLoop.I; var P = g.P; int lv = g.TimeStopLevel;
             var box = I.Modal("Training with Aurelian", new Vector2(720, 400), false); TalkingTo = GameLoop.TRAINER;
             I.Line(box, -66, "The time wizard's skills. Each grows stronger as you train it.", 18, new Color(0.88f, 0.84f, 0.9f));
-            var name = I.Label("Skill", box, new Vector2(0, 1), new Vector2(40, -112), 24, TextAnchor.UpperLeft); name.text = $"Time Stop  ·  level {lv}/3";
+            var name = I.Label("Skill", box, new Vector2(0, 1), new Vector2(40, -112), 24, TextAnchor.UpperLeft); name.text = $"Time Stop  ·  rank {lv} of 3";   // one word for it everywhere
             name.rectTransform.pivot = new Vector2(0, 1); name.rectTransform.sizeDelta = new Vector2(420, 30);
             var line = I.Label("SkillLine", box, new Vector2(0, 1), new Vector2(40, -148), 17, TextAnchor.UpperLeft); line.font = I.body; line.fontStyle = FontStyle.Normal;
             line.rectTransform.pivot = new Vector2(0, 1); line.rectTransform.sizeDelta = new Vector2(420, 60); line.horizontalOverflow = HorizontalWrapMode.Wrap;

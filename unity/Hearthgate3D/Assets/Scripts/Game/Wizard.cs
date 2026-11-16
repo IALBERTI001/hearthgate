@@ -236,7 +236,12 @@ namespace Hearthgate.Game
                     var face = new Vector3(-Mathf.Sin(yaw * Mathf.Deg2Rad), 0, -Mathf.Cos(yaw * Mathf.Deg2Rad));
                     if (to.magnitude < reach && Vector3.Angle(face, to) < 50f) Looking = i;
                 }
-            if (On && Near >= 0 && Looking < 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else { Sound.Dud(); GameLoop.I.Need(GameLoop.I.BestCost(Near), Field.Door(Near, 1f, 2.5f)); } }
+            int nk = int.MinValue;   // E beside the Chronomancer or the Steward talks to them (bot round 8: "E near Aurelian did nothing")
+            if (On && Input.GetKeyDown(KeyCode.E) && GameLoop.I)
+                foreach (int ki in new[] { GameLoop.TRAINER, GameLoop.STEWARD })
+                    if ((ki == GameLoop.TRAINER ? GameLoop.I.TrainerHere : GameLoop.I.StewardHere) && new Vector2(GameLoop.TalkAt(ki).x - pos.x, GameLoop.TalkAt(ki).z - pos.z).magnitude < 3f) nk = ki;
+            if (nk != int.MinValue) { Stop(); GameLoop.I.OpenHall(nk); }
+            else if (On && Near >= 0 && Looking < 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else { Sound.Dud(); GameLoop.I.Need(GameLoop.I.BestCost(Near), Field.Door(Near, 1f, 2.5f)); } }
 
             // the camera: from the walls it glides down into the town and settles behind and above him, looking the way the
             // wall view looks (FollowFrom keeps it inside the ring); high enough to look over a room's walls when he is inside

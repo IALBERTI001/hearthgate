@@ -548,7 +548,7 @@ namespace Hearthgate.Game
             foreach (var d in new[] { dockUp, dockBld, dockMults[0], dockMults[1], dockMults[2] }) if (d.p.rt.gameObject.activeSelf != show) d.p.rt.gameObject.SetActive(show);
             if (!show) return;
             int n = g.GateBuyCount(out double total);
-            Show(dockUp, "Defenses", HG.Fmt(total) + $"  <color=#FFF1C8>+{System.Math.Max(1, n)} lv</color>", n > 0, now);   // one format, affordable or not (the bot)
+            Show(dockUp, n > 1 ? $"Defenses +{n}" : "Defenses", HG.Fmt(total), n > 0, now);   // the levels ride on the name, the price has its line (bot round 8: "1.21K +5lv" crowded)   // one format, affordable or not (the bot)
             dockUp.cost.supportRichText = true;
             var wzr = Wizard.I; int near = wzr && wzr.On && wzr.Near >= 0 && (P.restored.Contains(HG.BUILDING_IDS[wzr.Near]) || HG.RestoreOffer(P).Contains(HG.BUILDING_IDS[wzr.Near])) ? wzr.Near : -1;
             int bi = near >= 0 ? near : g.BestBuilding();   // at a door: that building (the bot never found E)
@@ -1066,7 +1066,7 @@ namespace Hearthgate.Game
             LevelRow(box, -78, "Music", () => Sound.MusicLevel, Sound.SetMusicLevel);
             LevelRow(box, -136, "Sound effects", () => Sound.SfxLevel, v => { Sound.SetSfxLevel(v); Sound.Click(); });
             // the player shapes the HUD (game-hud-ui-design rule 7): its size, and how see-through the readouts and buttons are
-            LevelRow(box, -194, "HUD size", () => (HudScale - 0.8f) / 0.45f, v => SetHudScale(0.8f + Mathf.Round(Mathf.Clamp01(v) * 9f) / 9f * 0.45f), () => (HudScale < 0.95f ? "Small " : HudScale <= 1.05f ? "Normal " : "Large ") + $"{Mathf.RoundToInt(HudScale * 100)}%");   // the bar is a range: a half bar is "Normal" (bots read 100% on a half bar as wrong)
+            LevelRow(box, -194, "HUD size", () => (HudScale - 0.8f) / 0.45f, v => SetHudScale(0.8f + Mathf.Round(Mathf.Clamp01(v) * 9f) / 9f * 0.45f), () => HudScale < 0.95f ? "Small" : HudScale <= 1.05f ? "Normal" : "Large");   // the bar is a range: a half bar is "Normal" (bots read 100% on a half bar as wrong)
             LevelRow(box, -252, "HUD opacity", () => (HudAlpha - 0.4f) / 0.6f, v => SetHudAlpha(0.4f + Mathf.Clamp01(v) * 0.6f), () => $"{Mathf.RoundToInt(HudAlpha * 100)}%");
             BtnAt("S_Ctl", new Vector2(0.5f, 1), new Vector2(-118, -320), new Vector2(220, 52), () => ShowControls(), null, out var ctl, box).rt.pivot = new Vector2(0.5f, 1); ctl.text = "Controls";
             BtnAt("S_Def", new Vector2(0.5f, 1), new Vector2(118, -320), new Vector2(220, 52), () => { SetHudScale(1f); SetHudAlpha(1f); RefreshSettings(); }, () => HudScale != 1f || HudAlpha != 1f, out var dl, box).rt.pivot = new Vector2(0.5f, 1); dl.text = "Default HUD";

@@ -39,11 +39,11 @@ namespace Hearthgate.Game
             int n = items.Count;
             // the same kit plates as every button (owner, Nov 15 2026: "WHY can we not be consistent"): picture, name and price inside
             // the plate, keycap on its corner; set round an ellipse so the wide plates never touch
-            float RX = n <= 2 ? 150f : 175f, RY = n <= 2 ? 0f : n <= 4 ? 92f : 100f;
+            float RX = n <= 2 ? 150f : n == 3 ? 190f : 175f, RY = n <= 2 ? 0f : n <= 4 ? 92f : 100f;
             for (int k = 0; k < n; k++)
             {
                 var it = items[k];
-                float a = n == 1 ? 90f : n == 2 ? (k == 0 ? 180f : 0f) : n == 3 ? 150f - k * 60f : 90f - k * 360f / n;
+                float a = n == 1 ? 90f : n == 2 ? (k == 0 ? 180f : 0f) : n == 3 ? 165f - k * 75f : 90f - k * 360f / n;   // three: wide apart, so the side plates never tuck under the top one (bot round 8)
                 var dir = new Vector2(Mathf.Cos(a * Mathf.Deg2Rad), Mathf.Sin(a * Mathf.Deg2Rad));
                 var home = n == 1 ? new Vector2(0, 66) : new Vector2(dir.x * RX, dir.y * (RY > 0 ? RY : 0));
                 var item = it; var act = I.Action("R" + k, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(176, 56), it.icon, it.key,
@@ -202,6 +202,8 @@ namespace Hearthgate.Game
                 items.Add(new RadialItem { label = "Rebuild", icon = "rebuild", key = HG.RestoreOffer(P).Contains(id) ? "R" : null,
                     cost = true, line = () => HG.RestoreOffer(P).Contains(id) ? HG.Fmt(g.RestoreCost) : g.NextBuilding != null ? "after " + HG.ById(g.NextBuilding).name : "later",
                     can = () => g.CanWork(i), act = () => g.WorkOn(i), closes = true, lit = () => Guide.Pressing == "re" && HG.RestoreOffer(P).Contains(id) });
+            if (GameLoop.KeeperOf(i) != null && g.CentreOn(i))   // its keeper is in: talk to them from here (bot round 8 never found the Market's shop)
+                items.Add(new RadialItem { label = id == "market" ? "Shop" : "Talk", icon = "b_" + id, line = () => KeeperName(GameLoop.KeeperOf(i)).Split(' ')[0], act = () => g.OpenHall(i), closes = true });
             items.Add(new RadialItem { label = "Walk there", icon = "walk", act = () => Wizard.I?.WalkTo(i), closes = true });
             AddLedger(items, g);
             OpenRing("b" + i, Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) * 0.6f), b.name + (P.restored.Contains(id) ? $" · level {HG.LevelOf(P, id)}" : ""), items);
