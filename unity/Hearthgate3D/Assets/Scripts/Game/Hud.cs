@@ -493,7 +493,7 @@ namespace Hearthgate.Game
             var t = r.gameObject.AddComponent<Text>(); t.font = font; t.fontSize = size; t.fontStyle = FontStyle.Bold; t.color = CREAM; t.alignment = al;
             t.horizontalOverflow = HorizontalWrapMode.Overflow; t.raycastTarget = false;
             var o = r.gameObject.AddComponent<Outline>(); o.effectColor = INK; o.effectDistance = new Vector2(2, -2);
-            r.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(0, -4);
+            var sh = r.gameObject.AddComponent<Shadow>(); sh.effectDistance = new Vector2(0, -2); sh.effectColor = new Color(INK.r, INK.g, INK.b, 0.55f);   // a soft lift for words over the world, not a second copy under them (owner, Nov 15 2026: "Shadows under text creates an issue")
             return t;
         }
         // keep a label inside its box: wrap at the box width (game-polish rule 5: nothing ever clips). Not Unity's best fit:
@@ -801,6 +801,7 @@ namespace Hearthgate.Game
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
             if (Input.GetKeyDown(KeyCode.M)) { bool on = !(Sound.MusicOn || Sound.SfxOn); Sound.SetMusic(on); Sound.SetSfx(on); Banner(on ? "Sound on" : "Sound off"); RefreshSettings(); }
             if (bannerT > 0) { bannerT -= Time.unscaledDeltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
+            CleanCards();
             if (!Paused && pendingBanner != null) { var pb = pendingBanner; pendingBanner = null; Banner(pb); }
             if (bannerShade) bannerShade.rectTransform.anchoredPosition = banner.rectTransform.anchoredPosition + new Vector2(0, 8);   // the shade moves with the words
             if (bannerShade) { var sc = bannerShade.color; sc.a = 0.62f * banner.color.a * (bannerT > 0 ? 1 : 0); bannerShade.color = sc; }
@@ -826,6 +827,30 @@ namespace Hearthgate.Game
             sr.SetAsLastSibling(); b.transform.SetAsLastSibling();   // on top of everything (round 6: banners were drawn under something and never seen)
         }
         Image bannerShade; string pendingBanner;
+        // words on a card's solid panel need no outline and no shadow: the display face is for titles and buttons, the lists
+        // read in the clean body face (owner, Nov 15 2026, the Town Ledger: "this font is very illegible. Shadows under text
+        // creates an issue"). Run over every open card; buttons keep their thin rim.
+        int cleanN = -1; RectTransform cleanFor;
+        void CleanCards()
+        {
+            foreach (var root in new[] { settingsBox, forkBox })
+            {
+                if (!root) continue;
+                var texts = root.GetComponentsInChildren<Text>(true);
+                if (root == cleanFor && texts.Length == cleanN) continue;
+                cleanFor = root; cleanN = texts.Length;
+                foreach (var t in texts)
+                {
+                    bool inButton = false; for (var p = t.transform.parent; p && p != root; p = p.parent) if (p.name == "Face") { inButton = true; break; }
+                    foreach (var e in t.GetComponents<Shadow>())
+                    {
+                        if (e is Outline) { if (!inButton) e.enabled = false; }
+                        else e.enabled = false;
+                    }
+                    if (!inButton && t.font == font && t.fontSize < 28) { t.font = body; t.fontStyle = t.fontSize >= 18 ? FontStyle.Bold : FontStyle.Normal; }
+                }
+            }
+        }
         public static string Probe2()
         {
             if (!I) return "no hud"; var sb = new System.Text.StringBuilder(); var b = I.banner;
