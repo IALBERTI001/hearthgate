@@ -847,7 +847,7 @@ namespace Hearthgate.Game
                         if (e is Outline) { if (!inButton) e.enabled = false; }
                         else e.enabled = false;
                     }
-                    if (!inButton && t.font == font && t.fontSize < 28) { t.font = body; t.fontStyle = FontStyle.Normal; }   // the body face has no bold: a Bold style drew nothing
+                    if (!inButton && t.font == font && t.fontSize < 28) { t.font = body; t.fontStyle = FontStyle.Normal; t.verticalOverflow = VerticalWrapMode.Overflow; }   // the body face stands taller: a line that does not fit its box is dropped whole
                 }
             }
         }
