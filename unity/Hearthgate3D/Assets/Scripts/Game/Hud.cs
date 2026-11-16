@@ -63,7 +63,7 @@ namespace Hearthgate.Game
                     var v = new GameObject("Veil", typeof(RectTransform)).GetComponent<RectTransform>(); v.SetParent(p.rt, false);
                     v.anchorMin = Vector2.zero; v.anchorMax = Vector2.one; v.offsetMin = v.offsetMax = Vector2.zero;
                     p.veil = v.gameObject.AddComponent<Image>(); p.veil.sprite = p.img.sprite; p.veil.type = p.img.type; p.veil.raycastTarget = false;
-                    p.veil.color = new Color(0.12f, 0.07f, 0.15f, 0.55f);
+                    p.veil.color = new Color(0.1f, 0.06f, 0.13f, 0.66f);   // can't buy: clearly darker than a button that can (the bot could not tell them apart)
                 }
                 if (p.veil) { if (p.veil.enabled == on) p.veil.enabled = !on; if (!on && p.veil.transform.GetSiblingIndex() != p.rt.childCount - 1) p.veil.transform.SetAsLastSibling(); }
                 else if (p.group) p.group.alpha = on ? 1f : 0.5f;   // a pressable without a panel image keeps the fade
@@ -312,8 +312,14 @@ namespace Hearthgate.Game
             dockUp = Action("DockUp", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y), new Vector2(190, DOCK_H), "tower", "U", () => GameLoop.I.UpgradeBulk(), () => GameLoop.I.CanUpgrade, true); dockUp.p.repeat = true;
             dockBld = Action("DockBld", new Vector2(0.5f, 0), new Vector2(-95, DOCK_Y), new Vector2(150, DOCK_H), "upgrade", "B", () => GameLoop.I.BuyBest(), () => { int i = GameLoop.I.BestBuilding(); return i >= 0 && GameLoop.I.CanWork(i); }, false); dockBld.p.repeat = true;
             dockLed = Action("DockLed", new Vector2(0.5f, 0), new Vector2(190, DOCK_Y), new Vector2(64, DOCK_H), "ledger", "L", () => ShowLedger("town"), () => GameLoop.I.StewardHere, false);
-            dockMult = Action("DockMult", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y + DOCK_H + 2), new Vector2(84, 32), null, "V", () => GameLoop.I.CycleMult(), null, false);
-            foreach (var d in new[] { dockUp, dockBld, dockLed, dockMult }) d.p.rt.pivot = new Vector2(0.5f, 0);
+            // how many to buy: three chips in a row (the bot read one cycling chip as a dropdown), the chosen one lit
+            for (int k = 0; k < 3; k++)
+            {
+                int kk = k; dockMults[k] = Action("DockMult" + k, new Vector2(0.5f, 0), new Vector2(80 + (k - 1) * 58, DOCK_Y + DOCK_H + 2), new Vector2(54, 30), null, null, () => { GameLoop.I.MultIx = kk; Sound.Click(); }, null, false);
+                dockMults[k].p.rt.pivot = new Vector2(0.5f, 0);
+            }
+            dockMult = dockMults[0];
+            foreach (var d in new[] { dockUp, dockBld, dockLed }) d.p.rt.pivot = new Vector2(0.5f, 0);
             dockLed.p.rt.gameObject.SetActive(false);
             Slim(dockUp, 44); Slim(dockBld, 44);   // the corridor between the middle lanes holds two buttons: the ledger is on L, in every ring and at Tobin's booth
             work = Action("Work", tr, new Vector2(-16, -202), new Vector2(280, 56), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
@@ -533,26 +539,29 @@ namespace Hearthgate.Game
         void TickDock(GameLoop g, float now)
         {
             var P = g.P; bool show = !g.Fallen;
-            foreach (var d in new[] { dockUp, dockBld, dockMult }) if (d.p.rt.gameObject.activeSelf != show) d.p.rt.gameObject.SetActive(show);
+            foreach (var d in new[] { dockUp, dockBld, dockMults[0], dockMults[1], dockMults[2] }) if (d.p.rt.gameObject.activeSelf != show) d.p.rt.gameObject.SetActive(show);
             if (!show) return;
             int n = g.GateBuyCount(out double total);
             Show(dockUp, "Defenses", HG.Fmt(total) + (n > 1 ? $"  <color=#FFF1C8>+{n} lv</color>" : $"  <color=#FFF1C8>Lv {P.gateLevel + 1}</color>"), n > 0, now);
             dockUp.cost.supportRichText = true;
-            int bi = g.BestBuilding();
+            var wzr = Wizard.I; int near = wzr && wzr.On && wzr.Near >= 0 && (P.restored.Contains(HG.BUILDING_IDS[wzr.Near]) || HG.RestoreOffer(P).Contains(HG.BUILDING_IDS[wzr.Near])) ? wzr.Near : -1;
+            int bi = near >= 0 ? near : g.BestBuilding();   // at a door: that building (the bot never found E)
             if (bi >= 0)
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
                 Show(dockBld, built ? HG.ById(id).name : "Rebuild", HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : $"  <color=#E8DCEF>{HG.ById(id).name}</color>"), g.CanWork(bi), now);
                 dockBld.cost.supportRichText = true;
-                if (!bldBadge) bldBadge = Badge(dockBld.p.rt);
-                int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
-                if (!built && g.CanRestore) ready = System.Math.Max(ready, 1);
-                bool b = ready > 0; if (bldBadge.transform.parent.gameObject.activeSelf != b) bldBadge.transform.parent.gameObject.SetActive(b); bldBadge.text = ready.ToString();
+                if (dockBld.cap) { var kt = dockBld.cap.GetComponentInChildren<Text>(); string k = near >= 0 ? "E" : built ? "B" : "R"; if (kt && kt.text != k) kt.text = k; }
             }
             else Show(dockBld, "Buildings", null, false, now);
             Show(dockLed, "", null, g.StewardHere, now);
-            Show(dockMult, g.MultLabel, null, true, now);
+            for (int k = 0; k < 3; k++)
+            {
+                var m = dockMults[k]; bool on = g.MultIx == k; Show(m, k == 0 ? "x1" : k == 1 ? "x10" : "Max", null, true, now);
+                m.title.fontSize = 15; m.title.color = on ? RES : new Color(0.8f, 0.74f, 0.84f);
+                if (m.glow) { var c = m.glow.color; c.a = on ? 0.8f : 0f; m.glow.color = c; }
+            }
             // the guide's "up" now points at the dock's gold button
             if (dockUp.glow) { var c = dockUp.glow.color; c.a = Guide.Pressing == "up" ? 0.75f + 0.25f * Mathf.Sin(now * 7f) : n > 0 ? 0.35f + 0.25f * Mathf.Sin(now * 3.2f) : 0f; dockUp.glow.color = c; }
         }
@@ -560,7 +569,7 @@ namespace Hearthgate.Game
         // road between the two middle lanes; Walk and Settings stacked as two pills in the bottom-right corner; the coach and
         // a boss's bar above the dock
         public const float DOCK_Y = 8f, DOCK_H = 70f, WALLS_Y = 118f, BOSS_Y = 152f, COACH_Y = 194f;
-        Act dockUp, dockBld, dockLed, dockMult;
+        Act dockUp, dockBld, dockLed, dockMult; readonly Act[] dockMults = new Act[3];
         void LayoutActions()
         {
             void Place(RectTransform r, Vector2 anchor, Vector2 at, Vector2 size)
@@ -729,9 +738,7 @@ namespace Hearthgate.Game
             int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
             Show(walk, wz && wz.On ? "Walls" : "Walk", null, true, now);
             {   // a red count badge on its corner (the same badge as the dock's): upgrades ready in town
-                if (!walkBadge) walkBadge = Badge(walk.p.rt);
-                bool show = !(wz && wz.On) && ready > 0; var badge = walkBadge.transform.parent.gameObject; if (badge.activeSelf != show) badge.SetActive(show);
-                walkBadge.text = ready.ToString();
+                // no count badge: the bot read the red numbers as noise; the dock's green button already says what to raise next
             }
             TickDock(g, now);
             bool showWork = false; if (workCard.gameObject.activeSelf != showWork) workCard.gameObject.SetActive(showWork);   // the building's own board has it now (owner, Nov 14 2026)
@@ -1033,18 +1040,18 @@ namespace Hearthgate.Game
         void ShowControls()
         {
             ShowSettings(false);
-            var box = Modal("Controls", new Vector2(600, 460));
+            var box = Modal("Controls", new Vector2(720, 520));
             string[,] rows = {
-                { "U", "Upgrade the defenses (towers and walls)" }, { "R", "Rebuild the next building" }, { "T", "Walk the town / back to the walls" },
+                { "U (hold)", "Upgrade the defenses" }, { "B", "Raise the best building (R: rebuild the next)" }, { "V", "Buy x1, x10 or Max" }, { "L", "The Town Ledger" }, { "T", "Walk the town / back to the walls" },
                 { "WASD, arrows", "Walk (ZQSD on AZERTY)" }, { "Tap or click", "Walk to that spot, or press a button" }, { "E", "Work on the building you stand in" },
-                { "X", "Start a Surge at the fountain" }, { "F", "Stop time, on the town walk (Aurelian teaches it)" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "Settings" } };
+                { "X", "Start a Surge at the fountain" }, { "F", "Stop time on the town walk" }, { "Right-drag, wheel, C", "Turn, raise, reset the town camera" }, { "M", "Sound on or off" }, { "P", "Settings" } };
             for (int k = 0; k < rows.GetLength(0); k++)
             {
                 float y = -70 - k * 26;
                 var key = Label("K" + k, box, new Vector2(0.5f, 1), new Vector2(-30, y), 17, TextAnchor.UpperRight); key.font = body; key.color = RES; key.text = rows[k, 0];
                 key.rectTransform.pivot = new Vector2(1, 1); key.rectTransform.sizeDelta = new Vector2(200, 24);
                 var what = Label("W" + k, box, new Vector2(0.5f, 1), new Vector2(-10, y), 17, TextAnchor.UpperLeft); what.font = body; what.text = rows[k, 1];
-                what.rectTransform.pivot = new Vector2(0, 1); what.rectTransform.sizeDelta = new Vector2(300, 24);
+                what.rectTransform.pivot = new Vector2(0, 1); what.rectTransform.sizeDelta = new Vector2(360, 24); what.horizontalOverflow = HorizontalWrapMode.Wrap;   // inside the card (the bot found lines running past its edge)
             }
             BtnAt("C_Back", new Vector2(0.5f, 0), new Vector2(0, 16), new Vector2(230, 56), () => { ShowSettings(false); ShowSettings(true); }, null, out var cb, box).rt.pivot = new Vector2(0.5f, 0); cb.text = "Back";
         }

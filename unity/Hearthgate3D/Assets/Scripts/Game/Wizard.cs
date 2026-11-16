@@ -89,7 +89,7 @@ namespace Hearthgate.Game
         {
             On = !On; target = null; goal.SetActive(false); Guide.Done("walk");
             Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14); Sound.Play("surge", 0.35f);
-            if (On) Hud.Banner(toldCam ? "Walk into a building to work on it" : "Walk into a building to work on it. Right-drag turns the camera, the wheel raises it");
+            if (On) Guide.Shout(toldCam ? "Click the ground (or WASD) to walk. At a door, E raises the building." : "Click the ground (or WASD) to walk. At a door, E raises the building. Right-drag turns the camera.", null);   // the bot never learned how to move or E
             if (On) toldCam = true;
         }
 
@@ -206,7 +206,7 @@ namespace Hearthgate.Game
                     var face = new Vector3(-Mathf.Sin(yaw * Mathf.Deg2Rad), 0, -Mathf.Cos(yaw * Mathf.Deg2Rad));
                     if (to.magnitude < reach && Vector3.Angle(face, to) < 50f) Looking = i;
                 }
-            if (On && Near >= 0 && Looking < 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else Sound.Dud(); }
+            if (On && Near >= 0 && Looking < 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else { Sound.Dud(); GameLoop.I.Need(GameLoop.I.BestCost(Near), Field.Door(Near, 1f, 2.5f)); } }
 
             // the camera: from the walls it glides down into the town and settles behind and above him, looking the way the
             // wall view looks (FollowFrom keeps it inside the ring); high enough to look over a room's walls when he is inside

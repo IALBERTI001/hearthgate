@@ -420,7 +420,7 @@ namespace Hearthgate.Game
             if (!quiet) { foreach (var tw in towers) Fx.I.Burst(tw.Muzzle, Field.GOLD, 6); Sound.Play("tier_up", 0.5f); }
             int f = HG.PendingFork(P); if (f > 0) Hud.ShowFork(f);
         }
-        public void Fork(int stage, string id) { Sound.Play("claim", 0.45f); P.SetFork(stage, id); B = HG.Bonuses(P); Save(); }
+        public void Fork(int stage, string id) { Sound.Play("claim", 0.45f); P.SetFork(stage, id); B = HG.Bonuses(P); Save(); var f = HG.FORKS[stage].FirstOrDefault(x => x.id == id); if (f != null) Hud.Banner($"{f.name}: {f.line}"); }   // the choice is confirmed (the bot: "nothing confirmed it")
         public void Restore(string id = null)
         {
             id ??= NextBuilding; if (id == null || !CanRestore) return;

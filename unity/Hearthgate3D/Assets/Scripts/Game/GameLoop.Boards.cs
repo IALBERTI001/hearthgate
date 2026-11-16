@@ -40,8 +40,18 @@ namespace Hearthgate.Game
                     boardTxt[i] = t;
                 }
                 var bt = boardTxt[i];
-                if (bt.gameObject.activeSelf != built) bt.gameObject.SetActive(built);   // a ruin's charred board stays bare
-                if (!built) continue;
+                if (!bt.gameObject.activeSelf) bt.gameObject.SetActive(true);
+                if (!built)
+                {   // a ruin's charred board says so, and the next one in line says what it costs (the bot: "blank black signboards")
+                    var rt0 = (RectTransform)bt.transform.parent; var f0 = Field.Front(i);
+                    rt0.rotation = Quaternion.AngleAxis(-6.9f, -new Vector3(f0.x, 0, f0.y)) * Quaternion.LookRotation(-new Vector3(f0.x, 0, f0.y));   // the charred board hangs askew
+                    bool next = HG.RestoreOffer(P).Contains(id);
+                    string r0 = next ? $"<size=46>{HG.ById(id).name}</size>\n<size=60><color=#CFE9B0>Rebuild</color></size>\n<size=44><color=#FFE68C>{HG.Fmt(RestoreCost)}</color></size>" : $"<size=46>{HG.ById(id).name}</size>\n<size=50><color=#B8A8BE>in ruins</color></size>";
+                    if (r0 != boardShown[i]) { bt.text = r0; boardShown[i] = r0; }
+                    bt.color = new Color(1f, 0.94f, 0.8f);
+                    continue;
+                }
+                { var rt1 = (RectTransform)bt.transform.parent; var f1 = Field.Front(i); rt1.rotation = Quaternion.LookRotation(-new Vector3(f1.x, 0, f1.y)); }
                 var b = HG.ById(id); int L = HG.LevelOf(P, id); double r = HG.BuildingRate(P, id, B);
                 bool can = CanWork(i), near = wz && wz.On && wz.Near == i;
                 string rs = r < 10 ? r.ToString("0.#") : HG.Fmt(r);

@@ -82,9 +82,12 @@ namespace Hearthgate.Game
             // the hat tip: a spring that lags the body's bob and the change of speed, then flops on (rule 7)
             if (hat)
             {
-                float accel = (speed - lastSpeed) / dt; lastSpeed = speed;
+                float accel = (speed - lastSpeed) / Mathf.Max(dt, 1f / 120f); lastSpeed = speed;
                 float target = Mathf.Clamp(speed * 5f, 0, 18f) + Mathf.Clamp(accel * 1.5f, -12f, 12f) + Mathf.Cos(phase * 2f) * amp * 10f;   // + is back
-                hatVel += ((target - hatAng) * 90f - hatVel * 9f) * dt; hatAng += hatVel * dt;
+                // in small steps: one long frame (a slow machine, a hidden tab) made the spring blow up to NaN and flooded the
+                // console with rotation errors (the naive-player bot, Nov 15 2026)
+                for (float left = Mathf.Min(dt, 0.25f); left > 0; left -= 1f / 120f) { float h = Mathf.Min(left, 1f / 120f); hatVel += ((target - hatAng) * 90f - hatVel * 9f) * h; hatAng += hatVel * h; }
+                if (float.IsNaN(hatAng) || float.IsNaN(hatVel) || Mathf.Abs(hatAng) > 90f) { hatAng = 0; hatVel = 0; }
                 hat.localRotation = rHat * Quaternion.Euler(hatAng, 0, Mathf.Sin(phase) * amp * 8f);
             }
         }

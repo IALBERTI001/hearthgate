@@ -26,8 +26,8 @@ namespace Hearthgate.Game
         {
             int want = Mult == 0 ? 500 : Mult, bought = 0;
             for (int k = 0; k < want && CanUpgrade && HG.PendingFork(P) == 0; k++) { Upgrade(bought > 0); bought++; }
-            if (bought == 0) Sound.Dud();
-            else if (bought > 1) Fx.I.Pop(Field.GateTop + Vector3.up * 2f, $"+{bought} levels", Field.GOLD, 34);
+            if (bought == 0) { Sound.Dud(); Need(UpgradeCost, Field.GateTop + Vector3.up * 1.5f); }
+            else Fx.I.Pop(Field.GateTop + Vector3.up * 2f, bought > 1 ? $"Defenses +{bought} levels" : $"Defenses Lv {P.gateLevel}", Field.GOLD, 34);   // every buy is seen
         }
 
         // the building whose next level pays itself back soonest; the ruin next in line comes first while it waits
@@ -49,19 +49,22 @@ namespace Hearthgate.Game
             int want = Mult == 0 ? 500 : Mult, bought = 0;
             for (int k = 0; k < want; k++)
             {
-                int i = BestBuilding(); if (i < 0 || !CanWork(i)) break;
+                var wz = Wizard.I; int i = wz && wz.On && wz.Near >= 0 && (P.restored.Contains(HG.BUILDING_IDS[wz.Near]) || HG.RestoreOffer(P).Contains(HG.BUILDING_IDS[wz.Near])) ? wz.Near : BestBuilding();
+                if (i < 0 || !CanWork(i)) { if (bought == 0 && i >= 0) Need(BestCost(i), Field.Door(i, 1f, 2.5f)); break; }
                 bool rebuild = !P.restored.Contains(HG.BUILDING_IDS[i]);
                 WorkOn(i, bought > 0); bought++;
                 if (rebuild) break;   // a rebuild is its own moment: one at a time
             }
             if (bought == 0) Sound.Dud();
         }
+        // a press that cannot buy says what it needs, where the eye is (the bot: "no need-N feedback")
+        public void Need(double cost, Vector3 at) { if (Fx.I) Fx.I.Pop(at, "Need " + HG.Fmt(cost), new Color(1f, 0.62f, 0.55f), 28, 0.9f); }
 
         float uHeld, uNext;
         void TickDockKeys()
         {
             if (Hud.Paused) return;
-            if (Input.GetKeyDown(KeyCode.U)) { if (CanUpgrade) { Sound.Click(); UpgradeBulk(); } else Sound.Dud(); uHeld = 0; uNext = 0.35f; }
+            if (Input.GetKeyDown(KeyCode.U)) { Sound.Click(); UpgradeBulk(); uHeld = 0; uNext = 0.35f; }
             else if (Input.GetKey(KeyCode.U))
             {   // held: again and again, faster the longer it is held
                 uHeld += Time.unscaledDeltaTime;
