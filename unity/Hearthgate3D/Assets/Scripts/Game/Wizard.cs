@@ -258,7 +258,7 @@ namespace Hearthgate.Game
                 }
             // the stair at hand, and its mana: the fountain fills him, anywhere else only a trickle
             StairNear = -1;
-            if (On && !onWall) for (int k2 = 0; k2 < 4; k2++) if ((GameLoop.Posts[k2].foot - pos).magnitude < 2.4f) StairNear = k2;
+            if (On && !onWall) for (int k2 = 0; k2 < 4; k2++) if (GameLoop.Posts[k2].stair && (GameLoop.Posts[k2].foot - pos).magnitude < 2.4f) StairNear = k2;
             if (onWall) { Near = -1; Inside = -1; Looking = -1; }
             Refilling = On && !onWall && new Vector2(pos.x - Field.PLAZA.x, pos.z - Field.PLAZA.z).magnitude < FOUNTAIN_R + 2.6f;
             float was0 = Mana; Mana = Mathf.Min(MANA_MAX, Mana + (Refilling ? MANA_FOUNTAIN : MANA_TRICKLE) * dt);
@@ -303,7 +303,8 @@ namespace Hearthgate.Game
         }
 
         // ---------- the wall posts ----------
-        public void DevPost(int k) { pos = GameLoop.Posts[k].foot; pos.y = 0; StartClimb(k, true); }   // test hook (GameLoop.Dev)
+        public void DevPost(int k) { int s = GameLoop.Posts[k].stair ? k : k - 2; pos = GameLoop.Posts[s].foot; pos.y = 0; StartClimb(s, true); devTo = k; }
+        int devTo = -1;   // test hook (GameLoop.Dev)
         void StartClimb(int k, bool up)
         {
             var ps = GameLoop.Posts[k]; Stop(); climbAfter = -1;
@@ -332,6 +333,7 @@ namespace Hearthgate.Game
             if (climbUp)
             {
                 Post = k; wallPos = GameLoop.Posts[k].stand;
+                if (devTo >= 0 && devTo != k) { Post = devTo; wallPos = GameLoop.Posts[devTo].stand; } devTo = -1;
                 var gp = GameLoop.I ? GameLoop.I.P : null;
                 if (gp != null && !gp.told.Contains("post1")) { gp.told.Add("post1"); Hud.Banner("On the wall! Click a monster to cast. A / D: the next post. S: climb down"); }
             }
@@ -345,7 +347,12 @@ namespace Hearthgate.Game
             if (castCd < CAST_EVERY - 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(ps.outward.x, ps.outward.z) * Mathf.Rad2Deg + 180f, 360f * dt);   // models face -Z: he looks out over the field
             if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.Q)) { Hop(-1); return; }
             if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow)) { Hop(1); return; }
-            if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.E)) { StartClimb(Post, false); return; }
+            if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.E))
+            {   // down the stair on this side of the gate (an outer post blinks back to the inner one first)
+                int down = ps.stair ? Post : (Post == 2 ? 0 : 1);
+                if (down != Post) { Fx.I.Burst(wallPos + Vector3.up, new Color(0.6f, 0.85f, 1f), 14); Post = down; wallPos = GameLoop.Posts[down].stand; }
+                StartClimb(Post, false); return;
+            }
             if (Input.GetMouseButton(0) && !Hud.OnHud(Hud.PointerPos) && castCd <= 0) Cast(Input.GetMouseButtonDown(0));
         }
         void Cast(bool pressed)
@@ -377,7 +384,7 @@ namespace Hearthgate.Game
             k = -1; float best = 70f * Screen.height / 720f;
             for (int i = 0; i < 4; i++)
             {
-                var ps = GameLoop.Posts[i];
+                var ps = GameLoop.Posts[i]; if (!ps.stair) continue;
                 foreach (var w in new[] { ps.foot + Vector3.up * 0.5f, (ps.bottom + ps.top) / 2f, ps.landing + Vector3.up * 1.4f })
                 {
                     var s2 = cam.WorldToScreenPoint(w); if (s2.z <= 0) continue;

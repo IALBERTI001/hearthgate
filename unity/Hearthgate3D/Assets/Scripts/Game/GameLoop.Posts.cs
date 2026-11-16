@@ -25,7 +25,7 @@ namespace Hearthgate.Game
         public const float WALK_Y = Field_WALL_H + 0.18f, Field_WALL_H = 3.4f;   // the wall walk (hg_layout.WALL_H, hg_front.wall)
 
         // ---------- the posts: one by each tower, its stair running along the wall away from the gate ----------
-        public struct PostSpot { public Vector3 stand, foot, bottom, top, landing, outward, along, look; public int tower; }
+        public struct PostSpot { public Vector3 stand, foot, bottom, top, landing, outward, along, look; public int tower; public bool stair; }
         static PostSpot[] posts;
         public static PostSpot[] Posts { get { if (posts == null) posts = Enumerable.Range(0, 4).Select(MakePost).ToArray(); return posts; } }
         // the ring as the wall is built (hg_front.wall): x = RX cos a, z = -RZ + RZ sin a
@@ -38,9 +38,13 @@ namespace Hearthgate.Game
         }
         static PostSpot MakePost(int i)
         {
-            var t = Field.Tower(i); float a0 = Mathf.Atan2((t.z + Field.RZ) / Field.RZ, t.x / Field.RX), sgn = t.x > 0 ? -1f : 1f;   // away from the gate
+            // the stairs: one each side, between the inner and the outer tower (behind the outer towers the Cottages and the Tavern
+            // leave no room, and the walk camera sat in their roofs); the outer posts stand on that same stretch of wall, toward the
+            // gate, and he blinks along the wall to them (A / D)
+            bool inner = i < 2;
+            var t = Field.Tower(i); float a0 = Mathf.Atan2((t.z + Field.RZ) / Field.RZ, t.x / Field.RX), sgn = (t.x > 0 ? -1f : 1f) * (inner ? 1f : -1f);   // inner: away from the gate; outer: toward it
             float aPost = Along(a0, 3.7f, sgn), aTop = Along(a0, 3.45f, sgn), aFoot = Along(a0, 8.05f, sgn), aWay = Along(a0, 8.5f, sgn);
-            var n = Out(aPost); var ps = new PostSpot { tower = i, outward = n };
+            var n = Out(aPost); var ps = new PostSpot { tower = i, outward = n, stair = inner };
             ps.stand = Ring(aPost) - n * 0.25f + Vector3.up * WALK_Y;
             ps.landing = (Ring(aTop) - Out(aTop) * 0.9f + Ring(aPost) - Out(aPost) * 0.25f) * 0.5f + Vector3.up * WALK_Y;   // off the top step onto the walk, clear of the brazier
             ps.top = Ring(aTop) - Out(aTop) * 1.65f + Vector3.up * WALK_Y;
@@ -62,6 +66,7 @@ namespace Hearthgate.Game
                 stairs = new GameObject[4];
                 for (int i = 0; i < 4; i++)
                 {
+                    if (!Posts[i].stair) continue;
                     var ps = Posts[i]; var g = Instantiate(art.wallStair, world); g.name = "wall stair " + i; stairs[i] = g;
                     g.transform.position = ps.bottom;
                     // the model rises along its +x with +z toward the wall: look along the outward normal; mirrored where the
