@@ -802,7 +802,7 @@ namespace Hearthgate.Game
 
         public static void Banner(string s)
         {
-            if (!I) return; var b = I.banner; b.text = s; I.bannerT = 2.6f; var c = b.color; c.a = 1; b.color = c;
+            if (!I) return; var b = I.banner; b.text = s; I.bannerT = Mathf.Max(3.5f, 1.2f + s.Length * 0.055f);   // long enough to read (bot round 6 never saw one) var c = b.color; c.a = 1; b.color = c;
             float w = Mathf.Min(900f, ((RectTransform)I.transform).rect.width - 48f); b.rectTransform.sizeDelta = new Vector2(w, 90);
             int size = 34; b.fontSize = size;
             while (size > 18 && b.preferredHeight > 84) b.fontSize = --size;   // two lines at most, then smaller
@@ -816,6 +816,7 @@ namespace Hearthgate.Game
             var sr = I.bannerShade.rectTransform; sr.pivot = b.rectTransform.pivot;
             sr.sizeDelta = new Vector2(Mathf.Min(w, b.preferredWidth) + 44, b.preferredHeight + 18);
             sr.anchoredPosition = b.rectTransform.anchoredPosition + new Vector2(0, 8);
+            sr.SetAsLastSibling(); b.transform.SetAsLastSibling();   // on top of everything (round 6: banners were drawn under something and never seen)
         }
         Image bannerShade;
         public static string Probe2()
