@@ -1089,14 +1089,14 @@ namespace Hearthgate.Game
         public static void ShowFork(int stage)
         {
             if (!I || I.forkBox) return;
-            var box = I.Box("Fork", I.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(640, 260));
+            var box = I.Box("Fork", I.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(660, 176));   // no empty band between the question and the answers (the bot)
             var bi = box.gameObject.AddComponent<Image>(); bi.sprite = Panel(INK, BRASS, 18, 4); bi.type = Image.Type.Sliced; I.forkBox = box;
             I.Label("T", box, new Vector2(0.5f, 1), new Vector2(0, -18), 28, TextAnchor.UpperCenter).text = "The towers grow. Choose one:";
             var opts = HG.FORKS[stage];
             for (int k = 0; k < opts.Length; k++)
             {
                 var f = opts[k];
-                var a = I.Action(f.id, new Vector2(0.5f, 0), new Vector2(k == 0 ? -152 : 152, 36), new Vector2(290, 64), "tower", null, () => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); }, null, false, box);
+                var a = I.Action(f.id, new Vector2(0.5f, 0), new Vector2(k == 0 ? -160 : 160, 22), new Vector2(304, 70), "tower", null, () => { GameLoop.I.Fork(stage, f.id); Destroy(box.gameObject); }, null, false, box);
                 I.Show(a, f.name, f.line, true, 0); a.gem.enabled = false; a.cost.color = Field.GOLD; Fit(a.cost, new Vector2(a.cost.rectTransform.sizeDelta.x, 26), 11);
             }
         }
