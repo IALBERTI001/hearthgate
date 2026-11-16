@@ -13,3 +13,10 @@ Owner: "You have to take the perspective of a player too ... make a player bot t
 
 Notes: the browser renders a few frames a second, so game time runs slow and short pop-ups can be missed; judge feel in the
 real browser too. Background processes die after 2 hours: restart them.
+
+## Frame rate (Nov 15 2026)
+The cloud Chromium renders WebGL in software on 2 cores: the full-quality game runs at about 1 frame per second, so
+banners (2.6 s) lasted 2 to 3 frames and were never caught in a screenshot, walking felt "very slow", and hints seemed
+mistimed. After every load run `/eval?js=window.hgUnity.SendMessage('Game','Dev','lite 0.5')` (no MSAA, no shadows, no
+HDR, half render scale: about 3-4 fps) and measure frames with a 3 s requestAnimationFrame count before trusting any
+timing complaint. Tell the bot the world looks soft because of the test renderer.
