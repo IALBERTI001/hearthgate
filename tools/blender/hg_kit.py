@@ -37,6 +37,7 @@ PAL = {
     'canvas': (0.90, 0.84, 0.70), 'hay': (0.90, 0.74, 0.36), 'cave': (0.07, 0.06, 0.07),
     'rose': (1.0, 0.55, 0.78), 'amber': (1.0, 0.62, 0.2), 'water_gloss': (0.25, 0.55, 0.85), 'window': (1.0, 0.72, 0.32), 'skin': (0.96, 0.75, 0.6), 'cloth': (0.3, 0.5, 0.8),
     'road': (0.52, 0.39, 0.26),
+    'blight': (0.55, 0.50, 0.29), 'mud': (0.41, 0.31, 0.21), 'mud_dk': (0.25, 0.18, 0.12), 'straw': (0.70, 0.61, 0.33), 'straw2': (0.56, 0.48, 0.25),   # the monster trails (owner, Nov 16 2026)
     'robe': (0.33, 0.22, 0.62), 'robe_dk': (0.20, 0.13, 0.40), 'beard': (0.95, 0.94, 0.90),   # the wizard (the town walk)
     # the townsfolk (Nov 14 2026)
     'tunic_g': (0.33, 0.50, 0.28), 'tunic_b': (0.28, 0.42, 0.66), 'dress': (0.64, 0.22, 0.30), 'apron': (0.95, 0.93, 0.88),
@@ -364,7 +365,7 @@ if __name__ == '__main__':
     jobs += [('npc_' + k, (lambda k=k: F.npc(k))) for k in ('astronomer', 'merchant', 'librarian', 'chronomancer')]
     jobs += [('npc_soldier', (lambda: F.villager('s'))), ('npc_steward', (lambda: F.npc('steward'))), ('steward_booth', F.steward_booth), ('shop_sign', F.shop_sign)]   # the watch's runner (GameLoop.Watch)
     jobs += [('breach', F.breach), ('rubble_heap', F.rubble_heap), ('puff', F.puff)]
-    jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly)] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
+    jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly), ('star_wisp', F.star_wisp)] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
     k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))
     report = {}
     for i, (nm, fn) in enumerate(jobs):

@@ -802,21 +802,57 @@ def lanes():
         L0 = math.hypot(sx - fx, sz - fz); dx, dz = (sx - fx) / L0, (sz - fz) / L0; px, pz = -dz, dx
         u0, u1 = 1.0, L0 + 9.0
         n = int((u1 - u0) / 1.5) + 1
-        # trampled grass, not a dug road (owner, Nov 14 2026: "fix the paths of dirt. Not sure if they are really
-        # required"; scuffed earth patches read as stepping stones): a faint lighter strip with ragged edges where the
-        # horde has flattened the meadow, bare earth only at the tower's foot where they mass
-        left, right = [], []
+        # a monster trail, not a meadow strip (owner, Nov 16 2026: "The paths seem generic for monsters"; Nov 14: "fix
+        # the paths of dirt", scuffed patches read as stepping stones): the horde has trampled the meadow to dry, flattened
+        # straw with dead tufts along its ragged edges; down the middle a churned mud track that wanders, stamped with
+        # three-toed claw prints all heading for the tower and a dribble of pink slime; at the tower's foot the earth is
+        # scorched black by its fire and stuck with the spears and arrows of the fighting.
+        hx, hy = -dx, -dz; head = math.atan2(hy, hx)   # the way they walk: toward the tower
+        left, right, mid_l, mid_r = [], [], [], []
         for k in range(n + 1):
             u = u0 + (u1 - u0) * k / n
-            hl, hr = 1.25 + R.uniform(-0.25, 0.25), 1.25 + R.uniform(-0.25, 0.25)
+            hl, hr = 1.45 + R.uniform(-0.3, 0.3), 1.45 + R.uniform(-0.3, 0.3)
             left.append((fx + dx * u + px * hl, fz + dz * u + pz * hl, 0.026)); right.append((fx + dx * u - px * hr, fz + dz * u - pz * hr, 0.026))
+            c = math.sin(u * 0.33 + fx) * 0.3; ml, mr = 0.62 + R.uniform(-0.12, 0.12), 0.62 + R.uniform(-0.12, 0.12)
+            mid_l.append((fx + dx * u + px * (c + ml), fz + dz * u + pz * (c + ml), 0.031)); mid_r.append((fx + dx * u + px * (c - mr), fz + dz * u + pz * (c - mr), 0.031))
         N = n + 1
-        mesh_from('trodden', left + right, [(N + k, N + k + 1, k + 1, k) for k in range(n)], M('grass3'), 0.0)
-        for _ in range(5):   # a little bare earth just before the tower
-            u = R.uniform(1.5, 5.0); off = R.uniform(-0.8, 0.8); cx, cy = fx + dx * u + px * off, fz + dz * u + pz * off
-            rr = R.uniform(0.4, 0.75); n_ = 7
-            vs = [(cx + math.cos(k / n_ * math.tau) * rr * R.uniform(0.75, 1.15), cy + math.sin(k / n_ * math.tau) * rr * R.uniform(0.75, 1.15), 0.032) for k in range(n_)]
-            mesh_from('scuff', vs, [tuple(range(n_))], M('dirt'), 0.0)
+        mesh_from('trodden', left + right, [(N + k, N + k + 1, k + 1, k) for k in range(n)], M('blight'), 0.0)
+        mesh_from('track', mid_l + mid_r, [(N + k, N + k + 1, k + 1, k) for k in range(n)], M('mud'), 0.0)
+        # claw prints, left and right feet in turn, toes toward the tower; a slime's round drips between them
+        u, side = 2.6, 1
+        while u < u1 - 1.0:
+            c = math.sin(u * 0.33 + fx) * 0.3 + side * 0.24
+            cx, cy = fx + dx * u + px * c, fz + dz * u + pz * c
+            a_ = head + R.uniform(-0.25, 0.25)
+            bsphere('pad', 0.14, (cx, cy, 0.036), M('mud_dk'), (1.15, 0.9, 0.06), 1, rot=(0, 0, a_))
+            for t_ in (-0.55, 0.0, 0.55):
+                ta = a_ + t_
+                bsphere('toe', 0.075, (cx + math.cos(ta) * 0.2, cy + math.sin(ta) * 0.2, 0.037), M('mud_dk'), (1.6, 0.7, 0.06), 1, rot=(0, 0, ta))
+            if R.random() < 0.3:   # a slime passed here too
+                o_ = R.uniform(-0.5, 0.5)
+                for j in range(R.randint(2, 4)):
+                    rr = R.uniform(0.07, 0.15)
+                    bsphere('drip', rr, (cx + px * o_ + hx * j * 0.32, cy + pz * o_ + hy * j * 0.32, 0.038), M('slime_gloss'), (1.2, 1.0, 0.18), 1)
+            u += R.uniform(0.85, 1.1); side = -side
+        # scorched earth at the tower's foot: the tower's fire has burned the ground black in places
+        for _ in range(3):
+            u = R.uniform(1.2, 4.5); off = R.uniform(-1.1, 1.1); cx, cy = fx + dx * u + px * off, fz + dz * u + pz * off
+            rr = R.uniform(0.45, 0.8); n_ = 9
+            vs = [(cx + math.cos(k / n_ * math.tau) * rr * R.uniform(0.7, 1.2), cy + math.sin(k / n_ * math.tau) * rr * R.uniform(0.7, 1.2), 0.04) for k in range(n_)]
+            mesh_from('scorch', vs, [tuple(range(n_))], M('char'), 0.0)
+        # spears and arrows of the fighting, stuck in the trail and its edges, one broken
+        for k in range(4):
+            u = R.uniform(1.5, 7.0); off = R.choice((-1, 1)) * R.uniform(0.6, 1.6); cx, cy = fx + dx * u + px * off, fz + dz * u + pz * off
+            ln = R.uniform(0.9, 1.4) if k < 2 else R.uniform(0.5, 0.7)
+            tilt = (R.uniform(0.35, 0.7), 0, R.uniform(0, math.tau))
+            e = Euler(tilt); up = e.to_matrix() @ Vector((0, 0, 1))
+            bcyl('shaft', 0.03, ln, (cx + up.x * ln / 2, cy + up.y * ln / 2, up.z * ln / 2), M('wood_dk'), 5, rot=tilt)
+            if k >= 2:   # an arrow: grey fletching at the top
+                bcone('fletch', 0.07, 0.16, (cx + up.x * (ln - 0.08), cy + up.y * (ln - 0.08), up.z * (ln - 0.08)), M('flower_w'), 3, rot=tilt)
+        u = R.uniform(3, 6); off = R.uniform(-1.2, 1.2)   # a broken spear lying in the trail, its iron head beside it
+        cx, cy = fx + dx * u + px * off, fz + dz * u + pz * off; a_ = R.uniform(0, math.tau)
+        bcyl('shaft', 0.03, 0.8, (cx, cy, 0.05), M('wood_dk'), 5, rot=(math.pi / 2, 0, a_))
+        bcone('head', 0.06, 0.22, (cx + math.cos(a_ - math.pi / 2) * 0.55, cy + math.sin(a_ - math.pi / 2) * 0.55, 0.06), M('iron'), 4, rot=(math.pi / 2, 0, a_))
         # the apron at the tower's foot: trampled earth in a rough half disc, rubble from the fighting
         vs = [(fx, fz, 0.035)]
         for k in range(13):
@@ -825,14 +861,14 @@ def lanes():
         mesh_from('apron', vs, [(0, k + 1, k + 2) for k in range(12)], M('dirt'), 0.0)
         rubble(fx + px * 2.2, fz + pz * 2.2, 3, (0.5, 0.5)); rubble(fx - px * 2.2, fz - pz * 2.2, 3, (0.5, 0.5))
         for _ in range(int(L0 * 0.5)):   # a few stones kicked aside
-            u = R.uniform(2.5, u1 - 1); side = R.choice((-1, 1)); off = side * R.uniform(0.9, 1.6)
+            u = R.uniform(2.5, u1 - 1); side = R.choice((-1, 1)); off = side * R.uniform(1.1, 1.7)
             for k in range(R.randint(1, 3)):
                 sz_ = R.uniform(0.14, 0.28)
                 o = block((fx + dx * u + px * off + R.uniform(-0.3, 0.3), fz + dz * u + pz * off + R.uniform(-0.3, 0.3), 0.07), (sz_ * 1.3, sz_, sz_ * 0.5), M(R.choice(('cobble2', 'rock', 'rock_dk'))), 0.03)
                 o.rotation_euler = (0, 0, R.uniform(0, 3.1))
-        for _ in range(int(L0 * 0.7)):
-            u = R.uniform(3, u1 - 1); side = R.choice((-1, 1)); off = side * (L.LANE_HALF + 0.1)
-            tufts(fx + dx * u + px * off, fz + dz * u + pz * off, 2, (0.4, 0.4))
+        for _ in range(int(L0 * 0.9)):   # dead and trampled tufts along the edges, green ones just beyond
+            u = R.uniform(3, u1 - 1); side = R.choice((-1, 1)); off = side * (L.LANE_HALF - 0.25)
+            tufts(fx + dx * u + px * off, fz + dz * u + pz * off, 2, (0.35, 0.35), ('straw', 'straw2', 'grass3'))
     # the road to the gate: a cobbled way straight up the middle from beyond the frame to the gatehouse's step, kerbed,
     # worn smoother down its middle, with milestones; traders' road, not a lane (the monsters keep to their four)
     z0, z1 = 2.2, 66.0; n = 60   # on through the meadow and into the forest (owner, Nov 14 2026: "the end of a road that leads to nowhere")
@@ -1292,6 +1328,28 @@ def _shield(r, z):   # a ward of glowing rune-stones circling it on a band of fo
         o = block((r * c, r * sn * math.cos(t), z + r * sn * math.sin(t)), (0.3, 0.09, 0.42), M('water_gloss', 2.4), 0.03)
         o.up = True   # batched into the spinning 'upper' part with the band
         o.rotation_euler = tuple((Matrix.Rotation(t, 3, 'X') @ Matrix.Rotation(th + math.pi / 2, 3, 'Z')).to_euler('XYZ'))   # along the band, tilted with it
+
+def star_wisp():   # the Golden Wisp, a shooting star to catch (owner, Nov 16 2026: "Shooting stars should glow more to make
+    # players want to catch them"). A chunky faceted five-point star, about 1.1 m across, its face toward -y (the game
+    # turns it to the camera); a white-hot heart; behind it a second star turned half a point, deeper gold, so it reads
+    # as rays; and a four-point glint (part 'flare', the game twinkles it) that reads as light even without bloom.
+    def star(name, ro, ri, depth, y, m, turn=0.0):
+        vs = [(0, y - depth, 0), (0, y + depth * 0.6, 0)]
+        for k in range(10):
+            a_ = math.pi / 2 + turn + k * math.pi / 5; r = ro if k % 2 == 0 else ri
+            vs.append((math.cos(a_) * r, y, math.sin(a_) * r))
+        fs = []
+        for k in range(10):
+            i, j = 2 + k, 2 + (k + 1) % 10
+            fs += [(0, i, j), (1, j, i)]   # front faces toward -y
+        return mesh_from(name, vs, fs, m, 0.0)
+    star('star', 0.56, 0.25, 0.2, 0.0, M('gold', 2.0))
+    star('rays', 0.78, 0.3, 0.06, 0.12, M('amber', 1.5), math.pi / 5)
+    bsphere('heart', 0.16, (0, -0.16, 0), M('flower_w', 3.0), (1, 0.6, 1), 2)
+    with Part('flare', (0, -0.05, 0)):
+        bsphere('glint_h', 0.5, (0, -0.05, 0), M('flower_w', 3.0), (2.2, 0.02, 0.05), 1)
+        bsphere('glint_v', 0.5, (0, -0.05, 0), M('flower_w', 3.0), (0.05, 0.02, 2.2), 1)
+    return K.export('star_wisp')
 
 def butterfly():   # the meadow's butterflies (owner, Nov 6 2026: "add some interaction for the user with the butterflies";
     # Nov 14: "Butterflies can be polished better"). Lies flat, head to -y, about 1 unit across. Each wing is a part hinged at

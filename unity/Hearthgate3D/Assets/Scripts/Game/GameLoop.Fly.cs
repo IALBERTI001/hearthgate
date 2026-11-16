@@ -23,7 +23,8 @@ namespace Hearthgate.Game
         readonly List<Flier> meadow = new List<Flier>(), garden = new List<Flier>();
         float flyT = 12f;
         readonly System.Random flyRnd = new System.Random();
-        const float MEADOW_SCALE = 3.0f, GARDEN_SCALE = 0.75f;   // the Garden is seen close from the town walk: 1.6 filled the camera (owner, Nov 14 2026)
+        const float MEADOW_SCALE = 1.4f, GARDEN_SCALE = 0.75f;   // 3.0 read as gigantic beside the slimes (owner, Nov 16 2026); the tap ring stays wide;
+        // the Garden is seen close from the town walk: 1.6 filled the camera (owner, Nov 14 2026)
 
         Flier MakeFly(HG.Fly k, float scale)
         {

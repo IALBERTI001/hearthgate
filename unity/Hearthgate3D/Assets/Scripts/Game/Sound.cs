@@ -24,7 +24,7 @@ namespace Hearthgate.Game
         readonly HashSet<AudioClip> ready = new HashSet<AudioClip>(); readonly Dictionary<AudioClip, float> askAt = new Dictionary<AudioClip, float>();
         AudioSource[] pool; int next;
         AudioSource song, amb;   // two music players so songs, ambience and the battle theme cross-fade
-        AudioClip click, dud, knock, step;
+        AudioClip click, dud, knock; AudioClip[] steps; int stepN;
         float songEnd = -1; bool unlocked, boss; string lastSong = ""; float gapUntil = -1; string mode = "idle";
         public static bool MusicOn = true, SfxOn = true;
         // the two levels (owner, Nov 14 2026: "add audio level toggles in the settings menu and have them set to a comfortable
@@ -49,10 +49,30 @@ namespace Hearthgate.Game
             click = Make("click", 0.045f, (t, k) => (Mathf.Sin(t * 2f * Mathf.PI * 1250f) * 0.6f + Noise() * 0.4f) * Mathf.Pow(1 - k, 4));
             dud = Make("dud", 0.07f, (t, k) => Mathf.Sin(t * 2f * Mathf.PI * Mathf.Lerp(260f, 180f, k)) * Mathf.Pow(1 - k, 3) * 0.7f);
             knock = Make("knock", 0.09f, (t, k) => (Mathf.Sin(t * 2f * Mathf.PI * Mathf.Lerp(200f, 90f, k)) * 0.7f + Noise() * 0.35f) * Mathf.Pow(1 - k, 3));
-            step = Make("step", 0.06f, (t, k) => (Noise() * 0.6f + Mathf.Sin(t * 2f * Mathf.PI * 110f) * 0.4f) * Mathf.Pow(1 - k, 5));
+            // footsteps: a soft, dull scuff of a boot on packed earth, not a tick (owner, Nov 16 2026: "not sure the walking
+            // sound should be a snare every step"; the old one was white noise over a 110 Hz tone, a snare). Noise run through
+            // a heavy low-pass (nothing bright), an 8 ms swell instead of a hard attack, a low body thump, and three takes
+            // played in turn so no two steps in a row are the same.
+            steps = new AudioClip[3];
+            for (int v = 0; v < 3; v++) steps[v] = MakeStep(v);
         }
         static System.Random rnd = new System.Random(7);
         static float Noise() => (float)(rnd.NextDouble() * 2 - 1);
+        static AudioClip MakeStep(int v)
+        {
+            var r = new System.Random(31 + v); int rate = 44100, n = Mathf.CeilToInt(rate * 0.12f); var d = new float[n];
+            float lp = 0, lp2 = 0, cut = 0.06f + v * 0.012f, thump = 70f + v * 9f, peak = 0;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)rate, k = i / (float)n;
+                float env = Mathf.Min(1f, t / 0.008f) * Mathf.Pow(1 - k, 3.2f);
+                float nz = (float)(r.NextDouble() * 2 - 1); lp += (nz - lp) * cut; lp2 += (lp - lp2) * cut;   // two poles: a muffled scuff
+                float body = Mathf.Sin(t * 2f * Mathf.PI * thump) * Mathf.Pow(1 - k, 6) * 0.35f;
+                d[i] = (lp2 * 3.2f + body) * env; peak = Mathf.Max(peak, Mathf.Abs(d[i]));
+            }
+            for (int i = 0; i < n; i++) d[i] *= 0.8f / Mathf.Max(peak, 1e-4f);
+            var c = AudioClip.Create("step" + v, n, 1, rate, false); c.SetData(d, 0); return c;
+        }
         static AudioClip Make(string name, float len, System.Func<float, float, float> f)
         {
             int rate = 44100, n = Mathf.CeilToInt(rate * len); var d = new float[n];
@@ -65,7 +85,7 @@ namespace Hearthgate.Game
         public static void Click() { if (I) I.Shot("click", I.click, 0.32f, true); }
         public static void Dud() { if (I) I.Shot("dud", I.dud, 0.3f, false); }
         public static void Knock() { if (I) I.Shot("knock", I.knock, 0.4f, true); }
-        public static void Step() { if (I) I.Shot("step", I.step, 0.13f, true); }
+        public static void Step() { if (I) I.Shot("step", I.steps[I.stepN++ % 3], 0.09f, true); }
         float windowAt; int inWindow;
         void Shot(string name, AudioClip c, float vol, bool jitter)
         {
