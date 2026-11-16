@@ -23,6 +23,7 @@ namespace Hearthgate.Game
                 case "wave": P.wave = P.runWave = int.Parse(a[1]); break;
                 case "asc": P.ascensions = int.Parse(a[1]); Refresh(); for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i); RefreshTowers(); break;
                 case "post": if (!Wizard.I.On) Wizard.I.Toggle(); Wizard.I.DevPost(int.Parse(a[1])); break;
+                case "tp": if (!Wizard.I.On) Wizard.I.Toggle(); Wizard.I.Teleport(new Vector3(float.Parse(a[1], System.Globalization.CultureInfo.InvariantCulture), 0, float.Parse(a[2], System.Globalization.CultureInfo.InvariantCulture))); break;
                 case "mana": Wizard.I.Mana = float.Parse(a[1], System.Globalization.CultureInfo.InvariantCulture); break;
                 case "bounty": P.bountyOn = true; P.bountyN = int.Parse(a[1]); break;
                 case "postinfo": foreach (var ps in Posts) Debug.Log($"[dev] post {ps.tower} stand {ps.stand} foot {ps.foot} bottom {ps.bottom} top {ps.top} out {ps.outward}"); break;

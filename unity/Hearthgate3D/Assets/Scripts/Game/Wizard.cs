@@ -295,7 +295,7 @@ namespace Hearthgate.Game
             if (postBlend > 0.001f)
             {
                 var ps = GameLoop.Posts[Post >= 0 ? Post : climbPost >= 0 ? climbPost : lastPost]; float pb = Mathf.SmoothStep(0, 1, postBlend);
-                var pc = ps.stand - ps.outward * 1.2f - ps.along * 4.2f + Vector3.up * 6.0f; var pl = ps.look;   // high behind him over the wall itself, off to the side away from the tower, down onto its lane (pulled into the town it sat in the Cottages' roof by the outer towers)
+                var pc = ps.stand - ps.outward * 1.6f - ps.along * 3.4f + Vector3.up * 6.8f; var pl = ps.look;   // high behind him over the wall itself, off to the side away from the tower, down onto its lane (pulled into the town it sat in the Cottages' roof by the outer towers)
                 p = Vector3.Lerp(p, pc, pb); r = Quaternion.Slerp(r, Quaternion.LookRotation(pl - pc), pb); fov = Mathf.Lerp(fov, 58f, pb);
             }
             Fx.I.camHome = p; cam.transform.rotation = r;
