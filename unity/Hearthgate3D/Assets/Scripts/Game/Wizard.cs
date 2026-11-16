@@ -206,7 +206,7 @@ namespace Hearthgate.Game
                 }
             }
             if (!onWall) { vel = Vector3.MoveTowards(vel, want * SPEED, SPEED * 6f * dt); pos += vel * dt; Collide(); } else vel = Vector3.zero;
-            if (On && !onWall && vel.magnitude > 0.5f && OnFlight(pos, out int fk, out _) >= 0) { StartClimb(fk, true); onWall = true; }   // a stair is walked up, like a stair
+            if (On && !onWall && want.sqrMagnitude > 0.01f && OnFlight(pos, out int fk, out _) >= 0 && Vector3.Dot(want, GameLoop.Posts[fk].outward) > 0.25f) { StartClimb(fk, true); onWall = true; }   // a stair is walked up, like a stair: walking into it, toward the wall
             float speed = climbPost >= 0 ? CLIMB_SPEED : vel.magnitude;
             if (onWall) { }   // turned by WallInput
             else if (speed > 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-vel.x, -vel.z) * Mathf.Rad2Deg, 540f * dt);   // models face -Z
@@ -399,8 +399,8 @@ namespace Hearthgate.Game
                 var ps = GameLoop.Posts[i]; if (!ps.stair) continue;
                 var a = new Vector3(ps.bottom.x, 0, ps.bottom.z); var b = new Vector3(ps.top.x, 0, ps.top.z); var ab = b - a;
                 float t = Vector3.Dot(new Vector3(p.x, 0, p.z) - a, ab) / ab.sqrMagnitude;
-                if (t < -0.02f || t > 0.95f) continue;
-                if ((a + ab * Mathf.Clamp01(t) - new Vector3(p.x, 0, p.z)).magnitude > 1.2f) continue;   // the walk keeps him 2.4 m inside the ring and the flight runs 1.65 m inside it: walking into it from the street side reaches here
+                if (t < -0.25f || t > 1.15f) continue;
+                if ((a + ab * Mathf.Clamp01(t) - new Vector3(p.x, 0, p.z)).magnitude > 2.0f) continue;   // the walk keeps him 2.4 m inside the ring and the flight runs 1.65 m inside it, its side wall between (bot, Nov 16: stuck at that wall 1.2 m out)
                 k = i; t = Mathf.Clamp01(t); onLine = a + ab * t + Vector3.up * (ps.top.y * t); return t;
             }
             return -1f;
