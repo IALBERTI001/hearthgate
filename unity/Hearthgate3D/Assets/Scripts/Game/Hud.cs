@@ -818,6 +818,11 @@ namespace Hearthgate.Game
             sr.anchoredPosition = b.rectTransform.anchoredPosition + new Vector2(0, 8);
         }
         Image bannerShade;
+        public static string Probe()
+        {
+            if (!I) return "no hud"; var b = I.banner; var rt = b.rectTransform; var cv = b.canvas;
+            return $"active={b.gameObject.activeInHierarchy} en={b.enabled} a={b.color.a} t='{b.text}' fs={b.fontSize} pos={rt.anchoredPosition} size={rt.sizeDelta} piv={rt.pivot} amin={rt.anchorMin} sib={rt.GetSiblingIndex()}/{rt.parent.childCount} parent={rt.parent.name} canvas={(cv ? cv.name + " " + cv.renderMode + " en=" + cv.enabled + " order=" + cv.sortingOrder : "none")} scale={rt.lossyScale} world={rt.position} cr={b.canvasRenderer.GetAlpha()} cull={b.canvasRenderer.cull} pw={b.preferredWidth} ph={b.preferredHeight} huds={FindObjectsByType<Hud>(FindObjectsSortMode.None).Length}";
+        }
         public static void Toast(string s) => Banner(s);
 
         // ---------- settings and controls ----------
