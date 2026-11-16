@@ -25,7 +25,7 @@ namespace Hearthgate.Game
         public const float WALK_Y = Field_WALL_H + 0.18f, Field_WALL_H = 3.4f;   // the wall walk (hg_layout.WALL_H, hg_front.wall)
 
         // ---------- the posts: one by each tower, its stair running along the wall away from the gate ----------
-        public struct PostSpot { public Vector3 stand, foot, bottom, top, landing, outward, along; public int tower; }
+        public struct PostSpot { public Vector3 stand, foot, bottom, top, landing, outward, along, look; public int tower; }
         static PostSpot[] posts;
         public static PostSpot[] Posts { get { if (posts == null) posts = Enumerable.Range(0, 4).Select(MakePost).ToArray(); return posts; } }
         // the ring as the wall is built (hg_front.wall): x = RX cos a, z = -RZ + RZ sin a
@@ -39,14 +39,15 @@ namespace Hearthgate.Game
         static PostSpot MakePost(int i)
         {
             var t = Field.Tower(i); float a0 = Mathf.Atan2((t.z + Field.RZ) / Field.RZ, t.x / Field.RX), sgn = t.x > 0 ? -1f : 1f;   // away from the gate
-            float aPost = Along(a0, 3.0f, sgn), aTop = Along(a0, 3.45f, sgn), aFoot = Along(a0, 8.05f, sgn), aWay = Along(a0, 8.5f, sgn);
+            float aPost = Along(a0, 3.7f, sgn), aTop = Along(a0, 3.45f, sgn), aFoot = Along(a0, 8.05f, sgn), aWay = Along(a0, 8.5f, sgn);
             var n = Out(aPost); var ps = new PostSpot { tower = i, outward = n };
             ps.stand = Ring(aPost) - n * 0.25f + Vector3.up * WALK_Y;
-            ps.landing = Ring(aPost) - Out(aPost) * 1.65f + Vector3.up * WALK_Y;
+            ps.landing = (Ring(aTop) - Out(aTop) * 0.9f + Ring(aPost) - Out(aPost) * 0.25f) * 0.5f + Vector3.up * WALK_Y;   // off the top step onto the walk, clear of the brazier
             ps.top = Ring(aTop) - Out(aTop) * 1.65f + Vector3.up * WALK_Y;
             ps.bottom = Ring(aFoot) - Out(aFoot) * 1.65f;
             ps.foot = Ring(aWay) - Out(aWay) * 3.2f;   // where he starts up: inside the street he walks
             ps.along = (ps.top - ps.bottom); ps.along.y = 0; ps.along.Normalize();
+            ps.look = Field.Lane(i, 8.5f, 0);   // the post camera watches the tower's own lane
             return ps;
         }
         // the order along the wall as the post camera sees it (looking out, +x is to the right)

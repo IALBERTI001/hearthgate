@@ -1348,7 +1348,7 @@ def wall_stair():   # the wizard's way onto the wall (owner, Nov 16 2026: "some 
     for k in range(5):   # moss and a weed or two at the foot
         bsphere('moss', R.uniform(0.12, 0.22), (R.uniform(-0.1, 0.9), R.uniform(-0.6, 0.5), 0.04), M('moss'), (1.5, 0.8, 0.4), 1)
     # the post at the top: a plinth, an iron bowl on three legs, coals and a gold flame (it glows from across the town)
-    px, py = run + 0.45, -W / 2 + 0.25
+    px, py = run + 0.7, -W / 2 + 0.25   # at the landing's far end: the wizard steps off beside it onto the walk
     block((px, py, top + 0.2), (0.5, 0.5, 0.4), M('stone_dk'), 0.03)
     for k in range(3):
         a_ = k / 3 * math.tau
