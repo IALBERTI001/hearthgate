@@ -37,7 +37,7 @@ namespace Hearthgate.Game
                 var go = new GameObject("defenses plaque", typeof(RectTransform)); go.transform.SetParent(world, false);
                 var cv = go.AddComponent<Canvas>(); cv.renderMode = RenderMode.WorldSpace; cv.sortingOrder = 1;
                 var rt = (RectTransform)go.transform; rt.sizeDelta = new Vector2(220, 92);
-                rt.position = PLAQUE_AT; rt.rotation = Quaternion.Euler(PLAQUE_TILT, 180f, 0); rt.localScale = Vector3.one * 0.0125f;
+                rt.position = PLAQUE_AT; rt.rotation = Quaternion.Euler(PLAQUE_TILT, 180f, 0); rt.localScale = Vector3.one * 0.016f;   // readable from the walls (the bot could not read it)
                 var img = new GameObject("plate", typeof(RectTransform)).AddComponent<Image>(); img.transform.SetParent(rt, false);
                 var ir = img.rectTransform; ir.anchorMin = Vector2.zero; ir.anchorMax = Vector2.one; ir.offsetMin = ir.offsetMax = Vector2.zero;
                 img.sprite = Hud.PlaqueSprite(); img.type = Image.Type.Sliced; img.raycastTarget = false;

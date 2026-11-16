@@ -49,6 +49,7 @@ namespace Hearthgate.Game
             if (look < 0) return;
             lookT += dt;
             bool key = Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Space);
+            if (wz.Blending) return;   // never while the camera is still gliding down into town (the bot: a card popped open on T)
             if ((lookArmed && lookT > 0.3f) || key) { lookArmed = false; OpenHall(look); }
         }
         public void OpenHall(int i)

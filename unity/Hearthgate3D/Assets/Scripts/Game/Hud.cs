@@ -27,7 +27,7 @@ namespace Hearthgate.Game
         {
             public RectTransform rt; public Image img; public Color col; public System.Func<bool> on; public System.Action act;
             public bool down; public float s = 1; public CanvasGroup group; public Image veil;
-            public RectTransform face; public bool repeat; public float heldT, nextRep; public int reps;   // the kit's face (it drops when pressed); hold-to-repeat
+            public RectTransform face; public bool repeat; public float heldT, nextRep, shake; public int reps; public System.Action dud;   // the kit's face (it drops when pressed); hold-to-repeat
         }
         readonly System.Collections.Generic.List<Pressable> press = new System.Collections.Generic.List<Pressable>();
         Pressable Press(RectTransform rt, System.Action act, System.Func<bool> on = null, Image faceImg = null)
@@ -45,7 +45,7 @@ namespace Hearthgate.Game
             {
                 if (!p.rt.gameObject.activeInHierarchy || settingsBox && !p.rt.IsChildOf(settingsBox)) { p.down = false; continue; }   // an open menu takes every press
                 bool on = p.on(), inside = RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null);
-                if (dn && inside) { if (on) { p.down = true; p.heldT = 0; p.reps = 0; p.nextRep = 0.35f; } else Sound.Dud(); }   // a soft low thud on a button that cannot act yet
+                if (dn && inside) { if (on) { p.down = true; p.heldT = 0; p.reps = 0; p.nextRep = 0.35f; } else { Sound.Dud(); p.shake = 0.3f; p.dud?.Invoke(); } }   // a press that cannot act shakes and says why   // a soft low thud on a button that cannot act yet
                 if (p.down && p.repeat && inside && on && Input.GetMouseButton(0))
                 {   // hold to repeat (game-polish 12): after 0.35 s, 6 a second rising to 20
                     p.heldT += Time.unscaledDeltaTime;
@@ -68,6 +68,7 @@ namespace Hearthgate.Game
                 if (p.veil) { if (p.veil.enabled == on) p.veil.enabled = !on; if (!on && p.veil.transform.GetSiblingIndex() != p.rt.childCount - 1) p.veil.transform.SetAsLastSibling(); }
                 else if (p.group) p.group.alpha = on ? 1f : 0.5f;   // a pressable without a panel image keeps the fade
                 p.s = Mathf.MoveTowards(p.s, target, Time.unscaledDeltaTime * 1.2f); p.rt.localScale = Vector3.one * p.s;
+                if (p.face) { if (p.shake > 0) { p.shake -= Time.unscaledDeltaTime; float sx = Mathf.Sin(p.shake * 70f) * 6f * (p.shake / 0.3f); p.face.anchoredPosition = new Vector2(sx, p.face.anchoredPosition.y); } else if (p.face.anchoredPosition.x != 0) p.face.anchoredPosition = new Vector2(0, p.face.anchoredPosition.y); }
                 if (p.img) p.img.color = on ? (inside ? Color.Lerp(p.col, Color.white, 0.12f) : p.col) : p.col;   // the veil does the dimming
             }
         }
@@ -233,7 +234,7 @@ namespace Hearthgate.Game
             var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -46), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
             gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
             res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -40), 40, TextAnchor.UpperLeft); res.color = RES;
-            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -90), 16, TextAnchor.UpperLeft); rate.font = body;
+            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -92), 17, TextAnchor.UpperLeft); rate.font = body;
             // every currency in sight (owner, Nov 14 2026: "all the different currencies should be displayed"): Starshards (the
             // gold star) and, after an Ascension, perk points (the rose crystal); a tap on one says where it comes from
             shardRow = Box("Shards", transform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-246, -18), new Vector2(110, 36)); shardRow.pivot = new Vector2(0, 1);
@@ -321,6 +322,8 @@ namespace Hearthgate.Game
             dockMult = dockMults[0];
             foreach (var d in new[] { dockUp, dockBld, dockLed }) d.p.rt.pivot = new Vector2(0.5f, 0);
             dockLed.p.rt.gameObject.SetActive(false);
+            dockUp.p.dud = () => { var g0 = GameLoop.I; g0.Need(g0.UpgradeCost, Field.GateTop + Vector3.up * 1.5f); };
+            dockBld.p.dud = () => { var g0 = GameLoop.I; int i0 = g0.BestBuilding(); var w0 = Wizard.I; if (w0 && w0.On && w0.Near >= 0) i0 = w0.Near; if (i0 >= 0) g0.Need(g0.BestCost(i0), Field.Door(i0, 1f, 2.5f)); };
             Slim(dockUp, 44); Slim(dockBld, 44);   // the corridor between the middle lanes holds two buttons: the ledger is on L, in every ring and at Tobin's booth
             work = Action("Work", tr, new Vector2(-16, -202), new Vector2(280, 56), "upgrade", "E", () => { var w = Wizard.I; if (w && w.Near >= 0) GameLoop.I.WorkOn(w.Near); },
                 () => Wizard.I && Wizard.I.Near >= 0 && GameLoop.I.CanWork(Wizard.I.Near), true);
@@ -553,7 +556,7 @@ namespace Hearthgate.Game
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
-                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : " <color=#CFE9B0>rebuild</color>"), g.CanWork(bi), now);   // the name fits as the title; the price line says it is a rebuild
+                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : ""), g.CanWork(bi), now);   // the name fits as the title; the price line says it is a rebuild
                 dockBld.cost.supportRichText = true;
                 if (dockBld.cap) { var kt = dockBld.cap.GetComponentInChildren<Text>(); string k = near >= 0 ? "E" : built ? "B" : "R"; if (kt && kt.text != k) kt.text = k; }
             }
@@ -562,6 +565,7 @@ namespace Hearthgate.Game
             for (int k = 0; k < 3; k++)
             {
                 var m = dockMults[k]; bool on = g.MultIx == k; Show(m, k == 0 ? "x1" : k == 1 ? "x10" : "Max", null, true, now);
+                var want = KitPlate(on ? GOLD_TOP : FACE_TOP, on ? GOLD_BOT : FACE_BOT, true); if (m.p.img && m.p.img.sprite != want) m.p.img.sprite = want;   // the chosen amount is a gold chip (the bot: "too faint")
                 m.title.fontSize = 15; m.title.color = on ? RES : new Color(0.8f, 0.74f, 0.84f);
                 if (m.glow) { var c = m.glow.color; c.a = on ? 0.8f : 0f; m.glow.color = c; }
             }
@@ -586,7 +590,7 @@ namespace Hearthgate.Game
             bool onWalk = Wizard.I && Wizard.I.On;
             if (onWalk) Place(guide.p.rt, new Vector2(0.5f, 1), new Vector2(0, -122), guide.p.rt.sizeDelta);
             else Place(guide.p.rt, new Vector2(0.5f, 0), new Vector2(0, COACH_Y), guide.p.rt.sizeDelta);
-            var bp = banner.rectTransform.anchoredPosition; bp.y = onWalk && guide.p.rt.gameObject.activeSelf ? -200f : -120f; banner.rectTransform.anchoredPosition = bp;
+            var bp = banner.rectTransform.anchoredPosition; bp.y = onWalk && guide.p.rt.gameObject.activeSelf ? -200f : -132f; banner.rectTransform.anchoredPosition = bp;
             // one voice: an open ring is what the player is looking at, so a banner that would cross it drops under it
             if (ring && bannerT > 0 && RingBox().Overlaps(BannerRect())) { bp.y = -(((RectTransform)transform).rect.height - RingBox().yMin) - 10f; banner.rectTransform.anchoredPosition = bp; }
         }
@@ -743,7 +747,7 @@ namespace Hearthgate.Game
             // the town walk
             var wz = Wizard.I;
             int ready = 0; for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && g.CanWork(i)) ready++;
-            Show(walk, wz && wz.On ? "Walls" : "Walk", null, true, now);
+            Show(walk, wz && wz.On ? "To walls" : "Walk", null, true, now);
             {   // a red count badge on its corner (the same badge as the dock's): upgrades ready in town
                 // no count badge: the bot read the red numbers as noise; the dock's green button already says what to raise next
             }
