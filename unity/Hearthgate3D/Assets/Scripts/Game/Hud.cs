@@ -692,7 +692,7 @@ namespace Hearthgate.Game
             res.text = HG.Fmt(shownRes);
             shardTxt.text = HG.Fmt(P.shards);   // the star says what it is; a tap explains (OnHud)
             // the first Starshards explain themselves the moment they arrive (bot round 5: "the star counter rose with no explanation")
-            if (lastShards >= 0 && P.shards > lastShards && !P.told.Contains("shard1")) { P.told.Add("shard1"); shardFlash = 3f; Banner("Starshards! Rare treasure from bosses: they train the wizard's skills and rebuild fallen walls. Tap the star to learn more"); }
+            if (lastShards >= 0 && P.shards > lastShards && !P.told.Contains("shard1")) { P.told.Add("shard1"); shardFlash = 3f; Banner("Starshards! Rare treasure: the Chronomancer trains the wizard with them. Tap the star to learn more"); }
             lastShards = P.shards;
             shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(new Color(1f, 0.9f, 0.55f), Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
             // the second and third currencies show once they mean something (review Nov 15 2026: "★ 0" and an unlabelled pink 2 crowd the one primary number)
@@ -714,7 +714,7 @@ namespace Hearthgate.Game
             if (Input.GetMouseButtonDown(0) && !Paused)
             {   // a tap on a counter: where it comes from and what it buys
                 if (RectTransformUtility.RectangleContainsScreenPoint(shardRow, PointerPos, null))
-                    Banner(P.shopOpen ? "Starshards: from bosses, Trials, Feats, quests and rare butterflies. Spend them at the Market's Starshard counter" : "Starshards: from bosses, Trials, Feats and rare butterflies. The Market's Shop takes them once it is rebuilt");
+                    Banner("Starshards: rare treasure from bosses, Trials and Feats. The Chronomancer trains the wizard with them; they also rebuild fallen walls and buy looks from Mira at the Market"));
                 else if (g.ev != null && RectTransformUtility.RectangleContainsScreenPoint(rate.rectTransform, PointerPos, null))
                     Banner($"{g.ev.name}: {g.ev.line}");   // the named wave explains itself
                 else if (RectTransformUtility.RectangleContainsScreenPoint(ascRow, PointerPos, null))
