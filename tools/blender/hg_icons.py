@@ -28,7 +28,7 @@ ICONS = {
     'look_frost_aurora': ('top_frost_aurora', 200, 0.9), 'look_storm_void': ('top_storm_void', 200, 0.9), 'look_storm_steel': ('top_storm_steel', 200, 0.9),   # the Market's tower designs
     'timestop': ('hourglass', 200, 0.9),   # Time Stop (the time wizard's skill)
     'npc_astronomer': ('npc_astronomer', 200, 0.95), 'npc_merchant': ('npc_merchant', 200, 0.95), 'npc_librarian': ('npc_librarian', 200, 0.95), 'npc_chronomancer': ('npc_chronomancer', 200, 0.95),   # portraits in the conversation card
-    'npc_steward': ('npc_steward', 200, 0.95), 'ledger': ('steward_booth', 205, 0.95),   # the steward and his ledger (Nov 14 2026)
+    'npc_steward': ('npc_steward', 200, 0.95), 'npc_soldier': ('npc_soldier', 200, 0.95), 'ledger': ('steward_booth', 205, 0.95),   # the steward and his ledger (Nov 14 2026)
     **{'b_' + b: ('building_' + b, 205, 0.95) for b in ('forge', 'frostSpire', 'stormBell', 'bakery', 'market', 'tavern', 'granary', 'library', 'cottages', 'watchtower')},   # the ledger's rows
     'perks': ('building_watchtower', 205, 0.95),   # the Watchtower keeps the perks  # Ascend: a five-pointed gold star rising from a ring, modelled here
 }

@@ -1329,6 +1329,36 @@ def _shield(r, z):   # a ward of glowing rune-stones circling it on a band of fo
         o.up = True   # batched into the spinning 'upper' part with the band
         o.rotation_euler = tuple((Matrix.Rotation(t, 3, 'X') @ Matrix.Rotation(th + math.pi / 2, 3, 'Z')).to_euler('XYZ'))   # along the band, tilted with it
 
+def wall_stair():   # the wizard's way onto the wall (owner, Nov 16 2026: "some form of ability for the wizard to watch for
+    # monsters from the wall to shoot at monsters"). A flight of stone steps up the inside face of the ring wall to the wall
+    # walk (hg_layout.WALL_H), and at its top a post: an iron brazier on a stone plinth with a gold flame, so a player sees
+    # where to climb. Local frame: the flight rises along +x from its foot at the origin; +y is toward the wall (the game
+    # stands it against the wall's inner face, mirroring it on the other side of the gate). 4.6 m long, 1.1 m wide.
+    run, n, W = 4.6, 12, 1.1
+    top = L.WALL_H + 0.18; rise, tread = top / n, run / n
+    for k in range(n):
+        h = rise * (k + 1); x0 = k * tread
+        block((x0 + tread / 2, 0, h / 2), (tread + 0.02, W, h), M(R.choice(STONES)), 0.03)   # each step a solid course
+        block((x0 + tread / 2, -0.02, h - 0.03), (tread * 0.92, W - 0.08, 0.06), M('stone3'), 0.015)   # its worn tread
+    block((run + 0.45, 0, top / 2), (0.9, W, top), M('stone2'), 0.03)   # the landing against the wall walk
+    # the open side: a low wall along the flight, stepped with it
+    for k in range(0, n, 2):
+        h = rise * (k + 2); x0 = k * tread
+        block((x0 + tread, -W / 2 - 0.12, h + 0.25), (tread * 2 + 0.02, 0.24, 0.5), M('stone_dk'), 0.03)
+    for k in range(5):   # moss and a weed or two at the foot
+        bsphere('moss', R.uniform(0.12, 0.22), (R.uniform(-0.1, 0.9), R.uniform(-0.6, 0.5), 0.04), M('moss'), (1.5, 0.8, 0.4), 1)
+    # the post at the top: a plinth, an iron bowl on three legs, coals and a gold flame (it glows from across the town)
+    px, py = run + 0.45, -W / 2 + 0.25
+    block((px, py, top + 0.2), (0.5, 0.5, 0.4), M('stone_dk'), 0.03)
+    for k in range(3):
+        a_ = k / 3 * math.tau
+        bcyl('leg', 0.03, 0.5, (px + math.cos(a_) * 0.16, py + math.sin(a_) * 0.16, top + 0.62), M('iron'), 5, rot=(math.cos(a_) * 0.3, -math.sin(a_) * 0.3, 0))
+    bcyl('bowl', 0.32, 0.22, (px, py, top + 0.95), M('iron'), 12, r2=0.2)
+    for k in range(5): bsphere('coal', 0.09, (px + math.cos(k) * 0.12, py + math.sin(k) * 0.12, top + 1.08), M('fire', 3.0), (1, 1, 0.7), 1)
+    bcone('flame', 0.2, 0.55, (px, py, top + 1.35), M('gold', 3.0), 8)
+    bcone('flame2', 0.12, 0.38, (px + 0.06, py - 0.04, top + 1.32), M('fire', 3.0), 6)
+    return K.export('wall_stair')
+
 def star_wisp():   # the Golden Wisp, a shooting star to catch (owner, Nov 16 2026: "Shooting stars should glow more to make
     # players want to catch them"). A chunky faceted five-point star, about 1.1 m across, its face toward -y (the game
     # turns it to the camera); a white-hot heart; behind it a second star turned half a point, deeper gold, so it reads

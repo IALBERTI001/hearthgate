@@ -11,7 +11,8 @@ namespace Hearthgate.Game
         // lane is which tower it walks to; z is progress out along that lane from the tower's foot (spawn down to stop), x is
         // lateral across it; Field.Lane maps them to the world
         public int lane; public double hp, max; public float speed, size, x, z, spawn, chill, burn, flash, hop, born, dying;
-        public bool boss, atGate, shield, bigHit, faded, enraged, frozen; public float blinkT = Random.Range(0f, 2.4f), totemT, summonT, stun, stunCd, reshT; Quaternion yaw = Quaternion.identity;
+        public bool boss, atGate, shield, bigHit, faded, enraged, frozen; public float handT = -99f;   // handT: when the wizard's own spell last struck it (a kill soon after is his, GameLoop.Posts)
+        public float blinkT = Random.Range(0f, 2.4f), totemT, summonT, stun, stunCd, reshT; Quaternion yaw = Quaternion.identity;
         public Transform shieldT;   // the rings of force (the model's 'upper' part), gone when Storm breaks the shield
         public float stop = Field.FRONT + Random.Range(0f, Field.STOP_SPREAD);   // where it halts, a crowd at the tower's foot
         Renderer[] rends; Color[] baseCols; static readonly Color GHOST = new Color(0.82f, 0.9f, 1f);
@@ -126,6 +127,7 @@ namespace Hearthgate.Game
 
     public class Shot
     {
-        public Vector3 p, from; public Enemy target; public string el; public float speed, k, dur, spin; public Transform t; public TrailRenderer trail; public bool beacon; public Vector3 last;   // k: 0..1 along the arc
+        public Vector3 p, from; public Enemy target; public string el; public float speed, k, dur, spin; public Transform t; public TrailRenderer trail; public bool beacon, wiz; public Vector3 last;   // wiz: the wizard's own spell from the wall (GameLoop.Posts)
+          // k: 0..1 along the arc
     }
 }

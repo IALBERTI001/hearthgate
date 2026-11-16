@@ -365,7 +365,7 @@ if __name__ == '__main__':
     jobs += [('npc_' + k, (lambda k=k: F.npc(k))) for k in ('astronomer', 'merchant', 'librarian', 'chronomancer')]
     jobs += [('npc_soldier', (lambda: F.villager('s'))), ('npc_steward', (lambda: F.npc('steward'))), ('steward_booth', F.steward_booth), ('shop_sign', F.shop_sign)]   # the watch's runner (GameLoop.Watch)
     jobs += [('breach', F.breach), ('rubble_heap', F.rubble_heap), ('puff', F.puff)]
-    jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly), ('star_wisp', F.star_wisp)] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
+    jobs += [('marker', F.marker), ('wizard', F.wizard), ('butterfly', F.butterfly), ('star_wisp', F.star_wisp), ('wall_stair', F.wall_stair)] + [('villager_' + v, (lambda v=v: F.villager(v))) for v in 'abc'] + [('top_' + c, (lambda c=c: F.cap_look(c))) for c in F.CAP_LOOKS]
     k, n = (int(v) for v in os.environ.get('HG_PART', '0/1').split('/'))
     report = {}
     for i, (nm, fn) in enumerate(jobs):

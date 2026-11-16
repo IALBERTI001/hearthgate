@@ -67,6 +67,13 @@ namespace Hearthgate.Game
         // him and tilts it, the wheel raises it over the walls or lowers it to the street; C puts it back
         float orbit, tilt; Vector2 lastPtr, baseHeading = START_HEADING; bool dragging, toldCam;
         Gait gait;
+        // the wall posts (GameLoop.Posts): climbing a stair, standing at a post, casting; and his mana
+        public int Post = -1; int climbPost = -1, lastPost = 0, climbAfter = -1; bool climbUp; float climbS, climbLen, postBlend, castCd, dryT, fullT;
+        Vector3[] climbPath; Vector3 wallPos;
+        public bool OnWall => Post >= 0 || climbPost >= 0;
+        public int StairNear { get; private set; } = -1;   // the stair whose foot he stands at, or -1
+        public float Mana = MANA_MAX; public bool Refilling { get; private set; }
+        public const float MANA_MAX = 100f, SPELL_COST = 8f, CAST_EVERY = 0.4f, CLIMB_SPEED = 2.6f, MANA_FOUNTAIN = 45f, MANA_TRICKLE = 0.5f;
 
         public void Init(ArtSet art)
         {
@@ -90,10 +97,10 @@ namespace Hearthgate.Game
         {
             at = default; who = -1; var g = GameLoop.I; if (g == null || cam == null) return false;
             float best = 60f * Screen.height / 720f;
-            for (int ki = 0; ki <= HG.BUILDING_IDS.Length + 1; ki++)
+            for (int ki = 0; ki < HG.BUILDING_IDS.Length + GameLoop.SQUARE_KEEPERS.Length; ki++)
             {
-                int i = ki == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : ki == HG.BUILDING_IDS.Length + 1 ? GameLoop.STEWARD : ki;
-                if (i == GameLoop.TRAINER ? !g.TrainerHere : i == GameLoop.STEWARD ? !g.StewardHere : (GameLoop.KeeperOf(i) == null || !g.CentreOn(i))) continue;
+                int i = ki >= HG.BUILDING_IDS.Length ? GameLoop.SQUARE_KEEPERS[ki - HG.BUILDING_IDS.Length] : ki;
+                if (GameLoop.InSquare(i) ? !g.KeeperHere(i) : (GameLoop.KeeperOf(i) == null || !g.CentreOn(i))) continue;
                 var c = GameLoop.TalkAt(i); var s = cam.WorldToScreenPoint(c + Vector3.up * 1.2f); if (s.z <= 0) continue;
                 var s2 = cam.WorldToScreenPoint(c + Vector3.up * 3.6f);   // the body or the sign over the head
                 float d = Mathf.Min(Vector2.Distance(sp, s), s2.z > 0 ? Vector2.Distance(sp, s2) : 1e9f); if (d >= best) continue;
@@ -105,6 +112,8 @@ namespace Hearthgate.Game
 
         public void Toggle()
         {
+            if (OnWall) { int k = climbPost >= 0 ? climbPost : Post; pos = GameLoop.Posts[k].foot; pos.y = 0; Post = -1; climbPost = -1; }   // T on the wall: he is back in the street
+            climbAfter = -1;
             On = !On; target = null; goal.SetActive(false); Guide.Done("walk");
             Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14); Sound.Play("surge", 0.35f);
             if (On && GameLoop.I && !GameLoop.I.P.told.Contains("walkhint")) { GameLoop.I.P.told.Add("walkhint"); Hud.Banner("Click the ground or use WASD to walk. At a door, press E to raise the building"); }   // once (bot round 7)   // at once, on entering (a queued coach line arrived after the bot had left)   // the bot never learned how to move or E
@@ -133,7 +142,9 @@ namespace Hearthgate.Game
             float dt = Time.deltaTime; idle += dt;
             if (Hud.Paused) return;
             if (Input.GetKeyDown(KeyCode.T)) { Sound.Click(); Toggle(); }
-            if (Input.GetMouseButtonDown(0) && !Hud.OnHud(Hud.PointerPos))
+            bool onWall = OnWall;
+            if (onWall) WallInput(dt);
+            else if (Input.GetMouseButtonDown(0) && !Hud.OnHud(Hud.PointerPos))
             {
                 if (!On)
                 {   // a tap on the wizard from the walls is the same as the Walk button
@@ -146,13 +157,18 @@ namespace Hearthgate.Game
                     if (new Vector2(kat.x - pos.x, kat.z - pos.z).magnitude < 7f) { Stop(); GameLoop.I.OpenHall(ki0); }
                     else { target = kat; talkTo = ki0; goal.SetActive(true); goal.transform.position = kat + Vector3.up * 0.05f; }
                 }
+                else if (StairAt(Hud.PointerPos, out int sk))
+                {   // a click on a stair (or its brazier): up it, from its foot
+                    if ((GameLoop.Posts[sk].foot - pos).magnitude < 2.4f) StartClimb(sk, true);
+                    else { var f = GameLoop.Posts[sk].foot; target = new Vector3(f.x, 0, f.z); climbAfter = sk; talkTo = int.MinValue; goal.SetActive(true); goal.transform.position = target.Value + Vector3.up * 0.05f; }
+                }
                 else if (Ground(Hud.PointerPos, out var at))
                 {   // a tap into a ruin stops him at its door: nothing to do in the rubble, and the camera stays out on the street
                     // (bot round 5: "walked into a ruin and the camera went top-down")
                     var gp = GameLoop.I ? GameLoop.I.P : null;
                     for (int ri = 0; gp != null && ri < HG.BUILDING_IDS.Length; ri++)
                         if (!gp.restored.Contains(HG.BUILDING_IDS[ri]) && InFootprint(ri, at, 0.2f)) { at = Field.Door(ri, 1.3f); at.y = 0; break; }
-                    target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
+                    target = at; climbAfter = -1; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
             }
 
             if (On)
@@ -171,24 +187,24 @@ namespace Hearthgate.Game
 
             // walking: keys move him relative to the camera, a tap sends him
             Vector3 want = Vector3.zero;
-            if (On)
+            if (On && !onWall)
             {
                 float h = (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) ? 1 : 0) - (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.Q) ? 1 : 0);
                 float v = (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.Z) ? 1 : 0) - (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ? 1 : 0);
                 var fw = cam.transform.forward; fw.y = 0; fw = fw.sqrMagnitude < 0.01f ? Vector3.forward : fw.normalized; var rt = new Vector3(fw.z, 0, -fw.x);
-                if (h != 0 || v != 0) { want = (rt * h + fw * v).normalized; target = null; talkTo = int.MinValue; goal.SetActive(false); }
+                if (h != 0 || v != 0) { want = (rt * h + fw * v).normalized; target = null; talkTo = int.MinValue; climbAfter = -1; goal.SetActive(false); }
                 else if (target.HasValue)
                 {
                     var left = target.Value - pos; left.y = 0;
                     var to = Waypoint(target.Value) - pos; to.y = 0;
-                    if (left.magnitude < 0.3f) { target = null; goal.SetActive(false); if (talkTo != int.MinValue) { int tk = talkTo; talkTo = int.MinValue; GameLoop.I.OpenHall(tk); } }
+                    if (left.magnitude < 0.3f) { target = null; goal.SetActive(false); if (climbAfter >= 0) { int ca = climbAfter; climbAfter = -1; StartClimb(ca, true); } else if (talkTo != int.MinValue) { int tk = talkTo; talkTo = int.MinValue; GameLoop.I.OpenHall(tk); } }
                     else want = to.normalized * Mathf.Clamp01(left.magnitude / 1.0f + 0.3f);
                 }
             }
-            vel = Vector3.MoveTowards(vel, want * SPEED, SPEED * 6f * dt);
-            pos += vel * dt; Collide();
-            float speed = vel.magnitude;
-            if (speed > 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-vel.x, -vel.z) * Mathf.Rad2Deg, 540f * dt);   // models face -Z
+            if (!onWall) { vel = Vector3.MoveTowards(vel, want * SPEED, SPEED * 6f * dt); pos += vel * dt; Collide(); } else vel = Vector3.zero;
+            float speed = climbPost >= 0 ? CLIMB_SPEED : vel.magnitude;
+            if (onWall) { }   // turned by WallInput
+            else if (speed > 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-vel.x, -vel.z) * Mathf.Rad2Deg, 540f * dt);   // models face -Z
             else if (!On) yaw = Mathf.MoveTowardsAngle(yaw, 180f, 180f * dt);   // at rest by the gate he faces the walls
             gait.Tick(dt, speed);   // legs, arms and hat (Gait: the stance foot planted, the swing knee bent, the hips over the stance leg)
             if (!gait.HasLegs) { float was = step; step += dt * (speed > 0.25f ? 10f : 0f); if (Mathf.Floor(step / Mathf.PI) != Mathf.Floor(was / Mathf.PI)) Sound.Step(); }
@@ -204,7 +220,7 @@ namespace Hearthgate.Game
             // the look: the hips over the stance leg, a lean into the walk and the body turning against the hips; a slow breath
             // when he stands (a model without legs keeps the old hop)
             float hop = gait.HasLegs ? gait.Drop : speed > 0.25f ? Mathf.Abs(Mathf.Sin(step)) * 0.09f : 0f, breath = Mathf.Sin(idle * 2f) * 0.012f;
-            model.position = pos + Vector3.up * (lift + hop);
+            model.position = (onWall ? wallPos : pos + Vector3.up * lift) + Vector3.up * hop;
             model.rotation = Quaternion.Euler(Mathf.Clamp01(speed / SPEED) * 7f, yaw + (gait.HasLegs ? gait.Twist : 0f), gait.HasLegs ? 0f : Mathf.Sin(step) * 3f * Mathf.Clamp01(speed));
             model.localScale = new Vector3(SCALE, SCALE * (1 + breath), SCALE);
             if (goal.activeSelf) goal.transform.Rotate(0, 90 * dt, 0);
@@ -226,22 +242,32 @@ namespace Hearthgate.Game
             // the centrepiece and turned to them (within 50 degrees)
             Looking = -1;
             if (On)
-                for (int ki = 0; ki <= HG.BUILDING_IDS.Length + 1; ki++)
+                for (int ki = 0; ki < HG.BUILDING_IDS.Length + GameLoop.SQUARE_KEEPERS.Length; ki++)
                 {
-                    int i = ki == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : ki == HG.BUILDING_IDS.Length + 1 ? GameLoop.STEWARD : ki;
-                    if (i == GameLoop.TRAINER ? !GameLoop.I.TrainerHere : i == GameLoop.STEWARD ? !GameLoop.I.StewardHere : (!GameLoop.I.CentreOn(i) || !InFootprint(i, pos, 0.2f))) continue;
+                    int i = ki >= HG.BUILDING_IDS.Length ? GameLoop.SQUARE_KEEPERS[ki - HG.BUILDING_IDS.Length] : ki;
+                    if (GameLoop.InSquare(i) ? !GameLoop.I.KeeperHere(i) : (!GameLoop.I.CentreOn(i) || !InFootprint(i, pos, 0.2f))) continue;
                     var c = GameLoop.TalkAt(i); var to = new Vector3(c.x - pos.x, 0, c.z - pos.z); float reach = GameLoop.TalkReach(i);
                     if (to.magnitude < reach && want.sqrMagnitude > 0.01f && Vector3.Angle(want, to) < 70f)   // pressing toward them: he turns to face them squarely
                         yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-to.x, -to.z) * Mathf.Rad2Deg, 540f * dt);
                     var face = new Vector3(-Mathf.Sin(yaw * Mathf.Deg2Rad), 0, -Mathf.Cos(yaw * Mathf.Deg2Rad));
                     if (to.magnitude < reach && Vector3.Angle(face, to) < 50f) Looking = i;
                 }
+            // the stair at hand, and its mana: the fountain fills him, anywhere else only a trickle
+            StairNear = -1;
+            if (On && !onWall) for (int k2 = 0; k2 < 4; k2++) if ((GameLoop.Posts[k2].foot - pos).magnitude < 2.4f) StairNear = k2;
+            if (onWall) { Near = -1; Inside = -1; Looking = -1; }
+            Refilling = On && !onWall && new Vector2(pos.x - Field.PLAZA.x, pos.z - Field.PLAZA.z).magnitude < FOUNTAIN_R + 2.6f;
+            float was0 = Mana; Mana = Mathf.Min(MANA_MAX, Mana + (Refilling ? MANA_FOUNTAIN : MANA_TRICKLE) * dt);
+            if (Refilling && Mana < MANA_MAX && Random.value < dt * 14f) Fx.I.Burst(StaffTip, new Color(0.55f, 0.8f, 1f), 1);
+            if (Refilling && was0 < MANA_MAX && Mana >= MANA_MAX) { Sound.Play("claim", 0.3f); Fx.I.Pop(StaffTip + Vector3.up * 0.6f, "Mana full", new Color(0.6f, 0.85f, 1f), 26); }
+            bool usedE = false;
+            if (StairNear >= 0 && Input.GetKeyDown(KeyCode.E)) { usedE = true; StartClimb(StairNear, true); }
             int nk = int.MinValue;   // E beside the Chronomancer or the Steward talks to them (bot round 8: "E near Aurelian did nothing")
-            if (On && Input.GetKeyDown(KeyCode.E) && GameLoop.I)
-                foreach (int ki in new[] { GameLoop.TRAINER, GameLoop.STEWARD })
-                    if ((ki == GameLoop.TRAINER ? GameLoop.I.TrainerHere : GameLoop.I.StewardHere) && new Vector2(GameLoop.TalkAt(ki).x - pos.x, GameLoop.TalkAt(ki).z - pos.z).magnitude < 3f) nk = ki;
+            if (On && !onWall && !usedE && Input.GetKeyDown(KeyCode.E) && GameLoop.I)
+                foreach (int ki in GameLoop.SQUARE_KEEPERS)
+                    if (GameLoop.I.KeeperHere(ki) && new Vector2(GameLoop.TalkAt(ki).x - pos.x, GameLoop.TalkAt(ki).z - pos.z).magnitude < 3f) nk = ki;
             if (nk != int.MinValue) { Stop(); GameLoop.I.OpenHall(nk); }
-            else if (On && Near >= 0 && Looking < 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else { Sound.Dud(); GameLoop.I.Need(GameLoop.I.BestCost(Near), Field.Door(Near, 1f, 2.5f)); } }
+            else if (On && !onWall && !usedE && Near >= 0 && Looking < 0 && Input.GetKeyDown(KeyCode.E)) { if (GameLoop.I.CanWork(Near)) { Sound.Click(); GameLoop.I.WorkOn(Near); } else { Sound.Dud(); GameLoop.I.Need(GameLoop.I.BestCost(Near), Field.Door(Near, 1f, 2.5f)); } }
 
             // the camera: from the walls it glides down into the town and settles behind and above him, looking the way the
             // wall view looks (FollowFrom keeps it inside the ring); high enough to look over a room's walls when he is inside
@@ -259,8 +285,102 @@ namespace Hearthgate.Game
             followLook += new Vector3(heading.x, 0, heading.y) * (tUp * 22f) + Vector3.up * (tUp * 6.5f + tDown * 1.6f);   // raised, it looks out level over the walls to the field, not down at the cobbles
             var p = Vector3.Lerp(Field.CAM_POS, followPos, k);
             var r = Quaternion.Slerp(Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS), Quaternion.LookRotation(followLook - followPos), k);
+            // at a post: behind and over him on the wall walk, looking out over the lanes (a glide up as he reaches the top)
+            postBlend = Mathf.MoveTowards(postBlend, Post >= 0 || (climbPost >= 0 && climbUp && climbS > climbLen * 0.45f) ? 1f : 0f, dt / 0.9f);
+            float fov = Mathf.Lerp(Field.FovFor(cam.aspect), Mathf.Max(55f, Field.FovFor(cam.aspect)), k);
+            if (postBlend > 0.001f)
+            {
+                var ps = GameLoop.Posts[Post >= 0 ? Post : climbPost >= 0 ? climbPost : lastPost]; float pb = Mathf.SmoothStep(0, 1, postBlend);
+                var pc = ps.stand - ps.outward * 5.2f + Vector3.up * 3.4f; var pl = ps.stand + ps.outward * 15f; pl.y = 0.6f;
+                p = Vector3.Lerp(p, pc, pb); r = Quaternion.Slerp(r, Quaternion.LookRotation(pl - pc), pb); fov = Mathf.Lerp(fov, 58f, pb);
+            }
             Fx.I.camHome = p; cam.transform.rotation = r;
-            cam.fieldOfView = Mathf.Lerp(Field.FovFor(cam.aspect), Mathf.Max(55f, Field.FovFor(cam.aspect)), k);
+            cam.fieldOfView = fov;
+        }
+
+        // ---------- the wall posts ----------
+        public void DevPost(int k) { pos = GameLoop.Posts[k].foot; pos.y = 0; StartClimb(k, true); }   // test hook (GameLoop.Dev)
+        void StartClimb(int k, bool up)
+        {
+            var ps = GameLoop.Posts[k]; Stop(); climbAfter = -1;
+            climbPath = up ? new[] { new Vector3(pos.x, 0, pos.z), ps.foot, ps.bottom, ps.top, ps.landing, ps.stand } : new[] { ps.stand, ps.landing, ps.top, ps.bottom, ps.foot };
+            climbLen = 0; for (int i = 1; i < climbPath.Length; i++) climbLen += Vector3.Distance(climbPath[i - 1], climbPath[i]);
+            climbPost = k; lastPost = k; climbUp = up; climbS = 0; Post = -1; wallPos = climbPath[0];
+            if (up) Sound.Play("surge", 0.2f);
+        }
+        void ClimbStep(float dt)
+        {
+            climbS += CLIMB_SPEED * dt; float left = climbS;
+            for (int i = 1; i < climbPath.Length; i++)
+            {
+                var a = climbPath[i - 1]; var b = climbPath[i]; float L = Vector3.Distance(a, b);
+                if (left <= L || i == climbPath.Length - 1)
+                {
+                    wallPos = Vector3.Lerp(a, b, L > 0.001f ? Mathf.Clamp01(left / L) : 1f);
+                    var d = b - a; d.y = 0; if (d.sqrMagnitude > 0.01f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-d.x, -d.z) * Mathf.Rad2Deg, 540f * dt);
+                    break;
+                }
+                left -= L;
+            }
+            pos = new Vector3(wallPos.x, 0, wallPos.z);
+            if (climbS < climbLen) return;
+            int k = climbPost; climbPost = -1;
+            if (climbUp)
+            {
+                Post = k; wallPos = GameLoop.Posts[k].stand;
+                var gp = GameLoop.I ? GameLoop.I.P : null;
+                if (gp != null && !gp.told.Contains("post1")) { gp.told.Add("post1"); Hud.Banner("On the wall! Click a monster to cast. A / D: the next post. S: climb down"); }
+            }
+            else { pos = GameLoop.Posts[k].foot; pos.y = 0; }
+        }
+        void WallInput(float dt)
+        {
+            castCd -= dt; dryT -= dt;
+            if (climbPost >= 0) { ClimbStep(dt); return; }
+            var ps = GameLoop.Posts[Post]; wallPos = ps.stand; pos = new Vector3(ps.stand.x, 0, ps.stand.z);
+            if (castCd < CAST_EVERY - 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(ps.outward.x, ps.outward.z) * Mathf.Rad2Deg + 180f, 360f * dt);   // models face -Z: he looks out over the field
+            if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.Q)) { Hop(-1); return; }
+            if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow)) { Hop(1); return; }
+            if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.E)) { StartClimb(Post, false); return; }
+            if (Input.GetMouseButton(0) && !Hud.OnHud(Hud.PointerPos) && castCd <= 0) Cast(Input.GetMouseButtonDown(0));
+        }
+        void Cast(bool pressed)
+        {
+            var g = GameLoop.I; if (g == null) return;
+            var e = g.WizardTarget(Hud.PointerPos, cam);
+            if (e == null) return;
+            if (Mana < SPELL_COST)
+            {
+                if (pressed) { Sound.Dud(); if (dryT <= 0) { dryT = 6f; Hud.Banner("Out of mana! The fountain in the square refills it"); } }
+                return;
+            }
+            Mana -= SPELL_COST; castCd = CAST_EVERY;
+            var to = e.Pos - wallPos; yaw = Mathf.Atan2(-to.x, -to.z) * Mathf.Rad2Deg;   // he turns to it as he casts
+            model.rotation = Quaternion.Euler(0, yaw, 0);
+            g.WizardCast(e, StaffTip, g.PostElement(Post));
+        }
+        void Hop(int dir)
+        {
+            int i = System.Array.IndexOf(GameLoop.POST_ORDER, Post) + dir;
+            if (i < 0 || i >= GameLoop.POST_ORDER.Length) { Sound.Dud(); return; }
+            Fx.I.Burst(wallPos + Vector3.up * 1f, new Color(0.6f, 0.85f, 1f), 14);
+            Post = GameLoop.POST_ORDER[i]; lastPost = Post; wallPos = GameLoop.Posts[Post].stand; pos = new Vector3(wallPos.x, 0, wallPos.z);
+            Fx.I.Burst(wallPos + Vector3.up * 1f, new Color(0.6f, 0.85f, 1f), 14); Sound.Play("surge", 0.25f);   // a time wizard's blink
+        }
+        // a stair (its flight or its brazier) under the pointer
+        bool StairAt(Vector2 sp, out int k)
+        {
+            k = -1; float best = 70f * Screen.height / 720f;
+            for (int i = 0; i < 4; i++)
+            {
+                var ps = GameLoop.Posts[i];
+                foreach (var w in new[] { ps.foot + Vector3.up * 0.5f, (ps.bottom + ps.top) / 2f, ps.landing + Vector3.up * 1.4f })
+                {
+                    var s2 = cam.WorldToScreenPoint(w); if (s2.z <= 0) continue;
+                    float d = Vector2.Distance(sp, s2); if (d < best) { best = d; k = i; }
+                }
+            }
+            return k >= 0;
         }
 
         // a tap into (or out of) a building walks him round to its doorway first, then through it
@@ -286,6 +406,7 @@ namespace Hearthgate.Game
             Push(Field.PLAZA, FOUNTAIN_R);
             if (GameLoop.I && GameLoop.I.TrainerHere) Push(GameLoop.TRAINER_AT, 0.45f + RADIUS);   // the Chronomancer stands his ground
             if (GameLoop.I && GameLoop.I.StewardHere) { Push(GameLoop.STEWARD_AT, 0.45f + RADIUS); var side = new Vector3(GameLoop.HUB_FACE.y, 0, -GameLoop.HUB_FACE.x) * 0.7f; Push(GameLoop.BOOTH_AT + side, 0.75f + RADIUS); Push(GameLoop.BOOTH_AT - side, 0.75f + RADIUS); }   // the booth's counter
+            if (GameLoop.I && GameLoop.I.CaptainAtPost) Push(GameLoop.CAPTAIN_AT, 0.4f + RADIUS);
             foreach (var pr in Field.PROPS) Push(new Vector3(pr.x, 0, pr.y), pr.z + RADIUS);
             if (pos.z > -3.2f && Mathf.Abs(pos.x) < Field.GATE_HALF + 0.8f) pos.z = -3.2f;
             float m = 2.4f, ex = pos.x / (Field.RX - m), ez = (pos.z + Field.RZ) / (Field.RZ - m), e = Mathf.Sqrt(ex * ex + ez * ez);

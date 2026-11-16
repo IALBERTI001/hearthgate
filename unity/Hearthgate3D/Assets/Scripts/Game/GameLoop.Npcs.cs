@@ -26,31 +26,32 @@ namespace Hearthgate.Game
         public static readonly Vector2 HUB_FACE = Field.Front(MKT);
         public static readonly Vector3 STEWARD_AT = Field.World(MKT, -3.6f, Field.PlotSize(MKT).y / 2f + 4.6f), BOOTH_AT = Field.World(MKT, -3.6f, Field.PlotSize(MKT).y / 2f + 5.4f);
         public static readonly Vector3 TRAINER_AT = Field.World(MKT, 3.6f, Field.PlotSize(MKT).y / 2f + 5.2f);
-        public static bool InSquare(int i) => i == TRAINER || i == STEWARD;
+        public static bool InSquare(int i) => i == TRAINER || i == STEWARD || i == CAPTAIN;
         public bool StewardHere => P.restored.Count >= 1 || P.ascensions > 0;
         GameObject stewardObj, boothObj;
         readonly System.Collections.Generic.Dictionary<Transform, Quaternion> armRest = new System.Collections.Generic.Dictionary<Transform, Quaternion>();
         GameObject[] keepers; GameObject trainerObj; Transform[] marks; string[] markKind; float npcT;
 
-        public static string KeeperOf(int i) => i == TRAINER ? "chronomancer" : i == STEWARD ? "steward" : HG.BUILDING_IDS[i] == "watchtower" ? "astronomer" : HG.BUILDING_IDS[i] == "market" ? "merchant" : HG.BUILDING_IDS[i] == "library" ? "librarian" : null;
+        public static string KeeperOf(int i) => i == TRAINER ? "chronomancer" : i == STEWARD ? "steward" : i == CAPTAIN ? "captain" : HG.BUILDING_IDS[i] == "watchtower" ? "astronomer" : HG.BUILDING_IDS[i] == "market" ? "merchant" : HG.BUILDING_IDS[i] == "library" ? "librarian" : null;
         public bool TrainerHere => P.bestWave >= 5 || P.ascensions > 0;
         // where a keeper stands: behind the centrepiece, facing the door
         public static Vector3 TalkAt(int i)
         {
             if (i == TRAINER) return TRAINER_AT;
             if (i == STEWARD) return STEWARD_AT;
+            if (i == CAPTAIN) return CAPTAIN_AT;
             var c = Field.CENTREPIECE[i]; float hz = Field.PlotSize(i).y / 2f;
             float v = Mathf.Max(c.y - (c.z + 0.65f), -(hz - 0.55f));
             float u = c.x - (HG.BUILDING_IDS[i] == "watchtower" ? 0.55f : 0f);   // Orrin stands clear of the stair and the ruin's fallen stones
             return Field.World(i, u, v, Field.FLOOR);
         }
-        public static float TalkReach(int i) => i == TRAINER ? 2.2f : i == STEWARD ? 2.9f : 2f * Field.CENTREPIECE[i].z + 1.75f;
+        public static float TalkReach(int i) => i == TRAINER ? 2.2f : i == STEWARD ? 2.9f : i == CAPTAIN ? 2.2f : 2f * Field.CENTREPIECE[i].z + 1.75f;
 
         void TickNpcs(float dt)
         {
             if (art == null) return;
             TickRifts(dt);
-            if (keepers == null) { keepers = new GameObject[HG.BUILDING_IDS.Length]; marks = new Transform[HG.BUILDING_IDS.Length + 2]; markKind = new string[marks.Length]; }
+            if (keepers == null) { keepers = new GameObject[HG.BUILDING_IDS.Length]; marks = new Transform[HG.BUILDING_IDS.Length + 3]; markKind = new string[marks.Length]; }
             npcT += dt;
             for (int i = 0; i < keepers.Length; i++)
             {
@@ -82,7 +83,7 @@ namespace Hearthgate.Game
             // the signs: '!' a reward waiting, '?' something to take on
             for (int k = 0; k < marks.Length; k++)
             {
-                int i = k == keepers.Length ? TRAINER : k == keepers.Length + 1 ? STEWARD : k; bool present = i == TRAINER ? trainerObj : i == STEWARD ? stewardObj : keepers[k];
+                int i = k == keepers.Length ? TRAINER : k == keepers.Length + 1 ? STEWARD : k == keepers.Length + 2 ? CAPTAIN : k; bool present = i == TRAINER ? trainerObj : i == STEWARD ? stewardObj : i == CAPTAIN ? CaptainAtPost : keepers[k];
                 string want = present ? Mark(i) : null;
                 if (want != markKind[k] || (want != null && !marks[k]))
                 {
@@ -94,7 +95,7 @@ namespace Hearthgate.Game
                 if (!marks[k]) continue;
                 var wz = Wizard.I; bool near = wz && wz.On && (InSquare(i) || wz.Inside == i);
                 // over the head when the wizard is with them; over the roof (big enough to see from the walls) otherwise
-                var at = near || InSquare(i) ? TalkAt(i) + Vector3.up * (2.5f + (InSquare(i) ? (i == STEWARD ? 1.0f : 0) : Field.FLOOR)) : Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 1.6f);
+                var at = near || InSquare(i) ? TalkAt(i) + Vector3.up * (2.5f + (InSquare(i) ? (i == STEWARD ? 1.0f : i == CAPTAIN ? -0.2f : 0) : Field.FLOOR)) : Field.Plot(i) + Vector3.up * (Field.PlotHeight(i) + 1.6f);
                 float sc = near ? 1.25f : wz && wz.On ? 2.3f : 3.4f;   // read across the square, not a thin stick
                 marks[k].position = at + Vector3.up * Mathf.Sin(npcT * 2.4f + k) * 0.15f * sc;
                 var cam = Camera.main; if (cam) { var d = marks[k].position - cam.transform.position; if (d.sqrMagnitude > 0.01f) marks[k].rotation = Quaternion.LookRotation(d); }   // full billboard: from the high cameras a yaw-only sign was edge-on, a stick
@@ -149,6 +150,7 @@ namespace Hearthgate.Game
                 case "librarian": return P.quests.Any(q => q.n >= q.need && !q.claimed) || Hud.FeatNews ? "!" : P.quests.Any(q => !q.claimed && q.n == 0) ? "?" : null;   // rewards to claim; else quests not yet begun
                 case "chronomancer": return CanTrain ? "?" : null;   // a lesson to take on
                 case "steward": return LedgerNews ? "?" : null;   // a doubling within reach
+                case "captain": return BountyDone ? "!" : !P.bountyOn ? "?" : null;   // a bounty paid, or one to take
             }
             return null;
         }

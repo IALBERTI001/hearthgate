@@ -11,8 +11,8 @@ namespace Hearthgate.Game
     public partial class Hud
     {
         public static int TalkingTo = -1;   // the keeper whose card is open (they gesture while it is)
-        public static string KeeperName(string kind) => kind == "astronomer" ? "Orrin the Star-Reader" : kind == "merchant" ? "Mira of the Bazaar" : kind == "librarian" ? "Elder Quill" : kind == "steward" ? "Tobin of the Ledger" : "Aurelian the Chronomancer";
-        static string Calling(string kind) => kind == "astronomer" ? "Keeper of the Watchtower's stars" : kind == "merchant" ? "Starshard seller of the Market" : kind == "librarian" ? "Keeper of the Library" : kind == "steward" ? "Keeper of the town's ledger" : "Master of hours, teacher of the time wizard";
+        public static string KeeperName(string kind) => kind == "astronomer" ? "Orrin the Star-Reader" : kind == "merchant" ? "Mira of the Bazaar" : kind == "librarian" ? "Elder Quill" : kind == "steward" ? "Tobin of the Ledger" : kind == "captain" ? "Captain Brann of the Watch" : "Aurelian the Chronomancer";
+        static string Calling(string kind) => kind == "astronomer" ? "Keeper of the Watchtower's stars" : kind == "merchant" ? "Starshard seller of the Market" : kind == "librarian" ? "Keeper of the Library" : kind == "steward" ? "Keeper of the town's ledger" : kind == "captain" ? "Captain of the town watch, at the gate" : "Master of hours, teacher of the time wizard";
 
         public static void ShowTalk(int who)
         {
@@ -21,7 +21,7 @@ namespace Hearthgate.Game
             var box = I.Modal(KeeperName(kind), new Vector2(720, 340), false); TalkingTo = who;
             var med = I.Box("Portrait", box, new Vector2(0, 1), new Vector2(0, 1), new Vector2(34, -70), new Vector2(150, 150)); med.pivot = new Vector2(0, 1);
             var mi = med.gameObject.AddComponent<Image>(); mi.sprite = Panel(INK, BRASS, 18, 3); mi.type = Image.Type.Sliced; mi.raycastTarget = false;
-            var pic = I.Box("Pic", med, Vector2.zero, Vector2.one, new Vector2(0, -4), new Vector2(-14, -14)); var pi = pic.gameObject.AddComponent<Image>(); pi.sprite = Icon("npc_" + kind); pi.preserveAspect = true; pi.raycastTarget = false; if (!pi.sprite) pi.enabled = false;
+            var pic = I.Box("Pic", med, Vector2.zero, Vector2.one, new Vector2(0, -4), new Vector2(-14, -14)); var pi = pic.gameObject.AddComponent<Image>(); pi.sprite = Icon("npc_" + (kind == "captain" ? "soldier" : kind)); pi.preserveAspect = true; pi.raycastTarget = false; if (!pi.sprite) pi.enabled = false;
             var who2 = I.Label("Calling", box, new Vector2(0, 1), new Vector2(206, -72), 16, TextAnchor.UpperLeft); who2.font = I.body; who2.text = Calling(kind); who2.color = new Color(0.85f, 0.78f, 0.6f);
             who2.rectTransform.pivot = new Vector2(0, 1); who2.rectTransform.sizeDelta = new Vector2(480, 24);
             var say = I.Label("Say", box, new Vector2(0, 1), new Vector2(206, -102), 19, TextAnchor.UpperLeft); say.font = I.body; say.fontStyle = FontStyle.Normal;
@@ -52,6 +52,23 @@ namespace Hearthgate.Game
                                     : $"\"Every building in town, on one page: what each makes, and what it costs to raise. The city makes <color=#CFE9B0>+{HG.Fmt(HG.CityRate(P, g.B))}/s</color> today.\"";
                     opts.Add(("Open the ledger", "ledger", () => ShowLedger("town")));
                     opts.Add(("My skills", "timestop", () => ShowLedger("skills")));
+                    break;
+                case "captain":
+                    int need = g.BountyNeed, pay = g.BountyPay;
+                    if (g.BountyDone)
+                    {
+                        say.text = $"\"The watch saw every one of them fall, wizard. Your bounty: <color=#FFE68C>{pay} Starshards</color>, with the town's thanks.\"";
+                        opts.Add(("Claim my bounty", "starshard", () => { g.ClaimBounty(); ShowTalk(who); }));
+                    }
+                    else if (P.bountyOn)
+                        say.text = $"\"<color=#BFE0FF>{P.bountyN} of {need}</color> slain by your hand so far. Climb the stair beside any tower and strike them from the wall. Spent your mana? The fountain fills it.\"";
+                    else
+                    {
+                        say.text = P.bountyLv == 0
+                            ? $"\"The towers hold, but the watch needs your staff on the walls. Climb the stair beside any tower and strike the monsters yourself. Slay <color=#BFE0FF>{need}</color> by your own hand and the watch pays <color=#FFE68C>{pay} Starshards</color>.\""
+                            : $"\"More of them every night. Slay <color=#BFE0FF>{need}</color> from the walls and the watch pays <color=#FFE68C>{pay} Starshards</color>.\"";
+                        opts.Add(("I'll take it", "walk", () => { g.TakeBounty(); ShowTalk(who); }));
+                    }
                     break;
                 default:   // the Chronomancer
                     int lv = g.TimeStopLevel;

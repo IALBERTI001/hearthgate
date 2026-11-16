@@ -33,7 +33,7 @@ def tower_front():
     if len(front) < 6: bad.append(f'tower_base: only {len(front)} stones on the face toward the camera')
 jobs = [(name, fn, extra) for fn, name, extra in ((F.gate, 'gate', None), (F.wall, 'wall', None), (F.tower_base, 'tower_base', tower_front), (F.road, 'road', None),
                         (F.ground, 'ground', None), (F.fountain, 'fountain', None), 
-                        (C.ruin, 'ruin', None), (F.wizard, 'wizard', None), (F.butterfly, 'butterfly', None), (F.star_wisp, 'star_wisp', None))]
+                        (C.ruin, 'ruin', None), (F.wizard, 'wizard', None), (F.butterfly, 'butterfly', None), (F.star_wisp, 'star_wisp', None), (F.wall_stair, 'wall_stair', None))]
 jobs += [('top_' + k, (lambda k=k: F.top(k)), None) for k in ('stone', 'fire', 'frost', 'storm', 'earth')]
 jobs += [('centre_' + b, (lambda b=b: C.centrepiece(b)), None) for b in ('watchtower', 'market', 'library')]
 jobs += [('building_' + b, C.BUILDERS[b], None) for b in C.BUILDERS] + [('ruin_' + b, (lambda b=b: C.ruin_of(b)), None) for b in C.SHELLS]

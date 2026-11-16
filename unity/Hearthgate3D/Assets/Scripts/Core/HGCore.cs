@@ -554,6 +554,7 @@ namespace Hearthgate.Core
         [NonSerialized] public string omen;   // lifetime counts and Feats earned (kept by Ascension)
         public int Stat(string k) { var e = stats.Find(x => x.k == k); return e == null ? 0 : e.v; }
         public void AddStat(string k, int n) { var e = stats.Find(x => x.k == k); if (e == null) stats.Add(new KV { k = k, v = n }); else e.v = (int)Math.Min(int.MaxValue, (long)e.v + n); }
+        public int bountyLv, bountyN; public bool bountyOn;   // the Captain of the Watch's bounties: how many paid, the kills toward this one, and whether it is taken (GameLoop.Posts)
         public bool firstSession = true;
         public bool music = true, sfx = true, reduced;
 
@@ -589,6 +590,7 @@ namespace Hearthgate.Core
             foreach (var st in HG.STARS) if (st.asc < ascensions && !stars.Contains(st.id)) stars.Add(st.id);   // a finished run's constellation is whole
             feats = (feats ?? new List<string>()).Where(id => HG.FEATS.Any(f => f.id == id)).Distinct().ToList();
             quests = (quests ?? new List<QuestState>()).Where(q => HG.QUESTS.Any(d => d.id == q.id)).ToList(); questDay = questDay ?? "";
+            bountyLv = Math.Max(0, bountyLv); bountyN = Math.Max(0, bountyN);
             perks = (perks ?? new List<KV>()).Where(e => HG.PERKS.Any(k => k.id == e.k) && e.v > 0).Select(e => new KV { k = e.k, v = Math.Min(e.v, HG.PERKS.First(k => k.id == e.k).max) }).ToList();
         }
     }

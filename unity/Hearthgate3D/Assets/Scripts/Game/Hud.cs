@@ -717,7 +717,7 @@ namespace Hearthgate.Game
                 if (ascReady) ascIcon.rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 4f)); else ascIcon.rectTransform.localScale = Vector3.one;
             }
             if (pk) perkTxt.text = HG.Fmt(P.perkPts);
-            TickTimeStop(g); ApplyHudAlpha(); TickRing();
+            TickTimeStop(g); TickWizardHud(g); ApplyHudAlpha(); TickRing();
             if (!Paused) TalkingTo = -1;
             if (Input.GetMouseButtonDown(0) && !Paused)
             {   // a tap on a counter: where it comes from and what it buys

@@ -217,6 +217,7 @@ namespace Hearthgate.Game
             Fx.I.Burst(e.Pos, Field.GOLD, e.boss ? 30 : 8); Sound.Play(e.boss ? "ascension" : "golem_death", e.boss ? 0.55f : 0.28f);
             Fx.I.Pop(e.Pos + Vector3.up * e.size, "+" + HG.Fmt(pay), Field.GOLD, e.boss ? 44 : 26);
             Quest("kills");
+            if (Time.time - e.handT < HAND_WINDOW) HandKill(e);   // the wizard's own (GameLoop.Posts)
             if (e.boss) { Fx.I.Shake(0.3f); Hud.Banner($"{e.R.label} falls!"); Quest("boss"); GiveShards((HG.SHARDS["boss"] + (int)B["bossPlus"]) * (1 + (int)B["bossShards"]), e.Pos + Vector3.up * (e.size + 2.5f)); }
             if (B["molten"] > 0 && e.burn > 0 && !e.boss)
             {   // the Molten Forge: a burning enemy bursts and sets its friends alight
@@ -261,27 +262,32 @@ namespace Hearthgate.Game
                 if (tw.beacon) tw.el = BeaconElement();
                 var tg = Pick(tw); if (tg == null) continue;
                 tw.cool = (float)HG.FireInterval(B) * (0.9f + tw.n * 0.07f) * (cheerT > 0 ? 0.5f : 1f) * (Ev("frenzy") ? 0.7f : 1f) * (tw.beacon && B["beacon"] > 0 ? 0.5f : 1f); tw.flash = 1;   // the Tavern's Cheer: twice as fast
-                var go = new GameObject("shot");
-                var col = tw.el != "none" ? Field.Of(tw.el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
-                // what it throws matches its element (owner, Nov 14 2026): a Blender model per element (hg_front.projectile),
-                // turned along its flight; each element moves and trails in its own way (TickShots)
-                var pf = art != null ? art.Projectile(tw.el) : null;
-                GameObject mrGo = pf ? Instantiate(pf) : Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f)).gameObject;
-                mrGo.transform.SetParent(go.transform, false); mrGo.transform.localScale = Vector3.one * (pf ? (tw.el == "earth" ? 1.1f : 1.25f) : 0.65f);
-                foreach (var r in mrGo.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
-                var tr = go.AddComponent<TrailRenderer>(); tr.numCapVertices = 3; tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; tr.endWidth = 0f;
-                switch (tw.el)
-                {   // the trail of each element: fire a wide flame tail, frost a thin pale streak, storm a short crackle, earth dust
-                    case "fire": tr.time = 0.3f; tr.startWidth = 0.6f * Fx.TrailScale; tr.material = Art.Flat(new Color(1f, 0.42f, 0.1f)); break;
-                    case "frost": tr.time = 0.25f; tr.startWidth = 0.22f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.75f, 0.93f, 1f)); break;
-                    case "storm": tr.time = 0.1f; tr.startWidth = 0.3f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.8f, 0.6f, 1f)); break;
-                    case "earth": tr.time = 0.18f; tr.startWidth = 0.4f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.55f, 0.42f, 0.28f)); break;
-                    default: tr.time = 0.15f; tr.startWidth = 0.3f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.6f, 0.55f, 0.47f)); break;
-                }
-                StyleTrail(tr, col);
-                go.transform.position = tw.Muzzle; Sound.Play(Sfx(tw.el) + "_launch_0", 0.16f);
-                shots.Add(new Shot { beacon = tw.beacon, p = tw.Muzzle, from = tw.Muzzle, target = tg, el = tw.el, speed = tw.el == "storm" ? 80f : tw.el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
+                Launch(tw.el, tw.Muzzle, tg, tw.beacon, false);
             }
+        }
+        // a shot of an element from a point at an enemy: the towers', and the wizard's own from the wall (GameLoop.Posts)
+        void Launch(string el, Vector3 from, Enemy tg, bool beacon, bool wiz)
+        {
+            var go = new GameObject("shot");
+            var col = el != "none" ? Field.Of(el) : new Color(0.66f, 0.58f, 0.47f);   // a stone tower throws stone, not a pale streak
+            // what it throws matches its element (owner, Nov 14 2026): a Blender model per element (hg_front.projectile),
+            // turned along its flight; each element moves and trails in its own way (TickShots)
+            var pf = art != null ? art.Projectile(el) : null;
+            GameObject mrGo = pf ? Instantiate(pf) : Art.Shape(PrimitiveType.Sphere, Art.Flat(col * 1.25f)).gameObject;
+            mrGo.transform.SetParent(go.transform, false); mrGo.transform.localScale = Vector3.one * (pf ? (el == "earth" ? 1.1f : 1.25f) : 0.65f);
+            foreach (var r in mrGo.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // light casts no dark streak
+            var tr = go.AddComponent<TrailRenderer>(); tr.numCapVertices = 3; tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; tr.endWidth = 0f;
+            switch (el)
+            {   // the trail of each element: fire a wide flame tail, frost a thin pale streak, storm a short crackle, earth dust
+                case "fire": tr.time = 0.3f; tr.startWidth = 0.6f * Fx.TrailScale; tr.material = Art.Flat(new Color(1f, 0.42f, 0.1f)); break;
+                case "frost": tr.time = 0.25f; tr.startWidth = 0.22f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.75f, 0.93f, 1f)); break;
+                case "storm": tr.time = 0.1f; tr.startWidth = 0.3f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.8f, 0.6f, 1f)); break;
+                case "earth": tr.time = 0.18f; tr.startWidth = 0.4f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.55f, 0.42f, 0.28f)); break;
+                default: tr.time = 0.15f; tr.startWidth = 0.3f * Fx.TrailScale; tr.material = Art.Flat(new Color(0.6f, 0.55f, 0.47f)); break;
+            }
+            StyleTrail(tr, col);
+            go.transform.position = from; Sound.Play(Sfx(el) + "_launch_0", wiz ? 0.3f : 0.16f);
+            shots.Add(new Shot { beacon = beacon, wiz = wiz, p = from, from = from, target = tg, el = el, speed = el == "storm" ? 80f : el == "frost" ? 26f : 20f, t = go.transform, trail = tr });
         }
         // frost picks someone not yet chilled; fire, storm and stone prefer the chilled (that is how combos happen). A tower
         // shoots down its own side of the gate first (lanes on the same side), so its shots fly out over the field and not
@@ -307,7 +313,7 @@ namespace Hearthgate.Game
                 var goal = s.target.Pos; float dist = Vector3.Distance(s.from, goal);
                 if (s.dur <= 0) s.dur = Mathf.Max(0.12f, dist / s.speed);
                 s.k = Mathf.Min(1f, s.k + DT / s.dur);
-                bool crosses = !s.beacon && (Mathf.Sign(s.from.x) != Mathf.Sign(goal.x) || Mathf.Abs(goal.x) < Field.GATE_HALF + 1f);   // the beacon fires down from high in the town
+                bool crosses = !s.beacon && !s.wiz && (Mathf.Sign(s.from.x) != Mathf.Sign(goal.x) || Mathf.Abs(goal.x) < Field.GATE_HALF + 1f);   // the beacon fires down from high in the town
                 if (crosses)
                 {   // across the middle: a curve that swings out in front of the gatehouse, over the road, never over the
                     // keep and the town behind it (a high lob over the keep still read as a shot into the town)
@@ -333,13 +339,14 @@ namespace Hearthgate.Game
                 else if (s.el == "storm" && Random.value < DT * 25f) Fx.I.Burst(s.p, new Color(0.85f, 0.7f, 1f), 1);
                 else if (s.el == "frost" && Random.value < DT * 10f) Fx.I.Burst(s.p, new Color(0.85f, 0.97f, 1f), 1);
                 s.t.position = s.p;
-                if (s.k >= 1f) { Hit(s.target, s.el); Destroy(s.t.gameObject); shots.RemoveAt(i); continue; }
+                if (s.k >= 1f) { Hit(s.target, s.el, s.wiz); Destroy(s.t.gameObject); shots.RemoveAt(i); continue; }
             }
         }
 
-        void Hit(Enemy e, string el)
+        void Hit(Enemy e, string el, bool wiz = false)
         {
-            double d = HG.TowerDamage(P, B) * (1 + B[el]) * (e.boss ? 1 + B["bossDmg"] : 1);
+            double d = HG.TowerDamage(P, B) * (1 + B[el]) * (e.boss ? 1 + B["bossDmg"] : 1) * (wiz ? WIZ_DAMAGE : 1);
+            if (wiz) e.handT = Time.time;
             double cm = (1 + B["combo"]) * (Ev("eclipse") ? 2 : 1);
             d *= (Ev("thunder") && el == "storm") || (Ev("blizzard") && el == "frost") || (Ev("inferno") && el == "fire") ? 2 : (Ev("hail") && (el == "frost" || el == "storm")) ? 1.5 : 1;
             if (e.R.armour > 0 && el != "fire") d *= 1 - e.R.armour;
@@ -363,7 +370,7 @@ namespace Hearthgate.Game
                 if (e.burn > 0) Combo("fireStorm", e, "FIRESTORM!", Field.FIRE);
                 double cd = d * 0.6 * (e.chill > 0 || e.burn > 0 ? cm : 1) * (e.R.weak == "storm" ? 2 : 1);
                 foreach (var o in enemies.Where(x => x != e && x.dying <= 0).OrderBy(x => (x.Pos - e.Pos).sqrMagnitude).Take(jumps).ToList())
-                { o.hp -= cd; o.flash = 1; if (e.burn > 0) o.burn = 2; Bolt.Arc(e.Pos, o.Pos); }
+                { o.hp -= cd; o.flash = 1; if (e.burn > 0) o.burn = 2; if (wiz) o.handT = Time.time; Bolt.Arc(e.Pos, o.Pos); }
             }
             if (e.R.comboWeak > 0 && e.bigHit) { d *= e.R.comboWeak; Fx.I.Pop(e.Pos + Vector3.up * (e.size + 1.2f), "CRACK!", Field.STONE, 30); }   // Bulwarks
             e.bigHit = false;
@@ -490,7 +497,7 @@ namespace Hearthgate.Game
         void Update()
         {
             var wz = Wizard.I; TrackPresence(); TickWatch(Time.deltaTime); TickMarks(); TickShopSigns(); TickBoards();
-            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls(); TickFall(Time.unscaledDeltaTime); TickNpcs(Time.deltaTime);
+            TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls(); TickFall(Time.unscaledDeltaTime); TickNpcs(Time.deltaTime); TickPosts();
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.F) && TimeStopLevel > 0) { if (wz && wz.On) { if (!TimeStopReady) { Sound.Dud(); Hud.Banner(timeStop > 0 ? "Time is already stopped" : $"Time Stop recharges: ready in {TimeStopLeft:0} s"); } else UseTimeStop(); } else Hud.Banner("Time Stop is the wizard's spell: walk the town (T), then press F"); }   // F never does nothing (bot round 5)   // his skill: on the walk only
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
             if (CanAscend) Guide.Say("ascend");

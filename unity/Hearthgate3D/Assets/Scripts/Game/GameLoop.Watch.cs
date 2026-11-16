@@ -18,21 +18,16 @@ namespace Hearthgate.Game
             foreach (var e in enemies) if (e.dying <= 0 && e.z <= e.stop + NEAR_WALL) return true;
             return false;
         }
-        Vector3 WatchPost => new Vector3(4.5f, 0, Field.GATE_Z - 8.5f);   // in the gatehouse yard, beside its shadow: the walls camera sees him set out
+        Vector3 WatchPost => CAPTAIN_AT;   // in the gatehouse yard, beside its shadow: the walls camera sees him set out
 
         void TickWatch(float dt)
         {
             var wz = Wizard.I; watchRest -= dt;
             if (watchRun == Run.None)
             {
-                if (watchRest > 0 || wz == null || Fallen || rewinding || Hud.Paused || !waveLive || !EnemyAtWalls()) return;
-                var prefab = art ? art.Npc("soldier") : null; if (prefab == null) return;
-                if (!runner)
-                {
-                    runner = Instantiate(prefab, world).transform; runner.name = "watch runner";
-                    runner.localScale = Vector3.one * Townsfolk.SCALE;
-                    runnerGait = runner.gameObject.AddComponent<Gait>(); runnerGait.LegLength = 0.6f * Townsfolk.SCALE; runnerGait.ArmSwing = 0.6f; runnerGait.StaffArm = 0.2f; runnerGait.MaxCadence = 3.4f;
-                }
+                TickCaptain(dt);   // between runs he is the Captain at his post (GameLoop.Posts)
+                if (watchRest > 0 || wz == null || wz.OnWall || Fallen || rewinding || Hud.Paused || !waveLive || !EnemyAtWalls()) return;   // on the wall the wizard sees them already
+                if (Hud.TalkingTo == CAPTAIN || !EnsureRunner()) return;
                 runner.gameObject.SetActive(true); runner.position = WatchPost; watchRun = Run.Out;
                 Sound.Play("bell", 0.5f);
                 return;
@@ -61,7 +56,7 @@ namespace Hearthgate.Game
                     Guide.Shout("The watch: They're at the walls! Press Defenses (U)!", "up");
                     Fx.I.Pop(runner.position + Vector3.up * 2.2f, "!", Field.GOLD, 40);
                 }
-                else { watchRun = Run.None; watchRest = WATCH_REST; runner.gameObject.SetActive(false); }
+                else { watchRun = Run.None; watchRest = WATCH_REST; if (!CaptainHere) runner.gameObject.SetActive(false); }
                 return;
             }
             var step = d / dist * Mathf.Min(dist, RUN_SPEED * dt);

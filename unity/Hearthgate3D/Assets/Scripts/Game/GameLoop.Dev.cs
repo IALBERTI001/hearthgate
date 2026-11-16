@@ -22,6 +22,10 @@ namespace Hearthgate.Game
                 case "shards": P.shards += int.Parse(a[1]); break;
                 case "wave": P.wave = P.runWave = int.Parse(a[1]); break;
                 case "asc": P.ascensions = int.Parse(a[1]); Refresh(); for (int i = 0; i < HG.BUILDINGS.Length; i++) RefreshPlot(i); RefreshTowers(); break;
+                case "post": if (!Wizard.I.On) Wizard.I.Toggle(); Wizard.I.DevPost(int.Parse(a[1])); break;
+                case "mana": Wizard.I.Mana = float.Parse(a[1], System.Globalization.CultureInfo.InvariantCulture); break;
+                case "bounty": P.bountyOn = true; P.bountyN = int.Parse(a[1]); break;
+                case "postinfo": foreach (var ps in Posts) Debug.Log($"[dev] post {ps.tower} stand {ps.stand} foot {ps.foot} bottom {ps.bottom} top {ps.top} out {ps.outward}"); break;
                 case "gold": goldT = 0; if (gold != null) Debug.Log($"[dev] gold at {gold.tr.position} screen {Camera.main.WorldToScreenPoint(gold.tr.position)} body {(gold.body ? gold.body.eulerAngles.ToString() : "none")}"); break;
                 case "fly": flyT = 0; Debug.Log("[dev] butterfly model: " + (art != null && art.butterfly ? "yes" : "NO")); break;
                 case "flies": foreach (var f in meadow) Debug.Log($"[dev] fly {f.kind.id} at {f.tr.position} screen {Camera.main.WorldToScreenPoint(f.tr.position)} scale {f.tr.localScale} rot {f.tr.eulerAngles} t {f.t}"); Debug.Log($"[dev] meadow {meadow.Count} flyT {flyT}"); break;
