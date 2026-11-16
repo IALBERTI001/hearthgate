@@ -234,7 +234,7 @@ namespace Hearthgate.Game
             var gem = Box("Gem", transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(20, -46), new Vector2(34, 34)); gem.pivot = new Vector2(0, 1);
             gemSprite = Gem(); var gi = gem.gameObject.AddComponent<Image>(); gi.sprite = gemSprite; gi.raycastTarget = false;
             res = Label("Res", transform, new Vector2(0, 1), new Vector2(60, -40), 40, TextAnchor.UpperLeft); res.color = RES;
-            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -92), 17, TextAnchor.UpperLeft); rate.font = body;
+            rate = Label("Rate", transform, new Vector2(0, 1), new Vector2(24, -92), 17, TextAnchor.UpperLeft); rate.font = body; rate.supportRichText = true;
             // every currency in sight (owner, Nov 14 2026: "all the different currencies should be displayed"): Starshards (the
             // gold star) and, after an Ascension, perk points (the rose crystal); a tap on one says where it comes from
             shardRow = Box("Shards", transform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-246, -18), new Vector2(110, 36)); shardRow.pivot = new Vector2(0, 1);
@@ -623,11 +623,11 @@ namespace Hearthgate.Game
             var med = Box("Medal", r, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(6 + m / 2, 0), new Vector2(m, m));
             if (icon != null && size.x <= m + 24) { med.anchorMin = med.anchorMax = med.pivot = new Vector2(0.5f, 0.5f); med.anchoredPosition = Vector2.zero; }   // an icon-only button: the medallion centred
             // no disc behind the picture: the glyph sits on the plate itself, as in every polished kit (a picture in a disc read as pasted on)
-            var ic = Box("Icon", med, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(6, 6));
+            var ic = Box("Icon", med, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-4, -4));   // inside its square: the sticker rim overlapped the price (bot round 9)
             a.icon = ic.gameObject.AddComponent<Image>(); a.icon.sprite = Icon(icon); a.icon.preserveAspect = true; a.icon.raycastTarget = false;
             if (!a.icon.sprite) a.icon.enabled = false;
             if (icon == null) med.gameObject.SetActive(false);
-            float left = hasIcon ? m + 14 : 12, w = size.x - left - (key != null && !Application.isMobilePlatform ? 30 : 12);
+            float left = hasIcon ? m + 16 : 12, w = size.x - left - (key != null && !Application.isMobilePlatform ? 30 : 12);
             a.title = Label("Title", r, new Vector2(0, 0.5f), Vector2.zero, h >= 60 ? 22 : 20, TextAnchor.MiddleLeft);
             // the display face is already heavy: faux bold and a 2 px outline ran its letters together (owner, Nov 14 2026:
             // "Words in the buttons are too squished together"); on the plum panel a light outline and a soft drop are enough
@@ -722,7 +722,7 @@ namespace Hearthgate.Game
                 else if (pk && RectTransformUtility.RectangleContainsScreenPoint(perkRow, PointerPos, null))
                     Banner("Perk points: each Ascension pays them. Spend them at the Watchtower's star table");
             }
-            double r = HG.CityRate(P, g.B); rate.text = g.Fallen ? "" : r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" : "";   // never "+0/s"
+            double r = HG.CityRate(P, g.B) * g.SurgeX; rate.text = g.Fallen ? "" : r >= 0.05 ? $"+{(r < 10 ? r.ToString("0.#") : HG.Fmt(r))}/s from the city" + (g.SurgeX > 1 ? "  <color=#FFB3D9>x2</color>" : "") : "";   // the Surge shows in the rate (bot round 9: "looked like it did nothing")   // never "+0/s"
             double gm = HG.GateMax(P, g.B); float gf = Mathf.Clamp01((float)(g.gateHp / gm)); gateBar.fillAmount = gf;
             gateBar.color = gf > 0.5f ? Color.Lerp(new Color(1f, 0.78f, 0.25f), new Color(0.5f, 0.85f, 0.35f), (gf - 0.5f) * 2) : Color.Lerp(new Color(0.9f, 0.25f, 0.2f), new Color(1f, 0.78f, 0.25f), gf * 2); gateTxt.text = $"Walls {HG.Fmt(System.Math.Max(0, g.gateHp))} / {HG.Fmt(gm)}";
             if (g.Fallen) { gateBar.fillAmount = 0; gateTxt.text = "Walls broken"; }   // not a full bar behind the defeat card

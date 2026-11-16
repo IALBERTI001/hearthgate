@@ -17,7 +17,7 @@ namespace Hearthgate.Game
             // always earned and always shown (owner, Nov 14 2026: "It shouldnt be a surprise to see I earned stars"); the
             // first time, one line says what they are for
             if (n <= 0) return;
-            P.shards += n; Fx.I.Pop(at, $"+{n} Starshard{(n == 1 ? "" : "s")}", ROSE, 32, 1.2f); Hud.ShardsIn(n); TellShards();
+            P.shards += n; Fx.I.Pop(at, $"+{n} Starshard{(n == 1 ? "" : "s")}", new Color(1f, 0.9f, 0.55f), 32, 1.2f);   // the star's gold, not the perk crystal's rose (bot round 9) Hud.ShardsIn(n); TellShards();
         }
         public void TellShards()
         {
