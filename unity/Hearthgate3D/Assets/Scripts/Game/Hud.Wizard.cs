@@ -49,7 +49,7 @@ namespace Hearthgate.Game
             if (bounty) bountyTxt.text = g.BountyDone ? "Bounty done: see the Captain" : $"Bounty {P.bountyN} / {g.BountyNeed}";
             string hint = null;
             if (walk && wz.Post >= 0) hint = $"Click a monster: cast {Cap(g.PostElement(wz.Post))}     A / D: next post     S: climb down";
-            else if (walk && wz.StairNear >= 0) hint = "E  climb to the wall post";
+            else if (walk && wz.StairNear >= 0) hint = "Walk up the stair, or press E: climb to the wall post";
             if (wallHint.gameObject.activeSelf != (hint != null)) wallHint.gameObject.SetActive(hint != null);
             if (hint != null) { wallHint.text = hint; wallHint.rectTransform.anchoredPosition = new Vector2(0, g.BossNow != null ? BOSS_Y + 40 : WALLS_Y + 34); }
         }

@@ -206,6 +206,7 @@ namespace Hearthgate.Game
                 }
             }
             if (!onWall) { vel = Vector3.MoveTowards(vel, want * SPEED, SPEED * 6f * dt); pos += vel * dt; Collide(); } else vel = Vector3.zero;
+            if (On && !onWall && vel.magnitude > 0.5f && OnFlight(pos, out int fk, out _) >= 0) { StartClimb(fk, true); onWall = true; }   // a stair is walked up, like a stair
             float speed = climbPost >= 0 ? CLIMB_SPEED : vel.magnitude;
             if (onWall) { }   // turned by WallInput
             else if (speed > 0.25f) yaw = Mathf.MoveTowardsAngle(yaw, Mathf.Atan2(-vel.x, -vel.z) * Mathf.Rad2Deg, 540f * dt);   // models face -Z
@@ -258,7 +259,7 @@ namespace Hearthgate.Game
                 }
             // the stair at hand, and its mana: the fountain fills him, anywhere else only a trickle
             StairNear = -1;
-            if (On && !onWall) for (int k2 = 0; k2 < 4; k2++) if (GameLoop.Posts[k2].stair && (GameLoop.Posts[k2].foot - pos).magnitude < 2.4f) StairNear = k2;
+            if (On && !onWall) StairNear = StairClose(pos, 2.4f);
             if (onWall) { Near = -1; Inside = -1; Looking = -1; }
             Refilling = On && !onWall && new Vector2(pos.x - Field.PLAZA.x, pos.z - Field.PLAZA.z).magnitude < FOUNTAIN_R + 2.6f;
             float was0 = Mana; Mana = Mathf.Min(MANA_MAX, Mana + (Refilling ? MANA_FOUNTAIN : MANA_TRICKLE) * dt);
@@ -278,7 +279,14 @@ namespace Hearthgate.Game
             blend = Mathf.MoveTowards(blend, On ? 1 : 0, dt / 1.1f);
             float k = Mathf.SmoothStep(0, 1, blend);
             indoors = Mathf.MoveTowards(indoors, Inside >= 0 ? 1 : 0, dt / 0.5f);
-            if (!On) baseHeading = START_HEADING; else if (Mathf.Abs(orbit) < 1f) baseHeading = HeadingAt(pos, baseHeading);   // the camera turns, gently, to the house he is at, until the player turns it (then it holds that way until C)
+            if (!On) { baseHeading = START_HEADING; stairCam = false; }
+            else if (Mathf.Abs(orbit) < 1f)
+            {   // by a wall stair the camera turns to look at it from the town side (owner, Nov 16 2026: "I cant" climb: the stairs were
+                // behind the camera, which went top-down against the ring); walking away, it turns back toward the square
+                int ns = StairClose(pos, 7f);
+                if (ns >= 0 && !onWall) { var o = GameLoop.Posts[ns].outward; baseHeading = new Vector2(o.x, o.z).normalized; stairCam = true; }
+                else { if (stairCam && !onWall) { stairCam = false; baseHeading = new Vector2(Field.PLAZA.x - pos.x, Field.PLAZA.z - pos.z).normalized; } baseHeading = HeadingAt(pos, baseHeading); }
+            }   // the camera turns, gently, to the house he is at, until the player turns it (then it holds that way until C)
             Vector2 wantH = Quaternion.Euler(0, 0, -orbit) * baseHeading;   // and as far round as the player has turned it (kept apart, or the two fed each other)
             float ang = Vector2.SignedAngle(heading, wantH); heading = (Quaternion.Euler(0, 0, Mathf.MoveTowards(0, ang, (dragging ? 900f : 120f) * dt)) * heading); heading.Normalize();
             var lk = Vector3.Lerp(LOOK, new Vector3(0, 0.6f, -0.8f), indoors);   // ahead along the heading (-z of LOOK is "ahead")
@@ -308,7 +316,9 @@ namespace Hearthgate.Game
         void StartClimb(int k, bool up)
         {
             var ps = GameLoop.Posts[k]; Stop(); climbAfter = -1;
-            climbPath = up ? new[] { new Vector3(pos.x, 0, pos.z), ps.foot, ps.bottom, ps.top, ps.landing, ps.stand } : new[] { ps.stand, ps.landing, ps.top, ps.bottom, ps.foot };
+            float ft = OnFlight(pos, out int fk2, out var onLine);
+            climbPath = up ? (fk2 == k ? new[] { onLine, ps.top, ps.landing, ps.stand } : new[] { new Vector3(pos.x, 0, pos.z), ps.foot, ps.bottom, ps.top, ps.landing, ps.stand })
+                           : new[] { ps.stand, ps.landing, ps.top, ps.bottom, ps.foot };
             climbLen = 0; for (int i = 1; i < climbPath.Length; i++) climbLen += Vector3.Distance(climbPath[i - 1], climbPath[i]);
             climbPost = k; lastPost = k; climbUp = up; climbS = 0; Post = -1; wallPos = climbPath[0];
             if (up) Sound.Play("surge", 0.2f);
@@ -377,6 +387,35 @@ namespace Hearthgate.Game
             Fx.I.Burst(wallPos + Vector3.up * 1f, new Color(0.6f, 0.85f, 1f), 14);
             Post = GameLoop.POST_ORDER[i]; lastPost = Post; wallPos = GameLoop.Posts[Post].stand; pos = new Vector3(wallPos.x, 0, wallPos.z);
             Fx.I.Burst(wallPos + Vector3.up * 1f, new Color(0.6f, 0.85f, 1f), 14); Sound.Play("surge", 0.25f);   // a time wizard's blink
+        }
+        bool stairCam;
+        // how far up a stair's flight a ground spot stands (0 at its bottom step, 1 at its top), or -1 when off every flight;
+        // onLine: that point on the flight, at its height
+        static float OnFlight(Vector3 p, out int k, out Vector3 onLine)
+        {
+            k = -1; onLine = Vector3.zero;
+            for (int i = 0; i < 4; i++)
+            {
+                var ps = GameLoop.Posts[i]; if (!ps.stair) continue;
+                var a = new Vector3(ps.bottom.x, 0, ps.bottom.z); var b = new Vector3(ps.top.x, 0, ps.top.z); var ab = b - a;
+                float t = Vector3.Dot(new Vector3(p.x, 0, p.z) - a, ab) / ab.sqrMagnitude;
+                if (t < -0.02f || t > 0.95f) continue;
+                if ((a + ab * Mathf.Clamp01(t) - new Vector3(p.x, 0, p.z)).magnitude > 1.2f) continue;   // the walk keeps him 2.4 m inside the ring and the flight runs 1.65 m inside it: walking into it from the street side reaches here
+                k = i; t = Mathf.Clamp01(t); onLine = a + ab * t + Vector3.up * (ps.top.y * t); return t;
+            }
+            return -1f;
+        }
+        // the stair within reach metres of a spot (its foot or its flight), or -1
+        static int StairClose(Vector3 p, float reach)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                var ps = GameLoop.Posts[i]; if (!ps.stair) continue;
+                var a = new Vector3(ps.bottom.x, 0, ps.bottom.z); var b = new Vector3(ps.top.x, 0, ps.top.z); var ab = b - a; var q = new Vector3(p.x, 0, p.z);
+                float t = Mathf.Clamp01(Vector3.Dot(q - a, ab) / ab.sqrMagnitude);
+                if ((a + ab * t - q).magnitude < reach || (ps.foot - q).magnitude < reach) return i;
+            }
+            return -1;
         }
         // a stair (its flight or its brazier) under the pointer
         bool StairAt(Vector2 sp, out int k)
