@@ -40,7 +40,7 @@ namespace Hearthgate.Game
             if (STAT_OF.TryGetValue(id, out var st)) P.AddStat(st, n);
             if (!P.shopOpen) return;
             HG.QuestsFor(P, Today());
-            foreach (var q in P.quests) if (q.id == id && q.n < q.need) { q.n = Mathf.Min(q.need, q.n + n); if (q.n == q.need) Hud.Banner(P.restored.Contains("library") ? $"Quest done: {HG.QuestText(q)}. Claim it at the Library" : $"Quest done: {HG.QuestText(q)}. Rebuild the Library to claim it");   // never send a player to a ruin (bot round 10) }
+            foreach (var q in P.quests) if (q.id == id && q.n < q.need) { q.n = Mathf.Min(q.need, q.n + n); if (q.n == q.need) Hud.Banner(P.restored.Contains("library") ? $"Quest done: {HG.QuestText(q)}. Claim it at the Library" : $"Quest done: {HG.QuestText(q)}. Rebuild the Library to claim it"); }   // never send a player to a ruin (bot round 10)
         }
         public int QuestsToClaim => !P.shopOpen ? 0 : P.quests.Count(q => q.n >= q.need && !q.claimed) + (BonusReady ? 1 : 0);
         public bool BonusReady => P.quests.Count > 0 && !P.questBonus && P.quests.All(q => q.claimed);
