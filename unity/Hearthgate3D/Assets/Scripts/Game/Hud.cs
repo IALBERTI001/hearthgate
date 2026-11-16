@@ -582,7 +582,11 @@ namespace Hearthgate.Game
             }
             Place(walk.p.rt, new Vector2(1, 0), new Vector2(-12, 10 + 46 + GAP), new Vector2(150, 46));
             if (up.p.rt.gameObject.activeSelf) up.p.rt.gameObject.SetActive(false);
-            var bp = banner.rectTransform.anchoredPosition; bp.y = -120f; banner.rectTransform.anchoredPosition = bp;
+            // on the town walk the wizard stands where the coach sits on the walls: there the coach goes up under the top bar
+            bool onWalk = Wizard.I && Wizard.I.On;
+            if (onWalk) Place(guide.p.rt, new Vector2(0.5f, 1), new Vector2(0, -122), guide.p.rt.sizeDelta);
+            else Place(guide.p.rt, new Vector2(0.5f, 0), new Vector2(0, COACH_Y), guide.p.rt.sizeDelta);
+            var bp = banner.rectTransform.anchoredPosition; bp.y = onWalk && guide.p.rt.gameObject.activeSelf ? -200f : -120f; banner.rectTransform.anchoredPosition = bp;
             // one voice: an open ring is what the player is looking at, so a banner that would cross it drops under it
             if (ring && bannerT > 0 && RingBox().Overlaps(BannerRect())) { bp.y = -(((RectTransform)transform).rect.height - RingBox().yMin) - 10f; banner.rectTransform.anchoredPosition = bp; }
         }
