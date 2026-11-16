@@ -382,7 +382,8 @@ namespace Hearthgate.Game
             if (r.gameObject.activeSelf != show) r.gameObject.SetActive(show);
             if (!show) return false;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvas, sp, null, out var lp);
-            r.anchoredPosition = lp + canvas.rect.size * 0.5f; return true;
+            var ap = lp + canvas.rect.size * 0.5f; float top = canvas.rect.height - 118f - r.sizeDelta.y * (1f - r.pivot.y);   // never up into the top bar (the Surge board sat over the Ascension)
+            if (ap.y > top) ap.y = top; r.anchoredPosition = ap; return true;
         }
         void TownTags(GameLoop g, Profile P)
         {
@@ -550,7 +551,7 @@ namespace Hearthgate.Game
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
-                Show(dockBld, built ? HG.ById(id).name : "Rebuild", HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : $"  <color=#E8DCEF>{HG.ById(id).name}</color>"), g.CanWork(bi), now);
+                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : "  <color=#CFE9B0>new</color>"), g.CanWork(bi), now);   // the name fits; the picture and "new" say it is a rebuild
                 dockBld.cost.supportRichText = true;
                 if (dockBld.cap) { var kt = dockBld.cap.GetComponentInChildren<Text>(); string k = near >= 0 ? "E" : built ? "B" : "R"; if (kt && kt.text != k) kt.text = k; }
             }
