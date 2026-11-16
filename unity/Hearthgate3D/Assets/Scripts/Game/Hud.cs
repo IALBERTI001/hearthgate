@@ -259,9 +259,13 @@ namespace Hearthgate.Game
             ascIcon = ai.gameObject.AddComponent<Image>(); ascIcon.sprite = Icon("timestop"); ascIcon.preserveAspect = true; ascIcon.raycastTarget = false;
             ascTxt = Label("T", ascRow, new Vector2(0, 1), new Vector2(54, 0), 24, TextAnchor.UpperLeft); ascTxt.color = new Color(1f, 0.84f, 0.42f);
             ascTxt.rectTransform.pivot = new Vector2(0, 1); ascTxt.rectTransform.sizeDelta = new Vector2(216, 30);
-            ascTxt.horizontalOverflow = HorizontalWrapMode.Wrap; ascTxt.verticalOverflow = VerticalWrapMode.Truncate; ascTxt.resizeTextForBestFit = true; ascTxt.resizeTextMinSize = 13; ascTxt.resizeTextMaxSize = 24;   // fits the row, never runs past it
+            ascTxt.horizontalOverflow = HorizontalWrapMode.Wrap; ascTxt.verticalOverflow = VerticalWrapMode.Overflow; ascTxt.resizeTextForBestFit = false; ascTxt.fontSize = 21;
+            // the body face, unbolded, with a thin rim and no drop shadow (owner, Nov 15 2026: "ascension part of the hud is in the hard to read category. Too bold")
+            ascTxt.font = body; ascTxt.fontStyle = FontStyle.Normal;
+            foreach (var e in ascTxt.GetComponents<Shadow>()) { if (e is Outline) e.effectDistance = new Vector2(1, -1); else e.enabled = false; }
+            foreach (var e in new Text[0]) { }   // fits the row, never runs past it
             ascSub = Label("S", ascRow, new Vector2(0, 1), new Vector2(54, -29), 15, TextAnchor.UpperLeft); ascSub.font = body; ascSub.color = new Color(0.86f, 0.8f, 0.9f);
-            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(216, 18); ascSub.verticalOverflow = VerticalWrapMode.Overflow;   // a line taller than its box draws nothing
+            ascSub.rectTransform.pivot = new Vector2(0, 1); ascSub.rectTransform.sizeDelta = new Vector2(216, 18); ascSub.fontStyle = FontStyle.Normal; foreach (var e in ascSub.GetComponents<Shadow>()) { if (e is Outline) e.effectDistance = new Vector2(1, -1); else e.enabled = false; } ascSub.verticalOverflow = VerticalWrapMode.Overflow;   // a line taller than its box draws nothing
             var ab = Box("Bar", ascRow, new Vector2(0, 0), new Vector2(0, 0), new Vector2(54, 2), new Vector2(212, 7)); ab.pivot = Vector2.zero;
             var abg = ab.gameObject.AddComponent<Image>(); abg.color = new Color(0.08f, 0.04f, 0.1f, 0.7f); abg.raycastTarget = false;
             var af = Box("Fill", ab, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
