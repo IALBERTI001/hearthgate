@@ -24,6 +24,7 @@ namespace Hearthgate.Game
         }
         public void UpgradeBulk()
         {
+            int pf = HG.PendingFork(P); if (pf > 0) { Hud.ShowFork(pf); return; }   // a choice waits: show it (skipping it left the button dead at a fork, QA Nov 15 2026)
             int want = Mult == 0 ? 500 : Mult, bought = 0;
             for (int k = 0; k < want && CanUpgrade && HG.PendingFork(P) == 0; k++) { Upgrade(bought > 0); bought++; }
             if (bought == 0) { Sound.Dud(); Need(UpgradeCost, Field.GateTop + Vector3.up * 1.5f); }
