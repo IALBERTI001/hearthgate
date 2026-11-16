@@ -146,7 +146,13 @@ namespace Hearthgate.Game
                     if (new Vector2(kat.x - pos.x, kat.z - pos.z).magnitude < 7f) { Stop(); GameLoop.I.OpenHall(ki0); }
                     else { target = kat; talkTo = ki0; goal.SetActive(true); goal.transform.position = kat + Vector3.up * 0.05f; }
                 }
-                else if (Ground(Hud.PointerPos, out var at)) { target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
+                else if (Ground(Hud.PointerPos, out var at))
+                {   // a tap into a ruin stops him at its door: nothing to do in the rubble, and the camera stays out on the street
+                    // (bot round 5: "walked into a ruin and the camera went top-down")
+                    var gp = GameLoop.I ? GameLoop.I.P : null;
+                    for (int ri = 0; gp != null && ri < HG.BUILDING_IDS.Length; ri++)
+                        if (!gp.restored.Contains(HG.BUILDING_IDS[ri]) && InFootprint(ri, at, 0.2f)) { at = Field.Door(ri, 1.3f); at.y = 0; break; }
+                    target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
             }
 
             if (On)
