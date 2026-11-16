@@ -47,7 +47,7 @@ namespace Hearthgate.Game
             ps.bottom = Ring(aFoot) - Out(aFoot) * 1.65f;
             ps.foot = Ring(aWay) - Out(aWay) * 3.2f;   // where he starts up: inside the street he walks
             ps.along = (ps.top - ps.bottom); ps.along.y = 0; ps.along.Normalize();
-            ps.look = Field.Lane(i, 8.5f, 0);   // the post camera watches the tower's own lane
+            ps.look = Field.Lane(i, 5f, 0);   // near enough that he stands above the HUD's bars, his lane running up the middle   // the post camera watches the tower's own lane
             return ps;
         }
         // the order along the wall as the post camera sees it (looking out, +x is to the right)
