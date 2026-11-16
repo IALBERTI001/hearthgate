@@ -824,7 +824,7 @@ namespace Hearthgate.Game
             sb.Append($"bannerT={I.bannerT} a={b.color.a} txt='{b.text}' verts={b.cachedTextGenerator.vertexCount} shade={(I.bannerShade ? I.bannerShade.color.a + " " + I.bannerShade.rectTransform.sizeDelta + " act=" + I.bannerShade.gameObject.activeInHierarchy : "none")} || ");
             foreach (Transform t in I.transform)
             {
-                var rt = (RectTransform)t; if (!t.gameObject.activeInHierarchy) continue;
+                var rt = t as RectTransform; if (!t.gameObject.activeInHierarchy) continue; if (!rt) { sb.Append($"{t.GetSiblingIndex()}:{t.name} PLAIN-TRANSFORM | "); continue; }
                 var gr = t.GetComponent<Graphic>(); var cg = t.GetComponent<CanvasGroup>();
                 sb.Append($"{t.GetSiblingIndex()}:{t.name} {rt.rect.size} @{rt.position} {(gr ? gr.GetType().Name + " a=" + gr.color.a + " mat=" + (gr.material ? gr.material.name : "-") : "")}{(cg ? " cg=" + cg.alpha : "")}{(t.GetComponent<Mask>() ? " MASK" : "")}{(t.GetComponent<Canvas>() ? " CANVAS" : "")} | ");
             }
