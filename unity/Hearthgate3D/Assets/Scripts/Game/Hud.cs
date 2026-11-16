@@ -312,7 +312,7 @@ namespace Hearthgate.Game
             // and the multiplier, all held to repeat
             dockUp = Action("DockUp", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y), new Vector2(190, DOCK_H), "tower", "U", () => GameLoop.I.UpgradeBulk(), () => GameLoop.I.CanUpgrade, true); dockUp.p.repeat = true;
             dockBld = Action("DockBld", new Vector2(0.5f, 0), new Vector2(-95, DOCK_Y), new Vector2(150, DOCK_H), "upgrade", "B", () => GameLoop.I.BuyBest(), () => { int i = GameLoop.I.BestBuilding(); return i >= 0 && GameLoop.I.CanWork(i); }, false); dockBld.p.repeat = true;
-            dockLed = Action("DockLed", new Vector2(0.5f, 0), new Vector2(190, DOCK_Y), new Vector2(64, DOCK_H), "ledger", "L", () => ShowLedger("town"), () => GameLoop.I.StewardHere, false);
+            dockLed = Action("DockLed", new Vector2(0.5f, 0), new Vector2(-95, DOCK_Y + DOCK_H + 2), new Vector2(120, 32), "ledger", "L", () => ShowLedger("town"), () => GameLoop.I.StewardHere, false);
             // how many to buy: three chips in a row (the bot read one cycling chip as a dropdown), the chosen one lit
             for (int k = 0; k < 3; k++)
             {
@@ -321,7 +321,7 @@ namespace Hearthgate.Game
             }
             dockMult = dockMults[0];
             foreach (var d in new[] { dockUp, dockBld, dockLed }) d.p.rt.pivot = new Vector2(0.5f, 0);
-            dockLed.p.rt.gameObject.SetActive(false);
+            // the ledger as a chip over the building button, in the corridor (the bots never found L)
             dockUp.p.dud = () => { var g0 = GameLoop.I; g0.Need(g0.UpgradeCost, Field.GateTop + Vector3.up * 1.5f); };
             dockBld.p.dud = () => { var g0 = GameLoop.I; int i0 = g0.BestBuilding(); var w0 = Wizard.I; if (w0 && w0.On && w0.Near >= 0) i0 = w0.Near; if (i0 >= 0) g0.Need(g0.BestCost(i0), Field.Door(i0, 1f, 2.5f)); };
             Slim(dockUp, 44); Slim(dockBld, 44);   // the corridor between the middle lanes holds two buttons: the ledger is on L, in every ring and at Tobin's booth
@@ -561,7 +561,7 @@ namespace Hearthgate.Game
                 if (dockBld.cap) { var kt = dockBld.cap.GetComponentInChildren<Text>(); string k = near >= 0 ? "E" : built ? "B" : "R"; if (kt && kt.text != k) kt.text = k; }
             }
             else Show(dockBld, "Buildings", null, false, now);
-            Show(dockLed, "", null, g.StewardHere, now);
+            { bool ls = g.StewardHere; if (dockLed.p.rt.gameObject.activeSelf != ls) dockLed.p.rt.gameObject.SetActive(ls); if (ls) { Show(dockLed, "Ledger", null, true, now); dockLed.title.fontSize = 15; } }
             for (int k = 0; k < 3; k++)
             {
                 var m = dockMults[k]; bool on = g.MultIx == k; Show(m, k == 0 ? "x1" : k == 1 ? "x10" : "Max", null, true, now);

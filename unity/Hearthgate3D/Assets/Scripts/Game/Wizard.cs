@@ -85,18 +85,20 @@ namespace Hearthgate.Game
         public Vector3 StaffTip => model ? model.position + model.rotation * new Vector3(0.45f * SCALE, 2.4f * SCALE, -0.25f * SCALE) : pos + Vector3.up * 1.6f;
         public void Stop() { target = null; goal.SetActive(false); vel = Vector3.zero; }
         // the keeper under the pointer, if any: the spot in front of them, a step short, where he stands to talk
-        bool KeeperAt(Vector2 sp, out Vector3 at)
+        int talkTo = int.MinValue;
+        bool KeeperAt(Vector2 sp, out Vector3 at, out int who)
         {
-            at = default; var g = GameLoop.I; if (g == null || cam == null) return false;
+            at = default; who = -1; var g = GameLoop.I; if (g == null || cam == null) return false;
             float best = 60f * Screen.height / 720f;
             for (int ki = 0; ki <= HG.BUILDING_IDS.Length + 1; ki++)
             {
                 int i = ki == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : ki == HG.BUILDING_IDS.Length + 1 ? GameLoop.STEWARD : ki;
                 if (i == GameLoop.TRAINER ? !g.TrainerHere : i == GameLoop.STEWARD ? !g.StewardHere : (GameLoop.KeeperOf(i) == null || !g.CentreOn(i))) continue;
                 var c = GameLoop.TalkAt(i); var s = cam.WorldToScreenPoint(c + Vector3.up * 1.2f); if (s.z <= 0) continue;
-                float d = Vector2.Distance(sp, s); if (d >= best) continue;
+                var s2 = cam.WorldToScreenPoint(c + Vector3.up * 3.6f);   // the body or the sign over the head
+                float d = Mathf.Min(Vector2.Distance(sp, s), s2.z > 0 ? Vector2.Distance(sp, s2) : 1e9f); if (d >= best) continue;
                 var away = new Vector3(pos.x - c.x, 0, pos.z - c.z); if (away.sqrMagnitude < 0.01f) away = Vector3.back;
-                at = c + away.normalized * Mathf.Min(1.4f, GameLoop.TalkReach(i) * 0.6f); at.y = 0; best = d;
+                at = c + away.normalized * Mathf.Min(1.4f, GameLoop.TalkReach(i) * 0.6f); at.y = 0; best = d; who = i;
             }
             return best < 60f * Screen.height / 720f;
         }
@@ -138,7 +140,12 @@ namespace Hearthgate.Game
                     var ray = cam.ScreenPointToRay(Hud.PointerPos); var c = pos + Vector3.up * 0.9f;
                     if (Vector3.Cross(ray.direction, c - ray.origin).magnitude < 1.6f) Toggle();
                 }
-                else if (KeeperAt(Hud.PointerPos, out var kat)) { target = kat; goal.SetActive(true); goal.transform.position = kat + Vector3.up * 0.05f; }   // a click on a keeper walks him up to talk (the bot clicked Aurelian and nothing happened)
+                else if (KeeperAt(Hud.PointerPos, out var kat, out int ki0))
+                {   // a click on a keeper (or the sign over them) talks to them: at once when he is close, else he walks up and then talks
+                    // (the bots clicked Aurelian and his "?" and nothing happened)
+                    if (new Vector2(kat.x - pos.x, kat.z - pos.z).magnitude < 7f) { Stop(); GameLoop.I.OpenHall(ki0); }
+                    else { target = kat; talkTo = ki0; goal.SetActive(true); goal.transform.position = kat + Vector3.up * 0.05f; }
+                }
                 else if (Ground(Hud.PointerPos, out var at)) { target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
             }
 
@@ -163,12 +170,12 @@ namespace Hearthgate.Game
                 float h = (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) ? 1 : 0) - (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.Q) ? 1 : 0);
                 float v = (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.Z) ? 1 : 0) - (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ? 1 : 0);
                 var fw = cam.transform.forward; fw.y = 0; fw = fw.sqrMagnitude < 0.01f ? Vector3.forward : fw.normalized; var rt = new Vector3(fw.z, 0, -fw.x);
-                if (h != 0 || v != 0) { want = (rt * h + fw * v).normalized; target = null; goal.SetActive(false); }
+                if (h != 0 || v != 0) { want = (rt * h + fw * v).normalized; target = null; talkTo = int.MinValue; goal.SetActive(false); }
                 else if (target.HasValue)
                 {
                     var left = target.Value - pos; left.y = 0;
                     var to = Waypoint(target.Value) - pos; to.y = 0;
-                    if (left.magnitude < 0.3f) { target = null; goal.SetActive(false); }
+                    if (left.magnitude < 0.3f) { target = null; goal.SetActive(false); if (talkTo != int.MinValue) { int k = talkTo; talkTo = int.MinValue; GameLoop.I.OpenHall(k); } }
                     else want = to.normalized * Mathf.Clamp01(left.magnitude / 1.0f + 0.3f);
                 }
             }

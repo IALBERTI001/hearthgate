@@ -17,7 +17,7 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
-            var box = I.Modal("The Town Ledger", new Vector2(760, tab == "skills" ? 380 : CARD_H), false);   // the skills page is short: no empty half card TalkingTo = GameLoop.STEWARD;
+            var box = I.Modal("The Town Ledger", new Vector2(760, CARD_H), false);   // the skills page is short: no empty half card TalkingTo = GameLoop.STEWARD;
             var tabs = new (string id, string label)[] { ("town", "The town"), ("skills", "Wizard's skills") };
             for (int k = 0; k < tabs.Length; k++)
             {
@@ -67,7 +67,7 @@ namespace Hearthgate.Game
                 d.rectTransform.pivot = new Vector2(0, 1); d.rectTransform.sizeDelta = new Vector2(300, 20); d.color = new Color(0.85f, 0.8f, 0.88f);
                 if (built)
                 {
-                    double r = HG.BuildingRate(P, id, g.B); string rs = r < 10 ? r.ToString("0.##") : HG.Fmt(r);
+                    double r = HG.BuildingRate(P, id, g.B); string rs = r < 10 ? r.ToString("0.#") : HG.Fmt(r);   // the same rounding as the HUD
                     int m = HG.MILESTONES.FirstOrDefault(x => x > L);
                     d.text = $"<color=#CFE9B0>+{rs}/s</color>" + (m > 0 ? $"   ·   level {m} doubles it" : "");
                 }
@@ -82,7 +82,7 @@ namespace Hearthgate.Game
                 I.BtnAt("U" + i, new Vector2(1, 1), new Vector2(-30, y + 2), new Vector2(230, 37), () => { g.WorkOn(bi); ShowLedger("town"); }, on, out var ul, box, null, false).rt.pivot = new Vector2(1, 1);
                 ul.text = label;
             }
-            I.Line(box, y0 - HG.BUILDING_IDS.Length * row - 4, $"The city makes <color=#CFE9B0>+{HG.Fmt(HG.CityRate(P, g.B))}/s</color>. Each building's output doubles at levels {string.Join(", ", HG.MILESTONES)}.", 15, new Color(0.85f, 0.8f, 0.88f));
+            I.Line(box, y0 - HG.BUILDING_IDS.Length * row - 4, $"The city makes <color=#CFE9B0>+{(HG.CityRate(P, g.B) < 10 ? HG.CityRate(P, g.B).ToString("0.#") : HG.Fmt(HG.CityRate(P, g.B)))}/s</color>. Each building's output doubles at levels {string.Join(", ", HG.MILESTONES)}.", 15, new Color(0.85f, 0.8f, 0.88f));
         }
 
         static void SkillsTab(RectTransform box, GameLoop g)
