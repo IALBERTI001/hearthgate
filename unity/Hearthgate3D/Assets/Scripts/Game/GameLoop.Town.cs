@@ -221,6 +221,17 @@ namespace Hearthgate.Game
                  walkHoldAt = pt; walkHoldT = 0; return; }   // TickWalkHold: a long press opens the wizard's ring
             // the radial menus (Hud.Radial): a click on a tower, the gatehouse or a building rings it with its upgrades
             float px = Screen.height / 720f;
+            // the Chronomancer and the Steward answer a click from the walls too (bot round 5: "clicking the ? does nothing")
+            {
+                int kw = 0; bool kf = false; float kd = 48f * px;
+                foreach (int i in new[] { TRAINER, STEWARD })
+                {
+                    if (i == TRAINER ? !TrainerHere : !StewardHere) continue;
+                    var c = TalkAt(i);
+                    foreach (float up in new[] { 1.0f, 2.4f, 3.8f, 5.2f }) { var s0 = cam.WorldToScreenPoint(c + Vector3.up * up); if (s0.z > 0) { float d = Vector2.Distance(pt, s0); if (d < kd) { kd = d; kw = i; kf = true; } } }
+                }
+                if (kf) { Hud.CloseRing(); Sound.Click(); OpenHall(kw); return; }
+            }
             foreach (var tw in towers)
             {
                 if (tw.beacon) continue;

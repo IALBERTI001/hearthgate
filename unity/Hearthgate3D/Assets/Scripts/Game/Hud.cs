@@ -14,7 +14,7 @@ namespace Hearthgate.Game
         static Hud I;
         Font font, body; Text wave, res, rate, evTxt, banner, gateTxt, bossTxt; Image gateBar, bossFill; RectTransform forkBox, bossBox;
         Act up, re, walk, work; RectTransform workCard; double shownRes = -1;
-        RectTransform shardRow, perkRow; Text shardTxt, perkTxt; float shardFlash;
+        RectTransform shardRow, perkRow; Text shardTxt, perkTxt; float shardFlash; double lastShards = -1;
         public static void ShardsIn(int n) { if (I) I.shardFlash = 1.2f; }
         Sprite gemSprite; static Sprite Icon(string n) => Resources.Load<Sprite>("Icons/icon_" + n);
         readonly RectTransform[] signs = new RectTransform[10]; readonly Text[] signTxt = new Text[10];   // the buildings' boards (see Signs)
@@ -393,7 +393,7 @@ namespace Hearthgate.Game
         {
             bool tagOn = g.SurgeOpen && (g.SurgeOn || g.SurgeReady) && !g.Fallen && !Paused && !(bannerT > 0 && Bounds(surgeTag).Overlaps(BannerRect())) && !(ring && Bounds(surgeTag).Overlaps(RingBox()));   // one voice: a banner over the square hides the board under it   // under a card the world's tags step back   // the shambles show bare
             if (tagOn && Pin(surgeTag, Field.PLAZA + new Vector3(0, 4.2f, 0)))
-            { Show(surgeAct, g.SurgeOn ? "Income x2" : "Surge ready", g.SurgeOn ? $"{GameLoop.Mmss(g.SurgeLeftMs)} left" : "x2 income, 3 min", !g.SurgeOn, Time.unscaledTime); surgeAct.gem.enabled = false; }
+            { Show(surgeAct, g.SurgeOn ? "Income x2" : "Surge ready", g.SurgeOn ? $"{MinSec(g.SurgeLeftMs)} left" : "x2 income, 3 min", !g.SurgeOn, Time.unscaledTime); surgeAct.gem.enabled = false; }
             else if (!tagOn && surgeTag.gameObject.activeSelf) surgeTag.gameObject.SetActive(false);
             int ti = System.Array.IndexOf(HG.BUILDING_IDS, "tavern");
             if (P.restored.Contains("tavern") && !g.Fallen && Pin(cheerTag, Field.Plot(ti) + Vector3.up * (Field.PlotHeight(ti) + 0.8f)))
@@ -474,7 +474,7 @@ namespace Hearthgate.Game
         {
             if (!I) return false;
             foreach (var p in I.press) if (p.rt && p.rt.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(p.rt, m, null)) return true;
-            foreach (var r in new[] { I.shardRow, I.perkRow }) if (r && r.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(r, m, null)) return true;   // the counters explain themselves
+            foreach (var r in new[] { I.shardRow, I.perkRow, I.ascRow }) if (r && r.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(r, m, null)) return true;   // the counters explain themselves
             return I.forkBox != null || I.settingsBox != null || OnRing(m);
         }
 
@@ -691,6 +691,9 @@ namespace Hearthgate.Game
             if (System.Math.Abs(P.res - shownRes) < 1) shownRes = P.res;
             res.text = HG.Fmt(shownRes);
             shardTxt.text = HG.Fmt(P.shards);   // the star says what it is; a tap explains (OnHud)
+            // the first Starshards explain themselves the moment they arrive (bot round 5: "the star counter rose with no explanation")
+            if (lastShards >= 0 && P.shards > lastShards && !P.told.Contains("shard1")) { P.told.Add("shard1"); shardFlash = 3f; Banner("Starshards! Rare treasure from bosses: they train the wizard's skills and rebuild fallen walls. Tap the star to learn more"); }
+            lastShards = P.shards;
             shardFlash = Mathf.Max(0, shardFlash - Time.unscaledDeltaTime); shardTxt.color = Color.Lerp(new Color(1f, 0.9f, 0.55f), Color.white, Mathf.Clamp01(shardFlash) * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 18f)));
             // the second and third currencies show once they mean something (review Nov 15 2026: "★ 0" and an unlabelled pink 2 crowd the one primary number)
             // every currency in sight on the right of the top bar (owner, Nov 15 2026: "Where is the starshards, the perks")
@@ -768,7 +771,9 @@ namespace Hearthgate.Game
             }
             foreach (var a in acts) if (a.glow && a.p.rt) { var c = a.glow.color; c.a = a.primary && Guide.Pressing == null ? 0.4f + 0.35f * Mathf.Sin(Time.unscaledTime * 3.2f) : 0f; a.glow.color = c; }   // while the Magister points, only his button glows
             // the Magister: his line on the card, and the button he names lit up bright
-            Guide.Tick(Time.unscaledDeltaTime, txt => { guideText = txt; guide.title.text = txt; guide.p.rt.gameObject.SetActive(true); }, () => guide.p.rt.gameObject.SetActive(false));
+            Guide.Tick(Time.unscaledDeltaTime, txt => { guideText = txt; guide.title.text = txt; guideOn = true; }, () => guideOn = false);
+            { bool gv = guideOn && forkBox == null && settingsBox == null && !(bannerT > 0 && Guide.Pressing == null); if (guide.p.rt.gameObject.activeSelf != gv) guide.p.rt.gameObject.SetActive(gv); }   // one voice: a card hides the guide (bot round 5: the fork card stacked on it)
+            if (Input.GetKeyDown(KeyCode.Escape) && settingsBox != null && GameLoop.I && !GameLoop.I.Fallen) ShowSettings(false);   // Escape closes a card (bot round 5)
             {   // the coach follows the hand (review Nov 15 2026): once the ring it asked for is open, it names the button in it
                 string want = guideText;
                 if (ring && Guide.Pressing == "up" && (ringId == "gate" || ringId == "wiz")) want = "Press Upgrade defenses!";   // (the dock's gold button works too)
@@ -776,7 +781,7 @@ namespace Hearthgate.Game
                 else if (ring && Guide.Pressing == "re" && ringId == "gate" && GameLoop.I.NextBuilding == null) want = "Press Ascend!";
                 if (want != null && guide.title.text != want) guide.title.text = want;
                 // one voice: a banner's news and an idle line of the coach never speak together
-                if (bannerT > 0 && Guide.Pressing == null && guide.p.rt.gameObject.activeSelf) guide.p.rt.gameObject.SetActive(false);
+                // (one voice: a banner's news and an idle coach line never speak together; folded into gv above)
             }
             var pt = Guide.Pressing == "up" ? dockUp : Guide.Pressing == "re" ? (GameLoop.I.NextBuilding != null ? dockBld : null) : Guide.Pressing == "walk" ? walk : null;   // the coach points at the dock
             if (pt != null && pt.glow) { var c = pt.glow.color; c.a = 0.7f + 0.3f * Mathf.Sin(Time.unscaledTime * 7f); pt.glow.color = c; }
@@ -868,6 +873,9 @@ namespace Hearthgate.Game
         // the walls fell (GameLoop.Fall): the card sits at the foot of the screen with the shambles in view above it, the
         // world kept moving (smoke rises) though the fight waits. Restore for Starshards; without enough, an ad where one
         // can be shown; or start again from wave 1, asked twice.
+        // "2m 45s", never "2:45" (bot round 5 read the colon as a decimal point in the display font)
+        public static string MinSec(long ms) { long s = (ms + 999) / 1000; return s >= 60 ? $"{s / 60}m {s % 60:00}s" : $"{s}s"; }
+        bool guideOn;
         public static void CloseCard() { if (I) I.ShowSettings(false); }
         public static void ShowFallen(bool confirm = false)
         {

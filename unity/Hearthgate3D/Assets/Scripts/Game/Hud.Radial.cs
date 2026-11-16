@@ -200,7 +200,7 @@ namespace Hearthgate.Game
                     cost = true, line = () => HG.Fmt(g.LevelCost(i)), can = () => g.CanWork(i), act = () => g.WorkOn(i) });
             else
                 items.Add(new RadialItem { label = "Rebuild", icon = "rebuild", key = HG.RestoreOffer(P).Contains(id) ? "R" : null,
-                    cost = true, line = () => HG.RestoreOffer(P).Contains(id) ? HG.Fmt(g.RestoreCost) : g.NextBuilding != null ? "after the " + HG.ById(g.NextBuilding).name : "later",
+                    cost = true, line = () => HG.RestoreOffer(P).Contains(id) ? HG.Fmt(g.RestoreCost) : g.NextBuilding != null ? "after " + HG.ById(g.NextBuilding).name : "later",
                     can = () => g.CanWork(i), act = () => g.WorkOn(i), closes = true, lit = () => Guide.Pressing == "re" && HG.RestoreOffer(P).Contains(id) });
             items.Add(new RadialItem { label = "Walk there", icon = "walk", act = () => Wizard.I?.WalkTo(i), closes = true });
             AddLedger(items, g);

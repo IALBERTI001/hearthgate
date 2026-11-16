@@ -491,9 +491,10 @@ namespace Hearthgate.Game
         {
             var wz = Wizard.I; TrackPresence(); TickWatch(Time.deltaTime); TickMarks(); TickShopSigns(); TickBoards();
             TickTown(Time.deltaTime); TapWorld(); CheckFeats(); Steward(Time.deltaTime); TickFlies(Time.deltaTime); TickHalls(Time.deltaTime); TellHalls(); TickFall(Time.unscaledDeltaTime); TickNpcs(Time.deltaTime);
-            if (!Hud.Paused && Input.GetKeyDown(KeyCode.F) && TimeStopLevel > 0 && wz && wz.On) UseTimeStop();   // his skill: on the walk only
+            if (!Hud.Paused && Input.GetKeyDown(KeyCode.F) && TimeStopLevel > 0) { if (wz && wz.On) { if (!TimeStopReady) { Sound.Dud(); Hud.Banner(timeStop > 0 ? "Time is already stopped" : $"Time Stop recharges: ready in {TimeStopLeft:0} s"); } else UseTimeStop(); } else Hud.Banner("Time Stop is the wizard's spell: walk the town (T), then press F"); }   // F never does nothing (bot round 5)   // his skill: on the walk only
             if (NextBuilding == "forge" && CanRestore) Guide.Say("restore");
             if (CanAscend) Guide.Say("ascend");
+            if (wz && wz.On && !P.told.Contains("g_town")) P.told.Add("g_town");   // walked already: no "walk the town" line after the fact (bot round 5)
             if (P.restored.Count >= 2 && !Guide.Busy && !(wz && wz.On)) for (int i = 0; i < HG.BUILDING_IDS.Length; i++) if (P.restored.Contains(HG.BUILDING_IDS[i]) && CanWork(i)) { Guide.Say("town"); break; }   // the town has work: say so once
             if (SurgeReady && SurgeOpen && !Guide.Busy) Guide.Say("surge");
             if (!Hud.Paused && Input.GetKeyDown(KeyCode.X)) TapSurge();
