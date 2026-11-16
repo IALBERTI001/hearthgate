@@ -118,6 +118,10 @@ namespace Hearthgate.Game
             Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14); Sound.Play("surge", 0.35f);
             if (On && GameLoop.I && !GameLoop.I.P.told.Contains("walkhint")) { GameLoop.I.P.told.Add("walkhint"); Hud.Banner("Click the ground or use WASD to walk. At a door, press E to raise the building"); }   // once (bot round 7)   // at once, on entering (a queued coach line arrived after the bot had left)   // the bot never learned how to move or E
             if (On) toldCam = true;
+            if (!On && (Hud.Paused || (GameLoop.I && GameLoop.I.Fallen)))
+            {   // sent back by the fall's card: the camera does not glide while a card is up, so it goes at once (it stayed on the wall post)
+                blend = 0; postBlend = 0; Fx.I.camHome = Field.CAM_POS; cam.transform.rotation = Quaternion.LookRotation(Field.CAM_LOOK - Field.CAM_POS); cam.fieldOfView = Field.FovFor(cam.aspect);
+            }
         }
 
         // a house's footprint, in its own frame (Field.Local: u across its front, v toward its door); the houses face the
