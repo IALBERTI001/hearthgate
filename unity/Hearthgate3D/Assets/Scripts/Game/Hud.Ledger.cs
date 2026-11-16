@@ -17,7 +17,7 @@ namespace Hearthgate.Game
         {
             if (!I || !GameLoop.I) return;
             var g = GameLoop.I; var P = g.P;
-            var box = I.Modal("The Town Ledger", new Vector2(760, CARD_H), false);   // the skills page is short: no empty half card TalkingTo = GameLoop.STEWARD;
+            var box = I.Modal("The Town Ledger", new Vector2(640, CARD_H), false);   // narrow: no empty middle between the names and the buttons (bot round 5)   // the skills page is short: no empty half card TalkingTo = GameLoop.STEWARD;
             var tabs = new (string id, string label)[] { ("town", "The town"), ("skills", "Wizard's skills") };
             for (int k = 0; k < tabs.Length; k++)
             {
