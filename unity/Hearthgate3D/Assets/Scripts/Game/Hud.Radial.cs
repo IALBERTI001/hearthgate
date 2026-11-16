@@ -182,13 +182,13 @@ namespace Hearthgate.Game
             var g = GameLoop.I; if (g == null) return;
             var items = new List<RadialItem>();
             var els = g.TowerElements;
-            items.Add(new RadialItem { label = "Auto", icon = "tower", line = () => g.P.towerEl[n] == "" ? "chosen" : null, act = () => g.SetTowerEl(n, "", false), lit = () => g.P.towerEl[n] == "" });
+            items.Add(new RadialItem { label = "Auto", icon = "tower", line = () => g.P.towerEl[n] == "" ? "in use" : "best element", act = () => g.SetTowerEl(n, "", false), lit = () => g.P.towerEl[n] == "" });
             foreach (var el in els)
             {
                 var e = el;
-                items.Add(new RadialItem { label = ElName(e), icon = "el_" + e, line = () => g.P.towerEl[n] == e ? "chosen" : null, act = () => g.SetTowerEl(n, e, false), lit = () => g.P.towerEl[n] == e });
+                items.Add(new RadialItem { label = ElName(e), icon = "el_" + e, line = () => g.P.towerEl[n] == e ? "in use" : "use this", act = () => g.SetTowerEl(n, e, false), lit = () => g.P.towerEl[n] == e });
             }
-            items.Add(new RadialItem { label = "Designs", icon = "shop", line = () => "and all four", act = () => ShowTower(n), closes = true });
+            items.Add(new RadialItem { label = "Designs", icon = "shop", line = () => "change its look", act = () => ShowTower(n), closes = true });
             OpenRing("tower" + n, g.TowerMuzzle(n), TowerName(n), items);
         }
         public static void RingBuilding(int i)
