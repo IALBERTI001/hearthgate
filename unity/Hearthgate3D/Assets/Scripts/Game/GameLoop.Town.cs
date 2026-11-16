@@ -217,7 +217,8 @@ namespace Hearthgate.Game
             var pt = Hud.PointerPos;
             if (TapGold(pt) || TapFly(pt)) return;
             var cam = Camera.main; if (cam == null) return;
-            if (Wizard.I && Wizard.I.On) { walkHold = true; walkHoldAt = pt; walkHoldT = 0; return; }   // TickWalkHold: a long press opens the wizard's ring
+            if (Wizard.I && Wizard.I.On) { if (Hud.RingOpen) Hud.CloseRing(); walkHold = true;   // a click off the ring closes it (the bot: "stayed open while I walked")
+                 walkHoldAt = pt; walkHoldT = 0; return; }   // TickWalkHold: a long press opens the wizard's ring
             // the radial menus (Hud.Radial): a click on a tower, the gatehouse or a building rings it with its upgrades
             float px = Screen.height / 720f;
             foreach (var tw in towers)

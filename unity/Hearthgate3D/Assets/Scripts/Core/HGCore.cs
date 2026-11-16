@@ -531,7 +531,7 @@ namespace Hearthgate.Core
     public class Profile
     {
         public int v = 3;
-        public double res;
+        public double res = 6;   // a new player can press the first thing the coach points at (the bot: "the first instruction is unaffordable")
         public int wave = 1, bestWave = 1, runWave = 1, gateLevel = 1, ascensions;
         public List<string> restored = new List<string>();
         public List<KV> levels = new List<KV>();

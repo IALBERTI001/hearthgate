@@ -84,6 +84,22 @@ namespace Hearthgate.Game
         public bool Blending => blend > 0.001f;   // the camera still on its way between the walls and the town
         public Vector3 StaffTip => model ? model.position + model.rotation * new Vector3(0.45f * SCALE, 2.4f * SCALE, -0.25f * SCALE) : pos + Vector3.up * 1.6f;
         public void Stop() { target = null; goal.SetActive(false); vel = Vector3.zero; }
+        // the keeper under the pointer, if any: the spot in front of them, a step short, where he stands to talk
+        bool KeeperAt(Vector2 sp, out Vector3 at)
+        {
+            at = default; var g = GameLoop.I; if (g == null || cam == null) return false;
+            float best = 60f * Screen.height / 720f;
+            for (int ki = 0; ki <= HG.BUILDING_IDS.Length + 1; ki++)
+            {
+                int i = ki == HG.BUILDING_IDS.Length ? GameLoop.TRAINER : ki == HG.BUILDING_IDS.Length + 1 ? GameLoop.STEWARD : ki;
+                if (i == GameLoop.TRAINER ? !g.TrainerHere : i == GameLoop.STEWARD ? !g.StewardHere : (GameLoop.KeeperOf(i) == null || !g.CentreOn(i))) continue;
+                var c = GameLoop.TalkAt(i); var s = cam.WorldToScreenPoint(c + Vector3.up * 1.2f); if (s.z <= 0) continue;
+                float d = Vector2.Distance(sp, s); if (d >= best) continue;
+                var away = new Vector3(pos.x - c.x, 0, pos.z - c.z); if (away.sqrMagnitude < 0.01f) away = Vector3.back;
+                at = c + away.normalized * Mathf.Min(1.4f, GameLoop.TalkReach(i) * 0.6f); at.y = 0; best = d;
+            }
+            return best < 60f * Screen.height / 720f;
+        }
 
         public void Toggle()
         {
@@ -122,6 +138,7 @@ namespace Hearthgate.Game
                     var ray = cam.ScreenPointToRay(Hud.PointerPos); var c = pos + Vector3.up * 0.9f;
                     if (Vector3.Cross(ray.direction, c - ray.origin).magnitude < 1.6f) Toggle();
                 }
+                else if (KeeperAt(Hud.PointerPos, out var kat)) { target = kat; goal.SetActive(true); goal.transform.position = kat + Vector3.up * 0.05f; }   // a click on a keeper walks him up to talk (the bot clicked Aurelian and nothing happened)
                 else if (Ground(Hud.PointerPos, out var at)) { target = at; goal.SetActive(true); goal.transform.position = at + Vector3.up * 0.05f; }
             }
 
