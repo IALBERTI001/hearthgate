@@ -1066,7 +1066,7 @@ namespace Hearthgate.Game
             LevelRow(box, -78, "Music", () => Sound.MusicLevel, Sound.SetMusicLevel);
             LevelRow(box, -136, "Sound effects", () => Sound.SfxLevel, v => { Sound.SetSfxLevel(v); Sound.Click(); });
             // the player shapes the HUD (game-hud-ui-design rule 7): its size, and how see-through the readouts and buttons are
-            LevelRow(box, -194, "HUD size", () => (HudScale - 0.8f) / 0.45f, v => SetHudScale(0.8f + Mathf.Round(Mathf.Clamp01(v) * 9f) / 9f * 0.45f), () => $"{Mathf.RoundToInt(HudScale * 100)}%");
+            LevelRow(box, -194, "HUD size", () => (HudScale - 0.8f) / 0.45f, v => SetHudScale(0.8f + Mathf.Round(Mathf.Clamp01(v) * 9f) / 9f * 0.45f), () => (HudScale < 0.95f ? "Small " : HudScale <= 1.05f ? "Normal " : "Large ") + $"{Mathf.RoundToInt(HudScale * 100)}%");   // the bar is a range: a half bar is "Normal" (bots read 100% on a half bar as wrong)
             LevelRow(box, -252, "HUD opacity", () => (HudAlpha - 0.4f) / 0.6f, v => SetHudAlpha(0.4f + Mathf.Clamp01(v) * 0.6f), () => $"{Mathf.RoundToInt(HudAlpha * 100)}%");
             BtnAt("S_Ctl", new Vector2(0.5f, 1), new Vector2(-118, -320), new Vector2(220, 52), () => ShowControls(), null, out var ctl, box).rt.pivot = new Vector2(0.5f, 1); ctl.text = "Controls";
             BtnAt("S_Def", new Vector2(0.5f, 1), new Vector2(118, -320), new Vector2(220, 52), () => { SetHudScale(1f); SetHudAlpha(1f); RefreshSettings(); }, () => HudScale != 1f || HudAlpha != 1f, out var dl, box).rt.pivot = new Vector2(0.5f, 1); dl.text = "Default HUD";
