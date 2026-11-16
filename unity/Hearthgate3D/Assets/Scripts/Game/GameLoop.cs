@@ -119,7 +119,7 @@ namespace Hearthgate.Game
             if (om != null) Hud.Banner($"Today's omen: {om.name}! {om.line}");
             else if (trial) { Hud.Banner($"TRIAL WAVE {P.wave}! Win it for Starshards"); Sound.Play("boss_horn", 0.35f); }
             else if (ev != null) { Hud.Banner($"{(evNew ? "NEW! " : "")}{ev.name}: {ev.line}"); Sound.Play(evNew ? "feat" : "surge", evNew ? 0.45f : 0.3f); }
-            else Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave, P.ascensions)].label}{(HG.BossRank(P) > 0 ? $", rank {HG.BossRank(P)}" : "")}!" : $"Wave {P.wave}");
+            else if (!Hud.Paused) Hud.Banner(HG.IsBoss(P.wave) ? $"Wave {P.wave}: {HG.ROLES[HG.BossOf(P.wave, P.ascensions)].label}{(HG.BossRank(P) > 0 ? $", rank {HG.BossRank(P)}" : "")}!" : $"Wave {P.wave}");
         }
 
         void FixedUpdate()

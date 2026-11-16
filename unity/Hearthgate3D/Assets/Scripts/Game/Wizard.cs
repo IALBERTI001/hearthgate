@@ -107,7 +107,7 @@ namespace Hearthgate.Game
         {
             On = !On; target = null; goal.SetActive(false); Guide.Done("walk");
             Fx.I.Burst(pos + Vector3.up * 1.0f, Field.GOLD, 14); Sound.Play("surge", 0.35f);
-            if (On) Hud.Banner("Click the ground or use WASD to walk. At a door, press E to raise the building");   // at once, on entering (a queued coach line arrived after the bot had left)   // the bot never learned how to move or E
+            if (On && GameLoop.I && !GameLoop.I.P.told.Contains("walkhint")) { GameLoop.I.P.told.Add("walkhint"); Hud.Banner("Click the ground or use WASD to walk. At a door, press E to raise the building"); }   // once (bot round 7)   // at once, on entering (a queued coach line arrived after the bot had left)   // the bot never learned how to move or E
             if (On) toldCam = true;
         }
 

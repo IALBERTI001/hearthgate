@@ -93,13 +93,13 @@ namespace Hearthgate.Game
             if (lv == 0) im.color = new Color(0.6f, 0.56f, 0.66f, 0.85f);
             var n = I.Label("N0", box, new Vector2(0, 1), new Vector2(130, -134), 24, TextAnchor.UpperLeft); n.supportRichText = true;
             n.text = lv > 0 ? $"Time Stop  <size=17><color=#9FD8FF>rank {lv} of {GameLoop.TS_DUR.Length - 1}</color></size>" : "Time Stop  <size=17><color=#CDBFD8>not learned</color></size>";
-            n.rectTransform.pivot = new Vector2(0, 1); n.rectTransform.sizeDelta = new Vector2(560, 30);
+            n.rectTransform.pivot = new Vector2(0, 1); n.rectTransform.sizeDelta = new Vector2(box.sizeDelta.x - 160, 30);
             var d = I.Label("D0", box, new Vector2(0, 1), new Vector2(130, -168), 16, TextAnchor.UpperLeft); d.font = I.body; d.supportRichText = true; d.color = new Color(0.88f, 0.84f, 0.9f);
-            d.horizontalOverflow = HorizontalWrapMode.Wrap; d.rectTransform.pivot = new Vector2(0, 1); d.rectTransform.sizeDelta = new Vector2(580, 70);
+            d.horizontalOverflow = HorizontalWrapMode.Wrap; d.rectTransform.pivot = new Vector2(0, 1); d.rectTransform.sizeDelta = new Vector2(box.sizeDelta.x - 160, 70);   // inside the card (bot round 7: ran past its edge)
             d.text = lv > 0
-                ? $"Freezes every enemy for <color=#9FD8FF>{GameLoop.TS_DUR[lv]:0.#} s</color>; ready again after {GameLoop.TS_CD[lv]:0} s. Press <color=#FFE68C>F</color> or the button over the walls' bar while you walk the town. " + (lv < GameLoop.TS_DUR.Length - 1 ? "Aurelian, in front of the Market, trains the next rank." : "Fully trained.")
+                ? $"Freezes every enemy for <color=#9FD8FF>{GameLoop.TS_DUR[lv]:0.#} s</color>; ready again after {GameLoop.TS_CD[lv]:0} s. Press <color=#FFE68C>F</color> while you walk the town, when the walls are in danger. " + (lv < GameLoop.TS_DUR.Length - 1 ? "Aurelian, in front of the Market, trains the next rank." : "Fully trained.")
                 : (g.TrainerHere ? "Aurelian the Chronomancer, in front of the Market, will teach it." : "An old Chronomancer comes to town after wave 5. He teaches it.");
-            I.Line(box, -244, "The wizard's skills are his own: they are ready when he walks the town. Aurelian teaches every one.", 16, new Color(0.8f, 0.76f, 0.84f));
+            I.Line(box, -244, "The wizard's skills are his own: they are ready when he walks the town. The Chronomancer teaches them.", 16, new Color(0.8f, 0.76f, 0.84f));
         }
     }
 }

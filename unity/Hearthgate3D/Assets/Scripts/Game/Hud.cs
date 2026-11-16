@@ -311,7 +311,7 @@ namespace Hearthgate.Game
             // do in a moments notice"): the defenses (the one gold, primary button), the best building to raise next, the ledger,
             // and the multiplier, all held to repeat
             dockUp = Action("DockUp", new Vector2(0.5f, 0), new Vector2(80, DOCK_Y), new Vector2(190, DOCK_H), "tower", "U", () => GameLoop.I.UpgradeBulk(), () => GameLoop.I.CanUpgrade, true); dockUp.p.repeat = true;
-            dockBld = Action("DockBld", new Vector2(0.5f, 0), new Vector2(-95, DOCK_Y), new Vector2(150, DOCK_H), "upgrade", "B", () => GameLoop.I.BuyBest(), () => { int i = GameLoop.I.BestBuilding(); return i >= 0 && GameLoop.I.CanWork(i); }, false); dockBld.p.repeat = true;
+            dockBld = Action("DockBld", new Vector2(0.5f, 0), new Vector2(-95, DOCK_Y), new Vector2(150, DOCK_H), "upgrade", "B", () => GameLoop.I.BuyBest(), () => { int i = GameLoop.I.DockBuilding(); return i >= 0 && GameLoop.I.CanWork(i); }, false); dockBld.p.repeat = true;   // the same building it shows (bot round 7: greyed at an affordable door)
             dockLed = Action("DockLed", new Vector2(0.5f, 0), new Vector2(-95, DOCK_Y + DOCK_H + 2), new Vector2(120, 32), "ledger", "L", () => ShowLedger("town"), () => GameLoop.I.StewardHere, false);
             // how many to buy: three chips in a row (the bot read one cycling chip as a dropdown), the chosen one lit
             for (int k = 0; k < 3; k++)
@@ -556,7 +556,7 @@ namespace Hearthgate.Game
             {
                 var id = HG.BUILDING_IDS[bi]; bool built = P.restored.Contains(id);
                 dockBld.icon.sprite = Icon("b_" + id) ?? Icon("upgrade"); dockBld.icon.enabled = dockBld.icon.sprite;
-                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>Lv {HG.LevelOf(P, id) + 1}</color>" : ""), g.CanWork(bi), now);   // the name fits as the title; the price line says it is a rebuild
+                Show(dockBld, HG.ById(id).name, HG.Fmt(g.BestCost(bi)) + (built ? $"  <color=#E8DCEF>to Lv {HG.LevelOf(P, id) + 1}</color>" : ""), g.CanWork(bi), now);   // the name fits as the title; the price line says it is a rebuild
                 dockBld.cost.supportRichText = true;
                 if (dockBld.cap) { var kt = dockBld.cap.GetComponentInChildren<Text>(); string k = near >= 0 ? "E" : built ? "B" : "R"; if (kt && kt.text != k) kt.text = k; }
             }
@@ -702,7 +702,7 @@ namespace Hearthgate.Game
             {   // the Ascension row
                 int aw = HG.AscendWave(P), reach = Mathf.Max(P.runWave, P.wave);
                 ascTxt.text = P.ascensions > 0 ? $"Ascension {Roman(P.ascensions)}" : "First Ascension";
-                ascSub.text = reach >= aw ? (HG.CityWhole(P) ? "Ready to ascend!" : "Rebuild the city to ascend") : $"Next at wave {aw}";
+                ascSub.text = reach >= aw ? (HG.CityWhole(P) ? "Ready to ascend!" : "Rebuild the city to ascend") : $"Goal: wave {aw}, city rebuilt";   // the goal in plain sight (bot round 7 found it only by tapping)
                 ascBar.fillAmount = Mathf.Clamp01(reach / (float)aw);
                 bool ascReady = g.CanAscend; ascSub.color = ascReady ? new Color(1f, 0.9f, 0.5f) : new Color(0.86f, 0.8f, 0.9f);
                 ascIcon.color = P.ascensions > 0 || ascReady ? Color.white : new Color(0.8f, 0.76f, 0.84f, 0.85f);
@@ -797,12 +797,15 @@ namespace Hearthgate.Game
             if (Input.GetKeyDown(KeyCode.P)) ShowSettings(settingsBox == null);
             if (Input.GetKeyDown(KeyCode.M)) { bool on = !(Sound.MusicOn || Sound.SfxOn); Sound.SetMusic(on); Sound.SetSfx(on); Banner(on ? "Sound on" : "Sound off"); RefreshSettings(); }
             if (bannerT > 0) { bannerT -= Time.unscaledDeltaTime; var c = banner.color; c.a = Mathf.Clamp01(bannerT / 0.4f); banner.color = c; }
+            if (!Paused && pendingBanner != null) { var pb = pendingBanner; pendingBanner = null; Banner(pb); }
+            if (bannerShade) bannerShade.rectTransform.anchoredPosition = banner.rectTransform.anchoredPosition + new Vector2(0, 8);   // the shade moves with the words
             if (bannerShade) { var sc = bannerShade.color; sc.a = 0.62f * banner.color.a * (bannerT > 0 ? 1 : 0); bannerShade.color = sc; }
         }
 
         public static void Banner(string s)
         {
-            if (!I) return; var b = I.banner; b.text = s; I.bannerT = Mathf.Max(3.5f, 1.2f + s.Length * 0.055f);   // long enough to read (bot round 6 never saw one) var c = b.color; c.a = 1; b.color = c;
+            if (!I) return; if (Paused) { I.pendingBanner = s; return; }   // a card is open: the news waits for it to close, never across its title (bot round 7)
+            var b = I.banner; b.text = s; I.bannerT = Mathf.Max(3.5f, 1.2f + s.Length * 0.055f);   // long enough to read (bot round 6 never saw one) var c = b.color; c.a = 1; b.color = c;
             float w = Mathf.Min(900f, ((RectTransform)I.transform).rect.width - 48f); b.rectTransform.sizeDelta = new Vector2(w, 90);
             int size = 34; b.fontSize = size;
             while (size > 18 && b.preferredHeight > 84) b.fontSize = --size;   // two lines at most, then smaller
@@ -818,7 +821,7 @@ namespace Hearthgate.Game
             sr.anchoredPosition = b.rectTransform.anchoredPosition + new Vector2(0, 8);
             sr.SetAsLastSibling(); b.transform.SetAsLastSibling();   // on top of everything (round 6: banners were drawn under something and never seen)
         }
-        Image bannerShade;
+        Image bannerShade; string pendingBanner;
         public static string Probe2()
         {
             if (!I) return "no hud"; var sb = new System.Text.StringBuilder(); var b = I.banner;

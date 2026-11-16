@@ -44,13 +44,19 @@ namespace Hearthgate.Game
             }
             return best;
         }
+        // the building the dock's second button works on: the one at the door he stands at, else the best buy
+        public int DockBuilding()
+        {
+            var wz = Wizard.I;
+            return wz && wz.On && wz.Near >= 0 && (P.restored.Contains(HG.BUILDING_IDS[wz.Near]) || HG.RestoreOffer(P).Contains(HG.BUILDING_IDS[wz.Near])) ? wz.Near : BestBuilding();
+        }
         public double BestCost(int i) => i < 0 ? 0 : P.restored.Contains(HG.BUILDING_IDS[i]) ? LevelCost(i) : RestoreCost;
         public void BuyBest()
         {
             int want = Mult == 0 ? 500 : Mult, bought = 0;
             for (int k = 0; k < want; k++)
             {
-                var wz = Wizard.I; int i = wz && wz.On && wz.Near >= 0 && (P.restored.Contains(HG.BUILDING_IDS[wz.Near]) || HG.RestoreOffer(P).Contains(HG.BUILDING_IDS[wz.Near])) ? wz.Near : BestBuilding();
+                int i = DockBuilding();
                 if (i < 0 || !CanWork(i)) { if (bought == 0 && i >= 0) Need(BestCost(i), Field.Door(i, 1f, 2.5f)); break; }
                 bool rebuild = !P.restored.Contains(HG.BUILDING_IDS[i]);
                 WorkOn(i, bought > 0); bought++;
