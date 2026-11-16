@@ -175,7 +175,7 @@ namespace Hearthgate.Game
                 {
                     var left = target.Value - pos; left.y = 0;
                     var to = Waypoint(target.Value) - pos; to.y = 0;
-                    if (left.magnitude < 0.3f) { target = null; goal.SetActive(false); if (talkTo != int.MinValue) { int k = talkTo; talkTo = int.MinValue; GameLoop.I.OpenHall(k); } }
+                    if (left.magnitude < 0.3f) { target = null; goal.SetActive(false); if (talkTo != int.MinValue) { int tk = talkTo; talkTo = int.MinValue; GameLoop.I.OpenHall(tk); } }
                     else want = to.normalized * Mathf.Clamp01(left.magnitude / 1.0f + 0.3f);
                 }
             }
